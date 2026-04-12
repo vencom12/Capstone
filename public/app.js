@@ -883,7 +883,24 @@ function showToast(msg) {
 }
 
 // --- UI Syncing ---
-async function updateUI() {
+async function refreshDashboardState() {
+    if (!AuthManager.isAuthenticated()) return;
+    try {
+        updateSyncIndicator(true);
+        const batch = await State.getDashboardState();
+        if (batch) {
+            State._isInitialLoad = false;
+            updateUI();
+        }
+    } catch (err) {
+        console.error('State Fetch failed:', err);
+        showToast('System synchronization delay. Retrying...');
+    } finally {
+        updateSyncIndicator(false);
+    }
+}
+
+function updateUI() {
     const basket = State.getBasket();
     const machine = State.getMachineState();
     
@@ -893,37 +910,16 @@ async function updateUI() {
     // Show Skeletons on Initial Load
     if (State._isInitialLoad) {
         renderSkeletons();
+        refreshDashboardState(); // Trigger network load
+        return;
     }
 
-    // Auth-guarded data
-    let orders = [];
-    let inventory = [];
-    let products = [];
-    let favorites = [];
-    let analytics = null;
-
-    try {
-        const batch = await State.getDashboardState();
-        if (batch) {
-            orders = batch.orders;
-            inventory = batch.inventory;
-            products = batch.products;
-            favorites = batch.favorites;
-            analytics = batch.analytics;
-            State._isInitialLoad = false;
-        } else {
-            // Fallback to individual requests if batch fails
-            [orders, inventory, products, favorites] = await Promise.all([
-                State.getOrders(),
-                State.getInventory(),
-                State.getProducts(),
-                State.getFavorites()
-            ]);
-        }
-    } catch (err) {
-        console.error('State Fetch failed:', err);
-        showToast('System synchronization delay. Retrying...');
-    }
+    // Auth-guarded data (Local Memory Fetch)
+    const orders = State._cache.orders || [];
+    const inventory = State._cache.inventory || [];
+    const products = State._cache.products || [];
+    const favorites = State._cache.favorites || [];
+    const analytics = State._cache.analytics || null;
 
     const favIds = favorites.map(f => f._id);
 
@@ -946,8 +942,9 @@ async function updateUI() {
     // Catalog UI Updates
     const productGrid = document.querySelector('.product-grid');
     if (productGrid) {
+        let newHtml = '';
         if (products.length > 0) {
-            productGrid.innerHTML = products.map(p => {
+            newHtml = products.map(p => {
                 const isFav = favIds.includes(p._id);
                 return `
                 <div class="product-card glass animate-fade">
@@ -972,20 +969,22 @@ async function updateUI() {
                 </div>
             `;}).join('');
         } else {
-            productGrid.innerHTML = `
+            newHtml = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.3;"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7l-3 5H5l-3-5"/></svg>
                     <p>No designs published in the database yet.</p>
                 </div>
             `;
         }
+        if (productGrid.innerHTML !== newHtml) productGrid.innerHTML = newHtml;
     }
 
     // Employee Design List updates
     const employeeProductList = document.getElementById('product-list-container');
     if (employeeProductList) {
+        let newHtml = '';
         if (products.length > 0) {
-            employeeProductList.innerHTML = products.map(p => `
+            newHtml = products.map(p => `
                 <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px;">
                     <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>
                     <div style="flex: 1;">
@@ -1004,8 +1003,9 @@ async function updateUI() {
                 </div>
             `).join('');
         } else {
-            employeeProductList.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 20px;">No designs in catalog. Click button to create one.</div>';
+            newHtml = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 20px;">No designs in catalog. Click button to create one.</div>';
         }
+        if (employeeProductList.innerHTML !== newHtml) employeeProductList.innerHTML = newHtml;
     }
 
     // Basket UI Updates
@@ -1014,10 +1014,11 @@ async function updateUI() {
 
     const basketItems = document.getElementById('basket-items-list');
     if (basketItems) {
+        let newHtml = '';
         if (basket.length === 0) {
-            basketItems.innerHTML = '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>';
+            newHtml = '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>';
         } else {
-            basketItems.innerHTML = basket.map(item => `
+            newHtml = basket.map(item => `
                 <div class="basket-item" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; text-align: left;">
                         <span style="font-weight: 500; font-size: 0.95rem;">${item.name}</span>
@@ -1034,6 +1035,7 @@ async function updateUI() {
                 </div>
             `).join('');
         }
+        if (basketItems.innerHTML !== newHtml) basketItems.innerHTML = newHtml;
     }
 
     const basketTotal = document.getElementById('basket-total');
@@ -1051,10 +1053,11 @@ async function updateUI() {
     // Orders UI Updates
     const orderQueue = document.getElementById('order-queue-list');
     if (orderQueue) {
+        let newHtml = '';
         if (orders.length === 0) {
-            orderQueue.innerHTML = '<div style="text-align:center;color:var(--text-dim)"><p>No active orders</p></div>';
+            newHtml = '<div style="text-align:center;color:var(--text-dim)"><p>No active orders</p></div>';
         } else {
-            orderQueue.innerHTML = orders.map(order => `
+            newHtml = orders.map(order => `
                 <div class="order-item">
                     <div style="display:flex;justify-content:space-between;margin-bottom:8px">
                         <strong>${order.orderId}</strong>
@@ -1066,14 +1069,16 @@ async function updateUI() {
                 </div>
             `).join('');
         }
+        if (orderQueue.innerHTML !== newHtml) orderQueue.innerHTML = newHtml;
     }
 
     const trackingSection = document.getElementById('section-tracking');
     if (trackingSection) {
         const trackingList = trackingSection.querySelector('div[style*="padding: 32px"]')?.parentElement;
         if (trackingList) {
+            let newHtml = '';
             if (orders.length === 0) {
-                trackingSection.innerHTML = `
+                newHtml = `
                     <h1 style="font-size: 2.2rem; margin-bottom: 24px;">Order Tracking</h1>
                     <div style="text-align: center; padding: 60px; color: var(--text-dim);">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.3;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
@@ -1081,7 +1086,7 @@ async function updateUI() {
                     </div>
                 `;
             } else {
-                trackingSection.innerHTML = `
+                newHtml = `
                     <h1 style="font-size: 2.2rem; margin-bottom: 24px;">Order Tracking</h1>
                     <div class="tracking-container" style="display: flex; flex-direction: column; gap: 20px;">
                         ${orders.map(order => `
@@ -1102,6 +1107,7 @@ async function updateUI() {
                     </div>
                 `;
             }
+            if (trackingSection.innerHTML !== newHtml) trackingSection.innerHTML = newHtml;
         }
     }
 
@@ -1167,10 +1173,11 @@ async function updateUI() {
     // Employee Order Management UI
     const employeeOrderTable = document.getElementById('employee-order-table-body');
     if (employeeOrderTable) {
+        let newHtml = '';
         if (activeOrders.length === 0) {
-            employeeOrderTable.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
+            newHtml = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
         } else {
-            employeeOrderTable.innerHTML = activeOrders.map(order => `
+            newHtml = activeOrders.map(order => `
                 <tr>
                     <td><input type="checkbox" class="order-select-checkbox" data-id="${order._id}"></td>
                     <td>${order.orderId}</td>
@@ -1191,14 +1198,16 @@ async function updateUI() {
                 </tr>
             `).join('');
         }
+        if (employeeOrderTable.innerHTML !== newHtml) employeeOrderTable.innerHTML = newHtml;
     }
 
     const employeeHistoryTable = document.getElementById('employee-history-table-body');
     if (employeeHistoryTable) {
+        let newHtml = '';
         if (historyOrders.length === 0) {
-            employeeHistoryTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No historical orders found.</td></tr>';
+            newHtml = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No historical orders found.</td></tr>';
         } else {
-            employeeHistoryTable.innerHTML = historyOrders.map(order => `
+            newHtml = historyOrders.map(order => `
                 <tr>
                     <td>${order.orderId}</td>
                     <td>${order.client}</td>
@@ -1208,15 +1217,17 @@ async function updateUI() {
                 </tr>
             `).join('');
         }
+        if (employeeHistoryTable.innerHTML !== newHtml) employeeHistoryTable.innerHTML = newHtml;
     }
 
     // Admin UI Updates (Active queue)
     const adminOrderTable = document.getElementById('admin-order-table-body');
     if (adminOrderTable) {
+        let newHtml = '';
         if (activeOrders.length === 0) {
-            adminOrderTable.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
+            newHtml = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
         } else {
-            adminOrderTable.innerHTML = activeOrders.map(order => `
+            newHtml = activeOrders.map(order => `
                 <tr>
                     <td><input type="checkbox" class="order-select-checkbox" data-id="${order._id}"></td>
                     <td>${order.orderId}</td>
@@ -1237,15 +1248,17 @@ async function updateUI() {
                 </tr>
             `).join('');
         }
+        if (adminOrderTable.innerHTML !== newHtml) adminOrderTable.innerHTML = newHtml;
     }
 
     // Admin UI Updates (History queue)
     const adminHistoryTable = document.getElementById('admin-history-table-body');
     if (adminHistoryTable) {
+        let newHtml = '';
         if (historyOrders.length === 0) {
-            adminHistoryTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No historical orders found.</td></tr>';
+            newHtml = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No historical orders found.</td></tr>';
         } else {
-            adminHistoryTable.innerHTML = historyOrders.map(order => `
+            newHtml = historyOrders.map(order => `
                 <tr>
                     <td>${order.orderId}</td>
                     <td>${order.client}</td>
@@ -1255,6 +1268,7 @@ async function updateUI() {
                 </tr>
             `).join('');
         }
+        if (adminHistoryTable.innerHTML !== newHtml) adminHistoryTable.innerHTML = newHtml;
     }
 
     // Inventory UI Updates (Admin)
@@ -1275,8 +1289,9 @@ async function updateUI() {
     // Admin Staffing UI
     const staffTableBody = document.getElementById('staff-table-body');
     if (staffTableBody) {
+        let newHtml = '';
         const users = State._cache.users || [];
-        staffTableBody.innerHTML = users.length ? users.map(u => `
+        newHtml = users.length ? users.map(u => `
             <tr>
                 <td>${u.username}</td>
                 <td>${u.email}</td>
@@ -1295,6 +1310,7 @@ async function updateUI() {
                 </td>
             </tr>
         `).join('') : `<tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No staff accounts found</td></tr>`;
+        if (staffTableBody.innerHTML !== newHtml) staffTableBody.innerHTML = newHtml;
     }
 
     // Settings UI Updates
@@ -1317,7 +1333,7 @@ async function updateUI() {
 
     // AI Production Advice
     if (window.StitchAI) {
-        await window.StitchAI.updateAdviceWidget();
+        window.StitchAI.updateAdviceWidget().catch(console.error);
     }
 }
 
@@ -1402,7 +1418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         socket.on('connect', () => console.log('[Socket.IO] Connected to server'));
         socket.on('dataChanged', (data) => {
             console.log('[Socket.IO] Real-time update received:', data.type);
-            updateUI();
+            refreshDashboardState();
         });
         socket.on('disconnect', () => console.log('[Socket.IO] Disconnected'));
     };
@@ -1410,10 +1426,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Core Event Listeners
     window.addEventListener('basketUpdated', updateUI);
-    window.addEventListener('ordersUpdated', updateUI);
+    window.addEventListener('ordersUpdated', refreshDashboardState);
     window.addEventListener('machineUpdated', updateUI);
-    window.addEventListener('productsUpdated', updateUI);
-    window.addEventListener('favoritesUpdated', updateUI);
+    window.addEventListener('productsUpdated', refreshDashboardState);
+    window.addEventListener('favoritesUpdated', refreshDashboardState);
 
     document.addEventListener('click', async (e) => {
         if (e.target.closest('.fav-toggle-btn')) {
