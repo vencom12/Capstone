@@ -287,6 +287,10 @@ main {
     }
 }
 
+.logout-container {
+    margin-top: 20px;
+}
+
 /* View Switching Logic */
 .module-section {
     display: none;
@@ -552,4 +556,160 @@ input[name="nav-radio"] {
 .sync-indicator svg {
     width: 22px;
     height: 22px;
+}
+
+/* --- Mobile Device UI Overhaul (Phase 5) --- */
+
+/* Responsive Grid Utilities */
+.responsive-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.responsive-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+table {
+    width: 100%;
+    min-width: 100%; /* Don't force 600px statically here if block display is used */
+    border-collapse: collapse;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure inner th/td have enough room */
+th, td {
+    min-width: 120px;
+}
+
+/* Core Mobile Breakpoint */
+@media (max-width: 768px) {
+    /* Fluid Grids */
+    .responsive-split-grid {
+        grid-template-columns: 1fr; /* Stack vertically on phones */
+    }
+
+    /* Transform Sidebar into Fixed Bottom Navbar */
+    .dashboard-container {
+        padding-bottom: 80px; /* Space for bottom nav */
+    }
+
+    .sidebar {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        left: 0;
+        width: 100%;
+        height: 70px;
+        padding: 0;
+        flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--border-glass);
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        z-index: 9999;
+    }
+
+    .nav-logo, .sidebar-profile {
+        display: none !important; /* Hide branding and profile on main bottom nav */
+    }
+
+    .nav-links {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        margin: 0;
+        padding: 0;
+        justify-content: space-around;
+        align-items: center;
+        height: 100%;
+    }
+
+    .nav-links li {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .logout-container {
+        margin-top: 0;
+        flex: 0 0 auto;
+    }
+
+    .nav-links label, .nav-links a, .logout-btn {
+        flex-direction: column;
+        padding: 5px;
+        gap: 4px;
+        border-radius: 12px;
+        margin: 0;
+        width: 100%;
+        justify-content: center;
+        font-size: 0.7rem; /* Tiny text if any */
+    }
+
+    .nav-links span, .logout-btn span {
+        display: none; /* Hide text, icon only */
+    }
+    
+    .nav-links .active, 
+    #nav-shop:checked ~ .dashboard-container .sidebar label[for="nav-shop"],
+    #nav-tracking:checked ~ .dashboard-container .sidebar label[for="nav-tracking"],
+    #nav-favs:checked ~ .dashboard-container .sidebar label[for="nav-favs"],
+    #nav-settings:checked ~ .dashboard-container .sidebar label[for="nav-settings"],
+    #nav-overview:checked ~ .dashboard-container .sidebar label[for="nav-overview"],
+    #nav-inventory:checked ~ .dashboard-container .sidebar label[for="nav-inventory"],
+    #nav-production:checked ~ .dashboard-container .sidebar label[for="nav-production"],
+    #nav-staffing:checked ~ .dashboard-container .sidebar label[for="nav-staffing"],
+    #nav-analytics:checked ~ .dashboard-container .sidebar label[for="nav-analytics"],
+    #nav-products:checked ~ .dashboard-container .sidebar label[for="nav-products"],
+    #nav-history:checked ~ .dashboard-container .sidebar label[for="nav-history"],
+    #nav-support:checked ~ .dashboard-container .sidebar label[for="nav-support"] {
+        background: transparent !important;
+        box-shadow: none;
+        color: var(--primary) !important;
+    }
+    
+    /* Highlight the active icon with a glowing dot */
+    .nav-links .active::after,
+    #nav-shop:checked ~ .dashboard-container .sidebar label[for="nav-shop"]::after,
+    #nav-tracking:checked ~ .dashboard-container .sidebar label[for="nav-tracking"]::after,
+    #nav-favs:checked ~ .dashboard-container .sidebar label[for="nav-favs"]::after,
+    #nav-settings:checked ~ .dashboard-container .sidebar label[for="nav-settings"]::after,
+    #nav-overview:checked ~ .dashboard-container .sidebar label[for="nav-overview"]::after,
+    #nav-inventory:checked ~ .dashboard-container .sidebar label[for="nav-inventory"]::after,
+    #nav-production:checked ~ .dashboard-container .sidebar label[for="nav-production"]::after,
+    #nav-staffing:checked ~ .dashboard-container .sidebar label[for="nav-staffing"]::after,
+    #nav-analytics:checked ~ .dashboard-container .sidebar label[for="nav-analytics"]::after,
+    #nav-products:checked ~ .dashboard-container .sidebar label[for="nav-products"]::after,
+    #nav-history:checked ~ .dashboard-container .sidebar label[for="nav-history"]::after,
+    #nav-support:checked ~ .dashboard-container .sidebar label[for="nav-support"]::after {
+        content: '';
+        display: block;
+        width: 6px;
+        height: 6px;
+        background: var(--primary);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--primary);
+        position: absolute;
+        bottom: 5px;
+    }
+
+    /* Modals should fit screen */
+    .modal {
+        padding: 24px;
+        width: 95%;
+    }
+
+    .module-section {
+        padding: 20px 15px; /* Compact padding for mobile */
+    }
 }

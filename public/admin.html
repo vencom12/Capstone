@@ -54,6 +54,12 @@
             gap: 20px;
         }
 
+        @media (max-width: 768px) {
+            .content-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .table-container {
             padding: 24px;
         }
@@ -196,7 +202,7 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px;">
+            <div class="logout-container">
                 <a href="#" class="logout-btn" style="color: var(--accent);" onclick="AuthManager.logout()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     <span>Logout</span>
@@ -284,7 +290,7 @@
                     <button class="btn btn-primary" onclick="UI.toggleModal('create-product-modal')">+ Create New Design</button>
                 </div>
                 
-                <div id="product-list-container" class="task-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div id="product-list-container" class="task-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                     <!-- Products will be loaded here by app.js -->
                     <div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px;">Loading product catalog...</div>
                 </div>
@@ -426,7 +432,7 @@
             </div>
             
             <form id="create-product-form">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="responsive-split-grid">
                     <div class="input-group">
                         <label>Design Name</label>
                         <input type="text" id="product-name" placeholder="e.g. Vintage Rose" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
