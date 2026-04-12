@@ -911,6 +911,54 @@ async function silentCacheSync() {
     }
 }
 
+// Dedicated basket-only re-render — avoids rebuilding the product grid.
+function updateBasketUI() {
+    const basket = State.getBasket();
+
+    const basketCount = document.getElementById('basket-count');
+    const mobileBasketCount = document.getElementById('mobile-basket-count');
+    if (basketCount) basketCount.innerText = `${basket.length} Items`;
+    if (mobileBasketCount) mobileBasketCount.innerText = basket.length;
+
+    const basketItems = document.getElementById('basket-items-list');
+    if (basketItems) {
+        let newHtml = '';
+        if (basket.length === 0) {
+            newHtml = '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>';
+        } else {
+            newHtml = basket.map(item => `
+                <div class="basket-item" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; text-align: left;">
+                        <span style="font-weight: 500; font-size: 0.95rem;">${item.name}</span>
+                        <span style="color: var(--primary); font-weight: 600;">$${(parseFloat(item.price) * (item.quantity || 1)).toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <button class="btn qty-btn minus" data-id="${item.id}" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border: 1px solid var(--border-glass); color: white;">-</button>
+                            <span style="min-width: 20px; text-align: center;">${item.quantity || 1}</span>
+                            <button class="btn qty-btn plus" data-id="${item.id}" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border: 1px solid var(--border-glass); color: white;">+</button>
+                        </div>
+                        <button class="btn remove-btn" data-id="${item.id}" style="color: #ef4444; font-size: 0.85rem; padding: 4px; background: none; border: none; cursor: pointer; text-decoration: underline;">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        if (basketItems.innerHTML !== newHtml) basketItems.innerHTML = newHtml;
+    }
+
+    const basketTotal = document.getElementById('basket-total');
+    if (basketTotal) {
+        const total = basket.reduce((sum, item) => sum + (parseFloat(item.price) * (item.quantity || 1)), 0);
+        basketTotal.innerText = `$${total.toFixed(2)}`;
+    }
+
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.style.opacity = basket.length > 0 ? '1' : '0.5';
+        checkoutBtn.style.pointerEvents = basket.length > 0 ? 'all' : 'none';
+    }
+}
+
 function updateUI() {
     const basket = State.getBasket();
     const machine = State.getMachineState();
@@ -1019,49 +1067,8 @@ function updateUI() {
         if (employeeProductList.innerHTML !== newHtml) employeeProductList.innerHTML = newHtml;
     }
 
-    // Basket UI Updates
-    const basketCount = document.getElementById('basket-count');
-    const mobileBasketCount = document.getElementById('mobile-basket-count');
-    if (basketCount) basketCount.innerText = `${basket.length} Items`;
-    if (mobileBasketCount) mobileBasketCount.innerText = basket.length;
-
-    const basketItems = document.getElementById('basket-items-list');
-    if (basketItems) {
-        let newHtml = '';
-        if (basket.length === 0) {
-            newHtml = '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>';
-        } else {
-            newHtml = basket.map(item => `
-                <div class="basket-item" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; text-align: left;">
-                        <span style="font-weight: 500; font-size: 0.95rem;">${item.name}</span>
-                        <span style="color: var(--primary); font-weight: 600;">$${(parseFloat(item.price) * (item.quantity || 1)).toFixed(2)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <button class="btn qty-btn minus" data-id="${item.id}" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border: 1px solid var(--border-glass); color: white;">-</button>
-                            <span style="min-width: 20px; text-align: center;">${item.quantity || 1}</span>
-                            <button class="btn qty-btn plus" data-id="${item.id}" style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border: 1px solid var(--border-glass); color: white;">+</button>
-                        </div>
-                        <button class="btn remove-btn" data-id="${item.id}" style="color: #ef4444; font-size: 0.85rem; padding: 4px; background: none; border: none; cursor: pointer; text-decoration: underline;">Remove</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        if (basketItems.innerHTML !== newHtml) basketItems.innerHTML = newHtml;
-    }
-
-    const basketTotal = document.getElementById('basket-total');
-    if (basketTotal) {
-        const total = basket.reduce((sum, item) => sum + (parseFloat(item.price) * (item.quantity || 1)), 0);
-        basketTotal.innerText = `$${total.toFixed(2)}`;
-    }
-
-    const checkoutBtn = document.getElementById('checkout-btn');
-    if (checkoutBtn) {
-        checkoutBtn.style.opacity = basket.length > 0 ? '1' : '0.5';
-        checkoutBtn.style.pointerEvents = basket.length > 0 ? 'all' : 'none';
-    }
+    // Basket UI Updates (delegated to standalone function)
+    updateBasketUI();
 
     // Orders UI Updates
     const orderQueue = document.getElementById('order-queue-list');
@@ -1438,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.head.appendChild(socketScript);
 
     // Core Event Listeners
-    window.addEventListener('basketUpdated', updateUI);
+    window.addEventListener('basketUpdated', updateBasketUI);
     window.addEventListener('ordersUpdated', refreshDashboardState);
     window.addEventListener('machineUpdated', updateUI);
     window.addEventListener('productsUpdated', refreshDashboardState);
