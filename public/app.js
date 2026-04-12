@@ -454,7 +454,7 @@ const Actions = {
             updateSyncIndicator(false);
         }
     },
-    async toggleFavorite(productId, isFavorite, btnElement) {
+    async toggleFavorite(productId, isFavorite) {
         const originalFavorites = JSON.parse(JSON.stringify(State._cache.favorites || []));
         const willBeFav = !isFavorite;
         
@@ -468,14 +468,16 @@ const Actions = {
             State._cache.favorites = State._cache.favorites.filter(f => f._id !== productId);
         }
         
-        // Toggle only the clicked button visually (no grid rebuild)
-        if (btnElement) {
-            btnElement.dataset.fav = String(willBeFav);
-            btnElement.style.color = willBeFav ? '#ef4444' : 'white';
-            const svg = btnElement.querySelector('svg');
+        // Toggle ALL matching heart buttons across the entire page
+        // (covers both product grid and favorites tab)
+        document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`).forEach(btn => {
+            btn.dataset.fav = String(willBeFav);
+            btn.style.color = willBeFav ? '#ef4444' : 'white';
+            const svg = btn.querySelector('svg');
             if (svg) svg.setAttribute('fill', willBeFav ? 'currentColor' : 'none');
-        }
-        // Update just the favorites tab
+        });
+
+        // Rebuild the favorites tab so cards appear/disappear
         updateFavoritesSection();
         updateSyncIndicator(true);
 
@@ -495,13 +497,13 @@ const Actions = {
             console.error('Toggle favorite error:', err);
             // Rollback on failure
             State._cache.favorites = originalFavorites;
-            // Revert button visual
-            if (btnElement) {
-                btnElement.dataset.fav = String(isFavorite);
-                btnElement.style.color = isFavorite ? '#ef4444' : 'white';
-                const svg = btnElement.querySelector('svg');
+            // Revert ALL matching buttons
+            document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`).forEach(btn => {
+                btn.dataset.fav = String(isFavorite);
+                btn.style.color = isFavorite ? '#ef4444' : 'white';
+                const svg = btn.querySelector('svg');
                 if (svg) svg.setAttribute('fill', isFavorite ? 'currentColor' : 'none');
-            }
+            });
             updateFavoritesSection();
             showToast('Sync failed: Action reverted');
         } finally {
@@ -1478,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = e.target.closest('.fav-toggle-btn');
             const id = btn.dataset.id;
             const isFav = btn.dataset.fav === 'true';
-            Actions.toggleFavorite(id, isFav, btn);
+            Actions.toggleFavorite(id, isFav);
         }
         
         if (e.target.classList.contains('add-to-basket')) {
