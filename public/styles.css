@@ -248,42 +248,82 @@ main {
     border-radius: 0;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 1100px) {
-    .dashboard-container {
-        flex-direction: column;
-    }
-    
-    .sidebar, .right-panel {
-        width: 100%;
-        height: auto;
-        position: relative;
-    }
-    
+/* Responsive Adjustments — Tablet / Half-screen PC (769px – 1100px) */
+@media (max-width: 1100px) and (min-width: 769px) {
+    /* Sidebar collapses to a thin icon-only rail */
     .sidebar {
-        padding: 20px;
-        flex-direction: row;
+        width: 70px;
+        padding: 20px 8px;
         align-items: center;
-        justify-content: space-between;
-        z-index: 10;
+        overflow: hidden;
     }
-    
-    .nav-logo {
-        margin-bottom: 0;
+
+    .sidebar .nav-logo {
+        justify-content: center;
+        margin-bottom: 16px !important;
     }
-    
-    .nav-links {
-        display: flex;
-        margin-top: 0;
-        gap: 10px;
+
+    .sidebar .nav-logo span {
+        display: none; /* Hide "Stitch-Opt" text */
     }
-    
-    .nav-links li {
-        margin-bottom: 0;
+
+    .nav-links label span,
+    .nav-links a span,
+    .logout-btn span {
+        display: none; /* Icon-only nav */
     }
-    
+
+    .nav-links label,
+    .nav-links a,
     .logout-btn {
-        display: none; /* Hide in compact mobile nav */
+        justify-content: center;
+        padding: 12px;
+        gap: 0;
+    }
+
+    .sidebar-profile {
+        display: none; /* Hide profile card in compact sidebar */
+    }
+
+    .logout-container {
+        margin-top: auto;
+    }
+
+    /* Right panel shrinks */
+    .right-panel {
+        width: 280px;
+    }
+
+    /* Main grows to fill remaining space */
+    main {
+        min-width: 0; /* Prevent flex overflow */
+    }
+
+    /* Reduce content padding */
+    .module-section {
+        padding: 28px 20px;
+    }
+
+    /* Tighter product grid */
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    /* Tighter stats grid */
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+    }
+
+    /* Content area stacks on narrower tablet */
+    .content-area {
+        grid-template-columns: 1fr;
+    }
+
+    /* Tables scroll horizontally if needed */
+    .table-container {
+        overflow-x: auto;
     }
 }
 
