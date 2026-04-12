@@ -1010,7 +1010,9 @@ function updateUI() {
 
     // Basket UI Updates
     const basketCount = document.getElementById('basket-count');
+    const mobileBasketCount = document.getElementById('mobile-basket-count');
     if (basketCount) basketCount.innerText = `${basket.length} Items`;
+    if (mobileBasketCount) mobileBasketCount.innerText = basket.length;
 
     const basketItems = document.getElementById('basket-items-list');
     if (basketItems) {
