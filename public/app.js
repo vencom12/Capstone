@@ -310,6 +310,7 @@ const State = {
         products: [],
         inventory: [],
         favorites: [],
+        users: [],
         analytics: null
     },
     getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
@@ -454,15 +455,21 @@ const Actions = {
         }
     },
     async toggleFavorite(productId, isFavorite) {
+        const originalFavorites = JSON.parse(JSON.stringify(State._cache.favorites || []));
+        const willBeFav = !isFavorite;
+        
         // --- Optimistic UI Update ---
-        const btn = document.querySelector(`.fav-toggle-btn[data-id="${productId}"]`);
-        if (btn) {
-            const icon = btn.querySelector('svg');
-            const willBeFav = !isFavorite;
-            btn.style.color = willBeFav ? '#ef4444' : 'white';
-            icon.setAttribute('fill', willBeFav ? 'currentColor' : 'none');
-            btn.setAttribute('data-fav', willBeFav);
+        if (!State._cache.favorites) State._cache.favorites = [];
+        
+        if (willBeFav) {
+            const prod = State._cache.products?.find(p => p._id === productId);
+            if (prod) State._cache.favorites.push(prod);
+        } else {
+            State._cache.favorites = State._cache.favorites.filter(f => f._id !== productId);
         }
+        
+        updateUI();
+        updateSyncIndicator(true);
 
         try {
             const method = isFavorite ? 'DELETE' : 'POST';
@@ -473,19 +480,17 @@ const Actions = {
             if (response.ok) {
                 // Background refresh to ensure consistency
                 window.dispatchEvent(new Event('favoritesUpdated'));
-                showToast(isFavorite ? 'Removed from favorites' : 'Added to favorites');
             } else {
                 throw new Error('Failed to sync favorite');
             }
         } catch (err) {
             console.error('Toggle favorite error:', err);
             // Rollback on failure
-            if (btn) {
-                btn.style.color = isFavorite ? '#ef4444' : 'white';
-                btn.querySelector('svg').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
-                btn.setAttribute('data-fav', isFavorite);
-            }
-            showToast('Error syncing with server');
+            State._cache.favorites = originalFavorites;
+            updateUI();
+            showToast('Sync failed: Action reverted');
+        } finally {
+            updateSyncIndicator(false);
         }
     },
     toggleEmergencyStop: () => {
@@ -612,20 +617,21 @@ const Actions = {
 };
 
 const AdminActions = {
-    async getUsers() {
-        try {
-            const response = await fetch(`${API_URL}/admin/users`, {
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
-            });
-            if (!response.ok) return [];
-            return await response.json();
-        } catch (err) {
-            console.error('Fetch users error:', err);
-            return [];
-        }
-    },
 
     async createUser(userData) {
+        const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
+        
+        // --- Optimistic Update ---
+        const tempUser = {
+            _id: `temp-${Date.now()}`,
+            ...userData,
+            createdAt: new Date().toISOString()
+        };
+        if (!State._cache.users) State._cache.users = [];
+        State._cache.users.unshift(tempUser);
+        updateUI();
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/admin/users`, {
                 method: 'POST',
@@ -635,14 +641,38 @@ const AdminActions = {
                 },
                 body: JSON.stringify(userData)
             });
-            return response.ok;
+            
+            if (response.ok) {
+                // Background fetch dashboard state to confirm the new ID
+                State.getDashboardState().then(() => updateUI());
+                return true;
+            } else {
+                throw new Error('Create user sync failed');
+            }
         } catch (err) {
             console.error('Create user error:', err);
+            State._cache.users = originalUsers;
+            updateUI();
+            showToast('Sync failed: User creation reverted');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
 
     async updateUser(id, userData) {
+        const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
+        
+        // --- Optimistic Update ---
+        const userToEdit = State._cache.users?.find(u => u._id === id);
+        if (userToEdit) {
+            if (userData.username) userToEdit.username = userData.username;
+            if (userData.email) userToEdit.email = userData.email;
+            if (userData.role) userToEdit.role = userData.role;
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/admin/users/${id}`, {
                 method: 'PUT',
@@ -652,29 +682,70 @@ const AdminActions = {
                 },
                 body: JSON.stringify(userData)
             });
-            return response.ok;
+            if (response.ok) {
+                // Confirm consistency quietly
+                return true;
+            } else {
+                throw new Error('Update user sync failed');
+            }
         } catch (err) {
             console.error('Update user error:', err);
+            State._cache.users = originalUsers;
+            updateUI();
+            showToast('Sync failed: User updates reverted');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
 
     async deleteUser(id) {
+        const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
+        
+        // --- Optimistic Update ---
+        if (State._cache.users) {
+            State._cache.users = State._cache.users.filter(u => u._id !== id);
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/admin/users/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
             });
-            return response.ok;
+            if (response.ok) {
+                return true;
+            } else {
+                throw new Error('Delete user sync failed');
+            }
         } catch (err) {
             console.error('Delete user error:', err);
+            State._cache.users = originalUsers;
+            updateUI();
+            showToast('Sync failed: User state restored');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     }
 };
 
 const EmployeeActions = {
     async createProduct(productData) {
+        const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
+        
+        // --- Optimistic Update ---
+        const tempProduct = {
+            _id: `temp-${Date.now()}`,
+            ...productData,
+            createdAt: new Date().toISOString()
+        };
+        if (!State._cache.products) State._cache.products = [];
+        State._cache.products.unshift(tempProduct);
+        updateUI();
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/products`, {
                 method: 'POST',
@@ -684,14 +755,36 @@ const EmployeeActions = {
                 },
                 body: JSON.stringify(productData)
             });
-            return response.ok;
+            
+            if (response.ok) {
+                // Background refresh to confirm the new DB ID
+                State.getDashboardState().then(() => updateUI());
+                return true;
+            } else {
+                throw new Error('Create product sync failed');
+            }
         } catch (err) {
             console.error('Create product error:', err);
+            State._cache.products = originalProducts;
+            updateUI();
+            showToast('Sync failed: Product creation reverted');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
 
     async updateProduct(id, productData) {
+        const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
+        
+        // --- Optimistic Update ---
+        const prod = State._cache.products?.find(p => p._id === id);
+        if (prod) {
+            Object.assign(prod, productData);
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/products/${id}`, {
                 method: 'PUT',
@@ -701,23 +794,50 @@ const EmployeeActions = {
                 },
                 body: JSON.stringify(productData)
             });
-            return response.ok;
+            if (response.ok) {
+                return true;
+            } else {
+                throw new Error('Update product sync failed');
+            }
         } catch (err) {
             console.error('Update product error:', err);
+            State._cache.products = originalProducts;
+            updateUI();
+            showToast('Sync failed: Product updates reverted');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
 
     async deleteProduct(id) {
+        const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
+        
+        // --- Optimistic Update ---
+        if (State._cache.products) {
+            State._cache.products = State._cache.products.filter(p => p._id !== id);
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/products/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
             });
-            return response.ok;
+            if (response.ok) {
+                return true;
+            } else {
+                throw new Error('Delete product sync failed');
+            }
         } catch (err) {
             console.error('Delete product error:', err);
+            State._cache.products = originalProducts;
+            updateUI();
+            showToast('Sync failed: Product state restored');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     }
 };
@@ -1155,7 +1275,7 @@ async function updateUI() {
     // Admin Staffing UI
     const staffTableBody = document.getElementById('staff-table-body');
     if (staffTableBody) {
-        const users = await AdminActions.getUsers();
+        const users = State._cache.users || [];
         staffTableBody.innerHTML = users.length ? users.map(u => `
             <tr>
                 <td>${u.username}</td>

@@ -392,14 +392,15 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
         const role = req.user.role;
 
         // Run all queries in parallel for maximum speed
-        const [orders, inventory, products, userWithFavorites, totalUsers, totalRevenue] = await Promise.all([
+        const [orders, inventory, products, userWithFavorites, totalUsers, totalRevenue, adminUsers] = await Promise.all([
             Order.find(role === 'customer' ? { userId } : {}).sort({ date: -1 }).limit(50),
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
             User.findById(userId).select('favorites').populate('favorites'),
             // Analytics (Admin/Employee only)
             (role !== 'customer') ? User.countDocuments() : Promise.resolve(0),
-            (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }])
+            (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }]),
+            (role === 'admin') ? User.find().select('-password').sort({ createdAt: -1 }) : Promise.resolve([])
         ]);
 
         const analytics = (role !== 'customer') ? {
@@ -414,7 +415,8 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
             inventory,
             products,
             favorites: userWithFavorites ? userWithFavorites.favorites : [],
-            analytics
+            analytics,
+            users: adminUsers
         });
     } catch (err) {
         console.error('Dashboard state error:', err);
