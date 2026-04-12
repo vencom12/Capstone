@@ -438,8 +438,8 @@ const Actions = {
 
             if (response.ok) {
                 showToast('Order placed successfully!');
-                // Refetch to replace temp order with real one
-                window.dispatchEvent(new Event('ordersUpdated'));
+                // Silently sync cache to get real order ID
+                silentCacheSync();
             } else {
                 throw new Error('Server rejected order');
             }
@@ -478,8 +478,8 @@ const Actions = {
                 headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
             });
             if (response.ok) {
-                // Background refresh to ensure consistency
-                window.dispatchEvent(new Event('favoritesUpdated'));
+                // Silently sync cache — optimistic UI is already correct
+                silentCacheSync();
             } else {
                 throw new Error('Failed to sync favorite');
             }
@@ -521,8 +521,8 @@ const Actions = {
             });
             
             if (response.ok) {
-                // Background refresh for confirmation
-                window.dispatchEvent(new Event('ordersUpdated'));
+                // Silently sync cache — optimistic UI is already correct
+                silentCacheSync();
                 return true;
             } else {
                 throw new Error('Sync failed');
@@ -560,8 +560,8 @@ const Actions = {
 
             if (response.ok) {
                 showToast(`Updated ${orderIds.length} orders to ${status}`);
-                // Background refresh to confirm consistency
-                window.dispatchEvent(new Event('ordersUpdated'));
+                // Silently sync cache — optimistic UI is already correct
+                silentCacheSync();
                 return true;
             } else {
                 throw new Error('Batch sync failed');
@@ -599,7 +599,7 @@ const Actions = {
             });
             
             if (response.ok) {
-                window.dispatchEvent(new Event('ordersUpdated'));
+                silentCacheSync();
                 return true;
             } else {
                 throw new Error('Sync failed');
@@ -643,8 +643,8 @@ const AdminActions = {
             });
             
             if (response.ok) {
-                // Background fetch dashboard state to confirm the new ID
-                State.getDashboardState().then(() => updateUI());
+                // Silently sync cache to get real DB ID
+                silentCacheSync();
                 return true;
             } else {
                 throw new Error('Create user sync failed');
@@ -757,8 +757,8 @@ const EmployeeActions = {
             });
             
             if (response.ok) {
-                // Background refresh to confirm the new DB ID
-                State.getDashboardState().then(() => updateUI());
+                // Silently sync cache to get real DB ID
+                silentCacheSync();
                 return true;
             } else {
                 throw new Error('Create product sync failed');
@@ -897,6 +897,17 @@ async function refreshDashboardState() {
         showToast('System synchronization delay. Retrying...');
     } finally {
         updateSyncIndicator(false);
+    }
+}
+
+// Silent cache sync: refreshes backend data without re-rendering UI.
+// Used after optimistic updates where the UI already reflects the correct state.
+async function silentCacheSync() {
+    if (!AuthManager.isAuthenticated()) return;
+    try {
+        await State.getDashboardState();
+    } catch (err) {
+        console.error('Silent cache sync failed:', err);
     }
 }
 
@@ -1635,7 +1646,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Actions.deleteOrder(id).then(success => {
                     if (success) {
                         showToast('Order cancelled');
-                        window.dispatchEvent(new Event('ordersUpdated'));
                     } else {
                         showToast('Failed to cancel order');
                     }
@@ -1806,7 +1816,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (success) {
                 showToast('Order updated successfully');
                 UI.toggleModal('edit-order-modal');
-                window.dispatchEvent(new Event('ordersUpdated'));
             } else {
                 showToast('Update failed');
             }
