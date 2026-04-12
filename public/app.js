@@ -454,7 +454,7 @@ const Actions = {
             updateSyncIndicator(false);
         }
     },
-    async toggleFavorite(productId, isFavorite) {
+    async toggleFavorite(productId, isFavorite, btnElement) {
         const originalFavorites = JSON.parse(JSON.stringify(State._cache.favorites || []));
         const willBeFav = !isFavorite;
         
@@ -468,7 +468,15 @@ const Actions = {
             State._cache.favorites = State._cache.favorites.filter(f => f._id !== productId);
         }
         
-        updateUI();
+        // Toggle only the clicked button visually (no grid rebuild)
+        if (btnElement) {
+            btnElement.dataset.fav = String(willBeFav);
+            btnElement.style.color = willBeFav ? '#ef4444' : 'white';
+            const svg = btnElement.querySelector('svg');
+            if (svg) svg.setAttribute('fill', willBeFav ? 'currentColor' : 'none');
+        }
+        // Update just the favorites tab
+        updateFavoritesSection();
         updateSyncIndicator(true);
 
         try {
@@ -487,7 +495,14 @@ const Actions = {
             console.error('Toggle favorite error:', err);
             // Rollback on failure
             State._cache.favorites = originalFavorites;
-            updateUI();
+            // Revert button visual
+            if (btnElement) {
+                btnElement.dataset.fav = String(isFavorite);
+                btnElement.style.color = isFavorite ? '#ef4444' : 'white';
+                const svg = btnElement.querySelector('svg');
+                if (svg) svg.setAttribute('fill', isFavorite ? 'currentColor' : 'none');
+            }
+            updateFavoritesSection();
             showToast('Sync failed: Action reverted');
         } finally {
             updateSyncIndicator(false);
@@ -911,6 +926,51 @@ async function silentCacheSync() {
     }
 }
 
+// Dedicated favorites section re-render — avoids rebuilding the product grid.
+function updateFavoritesSection() {
+    const favorites = State._cache.favorites || [];
+    const favoritesSection = document.getElementById('section-favs');
+    if (!favoritesSection) return;
+
+    if (favorites.length === 0) {
+        favoritesSection.innerHTML = `
+            <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
+            <div style="height: 300px; border: 2px dashed var(--border-glass); border-radius: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); text-align: center; padding: 20px;">
+                <div>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; color: var(--accent);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    <p>You haven't favorited any designs yet.</p>
+                </div>
+            </div>
+        `;
+    } else {
+        favoritesSection.innerHTML = `
+            <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px;">
+                ${favorites.map(p => `
+                    <div class="product-card glass animate-fade">
+                        <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;">
+                            <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="product-details">
+                            <span class="product-tag">${p.tag}</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                                <h3 style="font-weight: 600;">${p.name}</h3>
+                                <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary add-to-basket" style="flex: 1; padding: 12px; font-size: 0.9rem; border-radius: 10px;" 
+                                    data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+}
+
 // Dedicated basket-only re-render — avoids rebuilding the product grid.
 function updateBasketUI() {
     const basket = State.getBasket();
@@ -1132,46 +1192,8 @@ function updateUI() {
     }
 
     // Favorites Section Update
-    const favoritesSection = document.getElementById('section-favs');
-    if (favoritesSection) {
-        if (favorites.length === 0) {
-            favoritesSection.innerHTML = `
-                <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
-                <div style="height: 300px; border: 2px dashed var(--border-glass); border-radius: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); text-align: center; padding: 20px;">
-                    <div>
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; color: var(--accent);"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                        <p>You haven't favorited any designs yet.</p>
-                    </div>
-                </div>
-            `;
-        } else {
-            favoritesSection.innerHTML = `
-                <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px;">
-                    ${favorites.map(p => `
-                        <div class="product-card glass animate-fade">
-                            <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;">
-                                <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                </button>
-                            </div>
-                            <div class="product-details">
-                                <span class="product-tag">${p.tag}</span>
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                                    <h3 style="font-weight: 600;">${p.name}</h3>
-                                    <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
-                                </div>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="btn btn-primary add-to-basket" style="flex: 1; padding: 12px; font-size: 0.9rem; border-radius: 10px;" 
-                                        data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-    }
+    // Favorites Section (delegated to standalone function)
+    updateFavoritesSection();
 
     // Machine UI Updates (Employee Portal)
     const workbenchStatus = document.getElementById('workbench-status');
@@ -1456,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = e.target.closest('.fav-toggle-btn');
             const id = btn.dataset.id;
             const isFav = btn.dataset.fav === 'true';
-            Actions.toggleFavorite(id, isFav);
+            Actions.toggleFavorite(id, isFav, btn);
         }
         
         if (e.target.classList.contains('add-to-basket')) {
