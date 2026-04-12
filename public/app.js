@@ -1,6 +1,17 @@
 const API_URL = window.location.origin + '/api';
 const SOCKET_URL = window.location.origin;
 
+// --- Global Error Handling & Notifications ---
+window.onerror = (msg, url, lineNo, columnNo, error) => {
+    console.error('Global Error caught:', { msg, url, lineNo, columnNo, error });
+    // Throttled toast to avoid spamming
+    if (!window._lastToastTime || Date.now() - window._lastToastTime > 5000) {
+        showToast('System encounter: Recovering connectivity...');
+        window._lastToastTime = Date.now();
+    }
+    return false;
+};
+
 // Helper: Format order design field to show all items
 function formatOrderDesign(order) {
     if (order.items && order.items.length > 0) {
@@ -281,6 +292,7 @@ window.StitchAI = StitchAI;
 
 // --- State Management ---
 const State = {
+    _isInitialLoad: true,
     getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
     setBasket: (basket) => {
         localStorage.setItem('stitch_basket', JSON.stringify(basket));
@@ -307,6 +319,18 @@ const State = {
         } catch (err) {
             console.error('Fetch products error:', err);
             return [];
+        }
+    },
+    async getDashboardState() {
+        try {
+            const response = await fetch(`${API_URL}/dashboard-state`, {
+                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch batch state');
+            return await response.json();
+        } catch (err) {
+            console.error('Batch fetch error:', err);
+            return null;
         }
     },
     async getFavorites() {
@@ -392,6 +416,16 @@ const Actions = {
         }
     },
     async toggleFavorite(productId, isFavorite) {
+        // --- Optimistic UI Update ---
+        const btn = document.querySelector(`.fav-toggle-btn[data-id="${productId}"]`);
+        if (btn) {
+            const icon = btn.querySelector('svg');
+            const willBeFav = !isFavorite;
+            btn.style.color = willBeFav ? '#ef4444' : 'white';
+            icon.setAttribute('fill', willBeFav ? 'currentColor' : 'none');
+            btn.setAttribute('data-fav', willBeFav);
+        }
+
         try {
             const method = isFavorite ? 'DELETE' : 'POST';
             const response = await fetch(`${API_URL}/favorites/${productId}`, {
@@ -399,11 +433,21 @@ const Actions = {
                 headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
             });
             if (response.ok) {
+                // Background refresh to ensure consistency
                 window.dispatchEvent(new Event('favoritesUpdated'));
                 showToast(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+            } else {
+                throw new Error('Failed to sync favorite');
             }
         } catch (err) {
             console.error('Toggle favorite error:', err);
+            // Rollback on failure
+            if (btn) {
+                btn.style.color = isFavorite ? '#ef4444' : 'white';
+                btn.querySelector('svg').setAttribute('fill', isFavorite ? 'currentColor' : 'none');
+                btn.setAttribute('data-fav', isFavorite);
+            }
+            showToast('Error syncing with server');
         }
     },
     toggleEmergencyStop: () => {
@@ -425,6 +469,28 @@ const Actions = {
             return response.ok;
         } catch (err) {
             console.error('Update order error:', err);
+            return false;
+        }
+    },
+    async batchUpdateStatus(orderIds, status) {
+        try {
+            const response = await fetch(`${API_URL}/orders/batch-status`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AuthManager.getToken()}`
+                },
+                body: JSON.stringify({ orderIds, status })
+            });
+            if (response.ok) {
+                showToast(`Updated ${orderIds.length} orders to ${status}`);
+                window.dispatchEvent(new Event('ordersUpdated'));
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error('Batch update error:', err);
+            showToast('Batch update failed');
             return false;
         }
     },
@@ -603,19 +669,61 @@ async function updateUI() {
     const basket = State.getBasket();
     const machine = State.getMachineState();
     
+    // Auth Check
+    if (!AuthManager.isAuthenticated()) return;
+
+    // Show Skeletons on Initial Load
+    if (State._isInitialLoad) {
+        renderSkeletons();
+    }
+
     // Auth-guarded data
     let orders = [];
     let inventory = [];
     let products = [];
     let favorites = [];
-    if (AuthManager.isAuthenticated()) {
-        orders = await State.getOrders();
-        inventory = await State.getInventory();
-        products = await State.getProducts();
-        favorites = await State.getFavorites();
+    let analytics = null;
+
+    try {
+        const batch = await State.getDashboardState();
+        if (batch) {
+            orders = batch.orders;
+            inventory = batch.inventory;
+            products = batch.products;
+            favorites = batch.favorites;
+            analytics = batch.analytics;
+            State._isInitialLoad = false;
+        } else {
+            // Fallback to individual requests if batch fails
+            [orders, inventory, products, favorites] = await Promise.all([
+                State.getOrders(),
+                State.getInventory(),
+                State.getProducts(),
+                State.getFavorites()
+            ]);
+        }
+    } catch (err) {
+        console.error('State Fetch failed:', err);
+        showToast('System synchronization delay. Retrying...');
     }
 
     const favIds = favorites.map(f => f._id);
+
+    // Update Analytics (Admin/Employee Only)
+    if (analytics) {
+        const revEl = document.querySelector('.stat-value:has(+.stat-label[innerText*="Revenue"])') || 
+                      ([...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Revenue'))?.previousElementSibling);
+        
+        if (revEl) revEl.innerText = `$${(analytics.revenue / 1000).toFixed(1)}k`;
+        
+        const activeOrdersEl = [...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Active Orders'))?.previousElementSibling;
+        if (activeOrdersEl) activeOrdersEl.innerText = analytics.activeOrders;
+
+        const userCountEl = [...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Personnel'))?.previousElementSibling;
+        if (userCountEl) userCountEl.innerText = analytics.userCount;
+    }
+
+
 
     // Catalog UI Updates
     const productGrid = document.querySelector('.product-grid');
@@ -842,10 +950,11 @@ async function updateUI() {
     const employeeOrderTable = document.getElementById('employee-order-table-body');
     if (employeeOrderTable) {
         if (activeOrders.length === 0) {
-            employeeOrderTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
+            employeeOrderTable.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
         } else {
             employeeOrderTable.innerHTML = activeOrders.map(order => `
                 <tr>
+                    <td><input type="checkbox" class="order-select-checkbox" data-id="${order._id}"></td>
                     <td>${order.orderId}</td>
                     <td>${order.client}</td>
                     <td>${formatOrderDesign(order)}</td>
@@ -887,10 +996,11 @@ async function updateUI() {
     const adminOrderTable = document.getElementById('admin-order-table-body');
     if (adminOrderTable) {
         if (activeOrders.length === 0) {
-            adminOrderTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
+            adminOrderTable.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
         } else {
             adminOrderTable.innerHTML = activeOrders.map(order => `
                 <tr>
+                    <td><input type="checkbox" class="order-select-checkbox" data-id="${order._id}"></td>
                     <td>${order.orderId}</td>
                     <td>${order.client}</td>
                     <td>${formatOrderDesign(order)}</td>
@@ -990,6 +1100,74 @@ async function updateUI() {
     // AI Production Advice
     if (window.StitchAI) {
         await window.StitchAI.updateAdviceWidget();
+    }
+}
+
+// --- Skeleton Rendering Helper ---
+function renderSkeletons() {
+    const productGrid = document.querySelector('.product-grid');
+    if (productGrid) {
+        productGrid.innerHTML = Array(4).fill(0).map(() => `
+            <div class="product-card glass">
+                <div class="skeleton skeleton-img"></div>
+                <div class="product-details">
+                    <div class="skeleton skeleton-text" style="width: 40%"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 70%"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    const orderTable = document.getElementById('admin-order-table-body') || document.getElementById('employee-order-table-body');
+    if (orderTable) {
+        orderTable.innerHTML = Array(3).fill(0).map(() => `
+            <tr>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+            </tr>
+        `).join('');
+    }
+}
+
+function formatOrderDesign(order) {
+    if (typeof order.design === 'string') return order.design;
+    if (Array.isArray(order.items)) {
+        return order.items.map(i => `${i.name} (${i.quantity})`).join(', ');
+    }
+    return order.design || 'Custom Design';
+}
+
+// --- Skeleton Rendering Helper ---
+function renderSkeletons() {
+    const productGrid = document.querySelector('.product-grid');
+    if (productGrid) {
+        productGrid.innerHTML = Array(4).fill(0).map(() => `
+            <div class="product-card glass">
+                <div class="skeleton skeleton-img"></div>
+                <div class="product-details">
+                    <div class="skeleton skeleton-text" style="width: 40%"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 70%"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    const orderTable = document.getElementById('admin-order-table-body') || document.getElementById('employee-order-table-body');
+    if (orderTable) {
+        orderTable.innerHTML = Array(3).fill(0).map(() => `
+            <tr>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+            </tr>
+        `).join('');
     }
 }
 
@@ -1339,20 +1517,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelector('#staff-modal h3').innerText = 'Edit User Account';
             UI.toggleModal('staff-modal');
         }
+    });
 
-        // Admin User Delete Handler
-        const deleteUserBtn = e.target.closest('.delete-user-btn');
-        if (deleteUserBtn) {
-            const id = deleteUserBtn.dataset.id;
-            if (confirm('Are you sure you want to PERMANENTLY delete this account?')) {
-                AdminActions.deleteUser(id).then(success => {
-                    if (success) {
-                        showToast('Account deleted');
-                        updateUI();
-                    } else {
-                        showToast('Deletion failed');
-                    }
-                });
+    // --- Batch Select All Logic ---
+    document.addEventListener('change', (e) => {
+        if (e.target.id === 'admin-select-all-orders' || e.target.id === 'employee-select-all-orders') {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.order-select-checkbox').forEach(cb => cb.checked = isChecked);
+        }
+    });
+
+    // --- Batch Update Execute Logic ---
+    document.addEventListener('click', async (e) => {
+        const batchBtn = e.target.id === 'admin-batch-update-btn' ? e.target : (e.target.id === 'employee-batch-update-btn' ? e.target : null);
+        if (batchBtn) {
+            const role = batchBtn.id.startsWith('admin') ? 'admin' : 'employee';
+            const statusSelect = document.getElementById(`${role}-batch-status`);
+            const status = statusSelect.value;
+            
+            if (!status) return showToast('Please select a status first');
+            
+            const selectedIds = Array.from(document.querySelectorAll('.order-select-checkbox:checked')).map(cb => cb.dataset.id);
+            if (selectedIds.length === 0) return showToast('No orders selected');
+            
+            if (confirm(`Update ${selectedIds.length} orders to "${status}"?`)) {
+                const success = await Actions.batchUpdateStatus(selectedIds, status);
+                if (success) {
+                    statusSelect.value = '';
+                    const selectAllEl = document.getElementById(`${role}-select-all-orders`);
+                    if (selectAllEl) selectAllEl.checked = false;
+                    updateUI();
+                }
             }
         }
     });

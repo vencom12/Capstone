@@ -11,8 +11,8 @@ const orderSchema = new mongoose.Schema({
     }],
     status: { type: String, default: 'In Queue' },
     progress: { type: Number, default: 0 },
-    date: { type: Date, default: Date.now },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    date: { type: Date, default: Date.now, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }
 });
 
 module.exports = mongoose.model('Order', orderSchema);

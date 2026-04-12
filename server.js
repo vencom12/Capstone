@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
+const compression = require('compression');
 const { Server } = require('socket.io');
 
 const User = require('./models/User');
@@ -30,6 +31,9 @@ io.on('connection', (socket) => {
 });
 
 console.log('>>> STITCH-OPT SERVER INITIALIZING <<<');
+
+// Enable Gzip/Brotli compression for all responses
+app.use(compression());
 
 // --- Production Security Middleware ---
 
@@ -196,7 +200,9 @@ app.put('/api/auth/profile', auth(), async (req, res) => {
 
 app.get('/api/orders', auth(), async (req, res) => {
     try {
-        const orders = await Order.find().sort({ date: -1 });
+        // Optimization: Customers only see their own orders. Admins/Employees see all.
+        const query = (req.user.role === 'customer') ? { userId: req.user.id } : {};
+        const orders = await Order.find(query).sort({ date: -1 }).limit(100);
         res.json(orders);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -345,7 +351,10 @@ app.delete('/api/admin/users/:id', auth(['admin']), async (req, res) => {
 
 app.get('/api/favorites', auth(), async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('favorites');
+        // Optimization: Lean projection to only fetch favorites field
+        const user = await User.findById(req.user.id)
+            .select('favorites')
+            .populate('favorites');
         res.json(user.favorites || []);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -354,11 +363,10 @@ app.get('/api/favorites', auth(), async (req, res) => {
 
 app.post('/api/favorites/:id', auth(), async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        if (!user.favorites.includes(req.params.id)) {
-            user.favorites.push(req.params.id);
-            await user.save();
-        }
+        // Optimization: Atomic $addToSet prevents duplicates and is much faster
+        await User.findByIdAndUpdate(req.user.id, {
+            $addToSet: { favorites: req.params.id }
+        });
         res.json({ message: 'Added to favorites' });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -367,10 +375,68 @@ app.post('/api/favorites/:id', auth(), async (req, res) => {
 
 app.delete('/api/favorites/:id', auth(), async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        user.favorites = user.favorites.filter(favId => favId.toString() !== req.params.id);
-        await user.save();
+        // Optimization: Atomic $pull is much faster than filter + save
+        await User.findByIdAndUpdate(req.user.id, {
+            $pull: { favorites: req.params.id }
+        });
         res.json({ message: 'Removed from favorites' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// --- Performance: Batch Dashboard State ---
+app.get('/api/dashboard-state', auth(), async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const role = req.user.role;
+
+        // Run all queries in parallel for maximum speed
+        const [orders, inventory, products, userWithFavorites, totalUsers, totalRevenue] = await Promise.all([
+            Order.find(role === 'customer' ? { userId } : {}).sort({ date: -1 }).limit(50),
+            Inventory.find(),
+            Product.find().sort({ createdAt: -1 }).limit(100),
+            User.findById(userId).select('favorites').populate('favorites'),
+            // Analytics (Admin/Employee only)
+            (role !== 'customer') ? User.countDocuments() : Promise.resolve(0),
+            (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }])
+        ]);
+
+        const analytics = (role !== 'customer') ? {
+            userCount: totalUsers,
+            revenue: totalRevenue[0]?.total || 0,
+            activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
+            lowStock: inventory.filter(i => i.count < 10).length
+        } : null;
+
+        res.json({
+            orders,
+            inventory,
+            products,
+            favorites: userWithFavorites ? userWithFavorites.favorites : [],
+            analytics
+        });
+    } catch (err) {
+        console.error('Dashboard state error:', err);
+        res.status(500).json({ message: 'Server error fetching batch state' });
+    }
+});
+
+// --- Batch Operations (Admin/Employee) ---
+app.post('/api/orders/batch-status', auth(['admin', 'employee']), async (req, res) => {
+    try {
+        const { orderIds, status } = req.body;
+        if (!Array.isArray(orderIds) || !status) {
+            return res.status(400).json({ message: 'Invalid batch data' });
+        }
+
+        await Order.updateMany(
+            { _id: { $in: orderIds } },
+            { $set: { status, progress: status === 'Completed' ? 100 : undefined } }
+        );
+
+        io.emit('dataChanged', { type: 'orders' });
+        res.json({ message: `Successfully updated ${orderIds.length} orders` });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
     }

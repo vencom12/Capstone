@@ -44,27 +44,27 @@ self.addEventListener('fetch', (event) => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses for later offline use
-        if (response.status === 200) {
-          const resClone = response.clone();
+    caches.match(event.request).then((cachedResponse) => {
+      // Logic: SWR (Stale-While-Revalidate)
+      // 1. Return cached response immediately if it exists
+      // 2. Fetch from network in the background and update cache
+      
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const resClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, resClone);
           });
         }
-        return response;
-      })
-      .catch(() => {
-        // Fallback to cache if network fails
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          
-          // If it's a navigation request and not in cache, show beautiful offline page
-          if (event.request.mode === 'navigate') {
-            return caches.match('/offline.html');
-          }
-        });
-      })
+        return networkResponse;
+      }).catch(() => {
+        // Fallback for navigation requests if network fails and not in cache
+        if (event.request.mode === 'navigate') {
+          return caches.match('/offline.html');
+        }
+      });
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });
