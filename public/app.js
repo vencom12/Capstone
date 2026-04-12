@@ -1559,25 +1559,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Interactive Element Handlers
     document.body.addEventListener('click', (e) => {
-        if (e.target.classList.contains('add-to-basket')) {
-            const card = e.target.closest('.product-card');
-            const name = card.querySelector('h3').innerText;
-            const price = card.querySelector('span[style*="color: var(--primary)"]').innerText.replace('$', '');
-            const qtyInput = card.querySelector('.qty-input');
-            const quantity = qtyInput ? parseInt(qtyInput.value) : 1;
-            Actions.addToBasket({ name, price }, quantity);
-        }
-        
-        if (e.target.classList.contains('qty-btn')) {
-            const id = e.target.dataset.id;
-            const change = e.target.classList.contains('plus') ? 1 : -1;
-            Actions.updateBasketQuantity(id, change);
-        }
-
-        if (e.target.classList.contains('remove-btn')) {
-            const id = e.target.dataset.id;
-            Actions.removeFromBasket(id);
-        }
+        // NOTE: add-to-basket, qty-btn, remove-btn are handled by the delegated
+        // click listener above (line ~1447). Do NOT duplicate them here.
 
         if (e.target.id === 'checkout-btn') Actions.checkout();
         if (e.target.id === 'emergency-stop-btn') Actions.toggleEmergencyStop();
