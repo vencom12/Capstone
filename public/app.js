@@ -1,6 +1,18 @@
 const API_URL = window.location.origin + '/api';
 const SOCKET_URL = window.location.origin;
 
+// --- Global Sync Indicator ---
+let _syncCount = 0;
+const updateSyncIndicator = (isStarting) => {
+    _syncCount += isStarting ? 1 : -1;
+    if (_syncCount < 0) _syncCount = 0;
+    const el = document.getElementById('global-sync-indicator');
+    if (el) {
+        if (_syncCount > 0) el.classList.add('is-syncing');
+        else el.classList.remove('is-syncing');
+    }
+};
+
 // --- Global Error Handling & Notifications ---
 window.onerror = (msg, url, lineNo, columnNo, error) => {
     console.error('Global Error caught:', { msg, url, lineNo, columnNo, error });
@@ -293,6 +305,13 @@ window.StitchAI = StitchAI;
 // --- State Management ---
 const State = {
     _isInitialLoad: true,
+    _cache: {
+        orders: [],
+        products: [],
+        inventory: [],
+        favorites: [],
+        analytics: null
+    },
     getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
     setBasket: (basket) => {
         localStorage.setItem('stitch_basket', JSON.stringify(basket));
@@ -327,7 +346,9 @@ const State = {
                 headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
             });
             if (!response.ok) throw new Error('Failed to fetch batch state');
-            return await response.json();
+            const data = await response.json();
+            this._cache = { ...this._cache, ...data };
+            return data;
         } catch (err) {
             console.error('Batch fetch error:', err);
             return null;
@@ -387,32 +408,49 @@ const Actions = {
         const basket = State.getBasket();
         if (basket.length === 0) return;
 
-        try {
-            const newOrder = {
-                orderId: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
-                client: AuthManager.getSession()?.user.username || 'Client',
-                design: basket.map(i => `${i.name}${i.quantity > 1 ? ' ×' + i.quantity : ''}`).join(', '),
-                items: basket,
-                status: 'In Queue',
-                progress: 0
-            };
+        // --- Optimistic UI Update ---
+        const originalOrders = [...State._cache.orders];
+        const tempOrder = {
+            _id: `temp-${Date.now()}`,
+            orderId: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
+            client: AuthManager.getSession()?.user.username || 'Client',
+            design: basket.map(i => `${i.name}${i.quantity > 1 ? ' ×' + i.quantity : ''}`).join(', '),
+            items: basket,
+            status: 'In Queue',
+            progress: 0,
+            createdAt: new Date().toISOString()
+        };
 
+        State._cache.orders.unshift(tempOrder);
+        State.setBasket([]); // Triggers basketUpdated -> updateUI
+        updateSyncIndicator(true);
+
+        try {
             const response = await fetch(`${API_URL}/orders`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${AuthManager.getToken()}`
                 },
-                body: JSON.stringify(newOrder)
+                body: JSON.stringify(tempOrder)
             });
 
             if (response.ok) {
-                State.setBasket([]);
                 showToast('Order placed successfully!');
+                // Refetch to replace temp order with real one
                 window.dispatchEvent(new Event('ordersUpdated'));
+            } else {
+                throw new Error('Server rejected order');
             }
         } catch (err) {
             console.error('Checkout error:', err);
+            // Rollback
+            State._cache.orders = originalOrders;
+            State.setBasket(basket);
+            showToast('Checkout failed. Restoring basket.');
+            updateUI();
+        } finally {
+            updateSyncIndicator(false);
         }
     },
     async toggleFavorite(productId, isFavorite) {
@@ -457,6 +495,16 @@ const Actions = {
         showToast(`Machine ${state.status}`);
     },
     async updateOrder(id, orderData) {
+        const originalOrders = JSON.parse(JSON.stringify(State._cache.orders || []));
+        
+        // --- Optimistic Update ---
+        const order = State._cache.orders.find(o => o._id === id);
+        if (order) {
+            Object.assign(order, orderData);
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
@@ -466,13 +514,35 @@ const Actions = {
                 },
                 body: JSON.stringify(orderData)
             });
-            return response.ok;
+            
+            if (response.ok) {
+                // Background refresh for confirmation
+                window.dispatchEvent(new Event('ordersUpdated'));
+                return true;
+            } else {
+                throw new Error('Sync failed');
+            }
         } catch (err) {
             console.error('Update order error:', err);
+            State._cache.orders = originalOrders;
+            updateUI();
+            showToast('Sync failed: Order reverted');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
     async batchUpdateStatus(orderIds, status) {
+        const originalOrders = JSON.parse(JSON.stringify(State._cache.orders));
+        
+        // --- Optimistic Update ---
+        orderIds.forEach(id => {
+            const order = State._cache.orders.find(o => o._id === id);
+            if (order) order.status = status;
+        });
+        updateUI();
+        updateSyncIndicator(true);
+
         try {
             const response = await fetch(`${API_URL}/orders/batch-status`, {
                 method: 'POST',
@@ -482,33 +552,61 @@ const Actions = {
                 },
                 body: JSON.stringify({ orderIds, status })
             });
+
             if (response.ok) {
                 showToast(`Updated ${orderIds.length} orders to ${status}`);
+                // Background refresh to confirm consistency
                 window.dispatchEvent(new Event('ordersUpdated'));
                 return true;
+            } else {
+                throw new Error('Batch sync failed');
             }
-            return false;
         } catch (err) {
             console.error('Batch update error:', err);
-            showToast('Batch update failed');
+            State._cache.orders = originalOrders;
+            updateUI();
+            showToast('Sync failed: Reverting status changes');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     },
     async deleteOrder(id) {
+        const originalOrders = JSON.parse(JSON.stringify(State._cache.orders || []));
+        const statusData = { status: 'Order Canceled', progress: 100 };
+
+        // --- Optimistic Update ---
+        const order = State._cache.orders.find(o => o._id === id);
+        if (order) {
+            Object.assign(order, statusData);
+            updateUI();
+        }
+        updateSyncIndicator(true);
+
         try {
-            // Update the status to 'Order Canceled' instead of deleting from db to keep history
             const response = await fetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${AuthManager.getToken()}`
                 },
-                body: JSON.stringify({ status: 'Order Canceled', progress: 100 })
+                body: JSON.stringify(statusData)
             });
-            return response.ok;
+            
+            if (response.ok) {
+                window.dispatchEvent(new Event('ordersUpdated'));
+                return true;
+            } else {
+                throw new Error('Sync failed');
+            }
         } catch (err) {
             console.error('Delete order error:', err);
+            State._cache.orders = originalOrders;
+            updateUI();
+            showToast('Sync failed: Order state restored');
             return false;
+        } finally {
+            updateSyncIndicator(false);
         }
     }
 };

@@ -506,3 +506,50 @@ input[name="nav-radio"] {
     border-color: var(--primary);
     background: rgba(255, 255, 255, 0.1);
 }
+
+/* Global Sync Indicator */
+.sync-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-glass);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    z-index: 1000;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.sync-indicator.is-syncing {
+    opacity: 1;
+    transform: scale(1);
+    animation: pulse-sync 2s infinite ease-in-out;
+}
+
+@keyframes pulse-sync {
+    0%, 100% { 
+        box-shadow: 0 0 5px var(--primary-glow);
+        transform: scale(1);
+        color: var(--primary);
+    }
+    50% { 
+        box-shadow: 0 0 20px var(--primary-glow);
+        transform: scale(1.1);
+        color: var(--secondary);
+    }
+}
+
+.sync-indicator svg {
+    width: 22px;
+    height: 22px;
+}
