@@ -11,11 +11,13 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const { Server } = require('socket.io');
+const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
 const Order = require('./models/Order');
 const Inventory = require('./models/Inventory');
 const Product = require('./models/Product');
+const SiteTraffic = require('./models/SiteTraffic');
 const auth = require('./middleware/auth');
 
 const app = express();
@@ -70,6 +72,7 @@ app.use('/api/auth/', authLimiter);
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
+app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
 
 // Force no-cache for all requests to ensure PWA updates
 app.use((req, res, next) => {
@@ -143,7 +146,15 @@ app.post('/api/auth/register', async (req, res) => {
         logErr('User registered successfully');
 
         const token = jwt.sign({ id: user._id, role: 'customer' }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token, user: { id: user._id, username, role: 'customer' } });
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
+        res.json({ user: { id: user._id, username, role: 'customer' } });
     } catch (err) {
         logErr('Register Server error: ' + err.message);
         res.status(500).json({ message: 'Server error' });
@@ -160,10 +171,23 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
+        res.json({ user: { id: user._id, username: user.username, role: user.role } });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
     }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ message: 'Logged out successfully' });
 });
 
 app.put('/api/auth/profile', auth(), async (req, res) => {
@@ -491,6 +515,95 @@ app.delete('/api/products/:id', auth(['admin', 'employee']), async (req, res) =>
         res.json({ message: 'Product removed' });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// --- Analytics Tracking ---
+app.post('/api/analytics/visit', async (req, res) => {
+    try {
+        const visit = new SiteTraffic({
+            path: req.body.path || '/',
+            userAgent: req.headers['user-agent']
+        });
+        await visit.save();
+        res.status(204).send();
+    } catch (err) {
+        res.status(500).send();
+    }
+});
+
+app.post('/api/analytics/product-view/:id', async (req, res) => {
+    try {
+        await Product.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+        res.status(204).send();
+    } catch (err) {
+        res.status(500).send();
+    }
+});
+
+// --- Admin Analytics Reports ---
+app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
+    try {
+        const now = new Date();
+        const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+        // 1. Monthly Order Trends
+        const orderTrends = await Order.aggregate([
+            { $match: { date: { $gte: twelveMonthsAgo } } },
+            { $group: {
+                _id: { year: { $year: "$date" }, month: { $month: "$date" } },
+                count: { $sum: 1 },
+                revenue: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } }
+            }},
+            { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ]);
+
+        // 2. Status Distribution
+        const statusDistribution = await Order.aggregate([
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+        ]);
+
+        // 3. Top 5 Most Ordered (by volume)
+        const topOrdered = await Order.aggregate([
+            { $unwind: "$items" },
+            { $group: { _id: "$items.name", count: { $sum: "$items.quantity" } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // 4. Top 5 Most Liked
+        const topLiked = await User.aggregate([
+            { $unwind: "$favorites" },
+            { $group: { _id: "$favorites", likeCount: { $sum: 1 } } },
+            { $lookup: { from: "products", localField: "_id", foreignField: "_id", as: "product" } },
+            { $unwind: "$product" },
+            { $project: { name: "$product.name", likeCount: 1 } },
+            { $sort: { likeCount: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // 5. Site Traffic (Last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const trafficStats = await SiteTraffic.aggregate([
+            { $match: { timestamp: { $gte: thirtyDaysAgo } } },
+            { $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
+                visits: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]);
+
+        res.json({
+            orderTrends,
+            statusDistribution,
+            topOrdered,
+            topLiked,
+            trafficStats
+        });
+    } catch (err) {
+        console.error('Analytics Error:', err);
+        res.status(500).json({ message: 'Server error fetching analytics' });
     }
 });
 

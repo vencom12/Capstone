@@ -48,7 +48,7 @@ const AuthManager = {
                 return { success: false, message: errData.message || 'Login failed' };
             }
             const data = await response.json();
-            localStorage.setItem(this.SESSION_KEY, JSON.stringify(data));
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
             return { success: true };
         } catch (err) {
             console.error('Login error:', err);
@@ -69,7 +69,7 @@ const AuthManager = {
                 return { success: false, message: errData.message || 'Registration failed' };
             }
             const data = await response.json();
-            localStorage.setItem(this.SESSION_KEY, JSON.stringify(data));
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
             return { success: true };
         } catch (err) {
             console.error('Registration error:', err);
@@ -77,7 +77,12 @@ const AuthManager = {
         }
     },
 
-    logout() {
+    async logout() {
+        try {
+            await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
         localStorage.removeItem(this.SESSION_KEY);
         window.location.href = 'index.html';
     },
@@ -87,8 +92,8 @@ const AuthManager = {
             const session = localStorage.getItem(this.SESSION_KEY);
             if (!session) return null;
             const parsed = JSON.parse(session);
-            // Ensure essential properties exist
-            if (!parsed || !parsed.user || !parsed.token) return null;
+            // Ensure essential properties exist (token removed check)
+            if (!parsed || !parsed.user) return null;
             return parsed;
         } catch (e) {
             console.error('Session parse error:', e);
@@ -106,8 +111,8 @@ const AuthManager = {
     },
 
     getToken() {
-        const session = this.getSession();
-        return session ? session.token : null;
+        // Tokens are now stored in HttpOnly cookies and managed by the browser
+        return null;
     },
 
     async updateProfile(userData) {
@@ -115,10 +120,8 @@ const AuthManager = {
             console.log('Sending profile update:', userData);
             const response = await fetch(`${API_URL}/auth/profile`, {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(userData)
             });
 
@@ -143,7 +146,6 @@ const AuthManager = {
                 // Update local session data
                 const currentSession = this.getSession();
                 if (currentSession) {
-                    currentSession.token = data.token;
                     currentSession.user.username = data.user.username;
                     localStorage.setItem(this.SESSION_KEY, JSON.stringify(currentSession));
                 }
@@ -179,6 +181,25 @@ const AuthManager = {
 
 // Expose to window for global access
 window.AuthManager = AuthManager;
+
+// --- Activity Tracking ---
+const AnalyticsTracker = {
+    async logVisit() {
+        try {
+            await fetch(`${API_URL}/analytics/visit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: window.location.pathname })
+            });
+        } catch (e) { /* silent */ }
+    },
+    async logProductView(productId) {
+        try {
+            await fetch(`${API_URL}/analytics/product-view/${productId}`, { method: 'POST' });
+        } catch (e) { /* silent */ }
+    }
+};
+window.AnalyticsTracker = AnalyticsTracker;
 
 /**
  * StitchMaster AI - Interactive Assistant Logic
@@ -320,20 +341,20 @@ const State = {
     },
     async getOrders() {
         const response = await fetch(`${API_URL}/orders`, {
-            headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+            credentials: 'include'
         });
         return await response.json();
     },
     async getInventory() {
         const response = await fetch(`${API_URL}/inventory`, {
-            headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+            credentials: 'include'
         });
         return await response.json();
     },
     async getProducts() {
         try {
             const response = await fetch(`${API_URL}/products`, {
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             return await response.json();
         } catch (err) {
@@ -344,7 +365,7 @@ const State = {
     async getDashboardState() {
         try {
             const response = await fetch(`${API_URL}/dashboard-state`, {
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             if (!response.ok) throw new Error('Failed to fetch batch state');
             const data = await response.json();
@@ -358,7 +379,7 @@ const State = {
     async getFavorites() {
         try {
             const response = await fetch(`${API_URL}/favorites`, {
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             return await response.json();
         } catch (err) {
@@ -374,6 +395,17 @@ const State = {
     setMachineState: (state) => {
         localStorage.setItem('stitch_machine', JSON.stringify(state));
         window.dispatchEvent(new Event('machineUpdated'));
+    },
+    async getAdminAnalytics() {
+        try {
+            const response = await fetch(`${API_URL}/admin/analytics`, {
+                credentials: 'include'
+            });
+            return await response.json();
+        } catch (err) {
+            console.error('Fetch analytics error:', err);
+            return null;
+        }
     }
 };
 
@@ -429,10 +461,8 @@ const Actions = {
         try {
             const response = await fetch(`${API_URL}/orders`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(tempOrder)
             });
 
@@ -485,7 +515,7 @@ const Actions = {
             const method = isFavorite ? 'DELETE' : 'POST';
             const response = await fetch(`${API_URL}/favorites/${productId}`, {
                 method: method,
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             if (response.ok) {
                 // Silently sync cache — optimistic UI is already correct
@@ -530,10 +560,8 @@ const Actions = {
         try {
             const response = await fetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(orderData)
             });
             
@@ -568,10 +596,8 @@ const Actions = {
         try {
             const response = await fetch(`${API_URL}/orders/batch-status`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ orderIds, status })
             });
 
@@ -608,10 +634,8 @@ const Actions = {
         try {
             const response = await fetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(statusData)
             });
             
@@ -652,10 +676,8 @@ const AdminActions = {
         try {
             const response = await fetch(`${API_URL}/admin/users`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(userData)
             });
             
@@ -693,10 +715,8 @@ const AdminActions = {
         try {
             const response = await fetch(`${API_URL}/admin/users/${id}`, {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(userData)
             });
             if (response.ok) {
@@ -729,7 +749,7 @@ const AdminActions = {
         try {
             const response = await fetch(`${API_URL}/admin/users/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             if (response.ok) {
                 return true;
@@ -766,10 +786,8 @@ const EmployeeActions = {
         try {
             const response = await fetch(`${API_URL}/products`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(productData)
             });
             
@@ -805,10 +823,8 @@ const EmployeeActions = {
         try {
             const response = await fetch(`${API_URL}/products/${id}`, {
                 method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthManager.getToken()}`
-                },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(productData)
             });
             if (response.ok) {
@@ -840,7 +856,7 @@ const EmployeeActions = {
         try {
             const response = await fetch(`${API_URL}/products/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${AuthManager.getToken()}` }
+                credentials: 'include'
             });
             if (response.ok) {
                 return true;
@@ -1379,6 +1395,164 @@ function updateUI() {
     if (window.StitchAI) {
         window.StitchAI.updateAdviceWidget().catch(console.error);
     }
+
+    // Trigger Analytics Render if on analytics tab (or just always if active)
+    if (document.getElementById('nav-analytics')?.checked) {
+        renderAdminAnalytics();
+    }
+}
+
+let charts = {};
+async function renderAdminAnalytics() {
+    const data = await State.getAdminAnalytics();
+    if (!data) return;
+
+    // --- Summary Stats ---
+    const totalVisits = data.trafficStats.reduce((sum, d) => sum + d.visits, 0);
+    const totalRevenue = data.orderTrends.reduce((sum, d) => sum + d.revenue, 0);
+    const totalOrders = data.orderTrends.reduce((sum, d) => sum + d.count, 0);
+    const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : '0.00';
+    
+    document.getElementById('analytics-total-visits').innerText = totalVisits.toLocaleString();
+    document.getElementById('analytics-avg-order').innerText = `$${avgOrderValue}`;
+    
+    // Find Peak Season
+    if (data.orderTrends.length > 0) {
+        const peak = [...data.orderTrends].sort((a,b) => b.count - a.count)[0];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        document.getElementById('analytics-peak-season').innerText = `${monthNames[peak._id.month-1]} ${peak._id.year}`;
+    }
+
+    // --- Charting Helpers ---
+    const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
+    if (ctxTrends) {
+        if (charts.trends) charts.trends.destroy();
+        charts.trends = new Chart(ctxTrends, {
+            type: 'line',
+            data: {
+                labels: data.orderTrends.map(d => `${d._id.month}/${d._id.year}`),
+                datasets: [
+                    {
+                        label: 'Orders',
+                        data: data.orderTrends.map(d => d.count),
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Revenue ($)',
+                        data: data.orderTrends.map(d => d.revenue),
+                        borderColor: '#10b981',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y1: { position: 'right', grid: { display: false } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { labels: { color: '#94a3b8' } } }
+            }
+        });
+    }
+
+    const ctxDist = document.getElementById('statusDistChart')?.getContext('2d');
+    if (ctxDist) {
+        if (charts.dist) charts.dist.destroy();
+        charts.dist = new Chart(ctxDist, {
+            type: 'doughnut',
+            data: {
+                labels: data.statusDistribution.map(d => d._id),
+                datasets: [{
+                    data: data.statusDistribution.map(d => d.count),
+                    backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
+            }
+        });
+    }
+
+    const ctxOrdered = document.getElementById('topOrderedChart')?.getContext('2d');
+    if (ctxOrdered) {
+        if (charts.ordered) charts.ordered.destroy();
+        charts.ordered = new Chart(ctxOrdered, {
+            type: 'bar',
+            data: {
+                labels: data.topOrdered.map(d => d._id),
+                datasets: [{
+                    label: 'Units Ordered',
+                    data: data.topOrdered.map(d => d.count),
+                    backgroundColor: '#6366f1'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    const ctxLiked = document.getElementById('topLikedChart')?.getContext('2d');
+    if (ctxLiked) {
+        if (charts.liked) charts.liked.destroy();
+        charts.liked = new Chart(ctxLiked, {
+            type: 'bar',
+            data: {
+                labels: data.topLiked.map(d => d.name),
+                datasets: [{
+                    label: 'User Favorites',
+                    data: data.topLiked.map(d => d.likeCount),
+                    backgroundColor: '#f43f5e'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    const ctxTraffic = document.getElementById('trafficChart')?.getContext('2d');
+    if (ctxTraffic) {
+        if (charts.traffic) charts.traffic.destroy();
+        charts.traffic = new Chart(ctxTraffic, {
+            type: 'line',
+            data: {
+                labels: data.trafficStats.map(d => d._id.split('-').slice(1).join('/')),
+                datasets: [{
+                    label: 'Daily Visits',
+                    data: data.trafficStats.map(d => d.visits),
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
 }
 
 // --- Skeleton Rendering Helper ---
@@ -1837,6 +2011,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// --- Chart Rendering Call ---
+async function renderAdminAnalytics() {
+    // Already defined above in the file
+}
+
+// --- Global Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Log visit
+    if (window.AnalyticsTracker) AnalyticsTracker.logVisit();
+
+    // Re-render analytics when switching tabs
+    document.querySelectorAll('input[name="nav-radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.id === 'nav-analytics') renderAdminAnalytics();
+        });
+    });
+
+    // Delegate product view tracking
+    document.addEventListener('click', (e) => {
+        const favBtn = e.target.closest('.fav-toggle-btn');
+        if (favBtn) {
+            AnalyticsTracker.logProductView(favBtn.dataset.id);
+        }
+        const addBtn = e.target.closest('.add-to-basket');
+        if (addBtn) {
+            // Log a view when added to basket too
+            const prodId = addBtn.dataset.id; // Many buttons have data-id, others have data-name
+            if (prodId) AnalyticsTracker.logProductView(prodId);
+        }
+    });
+});
+
 // --- Service Worker Registration for PWA ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -1845,3 +2051,4 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('[PWA] Service Worker Registration Failed', err));
     });
 }
+

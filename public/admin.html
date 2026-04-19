@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icons/icon.ico">
     <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Security Guard: Check access before page render
         if (!window.AuthManager || !window.AuthManager.checkAccess('admin')) {
@@ -337,9 +338,58 @@
 
             <!-- Section: Analytics -->
             <section id="section-analytics" class="module-section">
-                <h1 style="font-size: 2rem; margin-bottom: 24px;">System Analytics</h1>
-                <div class="glass" style="padding: 40px; text-align: center; color: var(--text-dim);">
-                    <p>Comprehensive reports and revenue charts.</p>
+                <header style="margin-bottom: 40px;">
+                    <h1 style="font-size: 2rem;">Production Analytics</h1>
+                    <p style="color: var(--text-dim);">Real-time metrics and historical performance data.</p>
+                </header>
+
+                <div class="stats-grid" style="margin-bottom: 30px;">
+                    <div class="stat-card glass">
+                        <span class="stat-label">Total Visits (30d)</span>
+                        <span id="analytics-total-visits" class="stat-value">---</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-label">Avg. Order Value</span>
+                        <span id="analytics-avg-order" class="stat-value">---</span>
+                    </div>
+                    <div class="stat-card glass" id="peak-season-card">
+                        <span class="stat-label">Peak Season</span>
+                        <span id="analytics-peak-season" class="stat-value">---</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+                    <!-- Order Trends Chart -->
+                    <div class="glass" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Order & Revenue Trends</h3>
+                        <canvas id="orderTrendsChart" height="250"></canvas>
+                    </div>
+
+                    <!-- Status Distribution -->
+                    <div class="glass" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Order Status Breakdown</h3>
+                        <div style="max-width: 300px; margin: 0 auto;">
+                            <canvas id="statusDistChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Products Bar Chart -->
+                    <div class="glass" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Top Ordered Designs</h3>
+                        <canvas id="topOrderedChart" height="250"></canvas>
+                    </div>
+
+                    <!-- Top Liked Bar Chart -->
+                    <div class="glass" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Most Liked Designs</h3>
+                        <canvas id="topLikedChart" height="250"></canvas>
+                    </div>
+
+                    <!-- Site Traffic -->
+                    <div class="glass" style="grid-column: 1 / -1; padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Site Traffic (Last 30 Days)</h3>
+                        <canvas id="trafficChart" height="150"></canvas>
+                    </div>
                 </div>
             </section>
 

@@ -6,6 +6,7 @@ const productSchema = new mongoose.Schema({
     tag: { type: String, default: 'General' },
     description: { type: String },
     imageUrl: { type: String, default: 'https://via.placeholder.com/200' },
+    views: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now, index: true }
 });
 
