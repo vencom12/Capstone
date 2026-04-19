@@ -235,7 +235,8 @@ app.get('/api/orders', auth(), async (req, res) => {
 
 app.post('/api/orders', auth(['customer', 'admin']), async (req, res) => {
     try {
-        const newOrder = new Order({ ...req.body, userId: req.user.id });
+        const { _id, ...orderData } = req.body;
+        const newOrder = new Order({ ...orderData, userId: req.user.id });
         await newOrder.save();
         io.emit('dataChanged', { type: 'orders' });
         res.json(newOrder);

@@ -459,11 +459,12 @@ const Actions = {
         updateSyncIndicator(true);
 
         try {
+            const { _id, ...orderData } = tempOrder;
             const response = await fetch(`${API_URL}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(tempOrder)
+                body: JSON.stringify(orderData)
             });
 
             if (response.ok) {
