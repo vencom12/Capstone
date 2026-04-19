@@ -2011,11 +2011,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// --- Chart Rendering Call ---
-async function renderAdminAnalytics() {
-    // Already defined above in the file
-}
-
 // --- Global Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     // Log visit

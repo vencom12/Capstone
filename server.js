@@ -550,10 +550,18 @@ app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
         // 1. Monthly Order Trends
         const orderTrends = await Order.aggregate([
             { $match: { date: { $gte: twelveMonthsAgo } } },
+            { $project: { 
+                date: 1, 
+                orderTotal: { $reduce: {
+                    input: "$items",
+                    initialValue: 0,
+                    in: { $add: ["$$value", { $multiply: ["$$this.price", "$$this.quantity"] }] }
+                }}
+            }},
             { $group: {
                 _id: { year: { $year: "$date" }, month: { $month: "$date" } },
                 count: { $sum: 1 },
-                revenue: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } }
+                revenue: { $sum: "$orderTotal" }
             }},
             { $sort: { "_id.year": 1, "_id.month": 1 } }
         ]);
