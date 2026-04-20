@@ -1108,15 +1108,18 @@ function updateUI() {
 
     // Update Analytics (Admin/Employee Only)
     if (analytics) {
-        const revEl = document.querySelector('.stat-value:has(+.stat-label[innerText*="Revenue"])') || 
-                      ([...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Revenue'))?.previousElementSibling);
-        
+        // Find revenue element robustly
+        const labels = Array.from(document.querySelectorAll('.stat-label'));
+        const revLabel = labels.find(el => el.innerText.includes('Revenue'));
+        const revEl = revLabel ? revLabel.previousElementSibling : null;
         if (revEl) revEl.innerText = `$${(analytics.revenue / 1000).toFixed(1)}k`;
         
-        const activeOrdersEl = [...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Active Orders'))?.previousElementSibling;
+        const activeOrdersLabel = labels.find(el => el.innerText.includes('Active Orders'));
+        const activeOrdersEl = activeOrdersLabel ? activeOrdersLabel.previousElementSibling : null;
         if (activeOrdersEl) activeOrdersEl.innerText = analytics.activeOrders;
 
-        const userCountEl = [...document.querySelectorAll('.stat-label')].find(el => el.innerText.includes('Personnel'))?.previousElementSibling;
+        const userCountLabel = labels.find(el => el.innerText.includes('Personnel'));
+        const userCountEl = userCountLabel ? userCountLabel.previousElementSibling : null;
         if (userCountEl) userCountEl.innerText = analytics.userCount;
     }
 
