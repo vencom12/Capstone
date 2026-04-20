@@ -433,6 +433,9 @@ const Actions = {
         }
         State.setBasket(basket);
         showToast(`Added ${quantity} of ${item.name} to basket`);
+        // Auto-open basket drawer
+        const drawerToggle = document.getElementById('nav-drawer-toggle');
+        if (drawerToggle) drawerToggle.checked = true;
     },
     updateBasketQuantity: (id, change) => {
         let basket = State.getBasket();

@@ -290,10 +290,8 @@ main {
         margin-top: auto;
     }
 
-    /* Right panel shrinks */
-    .right-panel {
-        width: 280px;
-    }
+    /* Right panel is now an overlay, so this can be skipped */
+
 
     /* Main grows to fill remaining space */
     main {
@@ -448,18 +446,33 @@ input[name="nav-radio"], #nav-drawer-toggle {
     margin-bottom: 12px;
 }
 
-/* Right Panel Styles (Order Queue & Basket) */
+/* Right Panel Styles (Order Queue & Basket Drawer) */
 .right-panel {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
-    padding: 0; /* Updated for internal sections */
-    height: 100vh;
-    position: sticky;
+    padding: 0;
+    position: fixed !important;
     top: 0;
-    border-radius: 0;
-    border-right: none;
+    right: 0;
+    height: 100vh;
+    width: 380px;
+    max-width: 90vw;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    border-left: 1px solid var(--border-glass) !important;
     border-top: none;
     border-bottom: none;
+    border-right: none;
+    border-radius: 0;
+    box-shadow: -20px 0 50px rgba(0,0,0,0.5);
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#nav-drawer-toggle:checked ~ .dashboard-container .right-panel {
+    transform: translateX(0);
 }
 
 .panel-section {
@@ -781,25 +794,7 @@ th, td {
     }
 
     .right-panel {
-        position: fixed !important;
-        top: 0;
-        right: 0;
-        bottom: 0;
         width: 85% !important;
-        max-width: 400px;
-        z-index: 10000;
-        background: rgba(15, 23, 42, 0.9) !important;
-        backdrop-filter: blur(30px) !important;
-        -webkit-backdrop-filter: blur(30px) !important;
-        transform: translateX(100%);
-        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        border-left: 1px solid var(--border-glass);
-        box-shadow: -20px 0 50px rgba(0,0,0,0.5);
-        display: flex !important; /* Force display since we are using transform */
-    }
-
-    #nav-drawer-toggle:checked ~ .dashboard-container .right-panel {
-        transform: translateX(0);
     }
 
     /* Dim the background when drawer is open */
@@ -1056,3 +1051,22 @@ th, td {
 }
 
 
+
+/* Storefront Drawer Overlay (dim background) */
+.storefront-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 4999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+    cursor: pointer;
+}
+
+#nav-drawer-toggle:checked ~ .storefront-overlay {
+    opacity: 1;
+    visibility: visible;
+}
