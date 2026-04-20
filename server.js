@@ -471,7 +471,7 @@ app.post('/api/orders/batch-status', auth(['admin', 'employee']), async (req, re
 
 // --- Product Management ---
 
-app.get('/api/products', auth(), async (req, res) => {
+app.get('/api/products', async (req, res) => {
     try {
         const products = await Product.find().sort({ createdAt: -1 });
         res.json(products);

@@ -364,6 +364,13 @@ const State = {
     },
     async getDashboardState() {
         try {
+            // If guest, only fetch products
+            if (!AuthManager.isAuthenticated()) {
+                const products = await this.getProducts();
+                this._cache.products = products;
+                return { products };
+            }
+
             const response = await fetch(`${API_URL}/dashboard-state`, {
                 credentials: 'include'
             });
@@ -412,6 +419,11 @@ const State = {
 // --- Actions ---
 const Actions = {
     addToBasket: (item, quantity = 1) => {
+        if (!AuthManager.isAuthenticated()) {
+            if (typeof openAuth === 'function') openAuth('login');
+            showToast('Please login to add items to your basket.');
+            return;
+        }
         const basket = State.getBasket();
         const existingItem = basket.find(b => b.name === item.name);
         if (existingItem) {
@@ -438,6 +450,11 @@ const Actions = {
         State.setBasket(basket.filter(item => item.id.toString() !== id.toString()));
     },
     async checkout() {
+        if (!AuthManager.isAuthenticated()) {
+            if (typeof openAuth === 'function') openAuth('login');
+            showToast('Please login to checkout.');
+            return;
+        }
         const basket = State.getBasket();
         if (basket.length === 0) return;
 
@@ -486,6 +503,11 @@ const Actions = {
         }
     },
     async toggleFavorite(productId, isFavorite) {
+        if (!AuthManager.isAuthenticated()) {
+            if (typeof openAuth === 'function') openAuth('login');
+            showToast('Please login to save favorites.');
+            return;
+        }
         const originalFavorites = JSON.parse(JSON.stringify(State._cache.favorites || []));
         const willBeFav = !isFavorite;
         
@@ -918,7 +940,6 @@ function showToast(msg) {
 
 // --- UI Syncing ---
 async function refreshDashboardState() {
-    if (!AuthManager.isAuthenticated()) return;
     try {
         updateSyncIndicator(true);
         const batch = await State.getDashboardState();
@@ -928,7 +949,10 @@ async function refreshDashboardState() {
         }
     } catch (err) {
         console.error('State Fetch failed:', err);
-        showToast('System synchronization delay. Retrying...');
+        // Only show toast if user is actually logged in, otherwise it's just guest browsing
+        if (AuthManager.isAuthenticated()) {
+            showToast('System synchronization delay. Retrying...');
+        }
     } finally {
         updateSyncIndicator(false);
     }
@@ -937,7 +961,6 @@ async function refreshDashboardState() {
 // Silent cache sync: refreshes backend data without re-rendering UI.
 // Used after optimistic updates where the UI already reflects the correct state.
 async function silentCacheSync() {
-    if (!AuthManager.isAuthenticated()) return;
     try {
         await State.getDashboardState();
     } catch (err) {
@@ -996,8 +1019,33 @@ function updateBasketUI() {
 
     const basketCount = document.getElementById('basket-count');
     const mobileBasketCount = document.getElementById('mobile-basket-count');
+    const headerBasketCount = document.getElementById('header-basket-count');
+    
     if (basketCount) basketCount.innerText = `${basket.length} Items`;
     if (mobileBasketCount) mobileBasketCount.innerText = basket.length;
+    if (headerBasketCount) headerBasketCount.innerText = basket.length;
+
+    // Support for storefront checkout logic
+    const checkoutGuestMsg = document.getElementById('checkout-guest-msg');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (checkoutBtn) {
+        if (!AuthManager.isAuthenticated()) {
+            if (checkoutGuestMsg) checkoutGuestMsg.style.display = 'block';
+            checkoutBtn.innerText = 'Login to Checkout';
+            checkoutBtn.style.opacity = '1';
+            checkoutBtn.style.pointerEvents = 'auto';
+        } else {
+            if (checkoutGuestMsg) checkoutGuestMsg.style.display = 'none';
+            checkoutBtn.innerText = 'Checkout Now';
+            if (basket.length === 0) {
+                checkoutBtn.style.opacity = '0.5';
+                checkoutBtn.style.pointerEvents = 'none';
+            } else {
+                checkoutBtn.style.opacity = '1';
+                checkoutBtn.style.pointerEvents = 'auto';
+            }
+        }
+    }
 
     const basketItems = document.getElementById('basket-items-list');
     if (basketItems) {
@@ -1042,9 +1090,6 @@ function updateUI() {
     const basket = State.getBasket();
     const machine = State.getMachineState();
     
-    // Auth Check
-    if (!AuthManager.isAuthenticated()) return;
-
     // Show Skeletons on Initial Load
     if (State._isInitialLoad) {
         renderSkeletons();
@@ -1077,9 +1122,9 @@ function updateUI() {
 
 
 
-    // Catalog UI Updates
-    const productGrid = document.querySelector('.product-grid');
-    if (productGrid) {
+    // Catalog UI Updates (Generic product grid)
+    const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
+    productGrids.forEach(grid => {
         let newHtml = '';
         if (products.length > 0) {
             newHtml = products.map(p => {
@@ -1101,7 +1146,7 @@ function updateUI() {
                         <div style="display: flex; gap: 8px;">
                             <input type="number" class="qty-input" min="1" value="1" style="width: 60px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 8px; border-radius: 8px; color: white; text-align: center;">
                             <button class="btn btn-primary add-to-basket" style="flex: 1; padding: 12px; font-size: 0.9rem; border-radius: 10px;" 
-                                data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
+                                data-name="${p.name}" data-price="${p.price}" data-id="${p._id}" data-tag="${p.tag}" data-image="${p.imageUrl}">Add to Basket</button>
                         </div>
                     </div>
                 </div>
@@ -1114,8 +1159,8 @@ function updateUI() {
                 </div>
             `;
         }
-        if (productGrid.innerHTML !== newHtml) productGrid.innerHTML = newHtml;
-    }
+        if (grid.innerHTML !== newHtml) grid.innerHTML = newHtml;
+    });
 
     // Employee Design List updates
     const employeeProductList = document.getElementById('product-list-container');
