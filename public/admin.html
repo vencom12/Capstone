@@ -18,10 +18,13 @@
     <script>
         // Security Guard: Check access before page render
         if (!window.AuthManager || !window.AuthManager.checkAccess('admin', false)) {
-            document.write('<style>.dashboard-container { display: none !important; }</style>');
+            document.documentElement.classList.add('unauthorized-hide');
             window.isUnauthorized = true;
         }
     </script>
+    <style>
+        .unauthorized-hide .dashboard-container { display: none !important; }
+    </style>
     <style>
         .stats-grid {
             display: grid;
@@ -172,7 +175,11 @@
             } else {
                 errEl.innerText = res.success ? "Unauthorized: Admin privileges required." : res.message;
                 errEl.style.display = 'block';
-                if (res.success) window.AuthManager.logout();
+                if (res.success) {
+                    // Manually clear session locally without redirecting immediately
+                    localStorage.removeItem(window.AuthManager.SESSION_KEY);
+                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => {});
+                }
             }
         });
     </script>
