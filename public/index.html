@@ -98,6 +98,11 @@
                     <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem;">
                         No account? <a href="register.html" style="color: var(--primary); font-weight: 600;">Create one here</a>
                     </div>
+                    <div style="margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px; font-size: 0.85rem; display: flex; justify-content: space-around;">
+                        <span style="color: var(--text-dim); font-weight: 600;">Staff Modules:</span>
+                        <a href="admin.html" style="color: var(--primary); text-decoration: none;">Admin Login</a>
+                        <a href="employee.html" style="color: var(--primary); text-decoration: none;">Employee Login</a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -160,13 +165,6 @@
                 const avatar = document.getElementById('header-user-avatar');
                 if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
             }
-
-            // Load Products
-            if (window.updateUI) {
-                // Initialize state if needed
-                await silentCacheSync(); 
-                updateUI();
-            }
         });
 
         // Login Handler (Reuse app.js logic)
@@ -183,7 +181,7 @@
                     const role = AuthManager.getUserRole();
                     if (role === 'admin') window.location.href = 'admin.html';
                     else if (role === 'employee') window.location.href = 'employee.html';
-                    else window.location.reload(); // Stay on storefront but logged in
+                    else window.location.href = 'user.html'; // Direct customer to their dashboard
                 } else {
                     errorEl.innerText = result.message || "Invalid credentials.";
                     errorEl.style.display = 'block';
