@@ -949,6 +949,12 @@ async function refreshDashboardState() {
         }
     } catch (err) {
         console.error('State Fetch failed:', err);
+        // Fallback: Clear initial load block to render cached or empty state
+        if (State._isInitialLoad) {
+            State._isInitialLoad = false;
+            updateUI(); 
+        }
+        
         // Only show toast if user is actually logged in, otherwise it's just guest browsing
         if (AuthManager.isAuthenticated()) {
             showToast('System synchronization delay. Retrying...');
