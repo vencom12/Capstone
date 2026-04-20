@@ -159,11 +159,11 @@ const AuthManager = {
         }
     },
 
-    checkAccess(requiredRole) {
+    checkAccess(requiredRole, redirect = true) {
         const session = this.getSession();
         if (!session || !session.user || !session.user.role) {
             console.warn('Access denied: No valid session');
-            window.location.href = 'index.html';
+            if (redirect) window.location.href = 'index.html';
             return false;
         }
         if (session.user.role !== requiredRole) {
@@ -172,7 +172,7 @@ const AuthManager = {
                 'employee': 'employee.html',
                 'customer': 'user.html'
             };
-            window.location.href = routes[session.user.role] || 'index.html';
+            if (redirect) window.location.href = routes[session.user.role] || 'index.html';
             return false;
         }
         return true;
