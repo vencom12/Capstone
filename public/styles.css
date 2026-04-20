@@ -1026,33 +1026,9 @@ th, td {
 
 .close-auth:hover { color: white; }
 
-/* --- Storefront Drawer Fix --- */
-.storefront-drawer {
-    position: fixed !important;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 380px !important;
-    z-index: 5000;
-    background: rgba(15, 23, 42, 0.9) !important;
-    backdrop-filter: blur(30px) !important;
-    -webkit-backdrop-filter: blur(30px) !important;
-    transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    border-left: 1px solid var(--border-glass);
-    box-shadow: -20px 0 50px rgba(0,0,0,0.5);
-    display: flex !important;
-    flex-direction: column;
-}
-
-#nav-drawer-toggle:checked ~ .storefront-drawer {
-    transform: translateX(0);
-}
-
 @media (max-width: 768px) {
-    .storefront-drawer {
-        width: 85% !important;
-    }
+    .storefront-header { padding: 0 20px; }
+    .header-search { display: none; }
+    .hero-section h2 { font-size: 2.2rem; }
 }
-
 
