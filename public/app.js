@@ -1078,12 +1078,6 @@ function updateBasketUI() {
         const total = basket.reduce((sum, item) => sum + (parseFloat(item.price) * (item.quantity || 1)), 0);
         basketTotal.innerText = `$${total.toFixed(2)}`;
     }
-
-    const checkoutBtn = document.getElementById('checkout-btn');
-    if (checkoutBtn) {
-        checkoutBtn.style.opacity = basket.length > 0 ? '1' : '0.5';
-        checkoutBtn.style.pointerEvents = basket.length > 0 ? 'all' : 'none';
-    }
 }
 
 function updateUI() {
