@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stitch-Opt | Premium Embroidery Designs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+</head>
+<body>
+
+    <!-- Storefront Header -->
+    <header class="storefront-header">
+        <a href="index.html" class="header-brand">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <h1>Stitch-Opt</h1>
+        </a>
+
+        <div class="header-search">
+            <input type="text" id="storefront-search" placeholder="Search premium embroidery designs...">
+            <svg style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim);" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+
+        <div class="header-actions">
+            <div id="guest-actions" style="display: flex; gap: 12px;">
+                <a href="#" class="header-btn" onclick="openAuth('login')">Login</a>
+                <a href="register.html" class="header-btn primary">Register</a>
+            </div>
+            <div id="user-actions" style="display: none; gap: 12px; align-items: center;">
+                <a href="user.html" class="header-btn">
+                    <div class="profile-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;" id="header-user-avatar">?</div>
+                    <span id="header-user-name">Account</span>
+                </a>
+                <a href="#" class="header-btn" onclick="AuthManager.logout()">Logout</a>
+            </div>
+            
+            <label for="nav-drawer-toggle" class="header-btn" style="position: relative; padding: 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span id="header-basket-count" class="badge" style="position: absolute; top: -5px; right: -5px; background: var(--primary); font-size: 0.7rem; padding: 2px 6px; border-radius: 10px;">0</span>
+            </label>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section animate-fade">
+        <h2>Intelligence in Every Stitch.</h2>
+        <p style="color: var(--text-dim); max-width: 600px; margin: 0 auto 40px; font-size: 1.1rem;"><!--This is to be revised based on the liking of the client-->
+            Explore our curated catalog of professional embroidery designs optimized for high-speed production.
+        </p>
+        <div id="install-button-container" style="display: none;"> <!-- There is an error in the hero section of the public screen -->
+            <button id="install-button" class="btn btn-primary" style="background: rgba(168, 85, 247, 0.15); color: var(--accent); border: 1px solid rgba(168, 85, 247, 0.3);">
+                Install Desktop App
+            </button>
+        </div>
+    </section>
+
+    <!-- Main Catalog -->
+    <main class="storefront-container">
+        <div class="product-grid" id="storefront-grid">
+            <!-- Dynamic products -->
+            <div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-dim);">
+                <div class="skeleton-img" style="max-width: 300px; margin: 0 auto 20px;"></div>
+                <p>Loading the design network...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-dialog">
+            <span class="close-auth" onclick="closeAuth()">✕</span>
+            <div id="login-form-container">
+                <h2 id="login-heading" style="margin-bottom: 30px; font-size: 1.8rem; font-weight: 700;">Secure Access</h2>
+                <form id="main-login-form">
+                    <div class="input-group">
+                        <label>Username / Email</label>
+                        <input type="text" id="login-email" placeholder="e.g. user@stitchopt.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" id="login-pass" placeholder="••••••••" required>
+                    </div>
+                    <div id="login-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
+                    <button type="submit" class="header-btn primary">Establish Link</button> <!--Put a design here... design completed-->
+                    <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem;">
+                        No account? <a href="register.html" style="color: var(--primary); font-weight: 600;">Create one here</a>
+                    </div>
+                    <div style="margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px; font-size: 0.85rem; display: flex; justify-content: space-around;">
+                        <span style="color: var(--text-dim); font-weight: 600;">Staff Modules:</span>
+                        <a href="admin.html" style="color: var(--primary); text-decoration: none;">Admin Login</a>
+                        <a href="employee.html" style="color: var(--primary); text-decoration: none;">Employee Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Basket Drawer (Simplified from user.html) -->
+    <input type="checkbox" id="nav-drawer-toggle" style="display: none;">
+    <!-- Drawer Backdrop -->
+    <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false;"></div>
+    <aside class="storefront-drawer glass">
+        <div class="drawer-header" style="padding: 32px; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Your Basket</h3>
+            <label for="nav-drawer-toggle" style="cursor: pointer; font-size: 1.5rem;">✕</label>
+        </div>
+        <div class="panel-section" style="padding: 32px;">
+            <div id="basket-items-list" class="basket-items" style="min-height: 150px; display: flex; flex-direction: column; gap: 15px; color: var(--text-dim); text-align: center;">
+                <p>Basket is empty</p>
+            </div>
+            <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border-glass);">
+                <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.2rem; margin-bottom: 20px;">
+                    <span>Total:</span>
+                    <span id="basket-total">$0.00</span>
+                </div>
+                <button id="checkout-btn" class="btn btn-primary" style="width: 100%;">Checkout Now</button>
+                <p id="checkout-guest-msg" style="display: none; margin-top: 15px; font-size: 0.85rem; color: var(--accent); text-align: center;">Login required to place orders.</p>
+            </div>
+        </div>
+    </aside>
+
+    <div id="global-sync-indicator" class="sync-indicator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.3-1.7-4.2-4-4.5C17.1 6.5 14 4 10.5 4a7 7 0 0 0-6.8 5.4C2 10.1 1 12.2 1 14.5c0 3 2.5 5.5 5.5 5.5" /></svg>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // --- Storefront Specific Logic ---
+        function openAuth(mode) {
+            document.getElementById('auth-overlay').classList.add('active');
+        }
+
+        function closeAuth() {
+            document.getElementById('auth-overlay').classList.remove('active');
+        }
+
+        // Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.storefront-header');
+            if (window.scrollY > 50) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
+        });
+
+        // Initialize Storefront
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('[Storefront] Initializing...');
+            
+            // Check Auth State for Header
+            const session = AuthManager.getSession();
+            if (session) {
+                document.getElementById('guest-actions').style.display = 'none';
+                document.getElementById('user-actions').style.display = 'flex';
+                document.getElementById('header-user-name').innerText = session.user.username;
+                const avatar = document.getElementById('header-user-avatar');
+                if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
+            }
+        });
+
+        // Login Handler (Reuse app.js logic)
+        document.getElementById('main-login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-pass').value;
+            const errorEl = document.getElementById('login-error');
+            errorEl.style.display = 'none';
+            
+            if (window.AuthManager) {
+                const result = await AuthManager.login(email, password);
+                if (result.success) {
+                    const role = AuthManager.getUserRole();
+                    if (role === 'admin') window.location.href = 'admin.html';
+                    else if (role === 'employee') window.location.href = 'employee.html';
+                    else window.location.href = 'user.html'; // Direct customer to their dashboard
+                } else {
+                    errorEl.innerText = result.message || "Invalid credentials.";
+                    errorEl.style.display = 'block';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

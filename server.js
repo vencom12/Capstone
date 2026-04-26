@@ -85,7 +85,8 @@ app.use((req, res, next) => {
     next();
 });
 
-const fs = require('fs');
+// --- Legacy Redirects ---
+app.get('/index.html', (req, res) => res.redirect(301, '/'));
 
 // --- Production Static Assets ---
 // Check if the Next.js production build exists
@@ -96,9 +97,6 @@ if (hasFrontendBuild) {
     console.log('[OK] Serving optimized Next.js frontend from /frontend/out');
     app.use(express.static(frontendPath));
     
-    // Redirect legacy index.html to /
-    app.get('/index.html', (req, res) => res.redirect(301, '/'));
-
     // Handle SPA routing: forward all non-API requests to index.html
     app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
@@ -109,12 +107,7 @@ if (hasFrontendBuild) {
     // Development/Fallback: serve legacy public files
     app.use(express.static(path.join(__dirname, 'public')));
     app.get('/', (req, res) => {
-        const legacyIndex = path.join(__dirname, 'public', 'index.html');
-        if (fs.existsSync(legacyIndex)) {
-            res.sendFile(legacyIndex);
-        } else {
-            res.send('StitchOpt Server is running. Please build the frontend to see the UI.');
-        }
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
 }
 
