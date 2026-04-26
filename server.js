@@ -91,16 +91,19 @@ app.use((req, res, next) => {
 });
 
 // --- Legacy Static Assets ---
+// Serve Framework Frontend (Next.js Export)
+app.use(express.static(path.join(__dirname, 'frontend', 'out'), { extensions: ['html'] }));
+// Fallback to legacy public for assets (icons, etc)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Default route
+// Root route serves the Next.js storefront
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'frontend', 'out', 'index.html'));
 });
 
 // Fallback for .html routes (for consistency)
 app.get('/:page.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', `${req.params.page}.html`));
+    res.sendFile(path.join(__dirname, 'frontend', 'out', `${req.params.page}.html`));
 });
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
@@ -636,7 +639,7 @@ app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`[OK] Server listening on port ${PORT}`);
     console.log(`[OK] Socket.IO real-time engine active`);

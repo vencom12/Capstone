@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 
 /**
  * Returns the singleton Socket.IO client.
- * Connects to the same origin (proxied to Express on port 5000 in dev).
+ * Connects to the same origin (proxied to Express on port 5001 in dev).
  */
 export function getSocket(): Socket {
   if (!socket) {

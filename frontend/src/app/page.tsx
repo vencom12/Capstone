@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { Product, BasketItem, User } from '@/types';
 import { productsApi, favoritesApi } from '@/lib/api';
-import { getStoredUser } from '@/lib/auth';
+import { getStoredUser, getSession } from '@/lib/auth';
 import Header from '@/components/layout/Header';
 import HeroBanner from '@/components/storefront/HeroBanner';
 import ProductGrid from '@/components/storefront/ProductGrid';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { dashboardApi, ordersApi, productsApi, adminApi, authApi } from '@/lib/api';
+import { dashboardApi, ordersApi, productsApi, adminApi, authApi, inventoryApi } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import type { DashboardState, User, Product, InventoryItem } from '@/types';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
                                ...prev,
                                inventory: prev.inventory.map(i => i.item === item.item ? { ...i, count: newCount } : i)
                              } : null);
-                             await productsApi.update(item._id, { count: newCount } as any); // Use patching in reality
+                             await inventoryApi.update(item.item, newCount);
                           }}
                         />
                       </Card>

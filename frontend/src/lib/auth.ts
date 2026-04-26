@@ -4,6 +4,7 @@ import type { User } from '@/types';
 export type Role = 'customer' | 'admin' | 'employee';
 
 // ─── Session ──────────────────────────────────────────────────────────────────
+let _user: User | null = null;
 
 /**
  * Fetches the current session from the server.
