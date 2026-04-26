@@ -724,7 +724,8 @@ th, td {
         margin: 0;
         width: 100%;
         justify-content: center;
-        font-size: 0.7rem; /* Tiny text if any */
+        font-size: 0.65rem; /* Slightly smaller text for mobile */
+        min-width: 0;
     }
 
     .nav-links span, .logout-btn span {
@@ -1069,4 +1070,71 @@ th, td {
 #nav-drawer-toggle:checked ~ .storefront-overlay {
     opacity: 1;
     visibility: visible;
+}
+
+/* Storefront Mobile Responsiveness */
+@media (max-width: 768px) {
+    .storefront-header {
+        padding: 10px 15px;
+        height: auto;
+        min-height: 120px;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+    }
+
+    .storefront-header.scrolled {
+        height: auto;
+        min-height: 100px;
+        padding: 8px 15px;
+    }
+
+    .header-brand {
+        order: 1;
+    }
+
+    .header-actions {
+        order: 2;
+        gap: 8px;
+    }
+
+    .header-search {
+        order: 3;
+        width: 100%;
+        margin: 0;
+        max-width: none;
+    }
+
+    .header-search input {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    .header-brand h1 {
+        font-size: 1.2rem;
+    }
+
+    .header-brand svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .header-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .hero-section {
+        padding-top: 150px; /* Space for the taller mobile header */
+        padding-bottom: 40px;
+    }
+
+    .hero-section h2 {
+        font-size: 2rem;
+        letter-spacing: -1px;
+    }
+
+    .storefront-container {
+        padding: 0 15px 60px;
+    }
 }
