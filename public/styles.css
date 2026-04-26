@@ -1075,34 +1075,41 @@ th, td {
 /* Storefront Mobile Responsiveness */
 @media (max-width: 768px) {
     .storefront-header {
-        padding: 10px 15px;
-        height: auto;
-        min-height: 120px;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: space-between;
+        display: grid !important;
+        grid-template-columns: auto 1fr;
+        grid-template-areas: 
+            "brand actions"
+            "search search";
+        padding: 15px !important;
+        height: auto !important;
+        min-height: 120px !important;
+        gap: 15px !important;
+        align-items: center;
     }
 
     .storefront-header.scrolled {
-        height: auto;
-        min-height: 100px;
-        padding: 8px 15px;
+        min-height: 110px !important;
     }
 
     .header-brand {
-        order: 1;
+        grid-area: brand;
+        display: flex;
+        align-items: center;
     }
 
     .header-actions {
-        order: 2;
-        gap: 8px;
+        grid-area: actions;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
     }
 
     .header-search {
-        order: 3;
-        flex: 1 0 100%; /* Force wrap */
-        margin: 5px 0 0 0;
-        max-width: none;
+        grid-area: search;
+        width: 100% !important;
+        margin: 0 !important;
+        max-width: none !important;
     }
 
     .header-search input {
