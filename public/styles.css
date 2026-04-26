@@ -1100,8 +1100,8 @@ th, td {
 
     .header-search {
         order: 3;
-        width: 100%;
-        margin: 0;
+        flex: 1 0 100%; /* Force wrap */
+        margin: 5px 0 0 0;
         max-width: none;
     }
 
@@ -1136,5 +1136,22 @@ th, td {
 
     .storefront-container {
         padding: 0 15px 60px;
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .product-details {
+        padding: 15px;
+    }
+
+    .product-details h3 {
+        font-size: 1rem;
+    }
+
+    .product-image {
+        height: 140px;
     }
 }
