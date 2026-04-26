@@ -894,11 +894,7 @@ td {
     #nav-drawer-toggle:checked~.storefront-overlay {
         opacity: 1;
         visibility: visible;
-    }
-
-    #nav-drawer-toggle:checked~.dashboard-container {
-        filter: blur(5px) brightness(0.7);
-        pointer-events: none;
+        z-index: 10000 !important; /* Above bottom nav, below drawer */
     }
 
     .drawer-header {
