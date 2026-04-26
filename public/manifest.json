@@ -2,7 +2,7 @@
   "name": "Stitch-Opt",
   "short_name": "Stitch-Opt",
   "description": "Premium Intelligent Embroidery Network and Production Optimizer.",
-  "start_url": "/index.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f1423",
   "theme_color": "#6366f1",

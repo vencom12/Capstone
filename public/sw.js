@@ -1,9 +1,8 @@
 const CACHE_NAME = 'stitch-opt-v4';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
   '/styles.css',
-  '/app.js',
+  '/app.js?v=2.0',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
@@ -48,7 +47,7 @@ self.addEventListener('fetch', (event) => {
       // Logic: SWR (Stale-While-Revalidate)
       // 1. Return cached response immediately if it exists
       // 2. Fetch from network in the background and update cache
-      
+
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const resClone = networkResponse.clone();
