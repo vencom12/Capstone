@@ -2093,8 +2093,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- PWA Install Logic ---
 let deferredPrompt;
-const installBtnContainer = document.getElementById('install-button-container');
-const installBtn = document.getElementById('install-button');
 
 window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent Chrome 67 and earlier from automatically showing the prompt
@@ -2102,27 +2100,33 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Stash the event so it can be triggered later.
     deferredPrompt = e;
     // Update UI to notify the user they can add to home screen
-    if (installBtnContainer) installBtnContainer.style.display = 'block';
+    const container = document.getElementById('install-button-container');
+    if (container) container.style.display = 'block';
 });
 
-if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        // Show the prompt
-        deferredPrompt.prompt();
-        // Wait for the user to respond to the prompt
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`[PWA] User response to the install prompt: ${outcome}`);
-        // We've used the prompt, and can't use it again, throw it away
-        deferredPrompt = null;
-        // Hide the install button
-        if (installBtnContainer) installBtnContainer.style.display = 'none';
-    });
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const installBtn = document.getElementById('install-button');
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            // Show the prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`[PWA] User response to the install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, throw it away
+            deferredPrompt = null;
+            // Hide the install button
+            const container = document.getElementById('install-button-container');
+            if (container) container.style.display = 'none';
+        });
+    }
+});
 
 window.addEventListener('appinstalled', (evt) => {
     console.log('[PWA] App was installed');
-    if (installBtnContainer) installBtnContainer.style.display = 'none';
+    const container = document.getElementById('install-button-container');
+    if (container) container.style.display = 'none';
 });
 
 // --- Service Worker Registration for PWA ---
