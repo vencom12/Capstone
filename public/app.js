@@ -84,7 +84,7 @@ const AuthManager = {
             console.error('Logout error:', e);
         }
         localStorage.removeItem(this.SESSION_KEY);
-        window.location.href = '/';
+        window.location.href = 'index.html';
     },
 
     getSession() {
@@ -163,7 +163,7 @@ const AuthManager = {
         const session = this.getSession();
         if (!session || !session.user || !session.user.role) {
             console.warn('Access denied: No valid session');
-            if (redirect) window.location.href = '/';
+            if (redirect) window.location.href = 'index.html';
             return false;
         }
         if (session.user.role !== requiredRole) {
@@ -172,7 +172,7 @@ const AuthManager = {
                 'employee': 'employee.html',
                 'customer': 'user.html'
             };
-            if (redirect) window.location.href = routes[session.user.role] || '/';
+            if (redirect) window.location.href = routes[session.user.role] || 'index.html';
             return false;
         }
         return true;

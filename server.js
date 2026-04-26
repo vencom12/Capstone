@@ -24,7 +24,7 @@ const fs = require('fs');
 const app = express();
 
 // --- CRITICAL: Legacy Redirect (Must be first) ---
-app.all('/index.html', (req, res) => res.redirect(301, '/'));
+
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
