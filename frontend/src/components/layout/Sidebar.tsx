@@ -46,10 +46,10 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
   return (
     <aside className="glass-card h-full flex flex-col p-4 gap-2 min-w-[220px]">
       {/* Logo */}
-      <div className="px-2 py-4 mb-2">
-        <span className="text-2xl font-bold gradient-text tracking-tight">StitchOpt</span>
+      <Link href="/" className="px-2 py-4 mb-2 block group">
+        <span className="text-2xl font-bold gradient-text tracking-tight group-hover:opacity-80 transition-opacity">StitchOpt</span>
         <div className="text-xs text-slate-500 mt-0.5 capitalize">{user.role} Portal</div>
-      </div>
+      </Link>
 
       {/* Nav links */}
       <nav className="flex flex-col gap-1 flex-1">

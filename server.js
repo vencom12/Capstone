@@ -96,6 +96,9 @@ if (hasFrontendBuild) {
     console.log('[OK] Serving optimized Next.js frontend from /frontend/out');
     app.use(express.static(frontendPath));
     
+    // Redirect legacy index.html to /
+    app.get('/index.html', (req, res) => res.redirect(301, '/'));
+
     // Handle SPA routing: forward all non-API requests to index.html
     app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
