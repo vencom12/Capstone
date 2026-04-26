@@ -664,7 +664,7 @@ th, td {
         overflow: visible !important;
     }
 
-    main, .right-panel {
+    main {
         height: auto !important;
         min-height: 0 !important;
         overflow: visible !important; 
@@ -795,7 +795,14 @@ th, td {
     }
 
     .right-panel {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
         width: 85% !important;
+        height: 100vh !important;
+        z-index: 10000 !important;
+        transform: translateX(100%);
+        display: flex !important;
     }
 
     /* Dim the background when drawer is open */
