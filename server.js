@@ -85,30 +85,35 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+const fs = require('fs');
 
-// Emergency PWA Reset route
-app.get('/reset-pwa', (req, res) => {
-    res.send(`
-        <script>
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    for(let registration of registrations) { registration.unregister(); }
-                    caches.keys().then(names => { for (let name of names) caches.delete(name); });
-                    alert('PWA Reset Complete. Redirecting to home...');
-                    window.location.href = '/';
-                });
-            } else {
-                window.location.href = '/';
-            }
-        </script>
-    `);
-});
+// --- Production Static Assets ---
+// Check if the Next.js production build exists
+const frontendPath = path.join(__dirname, 'frontend', 'out');
+const hasFrontendBuild = fs.existsSync(frontendPath);
 
-// Default route: Serve index.html from public
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+if (hasFrontendBuild) {
+    console.log('[OK] Serving optimized Next.js frontend from /frontend/out');
+    app.use(express.static(frontendPath));
+    
+    // Handle SPA routing: forward all non-API requests to index.html
+    app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+        res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+} else {
+    console.warn('[WARN] No Next.js build found. Falling back to legacy public files.');
+    // Development/Fallback: serve legacy public files
+    app.use(express.static(path.join(__dirname, 'public')));
+    app.get('/', (req, res) => {
+        const legacyIndex = path.join(__dirname, 'public', 'index.html');
+        if (fs.existsSync(legacyIndex)) {
+            res.sendFile(legacyIndex);
+        } else {
+            res.send('StitchOpt Server is running. Please build the frontend to see the UI.');
+        }
+    });
+}
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
 
@@ -117,20 +122,17 @@ app.use((req, res, next) => {
     next();
 });
 
-// MongoDB Connection
-const fs = require('fs');
-function logErr(msg) { fs.appendFileSync('server_log.txt', new Date().toISOString() + ' ' + msg + '\n'); }
+// MongoDB Connection - Optimized for Atlas Free Cluster
+const dbOptions = {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4, // Force IPv4
+    maxPoolSize: 10 // Recommended for free tier
+};
 
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
-        const msg = 'Connected to Database: ' + process.env.MONGODB_URI;
-        console.log(msg);
-        logErr(msg);
-    })
-    .catch(err => {
-        console.error('CRITICAL: Could not connect to MongoDB...', err);
-        logErr('CRITICAL: Could not connect to MongoDB... ' + err.message);
-    });
+mongoose.connect(process.env.MONGODB_URI, dbOptions)
+    .then(() => console.log('Connected to MongoDB Atlas'))
+    .catch(err => console.error('CRITICAL: MongoDB connection failed:', err));
 
 // --- Auth Routes ---
 

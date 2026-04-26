@@ -8,7 +8,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
+  output: 'export',
   images: {
+    unoptimized: true, // Required for static export to support next/image without a server
     remotePatterns: [
       {
         protocol: 'https',
