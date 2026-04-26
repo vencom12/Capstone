@@ -12,11 +12,11 @@ export type Role = 'customer' | 'admin' | 'employee';
 export async function getSession(): Promise<User | null> {
   try {
     const { user } = await authApi.me();
-    // me() only returns id + role, so username needs a separate field
-    // We'll store username in sessionStorage as a supplement
-    const cached = getStoredUser();
-    return { ...user, username: cached?.username ?? '' };
+    // Persist in memory for current session
+    _user = user;
+    return user;
   } catch {
+    _user = null;
     return null;
   }
 }

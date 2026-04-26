@@ -202,8 +202,14 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Session validation — called by AuthGuard on every page load
-app.get('/api/auth/me', auth(), (req, res) => {
-    res.json({ user: { id: req.user.id, role: req.user.role } });
+app.get('/api/auth/me', auth(), async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('username role');
+        if (!user) return res.status(401).json({ message: 'User not found' });
+        res.json({ user: { id: user._id, username: user.username, role: user.role } });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 app.put('/api/auth/profile', auth(), async (req, res) => {

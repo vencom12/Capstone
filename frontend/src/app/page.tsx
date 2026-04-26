@@ -29,13 +29,18 @@ export default function StorefrontPage() {
     // Initial data fetch
     const load = async () => {
       try {
+        const userSession = await getSession();
+        if (userSession) {
+          setUser(userSession);
+          toast(`Welcome back, ${userSession.username}!`, 'success');
+        }
+        
         const [prodList, favList] = await Promise.all([
           productsApi.getAll(),
-          getStoredUser() ? favoritesApi.getAll().catch(() => []) : Promise.resolve([])
+          userSession ? favoritesApi.getAll().catch(() => []) : Promise.resolve([])
         ]);
         setProducts(prodList);
         setFavorites(favList.map(f => f._id));
-        setUser(getStoredUser());
       } catch (err) {
         console.error(err);
       } finally {
