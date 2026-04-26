@@ -69,7 +69,10 @@ const authLimiter = rateLimit({
 app.use('/api/auth/', authLimiter);
 
 // Core Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
@@ -146,7 +149,7 @@ app.post('/api/auth/register', async (req, res) => {
         logErr('User registered successfully');
 
         const token = jwt.sign({ id: user._id, role: 'customer' }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        
+
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -163,21 +166,25 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, rememberMe } = req.body;
         const user = await User.findOne({ $or: [{ email: email }, { username: email }] });
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        
-        res.cookie('token', token, {
+        // Remember Me: 30-day token vs. 1-day session token
+        const expiresIn = rememberMe ? '30d' : '1d';
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn });
+
+        const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
-        });
+            sameSite: 'Strict',
+            // Persistent cookie if rememberMe; session cookie (no maxAge) otherwise
+            ...(rememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {})
+        };
+        res.cookie('token', token, cookieOptions);
 
         res.json({ user: { id: user._id, username: user.username, role: user.role } });
     } catch (err) {
@@ -186,8 +193,17 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-    res.clearCookie('token');
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+    });
     res.json({ message: 'Logged out successfully' });
+});
+
+// Session validation — called by AuthGuard on every page load
+app.get('/api/auth/me', auth(), (req, res) => {
+    res.json({ user: { id: req.user.id, role: req.user.role } });
 });
 
 app.put('/api/auth/profile', auth(), async (req, res) => {
@@ -197,7 +213,7 @@ app.put('/api/auth/profile', auth(), async (req, res) => {
         const userId = req.user.id;
 
         // Check if username/email already taken by someone ELSE
-        const existingUser = await User.findOne({ 
+        const existingUser = await User.findOne({
             $or: [{ username }, { email }],
             _id: { $ne: userId }
         });
@@ -331,25 +347,25 @@ app.post('/api/admin/users', auth(['admin']), async (req, res) => {
 app.put('/api/admin/users/:id', auth(['admin']), async (req, res) => {
     try {
         const { username, email, role, password } = req.body;
-        
+
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         if (username) user.username = username;
         if (email) user.email = email;
         if (role) user.role = role;
-        
+
         // If password is provided, trigger pre-save hook to hash it securely
         if (password && password.trim() !== '') {
             user.password = password;
         }
 
         await user.save();
-        
+
         // Strip password before returning
         const safeUser = user.toObject();
         delete safeUser.password;
-        
+
         res.json(safeUser);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -551,19 +567,25 @@ app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
         // 1. Monthly Order Trends
         const orderTrends = await Order.aggregate([
             { $match: { date: { $gte: twelveMonthsAgo } } },
-            { $project: { 
-                date: 1, 
-                orderTotal: { $reduce: {
-                    input: "$items",
-                    initialValue: 0,
-                    in: { $add: ["$$value", { $multiply: ["$$this.price", "$$this.quantity"] }] }
-                }}
-            }},
-            { $group: {
-                _id: { year: { $year: "$date" }, month: { $month: "$date" } },
-                count: { $sum: 1 },
-                revenue: { $sum: "$orderTotal" }
-            }},
+            {
+                $project: {
+                    date: 1,
+                    orderTotal: {
+                        $reduce: {
+                            input: "$items",
+                            initialValue: 0,
+                            in: { $add: ["$$value", { $multiply: ["$$this.price", "$$this.quantity"] }] }
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: { year: { $year: "$date" }, month: { $month: "$date" } },
+                    count: { $sum: 1 },
+                    revenue: { $sum: "$orderTotal" }
+                }
+            },
             { $sort: { "_id.year": 1, "_id.month": 1 } }
         ]);
 
@@ -596,10 +618,12 @@ app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const trafficStats = await SiteTraffic.aggregate([
             { $match: { timestamp: { $gte: thirtyDaysAgo } } },
-            { $group: {
-                _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
-                visits: { $sum: 1 }
-            }},
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
+                    visits: { $sum: 1 }
+                }
+            },
             { $sort: { _id: 1 } }
         ]);
 
