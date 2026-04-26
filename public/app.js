@@ -216,9 +216,9 @@ const StitchAI = {
 
     async sendMessage(message) {
         if (!message.trim()) return;
-        
+
         this.appendMessage('user', message);
-        
+
         // Simulated AI thinking delay
         setTimeout(async () => {
             const response = await this.generateResponse(message);
@@ -243,7 +243,7 @@ const StitchAI = {
         const orders = await State.getOrders();
         const activeOrders = orders.filter(o => o.status !== 'Completed');
         if (activeOrders.length === 0) return "The production queue is currently empty. We are ready for new designs!";
-        
+
         const groups = {};
         activeOrders.forEach(o => {
             if (!groups[o.design]) groups[o.design] = 0;
@@ -252,9 +252,9 @@ const StitchAI = {
 
         const designKeys = Object.keys(groups);
         let advice = `I've analyzed the ${activeOrders.length} active orders. `;
-        
+
         if (designKeys.length < activeOrders.length) {
-            const bestBatch = designKeys.sort((a,b) => groups[b] - groups[a])[0];
+            const bestBatch = designKeys.sort((a, b) => groups[b] - groups[a])[0];
             advice += `To maximize productivity, I recommend **batching the ${groups[bestBatch]} orders for "${bestBatch}"**. This reduces machine setup time by 15%. `;
         } else {
             advice += "Current orders are diverse. Ensure all thread colors are staged for quick changeovers. ";
@@ -270,7 +270,7 @@ const StitchAI = {
     async updateAdviceWidget() {
         const adviceContainer = document.getElementById('ai-production-advice');
         if (!adviceContainer) return;
-        
+
         const advice = await this.getQueueAnalysis();
         adviceContainer.innerHTML = `
             <div style="display:flex; gap:12px; align-items:center;">
@@ -291,7 +291,7 @@ const StitchAI = {
         msgDiv.style.marginBottom = '12px';
         msgDiv.style.fontSize = '0.9rem';
         msgDiv.style.maxWidth = '85%';
-        
+
         if (type === 'user') {
             msgDiv.style.background = 'var(--primary)';
             msgDiv.style.color = 'white';
@@ -513,17 +513,17 @@ const Actions = {
         }
         const originalFavorites = JSON.parse(JSON.stringify(State._cache.favorites || []));
         const willBeFav = !isFavorite;
-        
+
         // --- Optimistic UI Update ---
         if (!State._cache.favorites) State._cache.favorites = [];
-        
+
         if (willBeFav) {
             const prod = State._cache.products?.find(p => p._id === productId);
             if (prod) State._cache.favorites.push(prod);
         } else {
             State._cache.favorites = State._cache.favorites.filter(f => f._id !== productId);
         }
-        
+
         // Toggle ALL matching heart buttons across the entire page
         // (covers both product grid and favorites tab)
         document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`).forEach(btn => {
@@ -574,7 +574,7 @@ const Actions = {
     },
     async updateOrder(id, orderData) {
         const originalOrders = JSON.parse(JSON.stringify(State._cache.orders || []));
-        
+
         // --- Optimistic Update ---
         const order = State._cache.orders.find(o => o._id === id);
         if (order) {
@@ -590,7 +590,7 @@ const Actions = {
                 credentials: 'include',
                 body: JSON.stringify(orderData)
             });
-            
+
             if (response.ok) {
                 // Silently sync cache — optimistic UI is already correct
                 silentCacheSync();
@@ -610,7 +610,7 @@ const Actions = {
     },
     async batchUpdateStatus(orderIds, status) {
         const originalOrders = JSON.parse(JSON.stringify(State._cache.orders));
-        
+
         // --- Optimistic Update ---
         orderIds.forEach(id => {
             const order = State._cache.orders.find(o => o._id === id);
@@ -664,7 +664,7 @@ const Actions = {
                 credentials: 'include',
                 body: JSON.stringify(statusData)
             });
-            
+
             if (response.ok) {
                 silentCacheSync();
                 return true;
@@ -687,7 +687,7 @@ const AdminActions = {
 
     async createUser(userData) {
         const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
-        
+
         // --- Optimistic Update ---
         const tempUser = {
             _id: `temp-${Date.now()}`,
@@ -706,7 +706,7 @@ const AdminActions = {
                 credentials: 'include',
                 body: JSON.stringify(userData)
             });
-            
+
             if (response.ok) {
                 // Silently sync cache to get real DB ID
                 silentCacheSync();
@@ -727,7 +727,7 @@ const AdminActions = {
 
     async updateUser(id, userData) {
         const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
-        
+
         // --- Optimistic Update ---
         const userToEdit = State._cache.users?.find(u => u._id === id);
         if (userToEdit) {
@@ -764,7 +764,7 @@ const AdminActions = {
 
     async deleteUser(id) {
         const originalUsers = JSON.parse(JSON.stringify(State._cache.users || []));
-        
+
         // --- Optimistic Update ---
         if (State._cache.users) {
             State._cache.users = State._cache.users.filter(u => u._id !== id);
@@ -797,7 +797,7 @@ const AdminActions = {
 const EmployeeActions = {
     async createProduct(productData) {
         const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
-        
+
         // --- Optimistic Update ---
         const tempProduct = {
             _id: `temp-${Date.now()}`,
@@ -816,7 +816,7 @@ const EmployeeActions = {
                 credentials: 'include',
                 body: JSON.stringify(productData)
             });
-            
+
             if (response.ok) {
                 // Silently sync cache to get real DB ID
                 silentCacheSync();
@@ -837,7 +837,7 @@ const EmployeeActions = {
 
     async updateProduct(id, productData) {
         const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
-        
+
         // --- Optimistic Update ---
         const prod = State._cache.products?.find(p => p._id === id);
         if (prod) {
@@ -871,7 +871,7 @@ const EmployeeActions = {
 
     async deleteProduct(id) {
         const originalProducts = JSON.parse(JSON.stringify(State._cache.products || []));
-        
+
         // --- Optimistic Update ---
         if (State._cache.products) {
             State._cache.products = State._cache.products.filter(p => p._id !== id);
@@ -955,9 +955,9 @@ async function refreshDashboardState() {
         // Fallback: Clear initial load block to render cached or empty state
         if (State._isInitialLoad) {
             State._isInitialLoad = false;
-            updateUI(); 
+            updateUI();
         }
-        
+
         // Only show toast if user is actually logged in, otherwise it's just guest browsing
         if (AuthManager.isAuthenticated()) {
             showToast('System synchronization delay. Retrying...');
@@ -1029,7 +1029,7 @@ function updateBasketUI() {
     const basketCount = document.getElementById('basket-count');
     const mobileBasketCount = document.getElementById('mobile-basket-count');
     const headerBasketCount = document.getElementById('header-basket-count');
-    
+
     if (basketCount) basketCount.innerText = `${basket.length} Items`;
     if (mobileBasketCount) mobileBasketCount.innerText = basket.length;
     if (headerBasketCount) headerBasketCount.innerText = basket.length;
@@ -1092,7 +1092,7 @@ function updateBasketUI() {
 function updateUI() {
     const basket = State.getBasket();
     const machine = State.getMachineState();
-    
+
     // Show Skeletons on Initial Load
     if (State._isInitialLoad) {
         renderSkeletons();
@@ -1116,7 +1116,7 @@ function updateUI() {
         const revLabel = labels.find(el => el.innerText.includes('Revenue'));
         const revEl = revLabel ? revLabel.previousElementSibling : null;
         if (revEl) revEl.innerText = `$${(analytics.revenue / 1000).toFixed(1)}k`;
-        
+
         const activeOrdersLabel = labels.find(el => el.innerText.includes('Active Orders'));
         const activeOrdersEl = activeOrdersLabel ? activeOrdersLabel.previousElementSibling : null;
         if (activeOrdersEl) activeOrdersEl.innerText = analytics.activeOrders;
@@ -1156,7 +1156,8 @@ function updateUI() {
                         </div>
                     </div>
                 </div>
-            `;}).join('');
+            `;
+            }).join('');
         } else {
             newHtml = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
@@ -1387,11 +1388,11 @@ function updateUI() {
     const inventoryMidnight = document.getElementById('inv-midnight');
     const midItem = inventory.find(i => i.item === 'Midnight Blue');
     if (inventoryMidnight && midItem) inventoryMidnight.innerText = `${midItem.count} Cones`;
-    
+
     const inventoryGold = document.getElementById('inv-gold');
     const goldItem = inventory.find(i => i.item === 'Gold Metallic');
     if (inventoryGold && goldItem) inventoryGold.innerText = `${goldItem.count} Cones`;
-    
+
     const emergencyBtn = document.getElementById('emergency-stop-btn');
     if (emergencyBtn) {
         emergencyBtn.innerText = machine.status === 'STOPPED' ? 'Resume Machine' : 'Emergency Stop';
@@ -1431,7 +1432,7 @@ function updateUI() {
     if (settingsName && settingsEmail && AuthManager.isAuthenticated()) {
         const session = AuthManager.getSession();
         settingsName.value = session.user.username;
-        settingsEmail.value = session.user.email || ''; 
+        settingsEmail.value = session.user.email || '';
     }
 
     // Profile Sidebar Updates
@@ -1464,15 +1465,15 @@ async function renderAdminAnalytics() {
     const totalRevenue = data.orderTrends.reduce((sum, d) => sum + d.revenue, 0);
     const totalOrders = data.orderTrends.reduce((sum, d) => sum + d.count, 0);
     const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : '0.00';
-    
+
     document.getElementById('analytics-total-visits').innerText = totalVisits.toLocaleString();
     document.getElementById('analytics-avg-order').innerText = `$${avgOrderValue}`;
-    
+
     // Find Peak Season
     if (data.orderTrends.length > 0) {
-        const peak = [...data.orderTrends].sort((a,b) => b.count - a.count)[0];
+        const peak = [...data.orderTrends].sort((a, b) => b.count - a.count)[0];
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        document.getElementById('analytics-peak-season').innerText = `${monthNames[peak._id.month-1]} ${peak._id.year}`;
+        document.getElementById('analytics-peak-season').innerText = `${monthNames[peak._id.month - 1]} ${peak._id.year}`;
     }
 
     // --- Charting Helpers ---
@@ -1548,7 +1549,7 @@ async function renderAdminAnalytics() {
             options: {
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
-                scales: { 
+                scales: {
                     x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     y: { grid: { display: false } }
                 }
@@ -1572,7 +1573,7 @@ async function renderAdminAnalytics() {
             options: {
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
-                scales: { 
+                scales: {
                     x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     y: { grid: { display: false } }
                 }
@@ -1597,7 +1598,7 @@ async function renderAdminAnalytics() {
                 }]
             },
             options: {
-                scales: { 
+                scales: {
                     y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     x: { grid: { display: false } }
                 },
@@ -1679,7 +1680,7 @@ function renderSkeletons() {
 document.addEventListener('DOMContentLoaded', async () => {
     await updateUI();
     StitchAI.init();
-    
+
     // --- Socket.IO Real-Time Client ---
     const socketScript = document.createElement('script');
     socketScript.src = '/socket.io/socket.io.js';
@@ -1708,7 +1709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isFav = btn.dataset.fav === 'true';
             Actions.toggleFavorite(id, isFav);
         }
-        
+
         if (e.target.classList.contains('add-to-basket')) {
             const btn = e.target;
             const item = {
@@ -1719,19 +1720,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const qty = qtyInput && qtyInput.classList.contains('qty-input') ? qtyInput.value : 1;
             Actions.addToBasket(item, qty);
         }
-        
+
         if (e.target.classList.contains('qty-btn')) {
             const btn = e.target;
             const id = btn.dataset.id;
             const change = btn.classList.contains('plus') ? 1 : -1;
             Actions.updateBasketQuantity(id, change);
         }
-        
+
         if (e.target.classList.contains('remove-btn')) {
             Actions.removeFromBasket(e.target.dataset.id);
         }
     });
-    
+
     // Form Listeners
     const staffForm = document.getElementById('create-staff-form');
     if (staffForm) {
@@ -1739,20 +1740,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const isEdit = staffForm.dataset.mode === 'edit';
             const userId = staffForm.dataset.id;
-            
+
             const userData = {
                 username: document.getElementById('staff-username').value,
                 email: document.getElementById('staff-email').value,
                 role: document.getElementById('staff-role').value
             };
-            
+
             // Allow password to be explicitly included if user typed something in
             const passVal = document.getElementById('staff-password').value;
             if (!isEdit || passVal.trim() !== '') {
                 userData.password = passVal;
             }
 
-            const success = isEdit 
+            const success = isEdit
                 ? await AdminActions.updateUser(userId, userData)
                 : await AdminActions.createUser(userData);
 
@@ -1773,10 +1774,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (productForm) {
         productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const imageFile = document.getElementById('product-image-file').files[0];
             let imageUrl = productForm.dataset.mode === 'edit' ? productForm.dataset.image : 'https://via.placeholder.com/200';
-            
+
             if (imageFile) {
                 try {
                     imageUrl = await UI.readImageAsBase64(imageFile);
@@ -1795,8 +1796,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const isEdit = productForm.dataset.mode === 'edit';
             const productId = productForm.dataset.id;
-            
-            const success = isEdit 
+
+            const success = isEdit
                 ? await EmployeeActions.updateProduct(productId, productData)
                 : await EmployeeActions.createProduct(productData);
 
@@ -1821,7 +1822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (e.target.id === 'checkout-btn') Actions.checkout();
         if (e.target.id === 'emergency-stop-btn') Actions.toggleEmergencyStop();
-        
+
         // Admin Staff Create Button Reset
         if (e.target.innerText === '+ Create Staff Account') {
             const form = document.getElementById('create-staff-form');
@@ -1836,7 +1837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.querySelector('#staff-modal h3').innerText = 'Create Staff Account';
             }
         }
-        
+
         // Product Create Button Reset
         if (e.target.innerText === '+ Create New Design') {
             const form = document.getElementById('create-product-form');
@@ -1855,12 +1856,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = editOrderBtn.dataset;
             const form = document.getElementById('edit-order-form');
             form.dataset.id = data.id;
-            
+
             document.getElementById('edit-order-client').value = data.client;
             document.getElementById('edit-order-design').value = data.design;
             document.getElementById('edit-order-status').value = data.status;
             document.getElementById('edit-order-progress').value = data.progress;
-            
+
             // Re-style status buttons to show active status
             document.querySelectorAll('.status-btn').forEach(btn => {
                 if (btn.dataset.value === data.status) {
@@ -1873,7 +1874,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn.style.borderColor = 'var(--border-glass)';
                 }
             });
-            
+
             document.querySelector('#edit-order-modal h3').innerText = `Edit Order #${data.orderid}`;
             UI.toggleModal('edit-order-modal');
         }
@@ -1911,14 +1912,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (statusBtn) {
             const statusInput = document.getElementById('edit-order-status');
             const progressInput = document.getElementById('edit-order-progress');
-            
+
             statusInput.value = statusBtn.dataset.value;
-            
+
             // Map progress
             if (statusProgressMap[statusInput.value] !== undefined) {
                 progressInput.value = statusProgressMap[statusInput.value];
             }
-            
+
             // Visually update buttons
             document.querySelectorAll('.status-btn').forEach(btn => {
                 if (btn === statusBtn) {
@@ -1941,12 +1942,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             form.dataset.mode = 'edit';
             form.dataset.id = data.id;
             form.dataset.image = data.image;
-            
+
             document.getElementById('product-name').value = data.name;
             document.getElementById('product-price').value = data.price;
             document.getElementById('product-tag').value = data.tag;
             document.getElementById('product-desc').value = data.desc;
-            
+
             document.querySelector('#create-product-modal h2').innerText = 'Edit Design';
             UI.toggleModal('create-product-modal');
         }
@@ -1969,7 +1970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.id === 'settings-save-btn') {
             const username = document.getElementById('settings-username').value;
             const email = document.getElementById('settings-email').value;
-            
+
             AuthManager.updateProfile({ username, email })
                 .then(() => {
                     showToast('Profile updated successfully');
@@ -1987,19 +1988,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const form = document.getElementById('create-staff-form');
             form.dataset.mode = 'edit';
             form.dataset.id = data.id;
-            
+
             document.getElementById('staff-username').value = data.username;
             document.getElementById('staff-email').value = data.email;
             document.getElementById('staff-role').value = data.role;
-            
+
             // Clear password field and show it so admin can supply a new one.
             const passInput = document.getElementById('staff-password');
             passInput.value = '';
             passInput.placeholder = 'Leave blank to retain original';
-            
+
             const passField = passInput.closest('.input-group');
             if (passField) passField.style.display = 'block';
-            
+
             document.querySelector('#staff-modal h3').innerText = 'Edit User Account';
             UI.toggleModal('staff-modal');
         }
@@ -2020,12 +2021,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const role = batchBtn.id.startsWith('admin') ? 'admin' : 'employee';
             const statusSelect = document.getElementById(`${role}-batch-status`);
             const status = statusSelect.value;
-            
+
             if (!status) return showToast('Please select a status first');
-            
+
             const selectedIds = Array.from(document.querySelectorAll('.order-select-checkbox:checked')).map(cb => cb.dataset.id);
             if (selectedIds.length === 0) return showToast('No orders selected');
-            
+
             if (confirm(`Update ${selectedIds.length} orders to "${status}"?`)) {
                 const success = await Actions.batchUpdateStatus(selectedIds, status);
                 if (success) {
@@ -2051,7 +2052,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 status: document.getElementById('edit-order-status').value,
                 progress: parseInt(document.getElementById('edit-order-progress').value)
             };
-            
+
             const success = await Actions.updateOrder(id, orderData);
             if (success) {
                 showToast('Order updated successfully');
