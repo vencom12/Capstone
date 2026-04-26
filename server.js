@@ -20,7 +20,12 @@ const Product = require('./models/Product');
 const SiteTraffic = require('./models/SiteTraffic');
 const auth = require('./middleware/auth');
 
+const fs = require('fs');
 const app = express();
+
+// --- CRITICAL: Legacy Redirect (Must be first) ---
+app.all('/index.html', (req, res) => res.redirect(301, '/'));
+
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
@@ -84,9 +89,6 @@ app.use((req, res, next) => {
     res.set('Expires', '0');
     next();
 });
-
-// --- Legacy Redirects ---
-app.get('/index.html', (req, res) => res.redirect(301, '/'));
 
 // --- Production Static Assets ---
 // Check if the Next.js production build exists
