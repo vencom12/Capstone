@@ -90,28 +90,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- Production Static Assets ---
-// Check if the Next.js production build exists
-const frontendPath = path.join(__dirname, 'frontend', 'out');
-const hasFrontendBuild = fs.existsSync(frontendPath);
+// --- Legacy Static Assets ---
+app.use(express.static(path.join(__dirname, 'public')));
 
-if (hasFrontendBuild) {
-    console.log('[OK] Serving optimized Next.js frontend from /frontend/out');
-    app.use(express.static(frontendPath));
-    
-    // Handle SPA routing: forward all non-API requests to index.html
-    app.get('*', (req, res, next) => {
-        if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
-        res.sendFile(path.join(frontendPath, 'index.html'));
-    });
-} else {
-    console.warn('[WARN] No Next.js build found. Falling back to legacy public files.');
-    // Development/Fallback: serve legacy public files
-    app.use(express.static(path.join(__dirname, 'public')));
-    app.get('/', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    });
-}
+// Default route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Fallback for .html routes (for consistency)
+app.get('/:page.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', `${req.params.page}.html`));
+});
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
 
