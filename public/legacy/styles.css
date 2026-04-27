@@ -1283,3 +1283,9 @@ td {
         height: 150px !important;
     }
 }
+
+
+/* Force ALL storefront containers to never scroll internally */
+.storefront-container, .product-grid, #storefront-grid { height: auto !important; min-height: unset !important; max-height: none !important; overflow: visible !important; }
+
+html, body { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; }
