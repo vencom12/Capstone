@@ -61,32 +61,67 @@
         </div>
     </header>
 
-    <!-- Main Catalog & Hero combined -->
-    <div class="storefront-container" style="height: auto !important; overflow: visible !important; display: block !important;">
-        <!-- Hero Section -->
-        <section class="hero-section animate-fade">
-            <h2>Intelligence in Every Stitch.</h2>
-            <p style="color: var(--text-dim); max-width: 600px; margin: 0 auto 40px; font-size: 1.1rem;">
-                <!--This is to be revised based on the liking of the client-->
-                Explore our curated catalog of professional embroidery designs optimized for high-speed production.
-            </p>
-            <div id="install-button-container" style="display: none;">
-                <!-- There is an error in the hero section of the public screen -->
-                <button id="install-button" class="btn btn-primary"
-                    style="background: rgba(168, 85, 247, 0.15); color: var(--accent); border: 1px solid rgba(168, 85, 247, 0.3);">
-                    Install Desktop App
-                </button>
+    <!-- Main Catalog & Hero Dashboard Layout -->
+    <div class="storefront-container storefront-dashboard-layout">
+        
+        <!-- Left Sidebar (Hero & Categories) -->
+        <aside class="sidebar storefront-sidebar glass">
+            <div class="sidebar-hero-content">
+                <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1; letter-spacing: -1px;">Intelligence in Every Stitch.</h2>
+                <p style="color: var(--text-dim); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5;">
+                    <!--This is to be revised based on the liking of the client-->
+                    Explore our curated catalog of professional embroidery designs optimized for high-speed production.
+                </p>
+                <div id="install-button-container" style="display: none; margin-bottom: 30px;">
+                    <button id="install-button" class="btn btn-primary"
+                        style="background: rgba(168, 85, 247, 0.15); color: var(--accent); border: 1px solid rgba(168, 85, 247, 0.3); width: 100%; font-size: 0.9rem;">
+                        Install Desktop App
+                    </button>
+                </div>
             </div>
-        </section>
 
-        <div class="product-grid" id="storefront-grid" style="height: auto !important; max-height: none !important; overflow: visible !important;">
-            <!-- Dynamic products -->
-            <div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-dim);">
-                <div class="skeleton-img" style="max-width: 300px; margin: 0 auto 20px;"></div>
-                <p>Loading the design network...</p>
+            <div class="sidebar-categories">
+                <h3 style="font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-left: 10px;">Categories</h3>
+                <ul class="nav-links category-links">
+                    <li>
+                        <label>
+                            <span style="font-weight: 600; color: var(--primary);">All Designs</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Premium Embroidery</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Apparel & Fashion</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Towels & Linens</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Patches & Logos</span>
+                        </label>
+                    </li>
+                </ul>
             </div>
-        </div>
-    <!-- End of storefront-container -->
+        </aside>
+
+        <!-- Right Main Content -->
+        <main class="storefront-main">
+            <div class="product-grid" id="storefront-grid">
+                <!-- Dynamic products -->
+                <div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-dim);">
+                    <div class="skeleton-img" style="max-width: 300px; margin: 0 auto 20px;"></div>
+                    <p>Loading the design network...</p>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- Auth Overlay -->
