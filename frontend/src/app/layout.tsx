@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} h-full antialiased`}>
-      <body className="min-h-full font-outfit">
+    <html lang="en" className={`${outfit.variable} antialiased`}>
+      <body className="font-outfit">
         <ToastProvider>
           {children}
         </ToastProvider>

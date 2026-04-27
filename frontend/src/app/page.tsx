@@ -96,14 +96,14 @@ export default function StorefrontPage() {
   };
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="relative">
       <Header 
         user={user} 
         basketCount={basket.reduce((sum, i) => sum + i.quantity, 0)}
         onBasketOpen={() => setBasketOpen(true)}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
         <HeroBanner />
 
         <div id="shop-section" className="scroll-mt-24 space-y-8">

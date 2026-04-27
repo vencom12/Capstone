@@ -11,11 +11,13 @@
   html {
     font-family: 'Outfit', 'Inter', sans-serif;
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   body {
     background: radial-gradient(ellipse at top, #1e1b4b 0%, #0f172a 60%);
     min-height: 100vh;
     color: white;
+    overflow-x: hidden;
   }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: #080e1a; }

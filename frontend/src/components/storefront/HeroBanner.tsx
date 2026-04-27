@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 
 export default function HeroBanner() {
   return (
-    <section className="relative overflow-hidden rounded-3xl mb-12">
+    <section className="relative overflow-hidden rounded-3xl">
       {/* Animated Background */}
       <div className="absolute inset-0 bg-hero-gradient">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.15)_0%,transparent_50%)]"></div>
