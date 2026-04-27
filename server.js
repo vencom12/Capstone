@@ -90,20 +90,19 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- Legacy Static Assets ---
-// Serve Framework Frontend (Next.js Export)
-app.use(express.static(path.join(__dirname, 'frontend', 'out'), { extensions: ['html'] }));
-// Fallback to legacy public for assets (icons, etc)
+// --- Serve Vanilla Frontend ---
+app.use(express.static(path.join(__dirname, 'public', 'legacy'), { extensions: ['html'] }));
+// Fallback for assets in public root
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Root route serves the Next.js storefront
+// Root route serves the legacy storefront
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'out', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'legacy', 'index.html'));
 });
 
-// Fallback for .html routes (for consistency)
+// Fallback for .html routes
 app.get('/:page.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'out', `${req.params.page}.html`));
+    res.sendFile(path.join(__dirname, 'public', 'legacy', `${req.params.page}.html`));
 });
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
