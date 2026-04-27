@@ -1069,6 +1069,8 @@ td {
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 40px 100px;
+    height: auto;
+    overflow-y: visible;
 }
 
 /* Auth Section Overlay */
