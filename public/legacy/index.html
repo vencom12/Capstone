@@ -244,30 +244,6 @@
                 }
             }
         });
-
-        (function(){
-  const navItems = document.querySelectorAll('.storefront-sidebar .nav-item, #storefront-sidebar .nav-item');
-  navItems.forEach(item => {
-    // make keyboard-activatable if not native button/link
-    item.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        item.click();
-      }
-    });
-
-    item.addEventListener('click', () => {
-      // toggle active class (single-select)
-      navItems.forEach(i => { i.classList.remove('active'); i.setAttribute('aria-pressed','false'); });
-      item.classList.add('active');
-      item.setAttribute('aria-pressed','true');
-
-      // If on mobile and you want to close a drawer, you can dispatch a close event:
-      // document.getElementById('storefront-sidebar')?.classList.remove('open');
-      // document.getElementById('storefront-sidebar-overlay')?.hidden = true;
-    });
-  });
-})();
     </script>
 </body>
 
