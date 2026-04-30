@@ -65,48 +65,52 @@
     <div class="storefront-container storefront-dashboard-layout">
         
         <!-- Left Sidebar (Hero & Categories) -->
-        <!-- Sidebar toggle for mobile -->
-        <button id="sidebar-toggle" class="sidebar-toggle" aria-controls="storefront-sidebar" aria-expanded="false" aria-label="Open categories">
-        <span class="hamburger" aria-hidden="true"></span>
-        </button>
-
-            <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
-
-        <aside id="storefront-sidebar" class="sidebar storefront-sidebar glass" role="complementary" aria-hidden="true">
-            <div class="sidebar-header">
-                <h2 class="sidebar-title">Intelligence in Every Stitch.</h2>
-                <button id="sidebar-close" class="sidebar-close" aria-label="Close sidebar">&times;</button>
-            </div>
-
+        <aside class="sidebar storefront-sidebar glass">
             <div class="sidebar-hero-content">
-                <p class="sidebar-subhead">
-                Explore our curated catalog of professional embroidery designs optimized for high-speed production.
+                <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1; letter-spacing: -1px;">Intelligence in Every Stitch.</h2>
+                <p style="color: var(--text-dim); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5;">
+                    <!--This is to be revised based on the liking of the client-->
+                    Explore our curated catalog of professional embroidery designs optimized for high-speed production.
                 </p>
-                <div id="install-button-container" class="install-container" hidden>
-                <button id="install-button" class="btn btn-primary install-btn">Install Desktop App</button>
+                <div id="install-button-container" style="display: none; margin-bottom: 30px;">
+                    <button id="install-button" class="btn btn-primary"
+                        style="background: rgba(168, 85, 247, 0.15); color: var(--accent); border: 1px solid rgba(168, 85, 247, 0.3); width: 100%; font-size: 0.9rem;">
+                        Install Desktop App
+                    </button>
                 </div>
             </div>
 
             <div class="sidebar-categories">
-                <h3 class="categories-title">Categories</h3>
+                <h3 style="font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-left: 10px;">Categories</h3>
                 <ul class="nav-links category-links">
-                <li><label><span class="cat-label">All Designs</span></label></li>
-                <li><label><span>Premium Embroidery</span></label></li>
-                <li><label><span>Apparel & Fashion</span></label></li>
-                <li><label><span>Towels & Linens</span></label></li>
-                <li><label><span>Patches & Logos</span></label></li>
+                    <li>
+                        <label>
+                            <span style="font-weight: 600; color: var(--primary);">All Designs</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Premium Embroidery</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Apparel & Fashion</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Towels & Linens</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <span>Patches & Logos</span>
+                        </label>
+                    </li>
                 </ul>
             </div>
-
-            <div class="sidebar-profile">
-                <div class="profile-avatar">U</div>
-                <div class="profile-info">
-                <div class="profile-name">Customer</div>
-                <div class="profile-role">Role</div>
-                </div>
-            </div>
-            </aside>
-
+        </aside>
 
         <!-- Right Main Content -->
         <main class="storefront-main">
@@ -240,61 +244,6 @@
                 }
             }
         });
-
-                (function(){
-        const toggle = document.getElementById('sidebar-toggle');
-        const sidebar = document.getElementById('storefront-sidebar');
-        const closeBtn = document.getElementById('sidebar-close');
-        const overlay = document.getElementById('sidebar-overlay');
-        const focusableSelector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-        let lastFocused = null;
-
-        function openSidebar(){
-            lastFocused = document.activeElement;
-            sidebar.classList.add('open');
-            sidebar.setAttribute('aria-hidden','false');
-            toggle.setAttribute('aria-expanded','true');
-            overlay.hidden = false;
-            overlay.setAttribute('aria-hidden','false');
-            document.body.style.overflow = 'hidden';
-            const first = sidebar.querySelector(focusableSelector);
-            if(first) first.focus();
-        }
-
-        function closeSidebar(){
-            sidebar.classList.remove('open');
-            sidebar.setAttribute('aria-hidden','true');
-            toggle.setAttribute('aria-expanded','false');
-            overlay.hidden = true;
-            overlay.setAttribute('aria-hidden','true');
-            document.body.style.overflow = '';
-            if(lastFocused) lastFocused.focus();
-        }
-
-        if(toggle) toggle.addEventListener('click', openSidebar);
-        if(closeBtn) closeBtn.addEventListener('click', closeSidebar);
-        if(overlay) overlay.addEventListener('click', closeSidebar);
-
-        document.addEventListener('keydown', (e) => {
-            if(e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
-            if(e.key === 'Tab' && sidebar.classList.contains('open')) {
-            const focusables = Array.from(sidebar.querySelectorAll(focusableSelector));
-            if(!focusables.length) return;
-            const first = focusables[0];
-            const last = focusables[focusables.length - 1];
-            if(e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-            else if(!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-        });
-
-        // Optional: close on route change or when receiving a BroadcastChannel update
-        const bc = new BroadcastChannel('ui');
-        bc.onmessage = (e) => {
-            // if other tab triggers a UI change that should close the drawer
-            if(e.data && e.data.type === 'close-sidebar') closeSidebar();
-        };
-        })();
-
     </script>
 </body>
 
