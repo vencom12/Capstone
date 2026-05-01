@@ -1212,7 +1212,7 @@ td {
     }
 
     .header-brand h1 {
-        font-size: 1.2rem;
+        display: none; /* hide brand text */
     }
 
     .header-brand svg {
@@ -1225,19 +1225,60 @@ td {
         font-size: 0.8rem;
     }
 
-    .hero-section {
-        padding-top: 150px;
-        /* Space for the taller mobile header */
-        padding-bottom: 40px;
+    /* Hero texts hidden */
+    .hero-section h2,
+    .hero-section p {
+        display: none !important;
     }
 
-    .hero-section h2 {
-        font-size: 2rem;
-        letter-spacing: -1px;
+    .hero-section {
+        padding-top: 150px; /* space for taller mobile header */
+        padding-bottom: 40px;
     }
 
     .storefront-container {
         padding: 0 15px 60px;
+    }
+
+    /* Sidebar becomes centered row of tabs */
+    .storefront-sidebar {
+        position: relative;
+        top: 0;
+        width: 100%;
+        margin: 0 auto 15px auto;
+        padding: 8px 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .category-links {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .category-links li {
+        margin: 0;
+    }
+
+    .category-links label {
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        transition: var(--transition-fast);
+        background: rgba(255,255,255,0.05);
+    }
+
+    .category-links label:hover {
+        background: rgba(255,255,255,0.15);
+        color: white;
     }
 
     .product-grid {
@@ -1283,6 +1324,7 @@ td {
         height: 150px !important;
     }
 }
+
 
 
 /* Storefront Dashboard Layout */
@@ -1351,6 +1393,7 @@ td {
         padding-top: calc(var(--header-height) + 20px);
     }
     
+    /* Sidebar shrinks into centered row of smaller tabs */
     .storefront-sidebar {
         position: static;
         width: 100%;
@@ -1358,8 +1401,51 @@ td {
         max-height: none;
         overflow: visible;
         margin-bottom: 20px;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Hide hero texts */
+    .hero-section h2,
+    .hero-section p {
+        display: none !important;
+    }
+
+    /* Category links shrink */
+    .category-links {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .category-links li {
+        margin: 0;
+    }
+
+    .category-links label {
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75rem; /* smaller text */
+        color: var(--text-dim);
+        transition: var(--transition-fast);
+        background: rgba(255,255,255,0.05);
+    }
+
+    .category-links label:hover {
+        background: rgba(255,255,255,0.15);
+        color: white;
     }
 }
+
 
 /* Force body scrolling and ensure grid expands */
 html, body { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; }
