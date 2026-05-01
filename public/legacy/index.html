@@ -241,21 +241,33 @@
 }
 
 @media (max-width: 1024px) {
-    .storefront-dashboard-layout {
-        flex-direction: column;
-        padding: 20px;
-        padding-top: calc(var(--header-height) + 20px);
-    }
-    
-    .storefront-sidebar {
-        position: static;
-        width: 100%;
-        min-width: 100%;
-        max-height: none;
-        overflow: visible;
-        margin-bottom: 20px;
-    }
+  .storefront-dashboard-layout {
+    display: flex;
+    flex-direction: row; /* keep sidebar on the side */
+  }
+
+  .storefront-sidebar {
+    flex: 0 0 15%; /* occupy 15% of width */
+    max-width: 15%;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .hero-section h2,
+  .hero-section p {
+    display: none !important; /* hide hero texts */
+  }
+
+  .category-links label {
+    padding: 4px 10px;
+    font-size: 0.75rem; /* shrink buttons */
+  }
 }
+
 
 /* Force body scrolling and ensure grid expands */
 html, body { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; }
