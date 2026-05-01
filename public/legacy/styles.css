@@ -1396,9 +1396,9 @@ td {
     /* Sidebar shrinks into centered row of smaller tabs */
     .storefront-sidebar {
         position: static;
-        width: 100%;
-        min-width: 100%;
-        max-height: none;
+        width: 10%;
+        min-width: 10%;
+        max-height: 10vh;
         overflow: visible;
         margin-bottom: 20px;
 
