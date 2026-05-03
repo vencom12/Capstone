@@ -9,8 +9,12 @@ const orderSchema = new mongoose.Schema({
         price: Number,
         quantity: { type: Number, default: 1 }
     }],
-    status: { type: String, default: 'In Queue' },
+    status: { type: String, default: 'Pending Payment' },
     progress: { type: Number, default: 0 },
+    paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
+    paymentMethod: { type: String, enum: ['wallet', 'cash_at_counter', 'stripe_stub', 'paypal_stub', 'none'], default: 'none' },
+    transactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' },
+    totalAmount: { type: Number, default: 0 },
     date: { type: Date, default: Date.now, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }
 });

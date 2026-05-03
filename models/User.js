@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true, minlength: 8 },
     role: { type: String, enum: ['admin', 'employee', 'customer'], default: 'customer' },
+    walletBalance: { type: Number, default: 0 },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     createdAt: { type: Date, default: Date.now, index: true }
 });

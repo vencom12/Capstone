@@ -200,6 +200,70 @@
         </svg>
     </div>
 
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal" style="display: none;">
+        <div class="modal-content glass" style="max-width: 500px; width: 90%;">
+            <header style="margin-bottom: 24px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    Secure Checkout
+                </h2>
+            </header>
+            
+            <div id="payment-order-summary" style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-dim);">
+                    <span>Order Total:</span>
+                    <span id="payment-total-amount" style="color: var(--text-main); font-weight: 700; font-size: 1.2rem;">$0.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-dim);">
+                    <span>Order ID:</span>
+                    <span id="payment-order-id">#0000</span>
+                </div>
+            </div>
+
+            <div class="payment-methods" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Wallet Method -->
+                <button onclick="PaymentManager.process('wallet')" class="glass" style="display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-glass); border-radius: 16px; background: rgba(255,255,255,0.05); color: white; cursor: pointer; text-align: left; transition: all 0.2s;">
+                    <div style="width: 48px; height: 48px; background: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path></svg>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">Wallet Credits</div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);">Pay using your internal credit balance</div>
+                    </div>
+                    <div id="wallet-balance-display" style="padding: 4px 10px; border-radius: 20px; background: var(--primary); font-size: 0.8rem; font-weight: 700;">$0.00</div>
+                </button>
+
+                <!-- Cash Method -->
+                <button onclick="PaymentManager.process('cash')" class="glass" style="display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-glass); border-radius: 16px; background: rgba(255,255,255,0.05); color: white; cursor: pointer; text-align: left; transition: all 0.2s;">
+                    <div style="width: 48px; height: 48px; background: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">Cash at Counter</div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);">Pay manually at the storefront</div>
+                    </div>
+                </button>
+
+                <!-- External Placeholder -->
+                <div style="opacity: 0.5; cursor: not-allowed; display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-glass); border-radius: 16px; background: rgba(255,255,255,0.02); color: white;">
+                    <div style="width: 48px; height: 48px; background: var(--secondary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">External Gateway</div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);">Gcash / Maya (Coming Soon)</div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="UI.toggleModal('payment-modal')" class="btn" style="width: 100%; margin-top: 24px; background: rgba(255,255,255,0.05); color: white;">Cancel Payment</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         // --- Storefront Specific Logic ---

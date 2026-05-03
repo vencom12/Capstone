@@ -18,6 +18,7 @@ const Order = require('./models/Order');
 const Inventory = require('./models/Inventory');
 const Product = require('./models/Product');
 const SiteTraffic = require('./models/SiteTraffic');
+const Transaction = require('./models/Transaction');
 const auth = require('./middleware/auth');
 
 const fs = require('fs');
@@ -477,11 +478,12 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
         const role = req.user.role;
 
         // Run all queries in parallel for maximum speed
-        const [orders, inventory, products, userWithFavorites, totalUsers, totalRevenue, adminUsers] = await Promise.all([
+        const [orders, inventory, products, currentUser, transactions, totalUsers, totalRevenue, adminUsers] = await Promise.all([
             Order.find(role === 'customer' ? { userId } : {}).sort({ date: -1 }).limit(50),
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
-            User.findById(userId).select('favorites').populate('favorites'),
+            User.findById(userId).select('favorites walletBalance').populate('favorites'),
+            Transaction.find(role === 'customer' ? { userId } : {}).sort({ createdAt: -1 }).limit(50),
             // Analytics (Admin/Employee only)
             (role !== 'customer') ? User.countDocuments() : Promise.resolve(0),
             (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }]),
@@ -499,7 +501,9 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
             orders,
             inventory,
             products,
-            favorites: userWithFavorites ? userWithFavorites.favorites : [],
+            favorites: currentUser ? currentUser.favorites : [],
+            walletBalance: currentUser ? currentUser.walletBalance : 0,
+            transactions,
             analytics,
             users: adminUsers
         });
@@ -688,6 +692,103 @@ app.get('/api/admin/analytics', auth(['admin']), async (req, res) => {
     } catch (err) {
         console.error('Analytics Error:', err);
         res.status(500).json({ message: 'Server error fetching analytics' });
+    }
+});
+
+// --- Payment Processing ---
+app.post('/api/payments/process', auth(), async (req, res) => {
+    try {
+        const { orderId, method } = req.body;
+        if (!orderId || !method) {
+            return res.status(400).json({ message: 'Missing orderId or method' });
+        }
+
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        if (order.userId.toString() !== req.user.id) return res.status(403).json({ message: 'Unauthorized' });
+        if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'Order already paid' });
+
+        const amount = order.totalAmount;
+        const receiptId = `RCP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        if (method === 'wallet') {
+            const user = await User.findById(req.user.id);
+            if (user.walletBalance < amount) {
+                return res.status(400).json({ message: `Insufficient wallet balance. You have $${user.walletBalance.toFixed(2)} but need $${amount.toFixed(2)}.` });
+            }
+            // Atomic deduction
+            user.walletBalance -= amount;
+            await user.save();
+
+            order.paymentStatus = 'paid';
+            order.paymentMethod = 'wallet';
+            order.status = 'In Queue';
+            await order.save();
+
+            const tx = new Transaction({ orderId: order._id, userId: req.user.id, receiptId, provider: 'wallet', amount, status: 'completed' });
+            await tx.save();
+            order.transactionId = tx._id;
+            await order.save();
+
+            io.to(`user:${req.user.id}`).to('staff').emit('dataChanged', { type: 'payment' });
+            return res.json({ message: 'Payment successful via Wallet Credits.', receiptId });
+
+        } else if (method === 'cash') {
+            order.paymentMethod = 'cash_at_counter';
+            order.status = 'Awaiting Cash Payment';
+            await order.save();
+
+            const tx = new Transaction({ orderId: order._id, userId: req.user.id, receiptId, provider: 'cash_at_counter', amount, status: 'pending' });
+            await tx.save();
+            order.transactionId = tx._id;
+            await order.save();
+
+            io.to(`user:${req.user.id}`).to('staff').emit('dataChanged', { type: 'payment' });
+            return res.json({ message: 'Order created. Please pay at the counter.', receiptId });
+
+        } else {
+            return res.status(400).json({ message: `Payment method "${method}" is not yet supported.` });
+        }
+    } catch (err) {
+        console.error('Payment processing error:', err);
+        res.status(500).json({ message: 'Payment processing error' });
+    }
+});
+
+app.get('/api/payments/receipt/:id', auth(), async (req, res) => {
+    try {
+        const tx = await Transaction.findById(req.params.id);
+        if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+        if (tx.userId.toString() !== req.user.id && req.user.role === 'customer') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+        res.json(tx);
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+app.post('/api/admin/confirm-payment', auth(['admin', 'employee']), async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'Already confirmed' });
+
+        order.paymentStatus = 'paid';
+        order.status = 'In Queue';
+        await order.save();
+
+        // Update linked transaction
+        if (order.transactionId) {
+            await Transaction.findByIdAndUpdate(order.transactionId, { status: 'completed' });
+        }
+
+        io.to(`user:${order.userId}`).to('staff').emit('dataChanged', { type: 'payment' });
+        res.json({ message: 'Payment confirmed and order moved to queue.' });
+    } catch (err) {
+        console.error('Confirm payment error:', err);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
