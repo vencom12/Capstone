@@ -691,13 +691,7 @@ input[name="nav-radio"],
 
 table {
     width: 100%;
-    min-width: 100%;
-    /* Don't force 600px statically here if block display is used */
     border-collapse: collapse;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure inner th/td have enough room */
