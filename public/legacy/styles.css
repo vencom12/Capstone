@@ -1346,18 +1346,114 @@ td {
 
 @media (max-width: 1024px) {
     .storefront-dashboard-layout {
-        flex-direction: column;
+        flex-direction: row; /* Keep on side */
         padding: 20px;
         padding-top: calc(var(--header-height) + 20px);
+        gap: 20px;
     }
     
     .storefront-sidebar {
-        position: static;
+        width: 15%;
+        min-width: 180px; /* Ensure it doesn't get TOO small */
+        padding: 20px 10px;
+    }
+
+    .storefront-main {
+        flex: 1;
+        width: 85%;
+    }
+
+    /* Hide hero texts in tablet view */
+    .sidebar-hero-content h2,
+    .sidebar-hero-content p {
+        display: none !important;
+    }
+
+    .category-links label {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .category-links label span {
+        font-size: 0.85rem;
+    }
+}
+
+/* Mobile view updates */
+@media (max-width: 768px) {
+    .storefront-dashboard-layout {
+        flex-direction: column; /* Stack above grid */
+        padding: 15px;
+        padding-top: 20px; /* Header is handled by separate grid-area logic in storefront-header */
+        gap: 10px;
+    }
+
+    .storefront-sidebar {
         width: 100%;
         min-width: 100%;
-        max-height: none;
-        overflow: visible;
-        margin-bottom: 20px;
+        position: static;
+        padding: 0;
+        margin-bottom: 10px;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+
+    /* Hide all hero content in mobile */
+    .sidebar-hero-content {
+        display: none !important;
+    }
+
+    /* Hide Categories heading */
+    .sidebar-categories h3 {
+        display: none !important;
+    }
+
+    .sidebar-categories {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    /* Transform categories into centered horizontal tabs */
+    .category-links {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto;
+        white-space: nowrap;
+        gap: 8px;
+        padding: 5px 0;
+        justify-content: center;
+        scrollbar-width: none; /* Hide scrollbar for Firefox */
+    }
+
+    .category-links::-webkit-scrollbar {
+        display: none; /* Hide scrollbar for Chrome/Safari */
+    }
+
+    .category-links li {
+        flex: 0 0 auto;
+        margin-bottom: 0;
+    }
+
+    .category-links label {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-glass);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .category-links label span {
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .storefront-main {
+        width: 100%;
     }
 }
 
