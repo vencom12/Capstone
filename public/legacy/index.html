@@ -82,6 +82,18 @@
 
             <div class="sidebar-categories">
                 <h3 style="font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-left: 10px;">Categories</h3>
+                
+                <!-- Mobile Category Dropdown -->
+                <div class="mobile-category-container">
+                    <select id="mobile-category-select" class="glass-select">
+                        <option value="All Designs">All Designs</option>
+                        <option value="Premium Embroidery">Premium Embroidery</option>
+                        <option value="Apparel & Fashion">Apparel & Fashion</option>
+                        <option value="Towels & Linens">Towels & Linens</option>
+                        <option value="Patches & Logos">Patches & Logos</option>
+                    </select>
+                </div>
+
                 <ul class="nav-links category-links">
                     <li>
                         <label>
@@ -302,22 +314,42 @@
 
             // Category Logic
             const categoryLabels = document.querySelectorAll('.category-links label');
+            const mobileCategorySelect = document.getElementById('mobile-category-select');
+
+            function setCategory(category) {
+                State._cache.selectedCategory = category;
+                
+                // Sync Label Styles
+                categoryLabels.forEach(l => {
+                    const span = l.querySelector('span');
+                    if (span.innerText === category) {
+                        span.style.color = 'var(--primary)';
+                        span.style.fontWeight = '600';
+                    } else {
+                        span.style.color = 'var(--text-dim)';
+                        span.style.fontWeight = '400';
+                    }
+                });
+
+                // Sync Mobile Dropdown
+                if (mobileCategorySelect) {
+                    mobileCategorySelect.value = category;
+                }
+                
+                updateUI();
+            }
+
             categoryLabels.forEach(label => {
                 label.addEventListener('click', () => {
-                    const category = label.querySelector('span').innerText;
-                    State._cache.selectedCategory = category;
-                    
-                    // Update Active Styling
-                    categoryLabels.forEach(l => {
-                        l.querySelector('span').style.color = 'var(--text-dim)';
-                        l.querySelector('span').style.fontWeight = '400';
-                    });
-                    label.querySelector('span').style.color = 'var(--primary)';
-                    label.querySelector('span').style.fontWeight = '600';
-                    
-                    updateUI();
+                    setCategory(label.querySelector('span').innerText);
                 });
             });
+
+            if (mobileCategorySelect) {
+                mobileCategorySelect.addEventListener('change', (e) => {
+                    setCategory(e.target.value);
+                });
+            }
         });
 
         // Login Handler (Reuse app.js logic)
