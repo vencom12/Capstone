@@ -221,6 +221,34 @@
                 const avatar = document.getElementById('header-user-avatar');
                 if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
             }
+
+            // Search Logic
+            const searchInput = document.getElementById('storefront-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    State._cache.searchQuery = e.target.value;
+                    updateUI();
+                });
+            }
+
+            // Category Logic
+            const categoryLabels = document.querySelectorAll('.category-links label');
+            categoryLabels.forEach(label => {
+                label.addEventListener('click', () => {
+                    const category = label.querySelector('span').innerText;
+                    State._cache.selectedCategory = category;
+                    
+                    // Update Active Styling
+                    categoryLabels.forEach(l => {
+                        l.querySelector('span').style.color = 'var(--text-dim)';
+                        l.querySelector('span').style.fontWeight = '400';
+                    });
+                    label.querySelector('span').style.color = 'var(--primary)';
+                    label.querySelector('span').style.fontWeight = '600';
+                    
+                    updateUI();
+                });
+            });
         });
 
         // Login Handler (Reuse app.js logic)

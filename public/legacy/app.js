@@ -332,7 +332,9 @@ const State = {
         inventory: [],
         favorites: [],
         users: [],
-        analytics: null
+        analytics: null,
+        searchQuery: '',
+        selectedCategory: 'All Designs'
     },
     getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
     setBasket: (basket) => {
@@ -1131,9 +1133,26 @@ function updateUI() {
     // Catalog UI Updates (Generic product grid)
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     productGrids.forEach(grid => {
+        let filteredProducts = products;
+        
+        // Apply Search Filter
+        if (State._cache.searchQuery) {
+            const query = State._cache.searchQuery.toLowerCase();
+            filteredProducts = filteredProducts.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                (p.tag && p.tag.toLowerCase().includes(query)) ||
+                (p.description && p.description.toLowerCase().includes(query))
+            );
+        }
+
+        // Apply Category Filter
+        if (State._cache.selectedCategory && State._cache.selectedCategory !== 'All Designs') {
+            filteredProducts = filteredProducts.filter(p => p.tag === State._cache.selectedCategory);
+        }
+
         let newHtml = '';
-        if (products.length > 0) {
-            newHtml = products.map(p => {
+        if (filteredProducts.length > 0) {
+            newHtml = filteredProducts.map(p => {
                 const isFav = favIds.includes(p._id);
                 return `
                 <div class="product-card glass animate-fade">

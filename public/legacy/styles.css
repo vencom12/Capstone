@@ -315,8 +315,8 @@ main {
         /* Hide "Stitch-Opt" text */
     }
 
-    .nav-links label span,
-    .nav-links a span,
+    .nav-links:not(.category-links) label span,
+    .nav-links:not(.category-links) a span,
     .logout-btn span {
         display: none;
         /* Icon-only nav */
@@ -800,7 +800,7 @@ td {
         min-width: 0;
     }
 
-    .nav-links span,
+    .nav-links:not(.category-links) span,
     .logout-btn span {
         display: none;
         /* Hide text, icon only */
