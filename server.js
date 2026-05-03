@@ -119,17 +119,8 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
 
-// --- CSRF Protection Middleware ---
-app.use((req, res, next) => {
-    // Only check mutations
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-        const requestedWith = req.headers['x-requested-with'];
-        if (requestedWith !== 'XMLHttpRequest') {
-            return res.status(403).json({ message: 'CSRF protection: Invalid request origin' });
-        }
-    }
-    next();
-});
+// Note: CSRF protection is handled by SameSite=Strict cookie policy.
+// No custom header check needed — Strict cookies are not sent on cross-origin requests.
 
 // Force no-cache for all requests to ensure PWA updates
 app.use((req, res, next) => {

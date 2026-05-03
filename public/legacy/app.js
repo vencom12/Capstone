@@ -1699,7 +1699,7 @@ function renderSkeletons() {
     }
 }
 
-// Initialization
+document.addEventListener('DOMContentLoaded', async () => {
     // Validate Session on load
     const isAuthenticated = await AuthManager.validateSession();
     
