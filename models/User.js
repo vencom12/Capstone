@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true, minlength: 8 },
     role: { type: String, enum: ['admin', 'employee', 'customer'], default: 'customer' },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    walletBalance: { type: Number, default: 100 }, // Pre-loaded with 100 for simulation
     createdAt: { type: Date, default: Date.now, index: true }
 });
 

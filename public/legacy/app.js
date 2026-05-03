@@ -486,44 +486,37 @@ const Actions = {
         const basket = State.getBasket();
         if (basket.length === 0) return;
 
-        // --- Optimistic UI Update ---
-        const originalOrders = [...State._cache.orders];
-        const tempOrder = {
-            _id: `temp-${Date.now()}`,
-            orderId: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
-            client: AuthManager.getSession()?.user.username || 'Client',
-            design: basket.map(i => `${i.name}${i.quantity > 1 ? ' ×' + i.quantity : ''}`).join(', '),
-            items: basket,
-            status: 'In Queue',
-            progress: 0,
-            createdAt: new Date().toISOString()
-        };
-
-        State._cache.orders.unshift(tempOrder);
-        State.setBasket([]); // Triggers basketUpdated -> updateUI
+        const totalAmount = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // --- Step 1: Create Pending Order ---
         updateSyncIndicator(true);
-
         try {
-            const { _id, ...orderData } = tempOrder;
+            const orderData = {
+                orderId: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
+                client: AuthManager.getSession()?.user.username || 'Client',
+                design: basket.map(i => `${i.name}${i.quantity > 1 ? ' ×' + i.quantity : ''}`).join(', '),
+                items: basket,
+                totalAmount: totalAmount
+            };
+
             const response = await apiFetch(`${API_URL}/orders`, {
                 method: 'POST',
                 body: JSON.stringify(orderData)
             });
 
             if (response.ok) {
-                showToast('Order placed successfully!');
-                // Silently sync cache to get real order ID
+                const newOrder = await response.json();
+                // --- Step 2: Open Payment Modal ---
+                PaymentManager.open(newOrder);
+                // Clear basket after order is created (even if unpaid)
+                State.setBasket([]);
                 silentCacheSync();
             } else {
                 throw new Error('Server rejected order');
             }
         } catch (err) {
             console.error('Checkout error:', err);
-            // Rollback
-            State._cache.orders = originalOrders;
-            State.setBasket(basket);
-            showToast('Checkout failed. Restoring basket.');
-            updateUI();
+            showToast('Checkout failed. Please try again.');
         } finally {
             updateSyncIndicator(false);
         }
@@ -907,6 +900,59 @@ const EmployeeActions = {
     }
 };
 
+const PaymentManager = {
+    _currentOrder: null,
+
+    open(order) {
+        this._currentOrder = order;
+        const modal = document.getElementById('payment-modal');
+        if (!modal) return;
+
+        document.getElementById('payment-total-amount').innerText = `$${order.totalAmount.toFixed(2)}`;
+        document.getElementById('payment-order-id').innerText = `#${order.orderId}`;
+        
+        const balance = AuthManager.getSession()?.user.walletBalance || 0;
+        const balanceDisplay = document.getElementById('wallet-balance-display');
+        if (balanceDisplay) {
+            balanceDisplay.innerText = `$${balance.toFixed(2)}`;
+            balanceDisplay.style.background = balance >= order.totalAmount ? 'var(--primary)' : '#ef4444';
+        }
+
+        modal.style.display = 'flex';
+    },
+
+    async process(method) {
+        if (!this._currentOrder) return;
+
+        updateSyncIndicator(true);
+        try {
+            const response = await apiFetch(`${API_URL}/payments/process`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    orderId: this._currentOrder._id,
+                    method: method
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showToast(result.message);
+                UI.toggleModal('payment-modal');
+                // Refresh full state to update wallet balance and order status
+                refreshDashboardState();
+            } else {
+                showToast(result.message || 'Payment failed');
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
+            showToast('Payment processing error');
+        } finally {
+            updateSyncIndicator(false);
+        }
+    }
+};
+
 const UI = {
     toggleModal(id) {
         const modal = document.getElementById(id);
@@ -929,6 +975,7 @@ const UI = {
 window.AuthManager = AuthManager;
 window.AdminActions = AdminActions;
 window.EmployeeActions = EmployeeActions;
+window.PaymentManager = PaymentManager;
 window.UI = UI;
 window.updateUI = updateUI;
 
@@ -1132,7 +1179,14 @@ function updateUI() {
         if (userCountEl) userCountEl.innerText = analytics.userCount;
     }
 
+     // User Specific Elements
+    const walletDisplay = document.getElementById('profile-wallet');
+    if (walletDisplay) {
+        walletDisplay.innerText = `$${(State._cache.walletBalance || 0).toFixed(2)}`;
+    }
 
+    updateTransactionsSection();
+    updateFavoritesSection();
 
     // Catalog UI Updates (Generic product grid)
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
@@ -1285,10 +1339,6 @@ function updateUI() {
         }
     }
 
-    // Favorites Section Update
-    // Favorites Section (delegated to standalone function)
-    updateFavoritesSection();
-
     // Machine UI Updates (Employee Portal)
     const workbenchStatus = document.getElementById('workbench-status');
     if (workbenchStatus) {
@@ -1356,12 +1406,11 @@ function updateUI() {
         if (employeeHistoryTable.innerHTML !== newHtml) employeeHistoryTable.innerHTML = newHtml;
     }
 
-    // Admin UI Updates (Active queue)
     const adminOrderTable = document.getElementById('admin-order-table-body');
     if (adminOrderTable) {
         let newHtml = '';
         if (activeOrders.length === 0) {
-            newHtml = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
+            newHtml = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim)">No active orders</td></tr>';
         } else {
             newHtml = activeOrders.map(order => `
                 <tr>
@@ -1369,15 +1418,22 @@ function updateUI() {
                     <td>${order.orderId}</td>
                     <td>${order.client}</td>
                     <td>${formatOrderDesign(order)}</td>
+                    <td>
+                        <span class="status-pill" style="border-color:${order.paymentStatus === 'paid' ? '#10b981' : '#f59e0b'}; color:${order.paymentStatus === 'paid' ? '#10b981' : '#f59e0b'}">
+                            ${order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                        </span>
+                    </td>
                     <td><span class="status-pill">${order.status}</span></td>
                     <td>
                         <div style="display: flex; gap: 8px;">
+                            ${order.paymentMethod === 'cash' && order.paymentStatus === 'unpaid' ? `
+                                <button class="btn confirm-payment-btn" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 8px; border-radius: 8px;" data-id="${order._id}" title="Confirm Cash Payment">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                                </button>
+                            ` : ''}
                             <button class="btn edit-order-btn" style="background: rgba(99, 102, 241, 0.1); color: var(--primary); padding: 8px; border-radius: 8px;" 
                                 data-id="${order._id}" data-orderid="${order.orderId}" data-client="${order.client}" data-design="${order.design}" data-status="${order.status}" data-progress="${order.progress}">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            </button>
-                            <button class="btn cancel-order-btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 8px; border-radius: 8px;" data-id="${order._id}">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                         </div>
                     </td>
@@ -1483,7 +1539,42 @@ async function renderAdminAnalytics() {
     const data = await State.getAdminAnalytics();
     if (!data) return;
 
-    // --- Summary Stats ---
+}
+
+function updateTransactionsSection() {
+    const transactions = State._cache.transactions || [];
+    const tableBody = document.getElementById('transaction-table-body');
+    if (!tableBody) return;
+
+    if (transactions.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 60px; color: var(--text-dim);">No transactions found.</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = transactions.map(tx => `
+        <tr>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <code style="color: var(--primary); font-weight: 600;">${tx.receiptId}</code>
+            </td>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-dim);">
+                ${new Date(tx.createdAt).toLocaleDateString()}
+            </td>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <span style="text-transform: capitalize;">${tx.provider.replace('_stub', '')}</span>
+            </td>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600;">
+                $${tx.amount.toFixed(2)}
+            </td>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <span class="status-pill" style="border-color:${tx.status === 'completed' ? '#10b981' : '#f59e0b'}; color:${tx.status === 'completed' ? '#10b981' : '#f59e0b'}">
+                    ${tx.status}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// --- Dashboard & Analytics UI ---
     const totalVisits = data.trafficStats.reduce((sum, d) => sum + d.visits, 0);
     const totalRevenue = data.orderTrends.reduce((sum, d) => sum + d.revenue, 0);
     const totalOrders = data.orderTrends.reduce((sum, d) => sum + d.count, 0);
@@ -1777,6 +1868,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (e.target.classList.contains('remove-btn')) {
             Actions.removeFromBasket(e.target.dataset.id);
+        }
+
+        if (e.target.closest('.confirm-payment-btn')) {
+            const btn = e.target.closest('.confirm-payment-btn');
+            const id = btn.dataset.id;
+            if (confirm('Confirm that cash payment has been received for this order?')) {
+                updateSyncIndicator(true);
+                apiFetch(`${API_URL}/admin/confirm-payment`, {
+                    method: 'POST',
+                    body: JSON.stringify({ orderId: id })
+                }).then(async res => {
+                    if (res.ok) {
+                        showToast('Payment confirmed.');
+                        refreshDashboardState();
+                    } else {
+                        const err = await res.json();
+                        showToast(err.message || 'Confirmation failed.');
+                    }
+                }).catch(err => {
+                    console.error('Payment confirmation error:', err);
+                    showToast('Connection error.');
+                }).finally(() => updateSyncIndicator(false));
+            }
         }
     });
 

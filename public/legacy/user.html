@@ -31,6 +31,7 @@
     <input type="radio" name="nav-radio" id="nav-shop" checked>
     <input type="radio" name="nav-radio" id="nav-tracking">
     <input type="radio" name="nav-radio" id="nav-favs">
+    <input type="radio" name="nav-radio" id="nav-history">
     <input type="radio" name="nav-radio" id="nav-settings">
     <input type="checkbox" id="nav-drawer-toggle">
     <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false"></div>
@@ -84,6 +85,15 @@
                     </label>
                 </li>
                 <li>
+                    <label for="nav-history">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
+                        </svg>
+                        <span>My Transactions</span>
+                    </label>
+                </li>
+                <li>
                     <label for="nav-settings">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -115,6 +125,7 @@
                 <div class="profile-avatar"></div>
                 <div class="profile-info">
                     <span class="profile-name"></span>
+                    <span class="profile-role" id="profile-wallet" style="color: var(--primary); font-weight: 700; margin-top: 4px;">$0.00</span>
                 </div>
             </div>
 
@@ -222,7 +233,28 @@
                 </div>
             </section>
 
-            <!-- Module: Settings -->
+            <!-- Module: My Transactions -->
+            <section id="section-history" class="module-section">
+                <h1 style="font-size: 2.2rem; margin-bottom: 24px;">Transaction History</h1>
+                <div id="transaction-list-container" class="table-container glass" style="padding: 0; overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 16px 24px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border-glass);">Receipt ID</th>
+                                <th style="text-align: left; padding: 16px 24px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border-glass);">Date</th>
+                                <th style="text-align: left; padding: 16px 24px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border-glass);">Method</th>
+                                <th style="text-align: left; padding: 16px 24px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border-glass);">Amount</th>
+                                <th style="text-align: left; padding: 16px 24px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border-glass);">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-table-body">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 60px; color: var(--text-dim);">No transactions found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
             <section id="section-settings" class="module-section">
                 <h1 style="font-size: 2.2rem; margin-bottom: 32px;">Settings</h1>
                 <div class="glass" style="padding: 32px; max-width: 600px;">

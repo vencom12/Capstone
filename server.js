@@ -18,6 +18,7 @@ const Order = require('./models/Order');
 const Inventory = require('./models/Inventory');
 const Product = require('./models/Product');
 const SiteTraffic = require('./models/SiteTraffic');
+const Transaction = require('./models/Transaction');
 const auth = require('./middleware/auth');
 
 const fs = require('fs');
@@ -291,7 +292,15 @@ app.get('/api/orders', auth(), async (req, res) => {
 app.post('/api/orders', auth(['customer', 'admin']), async (req, res) => {
     try {
         const { _id, ...orderData } = req.body;
-        const newOrder = new Order({ ...orderData, userId: req.user.id });
+        if (!orderData.totalAmount) {
+            return res.status(400).json({ message: 'Order amount is required' });
+        }
+        const newOrder = new Order({ 
+            ...orderData, 
+            userId: req.user.id,
+            status: 'Pending Payment',
+            paymentStatus: 'unpaid'
+        });
         await newOrder.save();
         // Notify owner and staff
         io.to(`user:${req.user.id}`).to('staff').emit('dataChanged', { type: 'orders' });
@@ -477,35 +486,150 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
         const role = req.user.role;
 
         // Run all queries in parallel for maximum speed
-        const [orders, inventory, products, userWithFavorites, totalUsers, totalRevenue, adminUsers] = await Promise.all([
+        const [orders, inventory, products, currentUser, transactions, totalUsers, totalRevenue, adminUsers] = await Promise.all([
             Order.find(role === 'customer' ? { userId } : {}).sort({ date: -1 }).limit(50),
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
-            User.findById(userId).select('favorites').populate('favorites'),
+            User.findById(userId).select('favorites walletBalance').populate('favorites'),
+            Transaction.find(role === 'customer' ? { userId } : {}).sort({ createdAt: -1 }).limit(50),
             // Analytics (Admin/Employee only)
             (role !== 'customer') ? User.countDocuments() : Promise.resolve(0),
-            (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }]),
+            (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: "$totalAmount" } } }]) : Promise.resolve([{ total: 0 }]),
             (role === 'admin') ? User.find().select('-password').sort({ createdAt: -1 }) : Promise.resolve([])
         ]);
 
         const analytics = (role !== 'customer') ? {
-            userCount: totalUsers,
-            revenue: totalRevenue[0]?.total || 0,
-            activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
-            lowStock: inventory.filter(i => i.count < 10).length
+            totalUsers,
+            totalRevenue: totalRevenue[0]?.total || 0,
+            activeStaff: adminUsers.filter(u => u.role !== 'customer').length
         } : null;
 
         res.json({
             orders,
             inventory,
             products,
-            favorites: userWithFavorites ? userWithFavorites.favorites : [],
+            favorites: currentUser ? currentUser.favorites : [],
+            walletBalance: currentUser ? currentUser.walletBalance : 0,
+            transactions,
             analytics,
             users: adminUsers
         });
     } catch (err) {
         console.error('Dashboard state error:', err);
         res.status(500).json({ message: 'Server error fetching batch state' });
+    }
+});
+
+// --- Payment System & Gateway ---
+
+app.post('/api/payments/process', auth(), async (req, res) => {
+    try {
+        const { orderId, method } = req.body;
+        const order = await Order.findById(orderId);
+        const user = await User.findById(req.user.id);
+
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'Order already paid' });
+
+        const amount = order.totalAmount;
+        const receiptId = `RCPT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        
+        let transactionStatus = 'pending';
+        let orderPaymentStatus = 'unpaid';
+        let finalOrderStatus = 'Pending Payment';
+
+        if (method === 'wallet') {
+            if (user.walletBalance < amount) {
+                return res.status(400).json({ message: 'Insufficient wallet balance' });
+            }
+            // Atomic deduction
+            user.walletBalance -= amount;
+            await user.save();
+            transactionStatus = 'completed';
+            orderPaymentStatus = 'paid';
+            finalOrderStatus = 'In Queue';
+        } else if (method === 'cash') {
+            transactionStatus = 'pending';
+            orderPaymentStatus = 'unpaid';
+            finalOrderStatus = 'Awaiting Cash Payment';
+        } else if (method.endsWith('_stub')) {
+            // Simulated external provider
+            transactionStatus = 'completed';
+            orderPaymentStatus = 'paid';
+            finalOrderStatus = 'In Queue';
+        } else {
+            return res.status(400).json({ message: 'Invalid payment method' });
+        }
+
+        const transaction = new Transaction({
+            orderId: order._id,
+            userId: user._id,
+            amount,
+            provider: method,
+            status: transactionStatus,
+            receiptId
+        });
+        await transaction.save();
+
+        order.paymentStatus = orderPaymentStatus;
+        order.paymentMethod = method;
+        order.transactionId = transaction._id;
+        order.status = finalOrderStatus;
+        await order.save();
+
+        io.to(`user:${user._id}`).to('staff').emit('dataChanged', { type: 'orders' });
+        
+        res.json({ 
+            success: true, 
+            message: transactionStatus === 'completed' ? 'Payment successful' : 'Payment pending verification',
+            receiptId,
+            order
+        });
+    } catch (err) {
+        console.error('Payment processing error:', err);
+        res.status(500).json({ message: 'Payment processing failed' });
+    }
+});
+
+app.get('/api/payments/receipt/:id', auth(), async (req, res) => {
+    try {
+        const transaction = await Transaction.findOne({ receiptId: req.params.id })
+            .populate('orderId')
+            .populate('userId', 'username email');
+        
+        if (!transaction) return res.status(404).json({ message: 'Receipt not found' });
+        
+        // Ensure user can only see their own receipts unless admin
+        if (transaction.userId._id.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Unauthorized access to receipt' });
+        }
+
+        res.json(transaction);
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+app.post('/api/admin/confirm-payment', auth(['admin']), async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const transaction = await Transaction.findById(order.transactionId);
+        if (transaction) {
+            transaction.status = 'completed';
+            await transaction.save();
+        }
+
+        order.paymentStatus = 'paid';
+        order.status = 'In Queue';
+        await order.save();
+
+        io.to(`user:${order.userId}`).to('staff').emit('dataChanged', { type: 'orders' });
+        res.json({ message: 'Payment confirmed successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
