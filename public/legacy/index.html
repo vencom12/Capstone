@@ -142,6 +142,11 @@
                     </div>
                     <div id="login-error"
                         style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
+                    
+                    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="login-remember" style="width: 16px; height: 16px; cursor: pointer;">
+                        <label for="login-remember" style="margin: 0; font-size: 0.9rem; color: var(--text-dim); cursor: pointer;">Stay logged in</label>
+                    </div>
                     <button type="submit" class="header-btn primary" onclick="submitLogin()">Establish Link</button>
                     <!--Put a design here... design completed-->
                     <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem;">
@@ -256,11 +261,12 @@
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-pass').value;
+            const rememberMe = document.getElementById('login-remember').checked;
             const errorEl = document.getElementById('login-error');
             errorEl.style.display = 'none';
-
+    
             if (window.AuthManager) {
-                const result = await AuthManager.login(email, password);
+                const result = await AuthManager.login(email, password, rememberMe);
                 if (result.success) {
                     const role = AuthManager.getUserRole();
                     if (role === 'admin') window.location.href = 'admin.html';

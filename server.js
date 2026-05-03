@@ -23,6 +23,12 @@ const auth = require('./middleware/auth');
 const fs = require('fs');
 const app = express();
 
+const logErr = (msg) => {
+    const entry = `[${new Date().toISOString()}] ${msg}\n`;
+    fs.appendFileSync(path.join(__dirname, 'server_log.txt'), entry);
+    console.error(msg);
+};
+
 // --- CRITICAL: Legacy Redirect (Must be first) ---
 
 
@@ -112,6 +118,18 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
+
+// --- CSRF Protection Middleware ---
+app.use((req, res, next) => {
+    // Only check mutations
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+        const requestedWith = req.headers['x-requested-with'];
+        if (requestedWith !== 'XMLHttpRequest') {
+            return res.status(403).json({ message: 'CSRF protection: Invalid request origin' });
+        }
+    }
+    next();
+});
 
 // Force no-cache for all requests to ensure PWA updates
 app.use((req, res, next) => {
@@ -204,8 +222,9 @@ app.post('/api/auth/login', async (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'Strict',
-            // Persistent cookie if rememberMe; session cookie (no maxAge) otherwise
-            ...(rememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {})
+            // Persistent cookie ONLY if rememberMe is true. 
+            // Otherwise, it is a session cookie that expires when the browser/tab closes.
+            ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 * 1000 } : {}) 
         };
         res.cookie('token', token, cookieOptions);
 

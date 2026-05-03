@@ -1,6 +1,28 @@
 const API_URL = window.location.origin + '/api';
 const SOCKET_URL = window.location.origin;
 
+// Helper: Secure API fetch wrapper
+async function apiFetch(url, options = {}) {
+    const defaultHeaders = {
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    
+    if (options.body && !(options.body instanceof FormData)) {
+        defaultHeaders['Content-Type'] = 'application/json';
+    }
+
+    const fetchOptions = {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers
+        },
+        credentials: 'include'
+    };
+
+    return fetch(url, fetchOptions);
+}
+
 // --- Global Sync Indicator ---
 let _syncCount = 0;
 const updateSyncIndicator = (isStarting) => {
@@ -35,12 +57,11 @@ function formatOrderDesign(order) {
 const AuthManager = {
     SESSION_KEY: 'stitch_opt_session',
 
-    async login(email, password) {
+    async login(email, password, rememberMe = false) {
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await apiFetch(`${API_URL}/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, rememberMe })
             });
 
             if (!response.ok) {
@@ -58,9 +79,8 @@ const AuthManager = {
 
     async register(username, email, password, role = 'customer') {
         try {
-            const response = await fetch(`${API_URL}/auth/register`, {
+            const response = await apiFetch(`${API_URL}/auth/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, email, password, role })
             });
 
@@ -79,7 +99,7 @@ const AuthManager = {
 
     async logout() {
         try {
-            await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+            await apiFetch(`${API_URL}/auth/logout`, { method: 'POST' });
         } catch (e) {
             console.error('Logout error:', e);
         }
@@ -101,6 +121,24 @@ const AuthManager = {
         }
     },
 
+    async validateSession() {
+        try {
+            const response = await apiFetch(`${API_URL}/auth/me`);
+            if (!response.ok) {
+                // Backend session expired or missing
+                localStorage.removeItem(this.SESSION_KEY);
+                return false;
+            }
+            const data = await response.json();
+            // Update local cache with fresh data
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+            return true;
+        } catch (err) {
+            console.error('Session validation failed:', err);
+            return false;
+        }
+    },
+
     isAuthenticated() {
         return !!this.getSession();
     },
@@ -118,10 +156,8 @@ const AuthManager = {
     async updateProfile(userData) {
         try {
             console.log('Sending profile update:', userData);
-            const response = await fetch(`${API_URL}/auth/profile`, {
+            const response = await apiFetch(`${API_URL}/auth/profile`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(userData)
             });
 
@@ -186,16 +222,15 @@ window.AuthManager = AuthManager;
 const AnalyticsTracker = {
     async logVisit() {
         try {
-            await fetch(`${API_URL}/analytics/visit`, {
+            await apiFetch(`${API_URL}/analytics/visit`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: window.location.pathname })
             });
         } catch (e) { /* silent */ }
     },
     async logProductView(productId) {
         try {
-            await fetch(`${API_URL}/analytics/product-view/${productId}`, { method: 'POST' });
+            await apiFetch(`${API_URL}/analytics/product-view/${productId}`, { method: 'POST' });
         } catch (e) { /* silent */ }
     }
 };
@@ -342,22 +377,16 @@ const State = {
         window.dispatchEvent(new Event('basketUpdated'));
     },
     async getOrders() {
-        const response = await fetch(`${API_URL}/orders`, {
-            credentials: 'include'
-        });
+        const response = await apiFetch(`${API_URL}/orders`);
         return await response.json();
     },
     async getInventory() {
-        const response = await fetch(`${API_URL}/inventory`, {
-            credentials: 'include'
-        });
+        const response = await apiFetch(`${API_URL}/inventory`);
         return await response.json();
     },
     async getProducts() {
         try {
-            const response = await fetch(`${API_URL}/products`, {
-                credentials: 'include'
-            });
+            const response = await apiFetch(`${API_URL}/products`);
             return await response.json();
         } catch (err) {
             console.error('Fetch products error:', err);
@@ -373,9 +402,7 @@ const State = {
                 return { products };
             }
 
-            const response = await fetch(`${API_URL}/dashboard-state`, {
-                credentials: 'include'
-            });
+            const response = await apiFetch(`${API_URL}/dashboard-state`);
             if (!response.ok) throw new Error('Failed to fetch batch state');
             const data = await response.json();
             this._cache = { ...this._cache, ...data };
@@ -387,9 +414,7 @@ const State = {
     },
     async getFavorites() {
         try {
-            const response = await fetch(`${API_URL}/favorites`, {
-                credentials: 'include'
-            });
+            const response = await apiFetch(`${API_URL}/favorites`);
             return await response.json();
         } catch (err) {
             console.error('Fetch favorites error:', err);
@@ -407,9 +432,7 @@ const State = {
     },
     async getAdminAnalytics() {
         try {
-            const response = await fetch(`${API_URL}/admin/analytics`, {
-                credentials: 'include'
-            });
+            const response = await apiFetch(`${API_URL}/admin/analytics`);
             return await response.json();
         } catch (err) {
             console.error('Fetch analytics error:', err);
@@ -482,10 +505,8 @@ const Actions = {
 
         try {
             const { _id, ...orderData } = tempOrder;
-            const response = await fetch(`${API_URL}/orders`, {
+            const response = await apiFetch(`${API_URL}/orders`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(orderData)
             });
 
@@ -541,9 +562,8 @@ const Actions = {
 
         try {
             const method = isFavorite ? 'DELETE' : 'POST';
-            const response = await fetch(`${API_URL}/favorites/${productId}`, {
-                method: method,
-                credentials: 'include'
+            const response = await apiFetch(`${API_URL}/favorites/${productId}`, {
+                method: method
             });
             if (response.ok) {
                 // Silently sync cache — optimistic UI is already correct
@@ -586,10 +606,8 @@ const Actions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/orders/${id}`, {
+            const response = await apiFetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(orderData)
             });
 
@@ -622,10 +640,8 @@ const Actions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/orders/batch-status`, {
+            const response = await apiFetch(`${API_URL}/orders/batch-status`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ orderIds, status })
             });
 
@@ -660,10 +676,8 @@ const Actions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/orders/${id}`, {
+            const response = await apiFetch(`${API_URL}/orders/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(statusData)
             });
 
@@ -702,10 +716,8 @@ const AdminActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/admin/users`, {
+            const response = await apiFetch(`${API_URL}/admin/users`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(userData)
             });
 
@@ -741,10 +753,8 @@ const AdminActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/admin/users/${id}`, {
+            const response = await apiFetch(`${API_URL}/admin/users/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(userData)
             });
             if (response.ok) {
@@ -775,9 +785,8 @@ const AdminActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/admin/users/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const response = await apiFetch(`${API_URL}/admin/users/${id}`, {
+                method: 'DELETE'
             });
             if (response.ok) {
                 return true;
@@ -812,10 +821,8 @@ const EmployeeActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/products`, {
+            const response = await apiFetch(`${API_URL}/products`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(productData)
             });
 
@@ -849,10 +856,8 @@ const EmployeeActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/products/${id}`, {
+            const response = await apiFetch(`${API_URL}/products/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(productData)
             });
             if (response.ok) {
@@ -882,9 +887,8 @@ const EmployeeActions = {
         updateSyncIndicator(true);
 
         try {
-            const response = await fetch(`${API_URL}/products/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
+            const response = await apiFetch(`${API_URL}/products/${id}`, {
+                method: 'DELETE'
             });
             if (response.ok) {
                 return true;
@@ -1696,7 +1700,18 @@ function renderSkeletons() {
 }
 
 // Initialization
-document.addEventListener('DOMContentLoaded', async () => {
+    // Validate Session on load
+    const isAuthenticated = await AuthManager.validateSession();
+    
+    // If we are on a protected page but not authenticated, redirect
+    const path = window.location.pathname;
+    const isPublicPage = path.endsWith('index.html') || path.endsWith('/') || path.endsWith('register.html');
+    
+    if (!isAuthenticated && !isPublicPage) {
+        window.location.href = 'index.html';
+        return;
+    }
+
     await updateUI();
     StitchAI.init();
 
