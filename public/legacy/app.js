@@ -1553,7 +1553,7 @@ async function renderAdminAnalytics() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
             }
         });
