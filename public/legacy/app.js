@@ -1527,6 +1527,7 @@ async function renderAdminAnalytics() {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     y1: { position: 'right', grid: { display: false } },
@@ -1551,6 +1552,8 @@ async function renderAdminAnalytics() {
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: true,
                 plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
             }
         });
@@ -1570,6 +1573,8 @@ async function renderAdminAnalytics() {
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
                 scales: {
@@ -1594,6 +1599,8 @@ async function renderAdminAnalytics() {
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
                 scales: {
@@ -1621,6 +1628,8 @@ async function renderAdminAnalytics() {
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                     x: { grid: { display: false } }
