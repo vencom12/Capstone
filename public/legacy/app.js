@@ -1,4 +1,4 @@
-const API_URL = window.location.origin + '/api';
+const API_URL = '/api';
 const SOCKET_URL = window.location.origin;
 
 // Helper: Secure API fetch wrapper
@@ -15,7 +15,7 @@ async function apiFetch(url, options = {}) {
         ...options,
         headers: {
             ...defaultHeaders,
-            ...options.headers
+            ...(options.headers || {})
         },
         credentials: 'include'
     };
@@ -1700,16 +1700,20 @@ function renderSkeletons() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Validate Session on load
-    const isAuthenticated = await AuthManager.validateSession();
-    
-    // If we are on a protected page but not authenticated, redirect
-    const path = window.location.pathname;
-    const isPublicPage = path.endsWith('index.html') || path.endsWith('/') || path.endsWith('register.html');
-    
-    if (!isAuthenticated && !isPublicPage) {
-        window.location.href = 'index.html';
-        return;
+    try {
+        // Validate Session on load
+        const isAuthenticated = await AuthManager.validateSession();
+        
+        // If we are on a protected page but not authenticated, redirect
+        const path = window.location.pathname;
+        const isPublicPage = path.endsWith('index.html') || path.endsWith('/') || path.endsWith('register.html');
+        
+        if (!isAuthenticated && !isPublicPage) {
+            window.location.href = 'index.html';
+            return;
+        }
+    } catch (e) {
+        console.error('Initialization Auth Check failed:', e);
     }
 
     await updateUI();
