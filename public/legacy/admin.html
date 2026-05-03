@@ -171,7 +171,7 @@
             const pass = document.getElementById('admin-login-pass').value;
             const errEl = document.getElementById('admin-login-error');
             errEl.style.display = 'none';
-            const res = await window.AuthManager.login(email, pass);
+            const res = await window.AuthManager.login(email, pass, false, 'admin');
             if (res.success && window.AuthManager.getUserRole() === 'admin') {
                 window.location.reload();
             } else {

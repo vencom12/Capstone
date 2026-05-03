@@ -199,12 +199,17 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password, rememberMe } = req.body;
+        const { email, password, rememberMe, portal } = req.body;
         const user = await User.findOne({ $or: [{ email: email }, { username: email }] });
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        // Portal-based role enforcement
+        if (portal && user.role !== portal) {
+            return res.status(403).json({ message: `Unauthorized: This account is not authorized for the ${portal} portal.` });
+        }
 
         // Remember Me: 30-day token vs. 1-day session token
         const expiresIn = rememberMe ? '30d' : '1d';

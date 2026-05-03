@@ -57,11 +57,11 @@ function formatOrderDesign(order) {
 const AuthManager = {
     SESSION_KEY: 'stitch_opt_session',
 
-    async login(email, password, rememberMe = false) {
+    async login(email, password, rememberMe = false, portal = null) {
         try {
             const response = await apiFetch(`${API_URL}/auth/login`, {
                 method: 'POST',
-                body: JSON.stringify({ email, password, rememberMe })
+                body: JSON.stringify({ email, password, rememberMe, portal })
             });
 
             if (!response.ok) {
@@ -69,7 +69,13 @@ const AuthManager = {
                 return { success: false, message: errData.message || 'Login failed' };
             }
             const data = await response.json();
-            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+            
+            // Clean up both storages first to ensure independence
+            localStorage.removeItem(this.SESSION_KEY);
+            sessionStorage.removeItem(this.SESSION_KEY);
+
+            const storage = rememberMe ? localStorage : sessionStorage;
+            storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
             return { success: true };
         } catch (err) {
             console.error('Login error:', err);
@@ -104,15 +110,16 @@ const AuthManager = {
             console.error('Logout error:', e);
         }
         localStorage.removeItem(this.SESSION_KEY);
+        sessionStorage.removeItem(this.SESSION_KEY);
         window.location.href = 'index.html';
     },
 
     getSession() {
         try {
-            const session = localStorage.getItem(this.SESSION_KEY);
+            const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
             if (!session) return null;
             const parsed = JSON.parse(session);
-            // Ensure essential properties exist (token removed check)
+            // Ensure essential properties exist
             if (!parsed || !parsed.user) return null;
             return parsed;
         } catch (e) {
@@ -127,11 +134,17 @@ const AuthManager = {
             if (!response.ok) {
                 // Backend session expired or missing
                 localStorage.removeItem(this.SESSION_KEY);
+                sessionStorage.removeItem(this.SESSION_KEY);
                 return false;
             }
             const data = await response.json();
-            // Update local cache with fresh data
-            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+            
+            // Update whichever storage currently holds the session
+            if (localStorage.getItem(this.SESSION_KEY)) {
+                localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+            } else {
+                sessionStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+            }
             return true;
         } catch (err) {
             console.error('Session validation failed:', err);

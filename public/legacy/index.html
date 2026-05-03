@@ -330,7 +330,7 @@
             errorEl.style.display = 'none';
     
             if (window.AuthManager) {
-                const result = await AuthManager.login(email, password, rememberMe);
+                const result = await AuthManager.login(email, password, rememberMe, 'customer');
                 if (result.success) {
                     const role = AuthManager.getUserRole();
                     if (role === 'admin') window.location.href = 'admin.html';

@@ -118,7 +118,7 @@
             const pass = document.getElementById('employee-login-pass').value;
             const errEl = document.getElementById('employee-login-error');
             errEl.style.display = 'none';
-            const res = await window.AuthManager.login(email, pass);
+            const res = await window.AuthManager.login(email, pass, false, 'employee');
             if (res.success && window.AuthManager.getUserRole() === 'employee') {
                 window.location.reload();
             } else {
