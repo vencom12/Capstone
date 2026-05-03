@@ -1344,91 +1344,109 @@ td {
     font-size: 1rem;
 }
 
-@media (max-width: 1024px) {
+/* ── Tablet / half-screen PC (769px – 1024px) ── */
+@media (max-width: 1024px) and (min-width: 769px) {
     .storefront-dashboard-layout {
-        flex-direction: row; /* Keep on side */
+        flex-direction: row; /* Keep sidebar on the side */
         padding: 20px;
         padding-top: calc(var(--header-height) + 20px);
-        gap: 20px;
+        gap: 16px;
     }
-    
+
     .storefront-sidebar {
         width: 15%;
-        min-width: 180px; /* Ensure it doesn't get TOO small */
+        min-width: 150px;
+        max-height: calc(100vh - var(--header-height) - 40px);
         padding: 20px 10px;
+        flex-shrink: 0;
     }
 
     .storefront-main {
         flex: 1;
-        width: 85%;
+        min-width: 0; /* prevent flex overflow */
     }
 
-    /* Hide hero texts in tablet view */
+    /* Hide hero texts (h2, p) in tablet view */
     .sidebar-hero-content h2,
-    .sidebar-hero-content p {
+    .sidebar-hero-content p,
+    .sidebar-hero-content #install-button-container {
         display: none !important;
     }
 
+    /* Compact category buttons */
     .category-links label {
-        padding: 8px 12px;
-        font-size: 0.85rem;
+        padding: 8px 10px;
+        font-size: 0.8rem;
+        border-radius: 10px;
     }
 
     .category-links label span {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+    }
+
+    /* Tighter product grid for tablet */
+    .storefront-main .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
     }
 }
 
-/* Mobile view updates */
+/* ── Mobile (≤768px) ── */
 @media (max-width: 768px) {
     .storefront-dashboard-layout {
-        flex-direction: column; /* Stack above grid */
+        flex-direction: column; /* Sidebar stacks above grid */
         padding: 15px;
-        padding-top: 20px; /* Header is handled by separate grid-area logic in storefront-header */
+        padding-top: 130px; /* Clear the fixed mobile header (~120px min-height + gap) */
         gap: 10px;
     }
 
     .storefront-sidebar {
-        width: 100%;
+        width: 100% !important;
         min-width: 100%;
+        max-height: none;
+        overflow: visible;
         position: static;
         padding: 0;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         background: transparent;
         border: none;
         box-shadow: none;
         backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-radius: 0;
     }
 
-    /* Hide all hero content in mobile */
+    /* Hide ALL hero content (h2, p, install button) in mobile */
     .sidebar-hero-content {
         display: none !important;
     }
 
-    /* Hide Categories heading */
+    /* Hide "Categories" heading */
     .sidebar-categories h3 {
         display: none !important;
     }
 
     .sidebar-categories {
         width: 100%;
-        overflow: hidden;
     }
 
-    /* Transform categories into centered horizontal tabs */
+    /* Transform category list into horizontal scrollable tabs */
     .category-links {
         display: flex !important;
         flex-direction: row !important;
+        flex-wrap: nowrap;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
         white-space: nowrap;
         gap: 8px;
-        padding: 5px 0;
+        padding: 6px 0;
+        margin: 0;
         justify-content: center;
-        scrollbar-width: none; /* Hide scrollbar for Firefox */
+        scrollbar-width: none; /* Firefox */
     }
 
     .category-links::-webkit-scrollbar {
-        display: none; /* Hide scrollbar for Chrome/Safari */
+        display: none; /* Chrome / Safari */
     }
 
     .category-links li {
@@ -1436,20 +1454,31 @@ td {
         margin-bottom: 0;
     }
 
+    /* Compact pill-shaped tab buttons */
     .category-links label {
         padding: 6px 14px;
         font-size: 0.75rem;
         border-radius: 20px;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.06);
         border: 1px solid var(--border-glass);
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 0;
+        transform: none; /* Override the translateX hover from base styles */
+    }
+
+    .category-links label:hover {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: var(--primary);
+        color: white;
+        transform: none;
     }
 
     .category-links label span {
         font-size: 0.75rem;
         font-weight: 500;
+        display: inline !important; /* Ensure text stays visible */
     }
 
     .storefront-main {
