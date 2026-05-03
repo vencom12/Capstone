@@ -200,72 +200,7 @@
         </svg>
     </div>
 
-    <!-- Payment Modal -->
-    <div id="payment-modal" class="modal" style="display: none;">
-        <div class="modal-content glass" style="max-width: 500px; width: 90%;">
-            <header style="margin-bottom: 24px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 12px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="2" y1="10" x2="22" y2="10"></line>
-                    </svg>
-                    Secure Checkout
-                </h2>
-            </header>
-            
-            <div id="payment-order-summary" style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-dim);">
-                    <span>Order Total:</span>
-                    <span id="payment-total-amount" style="color: var(--text-main); font-weight: 700; font-size: 1.2rem;">$0.00</span>
-                </div>
-                <div style="font-size: 0.85rem; color: var(--text-dim);">
-                    Order ID: <span id="payment-order-id" style="color: var(--primary);">#---</span>
-                </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button class="btn glass payment-method-btn" onclick="PaymentManager.process('wallet')" 
-                        style="text-align: left; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Wallet Credits</div>
-                        <div style="font-size: 0.85rem; color: var(--text-dim);">Pay with your internal balance</div>
-                    </div>
-                    <div id="wallet-balance-display" style="background: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem;">$0.00</div>
-                </button>
-
-                <button class="btn glass payment-method-btn" onclick="PaymentManager.process('cash')"
-                        style="text-align: left; padding: 20px; display: flex; align-items: center; gap: 16px;">
-                    <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 10px; border-radius: 12px;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Cash at Counter</div>
-                        <div style="font-size: 0.85rem; color: var(--text-dim);">Pay in person at our local branch</div>
-                    </div>
-                </button>
-
-                <button class="btn glass payment-method-btn" disabled
-                        style="text-align: left; padding: 20px; display: flex; align-items: center; gap: 16px; opacity: 0.5; cursor: not-allowed;">
-                    <div style="background: rgba(99, 102, 241, 0.1); color: var(--primary); padding: 10px; border-radius: 12px;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <div style="font-weight: 600; margin-bottom: 4px;">Stripe / PayPal</div>
-                        <div style="font-size: 0.85rem; color: var(--text-dim);">Integration coming soon...</div>
-                    </div>
-                </button>
-            </div>
-
-            <button class="btn btn-secondary" onclick="UI.toggleModal('payment-modal')" style="width: 100%; margin-top: 24px;">Cancel</button>
-        </div>
-    </div>
-
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
     <script>
         // --- Storefront Specific Logic ---
         function openAuth(mode) {
