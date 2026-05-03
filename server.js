@@ -29,9 +29,40 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// Socket.IO Authentication Middleware
+io.use((socket, next) => {
+    try {
+        const cookieStr = socket.request.headers.cookie || '';
+        const cookies = Object.fromEntries(cookieStr.split('; ').filter(c => c).map(c => c.split('=')));
+        const token = cookies.token;
+
+        if (!token) return next(); // Allow guest connections but they won't join rooms
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+        next();
+    } catch (err) {
+        console.error('[Socket.IO] Auth Error:', err.message);
+        next(); // Still allow connection, just unauthenticated
+    }
+});
+
 // Socket.IO Connection Handler
 io.on('connection', (socket) => {
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
+
+    if (socket.user) {
+        // Join private user room
+        socket.join(`user:${socket.user.id}`);
+        console.log(`[Socket.IO] User ${socket.user.id} joined room user:${socket.user.id}`);
+
+        // Join staff room if applicable
+        if (socket.user.role === 'admin' || socket.user.role === 'employee') {
+            socket.join('staff');
+            console.log(`[Socket.IO] Staff ${socket.user.id} joined room staff`);
+        }
+    }
+
     socket.on('disconnect', () => {
         console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
     });
@@ -252,7 +283,8 @@ app.post('/api/orders', auth(['customer', 'admin']), async (req, res) => {
         const { _id, ...orderData } = req.body;
         const newOrder = new Order({ ...orderData, userId: req.user.id });
         await newOrder.save();
-        io.emit('dataChanged', { type: 'orders' });
+        // Notify owner and staff
+        io.to(`user:${req.user.id}`).to('staff').emit('dataChanged', { type: 'orders' });
         res.json(newOrder);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -273,7 +305,9 @@ app.put('/api/orders/:id', auth(['admin', 'employee']), async (req, res) => {
             { new: true }
         );
         if (!order) return res.status(404).json({ message: 'Order not found' });
-        io.emit('dataChanged', { type: 'orders' });
+        
+        // Notify owner and staff
+        io.to(`user:${order.userId}`).to('staff').emit('dataChanged', { type: 'orders' });
         res.json(order);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -284,7 +318,8 @@ app.delete('/api/orders/:id', auth(['admin', 'employee']), async (req, res) => {
     try {
         const order = await Order.findByIdAndDelete(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
-        io.emit('dataChanged', { type: 'orders' });
+        // Notify owner and staff
+        io.to(`user:${order.userId}`).to('staff').emit('dataChanged', { type: 'orders' });
         res.json({ message: 'Order cancelled successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -309,7 +344,8 @@ app.patch('/api/inventory/:item', auth(['admin', 'employee']), async (req, res) 
             { count, lastUpdated: Date.now() },
             { new: true, upsert: true }
         );
-        io.emit('dataChanged', { type: 'inventory' });
+        // Inventory updates are for staff only
+        io.to('staff').emit('dataChanged', { type: 'inventory' });
         res.json(inventory);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -476,7 +512,14 @@ app.post('/api/orders/batch-status', auth(['admin', 'employee']), async (req, re
             { $set: { status, progress: status === 'Completed' ? 100 : undefined } }
         );
 
-        io.emit('dataChanged', { type: 'orders' });
+        // Find affected users to notify
+        const affectedOrders = await Order.find({ _id: { $in: orderIds } }).select('userId');
+        const userIds = [...new Set(affectedOrders.map(o => o.userId.toString()))];
+        
+        const broadcast = io.to('staff');
+        userIds.forEach(uid => broadcast.to(`user:${uid}`));
+        broadcast.emit('dataChanged', { type: 'orders' });
+
         res.json({ message: `Successfully updated ${orderIds.length} orders` });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
