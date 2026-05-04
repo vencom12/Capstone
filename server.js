@@ -109,7 +109,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
     message: { message: 'Too many authentication attempts. Please try again after 15 minutes.' }
 });
-app.use('/api/auth/', authLimiter);
+// app.use('/api/auth/', authLimiter);
 
 // Core Middleware
 app.use(cors({
