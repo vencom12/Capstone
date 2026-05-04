@@ -193,6 +193,9 @@ app.post('/api/auth/register', async (req, res) => {
         res.json({ user: { id: user._id, username, role: 'customer' } });
     } catch (err) {
         logErr('Register Server error: ' + err.message);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: err.message });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -390,6 +393,10 @@ app.post('/api/admin/users', auth(['admin']), async (req, res) => {
 
         res.json({ message: 'User created successfully', user: { id: user._id, username, role } });
     } catch (err) {
+        console.error('Create user error:', err);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: err.message });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -418,6 +425,10 @@ app.put('/api/admin/users/:id', auth(['admin']), async (req, res) => {
 
         res.json(safeUser);
     } catch (err) {
+        console.error('Update user error:', err);
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ message: err.message });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 });
