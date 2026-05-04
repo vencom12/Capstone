@@ -364,15 +364,12 @@
             if (window.AuthManager) {
                 const result = await AuthManager.login(email, password, rememberMe, 'customer');
                 if (result.success) {
-                    // Only customers should be able to successfully log in here
-                    window.location.href = 'user.html';
+                    const role = AuthManager.getUserRole();
+                    if (role === 'admin') window.location.href = 'admin.html';
+                    else if (role === 'employee') window.location.href = 'employee.html';
+                    else window.location.href = 'user.html'; // Direct customer to their dashboard
                 } else {
-                    // Check if it's a role mismatch error to guide staff members
-                    if (result.message && result.message.includes('not authorized for the customer portal')) {
-                        errorEl.innerText = "This is the Customer portal. Only clients can login here.";
-                    } else {
-                        errorEl.innerText = result.message || "Invalid credentials.";
-                    }
+                    errorEl.innerText = result.message || "Invalid credentials.";
                     errorEl.style.display = 'block';
                 }
             }
