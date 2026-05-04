@@ -1833,7 +1833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // If we are on a protected page but not authenticated, redirect
         const path = window.location.pathname;
-        const isPublicPage = path.endsWith('index.html') || path.endsWith('/') || path.endsWith('register.html');
+        const isPublicPage = path.endsWith('index.html') || path.endsWith('/') || path.endsWith('register.html') || path.endsWith('admin.html') || path.endsWith('employee.html');
         
         if (!isAuthenticated && !isPublicPage) {
             window.location.href = 'index.html';
