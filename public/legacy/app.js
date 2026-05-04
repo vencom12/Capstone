@@ -729,14 +729,13 @@ const AdminActions = {
                 silentCacheSync();
                 return true;
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Create user sync failed');
+                throw new Error('Create user sync failed');
             }
         } catch (err) {
             console.error('Create user error:', err);
             State._cache.users = originalUsers;
             updateUI();
-            showToast(err.message || 'Sync failed: User creation reverted');
+            showToast('Sync failed: User creation reverted');
             return false;
         } finally {
             updateSyncIndicator(false);
@@ -765,14 +764,13 @@ const AdminActions = {
                 // Confirm consistency quietly
                 return true;
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Update user sync failed');
+                throw new Error('Update user sync failed');
             }
         } catch (err) {
             console.error('Update user error:', err);
             State._cache.users = originalUsers;
             updateUI();
-            showToast(err.message || 'Sync failed: User updates reverted');
+            showToast('Sync failed: User updates reverted');
             return false;
         } finally {
             updateSyncIndicator(false);
@@ -836,14 +834,13 @@ const EmployeeActions = {
                 silentCacheSync();
                 return true;
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Create product sync failed');
+                throw new Error('Create product sync failed');
             }
         } catch (err) {
             console.error('Create product error:', err);
             State._cache.products = originalProducts;
             updateUI();
-            showToast(err.message || 'Sync failed: Product creation reverted');
+            showToast('Sync failed: Product creation reverted');
             return false;
         } finally {
             updateSyncIndicator(false);
@@ -869,14 +866,13 @@ const EmployeeActions = {
             if (response.ok) {
                 return true;
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Update product sync failed');
+                throw new Error('Update product sync failed');
             }
         } catch (err) {
             console.error('Update product error:', err);
             State._cache.products = originalProducts;
             updateUI();
-            showToast(err.message || 'Sync failed: Product updates reverted');
+            showToast('Sync failed: Product updates reverted');
             return false;
         } finally {
             updateSyncIndicator(false);

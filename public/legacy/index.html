@@ -160,7 +160,7 @@
                         <label for="login-remember" style="margin: 0; font-size: 0.9rem; color: var(--text-dim); cursor: pointer;">Stay logged in</label>
                     </div>
                     <button type="submit" class="header-btn primary">Establish Link</button>
-                    
+                    <!--Put a design here... design completed-->
                     <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem;">
                         No account? <a href="register.html" style="color: var(--primary); font-weight: 600;">Create one
                             here</a>
@@ -168,50 +168,8 @@
                     <div
                         style="margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px; font-size: 0.85rem; display: flex; justify-content: space-around;">
                         <span style="color: var(--text-dim); font-weight: 600;">Staff Modules:</span>
-                        <a href="javascript:void(0)" onclick="showAuthMode('admin')" style="color: var(--primary); text-decoration: none;">Admin Login</a>
-                        <a href="javascript:void(0)" onclick="showAuthMode('employee')" style="color: var(--primary); text-decoration: none;">Employee Login</a>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Admin Login View -->
-            <div id="admin-login-form-container" style="display: none;">
-                <h2 style="margin-bottom: 10px; font-size: 1.8rem; font-weight: 700;">Admin Portal</h2>
-                <p style="color: var(--text-dim); margin-bottom: 30px; font-size: 0.9rem;">Administrative access only</p>
-                <form id="admin-login-form">
-                    <div class="input-group">
-                        <label>Admin Email</label>
-                        <input type="text" id="admin-login-email" placeholder="admin@stitchopt.com" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Security Key (Password)</label>
-                        <input type="password" id="admin-login-pass" placeholder="••••••••" required>
-                    </div>
-                    <div id="admin-login-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
-                    <button type="submit" class="header-btn primary" style="width: 100%; justify-content: center;">Authorize Access</button>
-                    <div style="margin-top: 24px; text-align: center;">
-                        <a href="javascript:void(0)" onclick="showAuthMode('customer')" style="color: var(--text-dim); text-decoration: none; font-size: 0.9rem;">← Return to Customer Login</a>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Employee Login View -->
-            <div id="employee-login-form-container" style="display: none;">
-                <h2 style="margin-bottom: 10px; font-size: 1.8rem; font-weight: 700;">Employee Portal</h2>
-                <p style="color: var(--text-dim); margin-bottom: 30px; font-size: 0.9rem;">Staff authentication required</p>
-                <form id="employee-login-form">
-                    <div class="input-group">
-                        <label>Staff Email</label>
-                        <input type="text" id="employee-login-email" placeholder="staff@stitchopt.com" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Access Code (Password)</label>
-                        <input type="password" id="employee-login-pass" placeholder="••••••••" required>
-                    </div>
-                    <div id="employee-login-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
-                    <button type="submit" class="header-btn primary" style="width: 100%; justify-content: center;">Initialize Session</button>
-                    <div style="margin-top: 24px; text-align: center;">
-                        <a href="javascript:void(0)" onclick="showAuthMode('customer')" style="color: var(--text-dim); text-decoration: none; font-size: 0.9rem;">← Return to Customer Login</a>
+                        <a href="admin.html" style="color: var(--primary); text-decoration: none;">Admin Login</a>
+                        <a href="employee.html" style="color: var(--primary); text-decoration: none;">Employee Login</a>
                     </div>
                 </form>
             </div>
@@ -322,22 +280,11 @@
     <script>
         // --- Storefront Specific Logic ---
         function openAuth(mode) {
-            showAuthMode(mode || 'customer');
             document.getElementById('auth-overlay').classList.add('active');
         }
 
         function closeAuth() {
             document.getElementById('auth-overlay').classList.remove('active');
-        }
-
-        function showAuthMode(mode) {
-            const customerForm = document.getElementById('login-form-container');
-            const adminForm = document.getElementById('admin-login-form-container');
-            const employeeForm = document.getElementById('employee-login-form-container');
-
-            customerForm.style.display = mode === 'customer' ? 'block' : 'none';
-            adminForm.style.display = mode === 'admin' ? 'block' : 'none';
-            employeeForm.style.display = mode === 'employee' ? 'block' : 'none';
         }
 
         // Header scroll effect removed as requested
@@ -405,7 +352,7 @@
             }
         });
 
-        // Login Handlers
+        // Login Handler (Reuse app.js logic)
         document.getElementById('main-login-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -417,49 +364,15 @@
             if (window.AuthManager) {
                 const result = await AuthManager.login(email, password, rememberMe, 'customer');
                 if (result.success) {
+                    // Only customers should be able to successfully log in here
                     window.location.href = 'user.html';
                 } else {
+                    // Check if it's a role mismatch error to guide staff members
                     if (result.message && result.message.includes('not authorized for the customer portal')) {
                         errorEl.innerText = "This is the Customer portal. Only clients can login here.";
                     } else {
                         errorEl.innerText = result.message || "Invalid credentials.";
                     }
-                    errorEl.style.display = 'block';
-                }
-            }
-        });
-
-        document.getElementById('admin-login-form').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const email = document.getElementById('admin-login-email').value;
-            const password = document.getElementById('admin-login-pass').value;
-            const errorEl = document.getElementById('admin-login-error');
-            errorEl.style.display = 'none';
-
-            if (window.AuthManager) {
-                const result = await AuthManager.login(email, password, false, 'admin');
-                if (result.success) {
-                    window.location.href = 'admin.html';
-                } else {
-                    errorEl.innerText = result.message || "Admin authorization failed.";
-                    errorEl.style.display = 'block';
-                }
-            }
-        });
-
-        document.getElementById('employee-login-form').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const email = document.getElementById('employee-login-email').value;
-            const password = document.getElementById('employee-login-pass').value;
-            const errorEl = document.getElementById('employee-login-error');
-            errorEl.style.display = 'none';
-
-            if (window.AuthManager) {
-                const result = await AuthManager.login(email, password, false, 'employee');
-                if (result.success) {
-                    window.location.href = 'employee.html';
-                } else {
-                    errorEl.innerText = result.message || "Employee authentication failed.";
                     errorEl.style.display = 'block';
                 }
             }
