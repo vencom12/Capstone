@@ -583,7 +583,7 @@ input[name="nav-radio"],
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2000;
+    z-index: 99999;
 }
 
 .modal {
@@ -1114,7 +1114,7 @@ td {
     height: 100%;
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(20px);
-    z-index: 3000;
+    z-index: 99999;
     align-items: center;
     justify-content: center;
     padding: 20px;
