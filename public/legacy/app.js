@@ -111,6 +111,13 @@ const AuthManager = {
         }
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
+        
+        // Fallback to forcefully clear all browser cookies locally
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        // Redirect to neutral entry point
         window.location.href = 'index.html';
     },
 
@@ -129,6 +136,14 @@ const AuthManager = {
     },
 
     async validateSession() {
+        const hasLocalSession = !!localStorage.getItem(this.SESSION_KEY) || !!sessionStorage.getItem(this.SESSION_KEY);
+        
+        // Guard: Prevent rehydration if no local session exists.
+        // Only explicit login or register should create a local session.
+        if (!hasLocalSession) {
+            return false;
+        }
+
         try {
             const response = await apiFetch(`${API_URL}/auth/me`);
             if (!response.ok) {
@@ -142,7 +157,7 @@ const AuthManager = {
             // Update whichever storage currently holds the session
             if (localStorage.getItem(this.SESSION_KEY)) {
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-            } else {
+            } else if (sessionStorage.getItem(this.SESSION_KEY)) {
                 sessionStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
             }
             return true;
