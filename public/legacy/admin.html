@@ -173,13 +173,17 @@
             errEl.style.display = 'none';
             const res = await window.AuthManager.login(email, pass, false, 'admin');
             if (res.success && window.AuthManager.getUserRole() === 'admin') {
-                window.location.reload();
+                document.getElementById('module-login-screen').style.display = 'none';
+                document.documentElement.classList.remove('unauthorized-hide');
+                window.isUnauthorized = false;
+                await window.refreshDashboardState();
             } else {
                 errEl.innerText = res.success ? "Unauthorized: Admin privileges required." : res.message;
                 errEl.style.display = 'block';
                 if (res.success) {
                     // Manually clear session locally without redirecting immediately
                     localStorage.removeItem(window.AuthManager.SESSION_KEY);
+                    sessionStorage.removeItem(window.AuthManager.SESSION_KEY);
                     fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => {});
                 }
             }

@@ -136,14 +136,6 @@ const AuthManager = {
     },
 
     async validateSession() {
-        const hasLocalSession = !!localStorage.getItem(this.SESSION_KEY) || !!sessionStorage.getItem(this.SESSION_KEY);
-        
-        // Guard: Prevent rehydration if no local session exists.
-        // Only explicit login or register should create a local session.
-        if (!hasLocalSession) {
-            return false;
-        }
-
         try {
             const response = await apiFetch(`${API_URL}/auth/me`);
             if (!response.ok) {
@@ -1841,6 +1833,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) {
         console.error('Initialization Auth Check failed:', e);
+    }
+
+    // Delay fetching dashboard data if the inline guard marked the page unauthorized
+    if (window.isUnauthorized) {
+        return;
     }
 
     await updateUI();
