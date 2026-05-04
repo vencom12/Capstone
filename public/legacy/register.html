@@ -150,12 +150,19 @@
             <div class="input-group">
                 <label>Email Address</label>
                 <input type="email" id="email" placeholder="name@company.com" required>
+            </div>           
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="phoneNumber" placeholder="+1 (555) 000-0000" required>
+            </div>
+            <div class="input-group">
+                <label>Full Address</label>
+                <textarea id="address" placeholder="123 Main St, City, State, ZIP" required style="width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; outline: none; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
             </div>
             <div class="input-group">
                 <label>Password</label>
                 <input type="password" id="password" placeholder="••••••••" required>
             </div>
-
             <div id="register-error" class="error-message">Registration failed. Try again.</div>
 
             <button type="submit" class="btn btn-primary auth-btn">Secure Registration</button>
@@ -173,12 +180,14 @@
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const address = document.getElementById('address').value;
             const errorEl = document.getElementById('register-error');
             
             errorEl.style.display = 'none';
             
             if (window.AuthManager) {
-                const result = await AuthManager.register(username, email, password);
+                const result = await AuthManager.register(username, email, password, 'customer', phoneNumber, address);
                 if (result.success) {
                     // Public registration always redirects to customer portal
                     window.location.href = 'user.html';

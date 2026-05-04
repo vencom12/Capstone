@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['admin', 'employee', 'customer'], default: 'customer' },
     walletBalance: { type: Number, default: 0 },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    phoneNumber: { type: String, required: function() { return this.role === 'customer'; } },
+    address: { type: String, required: function() { return this.role === 'customer'; } },
     createdAt: { type: Date, default: Date.now, index: true }
 });
 

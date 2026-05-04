@@ -170,14 +170,22 @@ mongoose.connect(process.env.MONGODB_URI, dbOptions)
 app.post('/api/auth/register', async (req, res) => {
     try {
         logErr('Register attempt: ' + JSON.stringify(req.body));
-        const { username, email, password, role } = req.body;
+        const { username, email, password, role, phoneNumber, address } = req.body;
+        
+        // Validation for required fields for customers
+        if (role === 'customer' || !role) {
+            if (!phoneNumber || !address) {
+                return res.status(400).json({ message: 'Phone number and address are required' });
+            }
+        }
+
         let user = await User.findOne({ $or: [{ email }, { username }] });
         if (user) {
             logErr('User already exists: ' + email);
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        user = new User({ username, email, password, role: 'customer' });
+        user = new User({ username, email, password, role: role || 'customer', phoneNumber, address });
         await user.save();
         logErr('User registered successfully');
 

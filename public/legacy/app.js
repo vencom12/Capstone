@@ -83,11 +83,11 @@ const AuthManager = {
         }
     },
 
-    async register(username, email, password, role = 'customer') {
+    async register(username, email, password, role = 'customer', phoneNumber, address) {
         try {
             const response = await apiFetch(`${API_URL}/auth/register`, {
                 method: 'POST',
-                body: JSON.stringify({ username, email, password, role })
+                body: JSON.stringify({ username, email, password, role, phoneNumber, address })
             });
 
             if (!response.ok) {
