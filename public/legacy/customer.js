@@ -179,7 +179,17 @@ const State = {
         const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
         const saved = localStorage.getItem(key);
         try {
-            return saved ? JSON.parse(saved) : [];
+            const rawBasket = saved ? JSON.parse(saved) : [];
+            // Hydrate the minimal stored data with full product details from cache
+            return rawBasket.map(item => {
+                const product = (State._cache.products || []).find(p => (p._id || p.id)?.toString() === item.productId);
+                return {
+                    ...item,
+                    name: product?.name || item.name || 'Unknown Product',
+                    price: product?.price || item.price || 0,
+                    imageUrl: product?.imageUrl || item.imageUrl || ''
+                };
+            });
         } catch (e) {
             console.error('Basket parse error', e);
             return [];
@@ -187,10 +197,29 @@ const State = {
     },
     setBasket(basket) {
         const session = AuthManager.getSession();
-        const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
-        localStorage.setItem(key, JSON.stringify(basket));
-        window.dispatchEvent(new Event('basketUpdated'));
-        if (typeof updateBasketUI === 'function') updateBasketUI();
+        const userId = session ? (session.user.id || session.user._id) : 'guest';
+        const key = 'stitch_basket_' + userId;
+        
+        // Minimize data before storing to avoid QuotaExceededError
+        const minimizedBasket = basket.map(item => ({
+            id: item.id,
+            productId: item.productId || item._id,
+            quantity: item.quantity,
+            // Keep name/price as fallback but STRIP imageUrl which is often large (Base64)
+            name: item.name,
+            price: item.price
+        }));
+
+        try {
+            localStorage.setItem(key, JSON.stringify(minimizedBasket));
+            window.dispatchEvent(new Event('basketUpdated'));
+            if (typeof updateBasketUI === 'function') updateBasketUI();
+        } catch (e) {
+            console.error('LocalStorage error:', e);
+            if (e.name === 'QuotaExceededError') {
+                showToast('Storage full! Please clear your basket or browser cache.');
+            }
+        }
     },
     async getDashboardState() {
         try {
