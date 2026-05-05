@@ -30,6 +30,80 @@ window.onerror = function(msg, url, line, col, error) {
 
 let _csrfToken = null;
 
+// --- Key Objects (Hoisted or defined early for window export) ---
+const UI = {
+    toggleModal: (id) => {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    }
+};
+
+const AuthManager = {
+    SESSION_KEY: 'stitch_opt_session',
+    async login(email, password, rememberMe = false, portal = 'admin') {
+        try {
+            const response = await apiFetch(`${AUTH_API_URL}/login`, {
+                method: 'POST',
+                body: JSON.stringify({ email, password, rememberMe, portal })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                const storage = rememberMe ? localStorage : sessionStorage;
+                storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+                return { success: true };
+            } else {
+                return { success: false, message: data.message || 'Login failed' };
+            }
+        } catch (err) { 
+            return { success: false, message: 'Connection error' }; 
+        }
+    },
+    async logout() {
+        await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
+        localStorage.removeItem(this.SESSION_KEY);
+        sessionStorage.removeItem(this.SESSION_KEY);
+        window.location.href = 'index.html';
+    },
+    getSession() {
+        const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
+        return session ? JSON.parse(session) : null;
+    },
+    getUserRole() {
+        const session = this.getSession();
+        return session ? session.user.role : null;
+    },
+    isAuthenticated() { return !!this.getSession(); },
+    checkAccess(role, redirect = true) {
+        const session = this.getSession();
+        if (!session || session.user.role !== role) {
+            if (redirect) window.location.href = 'index.html';
+            return false;
+        }
+        return true;
+    }
+};
+
+const State = {
+    _cache: { orders: [], users: [], inventory: [], products: [], analytics: null },
+    async getDashboardState() {
+        try {
+            const response = await apiFetch(`${API_URL}/dashboard-state`);
+            if (response.ok) {
+                const data = await response.json();
+                this._cache = { ...this._cache, ...data };
+                return data;
+            }
+        } catch (err) { console.error('Admin state error:', err); }
+        return null;
+    }
+};
+
+// --- Window Exports ---
+window.UI = UI;
+window.AuthManager = AuthManager;
+window.State = State;
+window.showToast = showToast;
+
 // Helper: Secure API fetch wrapper
 async function apiFetch(url, options = {}) {
     // Refresh token if missing
@@ -95,70 +169,6 @@ const updateSyncIndicator = (isStarting) => {
     }
 };
 
-// --- Global Sync Indicator ---
-
-// --- Auth Manager ---
-const AuthManager = {
-    SESSION_KEY: 'stitch_opt_session',
-    async login(email, password, rememberMe = false, portal = 'admin') {
-        try {
-            const response = await apiFetch(`${AUTH_API_URL}/login`, {
-                method: 'POST',
-                body: JSON.stringify({ email, password, rememberMe, portal })
-            });
-            const data = await response.json();
-            if (response.ok) {
-                const storage = rememberMe ? localStorage : sessionStorage;
-                storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-                return { success: true };
-            } else {
-                return { success: false, message: data.message || 'Login failed' };
-            }
-        } catch (err) { 
-            return { success: false, message: 'Connection error' }; 
-        }
-    },
-    async logout() {
-        await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
-        localStorage.removeItem(this.SESSION_KEY);
-        sessionStorage.removeItem(this.SESSION_KEY);
-        window.location.href = 'index.html';
-    },
-    getSession() {
-        const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
-        return session ? JSON.parse(session) : null;
-    },
-    getUserRole() {
-        const session = this.getSession();
-        return session ? session.user.role : null;
-    },
-    isAuthenticated() { return !!this.getSession(); },
-    checkAccess(role, redirect = true) {
-        const session = this.getSession();
-        if (!session || session.user.role !== role) {
-            if (redirect) window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    }
-};
-
-// --- State Management ---
-const State = {
-    _cache: { orders: [], users: [], inventory: [], products: [], analytics: null },
-    async getDashboardState() {
-        try {
-            const response = await apiFetch(`${API_URL}/dashboard-state`);
-            if (response.ok) {
-                const data = await response.json();
-                this._cache = { ...this._cache, ...data };
-                return data;
-            }
-        } catch (err) { console.error('Admin state error:', err); }
-        return null;
-    }
-};
-
 // --- UI Rendering ---
 function updateUI() {
     const { orders, users, inventory, products, analytics } = State._cache;
@@ -177,7 +187,6 @@ function updateUI() {
         if (goldEl) goldEl.innerText = `${gold} Cones`;
     }
 
-    // 2. Update Orders Table
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
         orderTable.innerHTML = orders.length === 0
@@ -200,7 +209,6 @@ function updateUI() {
                 </tr>`).join('');
     }
 
-    // 3. Update Personnel Table
     const staffTable = document.getElementById('staff-table-body');
     if (staffTable) {
         staffTable.innerHTML = users.length === 0
@@ -215,7 +223,6 @@ function updateUI() {
                 </tr>`).join('');
     }
 
-    // 3.1 Update History Table
     const historyTable = document.getElementById('admin-history-table-body');
     if (historyTable) {
         const historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
@@ -230,11 +237,6 @@ function updateUI() {
                     <td>${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}</td>
                 </tr>`).join('');
     }
-}
-
-function downloadReceipt(receiptId) {
-    window.location.href = `/api/customer/receipt/${receiptId}/download`;
-}
 
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');
@@ -605,12 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-const UI = {
-    toggleModal: (id) => {
-        const modal = document.getElementById(id);
-        if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
-    }
-};
+// --- Receipt Viewer ---
 
 window.viewReceipt = async (transactionID) => {
     if (!transactionID || transactionID === 'undefined') return showToast('No transaction found for this order');
