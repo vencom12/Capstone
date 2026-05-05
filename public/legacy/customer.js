@@ -333,14 +333,15 @@ function updateUI() {
     const historyTable = document.querySelector('#section-history tbody');
     if (historyTable) {
         historyTable.innerHTML = transactions.length === 0
-            ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
+            ? '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
             : transactions.map(tx => `
                 <tr>
-                    <td>${tx.transactionID}</td>
-                    <td>${tx.orderID}</td>
-                    <td>$${tx.amount.toFixed(2)}</td>
-                    <td><span class="status-pill ${tx.status}">${tx.status}</span></td>
-                    <td>
+                    <td style="padding: 16px 24px;">${tx.transactionID}</td>
+                    <td style="padding: 16px 24px;">${new Date(tx.timestamp).toLocaleDateString()}</td>
+                    <td style="padding: 16px 24px;">${tx.orderID.startsWith('ORD-') ? 'Order' : 'Top-up'}</td>
+                    <td style="padding: 16px 24px;">$${tx.amount.toFixed(2)}</td>
+                    <td style="padding: 16px 24px;"><span class="status-pill ${tx.status}">${tx.status}</span></td>
+                    <td style="padding: 16px 24px;">
                         <button class="btn btn-secondary view-receipt-btn" data-id="${tx.transactionID}" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
                     </td>
                 </tr>`).join('');
