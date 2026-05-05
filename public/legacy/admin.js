@@ -105,8 +105,8 @@ function updateUI() {
 
     // 1. Update Stats
     if (analytics) {
-        const revEl = document.querySelector('.stat-card:nth-child(3) .stat-value');
-        if (revEl) revEl.innerText = `$${(analytics.revenue / 1000).toFixed(1)}k`;
+        const revEl = document.getElementById('overview-revenue');
+        if (revEl) revEl.innerText = `$${parseFloat(analytics.revenue || 0).toFixed(2)}`;
         
         // Low stock indicators (midnight/gold)
         const midnight = inventory.find(i => i.name.toLowerCase().includes('midnight'))?.count || 0;
@@ -214,6 +214,7 @@ function initSocket() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
+    initCharts(); // Initialize charts on load
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
@@ -269,13 +270,14 @@ async function updateCharts() {
         const res = await apiFetch(`${API_URL}/analytics`);
         if (!res.ok) return;
         const data = await res.json();
+        State._cache.analytics = data; // Save to cache for updateUI
         
-        if (charts.trends) {
+        if (charts.trends && data.orderTrends) {
             charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
             charts.trends.data.datasets[0].data = data.orderTrends.map(t => t.revenue);
             charts.trends.update();
         }
-        if (charts.dist) {
+        if (charts.dist && data.statusDistribution) {
             charts.dist.data.labels = data.statusDistribution.map(d => d._id);
             charts.dist.data.datasets[0].data = data.statusDistribution.map(d => d.count);
             charts.dist.update();
