@@ -106,3 +106,19 @@ exports.getAnalytics = async (req, res) => {
         res.status(500).json({ message: 'Analytics error' });
     }
 };
+exports.updateOrdersStatus = async (req, res) => {
+    try {
+        const { ids, status } = req.body;
+        if (!ids || !status) return res.status(400).json({ message: 'Missing IDs or status' });
+
+        await Order.updateMany({ _id: { $in: ids } }, { $set: { status } });
+        
+        const io = req.app.get('io');
+        io.to('staff').emit('ordersUpdated');
+        // Ideally emit to each user too, but staff update is primary for admin UI sync
+        
+        res.json({ message: 'Orders updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};

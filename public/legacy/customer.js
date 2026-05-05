@@ -80,17 +80,17 @@ const AuthManager = {
         const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
         return session ? JSON.parse(session) : null;
     },
+    getUserRole() {
+        const session = this.getSession();
+        return session ? session.user.role : null;
+    },
     isAuthenticated() { return !!this.getSession(); },
-    async validateSession() {
-        const response = await apiFetch(`${AUTH_API_URL}/me`);
-        if (!response.ok) {
-            localStorage.removeItem(this.SESSION_KEY);
-            sessionStorage.removeItem(this.SESSION_KEY);
+    checkAccess(role, redirect = true) {
+        const session = this.getSession();
+        if (!session || session.user.role !== role) {
+            if (redirect) window.location.href = 'index.html';
             return false;
         }
-        const data = await response.json();
-        const storage = localStorage.getItem(this.SESSION_KEY) ? localStorage : sessionStorage;
-        storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
         return true;
     }
 };
@@ -147,29 +147,107 @@ function updateBasketUI() {
 }
 
 function updateUI() {
+    const basket = State.getBasket();
+    const orders = State._cache.orders || [];
     const products = State._cache.products || [];
     const favorites = State._cache.favorites || [];
-    const favIds = favorites.map(f => f._id);
+    const transactions = State._cache.transactions || [];
+    const walletBalance = State._cache.walletBalance || 0;
+    const session = AuthManager.getSession();
 
-    const grid = document.getElementById('storefront-grid');
-    if (grid) {
-        grid.innerHTML = products.map(p => {
-            const isFav = favIds.includes(p._id);
-            return `
-            <div class="product-card glass animate-fade">
-                <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover;">
-                    <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="color: ${isFav ? '#ef4444' : 'white'}">
-                        <svg width="20" height="20" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    </button>
-                </div>
-                <div class="product-details">
-                    <h3>${p.name}</h3>
-                    <p>$${p.price.toFixed(2)}</p>
-                    <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
-                </div>
-            </div>`;
-        }).join('');
+    // 1. Update Profile Info
+    if (session) {
+        document.querySelectorAll('.profile-name').forEach(el => el.innerText = session.user.username);
+        const walletEl = document.getElementById('profile-wallet');
+        if (walletEl) walletEl.innerText = `$${walletBalance.toFixed(2)}`;
     }
+
+    // 2. Update Catalog (Storefront & Shop)
+    const favIds = favorites.map(f => f._id);
+    const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
+    productGrids.forEach(grid => {
+        grid.innerHTML = products.length === 0 
+            ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>No designs found.</p></div>'
+            : products.map(p => {
+                const isFav = favIds.includes(p._id);
+                return `
+                <div class="product-card glass animate-fade">
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
+                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'white'}; cursor: pointer; backdrop-filter: blur(4px);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="product-details">
+                        <span class="product-tag">${p.tag || 'Design'}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                            <h3 style="font-weight: 600;">${p.name}</h3>
+                            <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
+                        </div>
+                        <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
+                        <button class="btn btn-primary add-to-basket" style="width: 100%; padding: 12px;" 
+                            onclick="Actions.addToBasket({name:'${p.name}', price:${p.price}, _id:'${p._id}', imageUrl:'${p.imageUrl}'})">Add to Basket</button>
+                    </div>
+                </div>`;
+            }).join('');
+    });
+
+    // 3. Update Tracking
+    const trackingList = document.querySelector('#section-tracking .tracking-container') || document.getElementById('section-tracking');
+    if (trackingList) {
+        if (orders.length === 0) {
+            trackingList.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-dim);"><p>No active orders.</p></div>';
+        } else {
+            trackingList.innerHTML = `
+                <div class="tracking-container" style="display: flex; flex-direction: column; gap: 20px;">
+                    ${orders.map(order => `
+                        <div class="glass animate-fade" style="padding: 32px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                                <div>
+                                    <h3 style="margin-bottom: 4px;">Order #${order.orderId}</h3>
+                                    <p style="color: var(--text-dim); font-size: 0.9rem;">${formatOrderDesign(order)}</p>
+                                </div>
+                                <span class="status-pill">${order.status}</span>
+                            </div>
+                            <div style="height: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+                                <div style="width: ${order.progress}%; height: 100%; background: var(--primary); box-shadow: 0 0 10px var(--primary-glow);"></div>
+                            </div>
+                            <p style="text-align: right; color: var(--text-dim); font-size: 0.85rem;">${order.progress}% Processed</p>
+                        </div>
+                    `).join('')}
+                </div>`;
+        }
+    }
+
+    // 4. Update Favorites
+    const favsGrid = document.querySelector('#section-favs .product-grid');
+    if (favsGrid) {
+        favsGrid.innerHTML = favorites.length === 0
+            ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
+            : favorites.map(p => `
+                <div class="product-card glass animate-fade">
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
+                    <div class="product-details">
+                        <h3>${p.name}</h3>
+                        <p>$${p.price.toFixed(2)}</p>
+                        <button class="btn btn-primary" onclick="Actions.addToBasket({name:'${p.name}', price:${p.price}, _id:'${p._id}', imageUrl:'${p.imageUrl}'})">Add to Basket</button>
+                    </div>
+                </div>`).join('');
+    }
+
+    // 5. Update History (Transactions)
+    const historyTable = document.querySelector('#section-history tbody');
+    if (historyTable) {
+        historyTable.innerHTML = transactions.length === 0
+            ? '<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
+            : transactions.map(tx => `
+                <tr>
+                    <td>${tx.transactionID}</td>
+                    <td>${tx.orderID}</td>
+                    <td>$${tx.amount.toFixed(2)}</td>
+                    <td><span class="status-pill ${tx.status}">${tx.status}</span></td>
+                </tr>`).join('');
+    }
+
     updateBasketUI();
 }
 // --- Checkout Manager ---
@@ -287,17 +365,71 @@ const CheckoutManager = {
 };
 
 // --- Initialization & UI Helpers ---
-function silentCacheSync() {
-    State.getDashboardState().then(() => { if (typeof updateUI === 'function') updateUI(); });
+async function refreshDashboardState() {
+    updateSyncIndicator(true);
+    await State.getDashboardState();
+    updateUI();
+    updateSyncIndicator(false);
 }
+
+function silentCacheSync() {
+    State.getDashboardState().then(() => updateUI());
+}
+
+// --- Socket.IO Integration ---
+function initSocket() {
+    if (typeof io === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "/socket.io/socket.io.js";
+        script.onload = () => setupSocketListeners();
+        document.head.appendChild(script);
+    } else {
+        setupSocketListeners();
+    }
+}
+
+function setupSocketListeners() {
+    const socket = io(SOCKET_URL, { credentials: 'include' });
+    socket.on('ordersUpdated', () => silentCacheSync());
+    socket.on('transactionsUpdated', () => silentCacheSync());
+    socket.on('dataChanged', (data) => {
+        if (data.type === 'wallet') {
+            State._cache.walletBalance = data.balance;
+            updateUI();
+        }
+        silentCacheSync();
+    });
+}
+
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    initSocket();
+    if (AuthManager.isAuthenticated()) {
+        refreshDashboardState();
+    } else if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('Capstone/')) {
+        State.getDashboardState().then(() => updateUI());
+    }
+});
 
 const Actions = {
     addToBasket: (item, quantity = 1) => {
-        if (!AuthManager.isAuthenticated()) return showToast('Please login');
+        if (!AuthManager.isAuthenticated()) {
+            if (typeof openAuth === 'function') openAuth('login');
+            return showToast('Please login');
+        }
         const basket = State.getBasket();
-        const existing = basket.find(b => b.name === item.name);
-        if (existing) existing.quantity += parseInt(quantity);
-        else basket.push({ ...item, quantity: parseInt(quantity), id: Date.now() });
+        const existing = basket.find(b => b.name === item.name || b._id === item._id);
+        if (existing) {
+            existing.quantity += parseInt(quantity);
+        } else {
+            basket.push({ 
+                ...item, 
+                quantity: parseInt(quantity), 
+                id: Date.now(),
+                price: parseFloat(item.price),
+                imageUrl: item.imageUrl
+            });
+        }
         State.setBasket(basket);
         showToast(`Added ${item.name}`);
     },
@@ -315,3 +447,6 @@ window.State = State;
 window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.silentCacheSync = silentCacheSync;
+window.refreshDashboardState = refreshDashboardState;
+window.updateUI = updateUI;
+
