@@ -117,7 +117,10 @@ const State = {
     _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
     _getBasketKey: () => {
         const session = AuthManager.getSession();
-        if (session && session.user && session.user.id) return 'stitch_basket_' + session.user.id;
+        if (session && session.user) {
+            const userId = session.user.id || session.user._id;
+            if (userId) return 'stitch_basket_' + userId;
+        }
         return null; // No basket for unauthenticated users
     },
     getBasket: () => {
@@ -145,6 +148,17 @@ const State = {
                 }
                 this._cache = { ...this._cache, ...data };
                 return data;
+            } else if (response.status === 401 || response.status === 403) {
+                // GUEST MODE: Fetch products from public endpoint
+                const publicRes = await fetch('/api/products');
+                if (publicRes.ok) {
+                    const products = await publicRes.json();
+                    this._cache.products = products;
+                    this._cache.favorites = [];
+                    this._cache.orders = [];
+                    this._cache.transactions = [];
+                    return { products };
+                }
             }
         } catch (err) { console.error('Dashboard state error:', err); }
         return null;
@@ -274,7 +288,10 @@ function updateUI() {
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
                         <button class="btn btn-primary add-to-basket" 
-                            onclick="Actions.addToBasket({ _id: '${p._id.toString()}', name: '${p.name.replace(/'/g, "\\'")}', price: ${p.price} })"
+                            data-id="${p._id.toString()}"
+                            data-name="${p.name}"
+                            data-price="${p.price}"
+                            onclick="Actions.addToBasketById('${p._id.toString()}')"
                             style="width: 100%; padding: 12px; background: #6366f1; color: white;">
                             Add to Basket
                         </button>
@@ -523,6 +540,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const Actions = {
+    addToBasketById: (id) => {
+        const products = State._cache.products || [];
+        const product = products.find(p => p._id.toString() === id.toString());
+        if (product) {
+            Actions.addToBasket(product);
+        } else {
+            showToast('Error: Product not found');
+        }
+    },
     addToBasket: (item, quantity = 1) => {
         if (!AuthManager.isAuthenticated()) {
             AuthManager.promptLogin();
@@ -696,7 +722,11 @@ document.addEventListener('click', (e) => {
     if (basketBtn) {
         e.preventDefault(); e.stopPropagation();
         const id = basketBtn.dataset.id;
-        const product = State._cache.products.find(p => p._id.toString() === id.toString());
+        if (!id) return; // Robustness: Skip if ID is missing (should not happen with fixed buttons)
+        
+        const products = State._cache.products || [];
+        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
+        
         if (product) {
             Actions.addToBasket(product);
         } else {
