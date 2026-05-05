@@ -1015,16 +1015,30 @@ const CheckoutManager = {
     },
 
     async placeOrder() {
-        if (!this.isVerified) return showToast('Please verify payment method first');
+        if (!this.selectedMethod) return showToast('Please select a payment method');
         
         const address = document.getElementById('checkout-address').value;
         const deliveryTime = document.getElementById('checkout-time').value;
         const notes = document.getElementById('checkout-notes').value;
 
-        if (!address || !deliveryTime) return showToast('Delivery details are required');
+        if (!address || !deliveryTime) return showToast('Delivery details (time) are required');
 
         updateSyncIndicator(true);
         try {
+            // 1. Re-validate payment method status via API
+            const validateRes = await apiFetch(`${API_URL}/payment/validate`, {
+                method: 'POST',
+                body: JSON.stringify({ method: this.selectedMethod, total: this.total })
+            });
+
+            if (!validateRes.ok) {
+                const data = await validateRes.json();
+                this.isVerified = false;
+                this.updateVerificationUI();
+                return showToast(data.message || 'Payment verification failed');
+            }
+
+            // 2. Submit Order
             const response = await apiFetch(`${API_URL}/order/submit`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -1039,20 +1053,21 @@ const CheckoutManager = {
 
             if (response.ok) {
                 const data = await response.json();
-                showToast(data.message);
-                this.close();
+                showToast(data.message); // "Order placed successfully..."
+                this.close(); // Success -> close panel
                 State.setBasket([]);
                 silentCacheSync();
             } else {
                 const data = await response.json();
+                // Error -> keep panel open + show notification
                 showToast(data.message || 'Order failed');
             }
         } catch (e) {
-            showToast('Order submission failed');
+            showToast('Connection error during order submission');
         } finally {
             updateSyncIndicator(false);
         }
-    }
+    },
 };
 window.CheckoutManager = CheckoutManager;
 

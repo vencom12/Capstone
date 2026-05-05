@@ -897,6 +897,7 @@ app.post('/api/order/submit', auth(['customer']), async (req, res) => {
             orderId: secureOrderId,
             client: user.username,
             userId: user._id,
+            design: "Cart Order",
             items,
             totalAmount,
             paymentMethod,
