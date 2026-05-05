@@ -130,6 +130,7 @@ const State = {
         if (!key) return;
         localStorage.setItem(key, JSON.stringify(basket));
         window.dispatchEvent(new Event('basketUpdated'));
+        if (typeof updateBasketUI === 'function') updateBasketUI();
     },
     async getDashboardState() {
         try {
@@ -273,10 +274,10 @@ function updateUI() {
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
                         <button class="btn btn-primary add-to-basket" 
-                            data-id="${p._id.toString()}" 
-                            data-name="${p.name}" 
-                            data-price="${p.price}" 
-                            style="width: 100%; padding: 12px;">Add to Basket</button>
+                            onclick="Actions.addToBasket({ _id: '${p._id.toString()}', name: '${p.name.replace(/'/g, "\\'")}', price: ${p.price} })"
+                            style="width: 100%; padding: 12px; background: #6366f1; color: white;">
+                            Add to Basket
+                        </button>
                     </div>
                 </div>`;
             }).join('');
