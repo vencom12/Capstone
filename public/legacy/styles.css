@@ -1672,3 +1672,11 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
  } 
   
  
+/* Checkout Verification Badges */
+.status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid transparent; }
+.status-badge.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+.status-badge.verified { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
+.payment-method-btn.active { background: rgba(99, 102, 241, 0.15) !important; border-color: var(--primary) !important; color: white !important; box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+.wallet-balance-card { background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)); border: 1px solid var(--border-glass); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+.top-up-input-group { display: flex; gap: 8px; }
+.top-up-input-group input { flex: 1 !important; background: rgba(0, 0, 0, 0.2) !important; border: 1px solid var(--border-glass) !important; border-radius: 8px !important; padding: 8px 12px !important; color: white !important; outline: none !important; }

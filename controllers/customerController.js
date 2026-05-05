@@ -32,7 +32,7 @@ exports.getDashboardState = async (req, res) => {
 exports.topupWallet = async (req, res) => {
     try {
         const { amount } = req.body;
-        if (!/^\d+(\.\d+)?$/.test(amount) || parseFloat(amount) <= 0) {
+        if (!/^\d+(\.\d+)?$/.test(amount.toString()) || parseFloat(amount) <= 0) {
             return res.status(400).json({ message: 'Invalid top-up amount. Use positive digits only.' });
         }
 

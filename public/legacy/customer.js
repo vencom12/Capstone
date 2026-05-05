@@ -463,11 +463,33 @@ const CheckoutManager = {
             if (response.ok) {
                 const data = await response.json();
                 State._cache.walletBalance = data.walletBalance;
-                document.getElementById('checkout-wallet-balance').innerText = `$${data.walletBalance.toFixed(2)}`;
-                showToast('Wallet topped up');
-                if (this.selectedMethod === 'wallet') this.selectMethod('wallet');
+                
+                // Refresh all UI elements including sidebar balance
+                updateUI();
+                
+                // Specific checkout elements
+                const checkoutBalance = document.getElementById('checkout-wallet-balance');
+                if (checkoutBalance) checkoutBalance.innerText = `$${data.walletBalance.toFixed(2)}`;
+                
+                // Clear input
+                document.getElementById('topup-amount').value = '';
+                
+                showToast('Wallet topped up successfully');
+                
+                // CRITICAL: Re-verify payment if wallet is selected
+                if (this.selectedMethod === 'wallet') {
+                    await this.selectMethod('wallet');
+                }
+            } else {
+                const errorData = await response.json();
+                showToast(errorData.message || 'Top-up failed');
             }
-        } finally { updateSyncIndicator(false); }
+        } catch (err) {
+            console.error('Top-up error:', err);
+            showToast('Connection error during top-up');
+        } finally { 
+            updateSyncIndicator(false); 
+        }
     },
 
     async placeOrder() {
