@@ -498,6 +498,10 @@ const CheckoutManager = {
         const deliveryTime = document.getElementById('checkout-time').value;
         const notes = document.getElementById('checkout-notes').value;
 
+        if (!this.selectedMethod) {
+            return showToast('Please select a payment method first.');
+        }
+
         updateSyncIndicator(true);
         try {
             const res = await apiFetch(`${API_URL}/order/submit`, {
@@ -516,12 +520,16 @@ const CheckoutManager = {
                 showToast(data.message || 'Order placed successfully.');
                 this.close();
                 State.setBasket([]);
-                silentCacheSync();
+                // Synchronously refresh so orders + transactions appear immediately
+                await State.getDashboardState();
+                updateUI();
             } else {
-                showToast(data.message || 'Order failed');
+                showToast(data.message || 'Order failed. Please try again.');
+                // Keep checkout modal open so user can retry
             }
         } catch (err) {
-            showToast(err.message || 'Connection error');
+            console.error('placeOrder error:', err);
+            showToast(err.message || 'Connection error. Please try again.');
         } finally { updateSyncIndicator(false); }
     }
 };
