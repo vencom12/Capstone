@@ -669,7 +669,7 @@ const CheckoutManager = {
             }
             updateSyncIndicator(false); 
         }
-    }, }
+    }
 };
 
 // --- Initialization & UI Helpers ---

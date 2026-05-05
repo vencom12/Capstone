@@ -449,6 +449,9 @@
                             errorEl.innerText = result.message || "Invalid credentials.";
                             errorEl.style.display = 'block';
                         }
+                    } else {
+                        errorEl.innerText = "System still initializing. Please wait 2 seconds and try again.";
+                        errorEl.style.display = 'block';
                     }
                 } catch (err) {
                     errorEl.innerText = "Connection timeout. Please refresh.";
