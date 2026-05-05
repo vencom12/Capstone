@@ -254,6 +254,31 @@ async function updateCharts() {
             charts.dist.data.datasets[0].data = data.statusDistribution.map(d => d.count);
             charts.dist.update();
         }
+
+        // Update Stat Cards
+        const visitsEl = document.getElementById('analytics-total-visits');
+        if (visitsEl) visitsEl.innerText = data.totalVisits.toLocaleString();
+        
+        const avgEl = document.getElementById('analytics-avg-order');
+        if (avgEl) avgEl.innerText = `$${parseFloat(data.avgOrderValue || 0).toFixed(2)}`;
+
+        const peakEl = document.getElementById('analytics-peak-season');
+        if (peakEl && data.orderTrends.length > 0) {
+            const sorted = [...data.orderTrends].sort((a, b) => b.revenue - a.revenue);
+            peakEl.innerText = `${sorted[0]._id.month}/${sorted[0]._id.year}`;
+        }
+
+        // Update Top Designs Table
+        const topTable = document.getElementById('analytics-top-designs-table');
+        if (topTable) {
+            topTable.innerHTML = data.topOrdered.length === 0
+                ? '<tr><td style="padding:20px; text-align:center; color:var(--text-dim);">No data available</td></tr>'
+                : data.topOrdered.map(d => `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 12px 0;">${d._id}</td>
+                        <td style="padding: 12px 0; text-align: right; color: var(--primary); font-weight: 700;">${d.count} Orders</td>
+                    </tr>`).join('');
+        }
     } catch (e) { console.error('Chart update error:', e); }
 }
 
@@ -441,6 +466,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
+const UI = {
+    toggleModal: (id) => {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    }
+};
 
 window.UI = UI;
 window.AuthManager = AuthManager;

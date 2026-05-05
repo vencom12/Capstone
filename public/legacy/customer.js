@@ -151,9 +151,9 @@ function updateBasketUI() {
         }
     }
 
-    const basketItems = document.getElementById('basket-items-list');
-    if (basketItems) {
-        basketItems.innerHTML = basket.length === 0 
+    const basketItemLists = document.querySelectorAll('#basket-items-list');
+    basketItemLists.forEach(list => {
+        list.innerHTML = basket.length === 0 
             ? '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>'
             : basket.map(item => `
                 <div class="basket-item animate-fade" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
@@ -166,7 +166,7 @@ function updateBasketUI() {
                     </div>
                 </div>
             `).join('');
-    }
+    });
 }
 
 function updateUI() {
@@ -492,7 +492,22 @@ const Actions = {
             const product = products.find(p => p._id.toString() === productId.toString());
             if (product) State._cache.favorites.push(product);
         }
-        updateUI(); // Immediate visual change
+        // Target specific button for immediate visual feedback without full reload
+        const btns = document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`);
+        btns.forEach(btn => {
+            const svg = btn.querySelector('svg');
+            if (isFav) { // Was fav, now removing
+                btn.style.color = 'white';
+                if (svg) svg.setAttribute('fill', 'none');
+            } else { // Was not fav, now adding
+                btn.style.color = '#ef4444';
+                if (svg) svg.setAttribute('fill', 'currentColor');
+            }
+        });
+
+        // Still update the actual favorites section if it's visible, but maybe delayed or only if needed
+        // For now, let's just do a targeted update of the favorites grid after a short delay
+        setTimeout(() => updateUI(), 500); 
 
         try {
             const method = isFav ? 'DELETE' : 'POST';
@@ -616,7 +631,7 @@ document.addEventListener('click', (e) => {
 
 // Search listener
 document.addEventListener('input', (e) => {
-    if (e.target.id === 'product-search' || e.target.id === 'shop-search') {
+    if (e.target.id === 'product-search' || e.target.id === 'shop-search' || e.target.id === 'storefront-search') {
         State._cache.searchQuery = e.target.value;
         updateUI();
     }
