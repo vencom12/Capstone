@@ -252,7 +252,10 @@ function updateUI() {
                 return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
+                        <button class="fav-toggle-btn" 
+                            data-id="${p._id.toString()}" 
+                            data-fav="${isFav}" 
+                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -332,7 +335,10 @@ function updateFavoritesGrid() {
             : favorites.map(p => `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
+                         <button class="fav-toggle-btn" 
+                            data-id="${p._id.toString()}" 
+                            data-fav="true" 
+                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -556,13 +562,14 @@ const Actions = {
         
         const favorites = State._cache.favorites || [];
         const products = State._cache.products || [];
-        const isFav = favorites.some(f => f._id.toString() === productId.toString());
+        const pIdStr = productId.toString();
+        const isFav = favorites.some(f => (f._id || f.id)?.toString() === pIdStr);
         
         // Optimistic Update
         if (isFav) {
-            State._cache.favorites = favorites.filter(f => f._id.toString() !== productId.toString());
+            State._cache.favorites = favorites.filter(f => (f._id || f.id)?.toString() !== pIdStr);
         } else {
-            const product = products.find(p => p._id.toString() === productId.toString());
+            const product = products.find(p => p._id.toString() === pIdStr);
             if (product) State._cache.favorites.push(product);
         }
         // Target specific button for immediate visual feedback without full reload
