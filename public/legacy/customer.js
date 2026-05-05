@@ -960,10 +960,14 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Search listener
+// Search & Mobile Category listener
 document.addEventListener('input', (e) => {
     if (e.target.id === 'product-search' || e.target.id === 'shop-search' || e.target.id === 'storefront-search') {
         State._cache.searchQuery = e.target.value;
+        updateUI();
+    }
+    if (e.target.id === 'mobile-category-select') {
+        State._cache.selectedCategory = e.target.value === 'All Designs' ? 'All' : e.target.value;
         updateUI();
     }
 });

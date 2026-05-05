@@ -9,7 +9,22 @@ const crypto = require('crypto');
 
 exports.getDashboardState = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user ? req.user.id : null;
+        
+        // If guest, only fetch products
+        if (!userId) {
+            const products = await Product.find().sort({ createdAt: -1 }).limit(100);
+            return res.json({
+                orders: [],
+                products,
+                favorites: [],
+                walletBalance: 0,
+                address: '',
+                transactions: [],
+                receipts: []
+            });
+        }
+
         const [orders, currentUser, transactions, products, receipts] = await Promise.all([
             Order.find({ userId }).sort({ date: -1 }).limit(50),
             User.findById(userId).select('favorites walletBalance address').populate('favorites'),
@@ -28,6 +43,7 @@ exports.getDashboardState = async (req, res) => {
             receipts
         });
     } catch (err) {
+        console.error('getDashboardState error:', err);
         res.status(500).json({ message: 'Error fetching dashboard state' });
     }
 };
