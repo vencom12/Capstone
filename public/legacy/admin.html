@@ -281,7 +281,18 @@
                 </li>
             </ul>
 
-            <div class="sidebar-profile">
+            <!-- Sidebar AI Chat Panel -->
+            <div id="sidebar-ai-panel" style="margin-top: 16px; flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; padding: 0 8px 8px 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/><circle cx="17" cy="7" r="5"/></svg>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">StitchMaster AI</span>
+                </div>
+                <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; max-height: 280px; border: 1px solid var(--border-glass); border-radius: 12px; margin: 0 4px;"></div>
+                <input type="text" id="ai-chat-input" placeholder="Ask me anything..."
+                    style="width: calc(100% - 8px); margin: 8px 4px 0 4px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 10px 12px; border-radius: 10px; color: white; outline: none; font-size: 0.85rem;">
+            </div>
+
+            <div class="sidebar-profile" style="margin-top: 12px;">
                 <div class="profile-avatar">AD</div>
                 <div class="profile-info">
                     <span class="profile-name">Admin User</span>
@@ -551,29 +562,7 @@
         </main>
     </div>
 
-    <!-- Floating AI Trigger -->
-    <label for="ai-toggle" class="ai-assistant-trigger">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;">
-            <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"></path>
-            <circle cx="17" cy="7" r="5"></circle>
-        </svg>
-    </label>
-
-    <!-- Full AI Panel Overlay -->
-    <div class="ai-assistant-panel glass">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3>StitchMaster AI</h3>
-            <label for="ai-toggle" style="cursor: pointer; color: var(--text-dim);">✕</label>
-        </div>
-        <div id="ai-chat-messages"
-            style="flex: 1; border: 1px solid var(--border-glass); border-radius: 12px; margin-bottom: 12px; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-            <p style="color: var(--text-dim); font-size: 0.85rem; text-align: center; margin-top: 40px;">Hello Admin!
-                How can I help you manage production today?</p>
-        </div>
-        <input type="text" id="ai-chat-input" placeholder="Type a command..."
-            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; outline: none;">
-    </div>
+    <!-- Old floating AI removed — now embedded in sidebar -->
 
     <!-- Staff Creation/Edit Modal -->
     <div id="staff-modal" class="modal-overlay"
