@@ -128,18 +128,41 @@ function updateBasketUI() {
     const basket = State.getBasket();
     const basketCount = document.getElementById('basket-count');
     const headerBasketCount = document.getElementById('header-basket-count');
-    if (basketCount) basketCount.innerText = `${basket.length} Items`;
-    if (headerBasketCount) headerBasketCount.innerText = basket.length;
+    const mobileBasketCount = document.getElementById('mobile-basket-count');
+    const basketTotal = document.getElementById('basket-total');
+    const checkoutBtn = document.getElementById('checkout-btn');
+
+    const count = basket.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const total = basket.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+
+    if (basketCount) basketCount.innerText = `${count} Items`;
+    if (headerBasketCount) headerBasketCount.innerText = count;
+    if (mobileBasketCount) mobileBasketCount.innerText = count;
+    if (basketTotal) basketTotal.innerText = `$${total.toFixed(2)}`;
+
+    if (checkoutBtn) {
+        if (basket.length > 0) {
+            checkoutBtn.style.opacity = '1';
+            checkoutBtn.style.pointerEvents = 'auto';
+            checkoutBtn.onclick = () => Actions.checkout();
+        } else {
+            checkoutBtn.style.opacity = '0.5';
+            checkoutBtn.style.pointerEvents = 'none';
+        }
+    }
 
     const basketItems = document.getElementById('basket-items-list');
     if (basketItems) {
         basketItems.innerHTML = basket.length === 0 
             ? '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>'
             : basket.map(item => `
-                <div class="basket-item" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>${item.name}</span>
-                        <span>$${(parseFloat(item.price) * (item.quantity || 1)).toFixed(2)}</span>
+                <div class="basket-item animate-fade" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-weight: 600;">${item.name}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">${item.quantity} × $${parseFloat(item.price).toFixed(2)}</span>
+                        </div>
+                        <span style="font-weight: 700; color: var(--primary);">$${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
                     </div>
                 </div>
             `).join('');
@@ -184,7 +207,7 @@ function updateUI() {
                             <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" style="width: 100%; padding: 12px;">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width: 100%; padding: 12px;">Add to Basket</button>
                     </div>
                 </div>`;
             }).join('');
@@ -414,37 +437,48 @@ const Actions = {
     addToBasket: (item, quantity = 1) => {
         if (!AuthManager.isAuthenticated()) {
             if (typeof openAuth === 'function') openAuth('login');
-            return showToast('Please login');
+            return showToast('Please login to add to basket');
         }
         const basket = State.getBasket();
-        const existing = basket.find(b => b._id === item._id);
+        // Use .toString() for safe comparison of ObjectIDs vs Strings
+        const itemId = item._id ? item._id.toString() : null;
+        if (!itemId) return showToast('Error: Product ID missing');
+
+        const existing = basket.find(b => (b._id && b._id.toString() === itemId) || (b.id && b.id.toString() === itemId));
         if (existing) {
             existing.quantity += parseInt(quantity);
         } else {
             basket.push({ 
-                ...item, 
-                quantity: parseInt(quantity), 
-                id: Date.now(),
+                _id: itemId,
+                name: item.name, 
                 price: parseFloat(item.price),
-                imageUrl: item.imageUrl
+                imageUrl: item.imageUrl,
+                quantity: parseInt(quantity), 
+                id: Date.now()
             });
         }
         State.setBasket(basket);
-        showToast(`Added ${item.name}`);
+        showToast(`Added ${item.name} to basket`);
     },
     toggleFavorite: async (productId) => {
         if (!AuthManager.isAuthenticated()) return showToast('Please login to save favorites');
         const favorites = State._cache.favorites || [];
-        const isFav = favorites.some(f => f._id === productId);
+        const isFav = favorites.some(f => f._id.toString() === productId.toString());
         
         try {
+            updateSyncIndicator(true);
             const method = isFav ? 'DELETE' : 'POST';
             const response = await apiFetch(`${API_URL}/favorites/${productId}`, { method });
             if (response.ok) {
                 showToast(isFav ? 'Removed from favorites' : 'Added to favorites');
-                silentCacheSync();
+                await State.getDashboardState();
+                updateUI();
             }
-        } catch (e) { showToast('Error toggling favorite'); }
+        } catch (e) { 
+            showToast('Error toggling favorite'); 
+        } finally {
+            updateSyncIndicator(false);
+        }
     },
     checkout: () => {
         const basket = State.getBasket();
@@ -458,15 +492,28 @@ document.addEventListener('click', (e) => {
     // Basket additions
     const basketBtn = e.target.closest('.add-to-basket');
     if (basketBtn) {
+        e.preventDefault();
+        e.stopPropagation();
         const id = basketBtn.dataset.id;
-        const product = State._cache.products.find(p => p._id === id);
-        if (product) Actions.addToBasket(product);
+        const product = State._cache.products.find(p => p._id.toString() === id.toString());
+        if (product) {
+            Actions.addToBasket(product);
+        } else {
+            // Fallback for search or other lists
+            const name = basketBtn.dataset.name;
+            const price = basketBtn.dataset.price;
+            if (name && price) {
+                Actions.addToBasket({ _id: id, name, price: parseFloat(price) });
+            }
+        }
         return;
     }
 
     // Favorite toggles
     const favBtn = e.target.closest('.fav-toggle-btn');
     if (favBtn) {
+        e.preventDefault();
+        e.stopPropagation();
         const id = favBtn.dataset.id;
         Actions.toggleFavorite(id);
         return;
