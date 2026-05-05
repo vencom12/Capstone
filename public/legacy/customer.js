@@ -375,6 +375,10 @@ const CheckoutManager = {
     close() {
         const modal = document.getElementById('checkout-modal');
         if (modal) modal.style.display = 'none';
+        
+        // Restore previous panel: Re-open the basket drawer when checkout is closed
+        const toggle = document.getElementById('nav-drawer-toggle');
+        if (toggle) toggle.checked = true;
     },
 
     async selectMethod(method) {
@@ -528,6 +532,12 @@ const Actions = {
         State.setBasket(basket);
         showToast(`Added ${item.name} to basket`);
     },
+    removeFromBasket: (id) => {
+        let basket = State.getBasket();
+        basket = basket.filter(item => item.id.toString() !== id.toString());
+        State.setBasket(basket);
+        showToast('Item removed from basket');
+    },
     toggleFavorite: async (productId) => {
         if (!AuthManager.isAuthenticated()) {
             AuthManager.promptLogin();
@@ -595,6 +605,11 @@ const Actions = {
     checkout: () => {
         const basket = State.getBasket();
         if (basket.length === 0) return showToast('Basket is empty');
+        
+        // Restore previous panel: Close the basket drawer when checkout starts
+        const toggle = document.getElementById('nav-drawer-toggle');
+        if (toggle) toggle.checked = false;
+        
         CheckoutManager.open(basket);
     }
 };

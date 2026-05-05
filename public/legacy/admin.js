@@ -347,34 +347,51 @@ function updateAITip() {
 // --- Product & Staff Actions ---
 window.createProduct = async (formData) => {
     updateSyncIndicator(true);
-    const res = await apiFetch(`${API_URL}/products`, { method: 'POST', body: JSON.stringify(formData) });
+    const formEl = document.getElementById('create-product-form');
+    const productId = formEl ? formEl.dataset.editId : null;
+    const method = productId ? 'PATCH' : 'POST';
+    const url = productId ? `${API_URL}/products/${productId}` : `${API_URL}/products`;
+
+    const res = await apiFetch(url, { method, body: JSON.stringify(formData) });
     updateSyncIndicator(false);
     if (res.ok) {
-        showToast('Product published');
+        showToast(productId ? 'Product updated' : 'Product published');
         UI.toggleModal('create-product-modal');
+        if (formEl) delete formEl.dataset.editId;
         refreshDashboardState();
+    } else {
+        showToast('Error saving product');
     }
 };
 
 window.editProduct = (id) => {
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
-    // Populate create modal for editing
+    
+    // Populate modal for editing
     document.getElementById('product-name').value = p.name;
     document.getElementById('product-price').value = p.price;
     document.getElementById('product-tag').value = p.tag;
     document.getElementById('product-desc').value = p.description || '';
     
     const form = document.getElementById('create-product-form');
-    form.dataset.editId = id;
-    document.querySelector('#create-product-modal h2').innerText = 'Edit Design';
+    if (form) form.dataset.editId = id;
+    
+    const titleEl = document.querySelector('#create-product-modal h2');
+    if (titleEl) titleEl.innerText = 'Edit Design';
+    
     UI.toggleModal('create-product-modal');
 };
 
 window.deleteProduct = async (id) => {
     if (!confirm('Delete this design?')) return;
+    updateSyncIndicator(true);
     const res = await apiFetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Product deleted'); refreshDashboardState(); }
+    updateSyncIndicator(false);
+    if (res.ok) {
+        showToast('Product deleted');
+        refreshDashboardState();
+    }
 };
 
 // --- Event Listeners ---
