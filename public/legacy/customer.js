@@ -603,9 +603,10 @@ const CheckoutManager = {
         } finally { 
             updateSyncIndicator(false); 
         }
-    },
-
-    async placeOrder() {
+    },    async placeOrder() {
+        const placeBtn = document.getElementById('place-order-btn');
+        const originalText = placeBtn ? placeBtn.innerText : 'Place Order';
+        
         const address = document.getElementById('checkout-address').value;
         const deliveryTime = document.getElementById('checkout-time').value;
         const notes = document.getElementById('checkout-notes').value;
@@ -614,7 +615,14 @@ const CheckoutManager = {
             return showToast('Please select a payment method first.');
         }
 
+        // --- Immediate Feedback Phase ---
+        if (placeBtn) {
+            placeBtn.disabled = true;
+            placeBtn.innerText = 'Processing...';
+            placeBtn.style.opacity = '0.7';
+        }
         updateSyncIndicator(true);
+
         try {
             const res = await apiFetch(`${API_URL}/order/submit`, {
                 method: 'POST',
@@ -629,26 +637,37 @@ const CheckoutManager = {
             }
 
             if (res.ok) {
-                showToast(data.message || 'Order placed successfully.');
+                // Success: Close modal and clear basket IMMEDIATELY
                 this.close();
                 State.setBasket([]);
-                // Synchronously refresh so orders + transactions appear immediately
-                await State.getDashboardState();
+                showToast(data.message || 'Order placed successfully!');
+                
+                // Refresh data in background
+                State.getDashboardState().then(() => {
+                    updateUI();
+                    updateSyncIndicator(false);
+                });
 
                 // Navigate to receipts section
                 const rcpNav = document.getElementById('nav-receipts');
                 if (rcpNav) rcpNav.checked = true;
-
-                updateUI();
+                
+                return; // Exit early to avoid finally block resetting indicator too soon
             } else {
                 showToast(data.message || 'Order failed. Please try again.');
-                // Keep checkout modal open so user can retry
             }
         } catch (err) {
             console.error('placeOrder error:', err);
             showToast(err.message || 'Connection error. Please try again.');
-        } finally { updateSyncIndicator(false); }
-    }
+        } finally { 
+            if (placeBtn) {
+                placeBtn.disabled = false;
+                placeBtn.innerText = originalText;
+                placeBtn.style.opacity = '1';
+            }
+            updateSyncIndicator(false); 
+        }
+    }, }
 };
 
 // --- Initialization & UI Helpers ---
