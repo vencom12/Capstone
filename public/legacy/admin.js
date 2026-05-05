@@ -295,6 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Analytics & Charts ---
 let charts = {};
 function initCharts() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js not loaded yet. Skipping chart initialization.');
+        return;
+    }
     const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
     if (ctxTrends) {
         charts.trends = new Chart(ctxTrends, {
