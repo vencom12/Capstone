@@ -72,9 +72,13 @@ const AuthManager = {
     },
     async logout() {
         try { await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' }); } catch (e) {}
+        // Clear user-specific basket before wiping session
+        const session = this.getSession();
+        if (session && session.user && session.user.id) {
+            localStorage.removeItem('stitch_basket_' + session.user.id);
+        }
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
-        localStorage.removeItem('stitch_basket'); // Clear basket on logout
         window.location.href = 'index.html';
     },
     getSession() {
@@ -99,9 +103,20 @@ const AuthManager = {
 // --- State Management ---
 const State = {
     _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
-    getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
+    _getBasketKey: () => {
+        const session = AuthManager.getSession();
+        if (session && session.user && session.user.id) return 'stitch_basket_' + session.user.id;
+        return null; // No basket for unauthenticated users
+    },
+    getBasket: () => {
+        const key = State._getBasketKey();
+        if (!key) return [];
+        return JSON.parse(localStorage.getItem(key) || '[]');
+    },
     setBasket: (basket) => {
-        localStorage.setItem('stitch_basket', JSON.stringify(basket));
+        const key = State._getBasketKey();
+        if (!key) return;
+        localStorage.setItem(key, JSON.stringify(basket));
         window.dispatchEvent(new Event('basketUpdated'));
     },
     async getDashboardState() {
@@ -214,7 +229,7 @@ function updateUI() {
                 return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? 'var(--primary)' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
+                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -290,7 +305,7 @@ function updateFavoritesGrid() {
             : favorites.map(p => `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: var(--primary); cursor: pointer; backdrop-filter: blur(4px);">
+                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -510,14 +525,16 @@ const Actions = {
             const svg = btn.querySelector('svg');
             if (isFav) { // Was fav, now removing
                 btn.style.color = 'var(--text-dim)';
+                btn.dataset.fav = 'false';
                 if (svg) svg.setAttribute('fill', 'none');
             } else { // Was not fav, now adding
-                btn.style.color = 'var(--primary)';
+                btn.style.color = '#ef4444';
+                btn.dataset.fav = 'true';
                 if (svg) svg.setAttribute('fill', 'currentColor');
             }
         });
 
-        // Only update the favorites grid
+        // Only update the favorites grid, NOT the entire product grid
         updateFavoritesGrid();
 
         try {
@@ -525,17 +542,27 @@ const Actions = {
             const response = await apiFetch(`${API_URL}/favorites/${productId}`, { method });
             if (response.ok) {
                 showToast(isFav ? 'Removed from favorites' : 'Added to favorites');
-                // Silently sync in background to ensure server consistency
-                State.getDashboardState(); 
+                // Silently sync cache in background without re-rendering
+                State.getDashboardState();
             } else {
-                // Rollback on error
+                // Rollback on error — only revert buttons and favorites grid, not entire UI
                 State._cache.favorites = favorites;
-                updateUI();
+                btns.forEach(btn => {
+                    const svg = btn.querySelector('svg');
+                    if (isFav) { btn.style.color = '#ef4444'; btn.dataset.fav = 'true'; if (svg) svg.setAttribute('fill', 'currentColor'); }
+                    else { btn.style.color = 'var(--text-dim)'; btn.dataset.fav = 'false'; if (svg) svg.setAttribute('fill', 'none'); }
+                });
+                updateFavoritesGrid();
                 showToast('Failed to sync favorites');
             }
         } catch (e) { 
             State._cache.favorites = favorites;
-            updateUI();
+            btns.forEach(btn => {
+                const svg = btn.querySelector('svg');
+                if (isFav) { btn.style.color = '#ef4444'; btn.dataset.fav = 'true'; if (svg) svg.setAttribute('fill', 'currentColor'); }
+                else { btn.style.color = 'var(--text-dim)'; btn.dataset.fav = 'false'; if (svg) svg.setAttribute('fill', 'none'); }
+            });
+            updateFavoritesGrid();
             showToast('Connection error'); 
         }
     },

@@ -90,8 +90,9 @@ exports.getAnalytics = async (req, res) => {
     try {
         const now = new Date();
         const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        const [orderTrends, statusDistribution, topOrdered, totalStats, totalVisits] = await Promise.all([
+        const [orderTrends, statusDistribution, topOrdered, totalStats, totalVisits, topLiked, traffic] = await Promise.all([
             Order.aggregate([
                 { $match: { date: { $gte: twelveMonthsAgo } } },
                 { $project: { date: 1, total: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } },
@@ -101,15 +102,35 @@ exports.getAnalytics = async (req, res) => {
             Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
             Order.aggregate([{ $unwind: "$items" }, { $group: { _id: "$items.name", count: { $sum: "$items.quantity" } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
             Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } }, count: { $sum: 1 } } }]),
-            SiteTraffic.countDocuments()
+            SiteTraffic.countDocuments(),
+            // Top Liked: count how many users have favorited each product
+            User.aggregate([
+                { $unwind: "$favorites" },
+                { $group: { _id: "$favorites", count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 5 },
+                { $lookup: { from: "products", localField: "_id", foreignField: "_id", as: "product" } },
+                { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+                { $project: { _id: { $ifNull: ["$product.name", "Unknown"] }, count: 1 } }
+            ]),
+            // Site Traffic: daily visits for last 30 days
+            SiteTraffic.aggregate([
+                { $match: { timestamp: { $gte: thirtyDaysAgo } } },
+                { $group: {
+                    _id: { $dateToString: { format: "%m/%d", date: "$timestamp" } },
+                    count: { $sum: 1 }
+                }},
+                { $sort: { _id: 1 } }
+            ])
         ]);
 
         const revenue = totalStats.length > 0 ? totalStats[0].total : 0;
         const totalOrders = totalStats.length > 0 ? totalStats[0].count : 0;
         const avgOrderValue = totalOrders > 0 ? revenue / totalOrders : 0;
 
-        res.json({ orderTrends, statusDistribution, topOrdered, revenue, avgOrderValue, totalVisits });
+        res.json({ orderTrends, statusDistribution, topOrdered, topLiked, traffic, revenue, avgOrderValue, totalVisits });
     } catch (err) {
+        console.error('Analytics error:', err);
         res.status(500).json({ message: 'Analytics error' });
     }
 };

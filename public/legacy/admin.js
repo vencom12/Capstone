@@ -131,7 +131,7 @@ function updateUI() {
                     <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${order.status}</span></td>
                     <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td><button class="btn" onclick="openEditOrder('${order._id}')">Edit</button></td>
+                    <td><button class="btn" onclick="openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button></td>
                 </tr>`).join('');
     }
 
@@ -146,7 +146,7 @@ function updateUI() {
                     <td>${user.email}</td>
                     <td><span class="status-pill">${user.role}</span></td>
                     <td>${new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td><button class="btn" style="color:#ef4444" onclick="deleteUser('${user._id}')">Delete</button></td>
+                    <td><button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button></td>
                 </tr>`).join('');
     }
 
@@ -177,8 +177,8 @@ function updateUI() {
                     <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" onclick="editProduct('${p._id}')" style="padding: 4px 8px; font-size: 0.7rem;">Edit</button>
-                    <button class="btn" onclick="deleteProduct('${p._id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444;">Del</button>
+                    <button class="btn" onclick="editProduct('${p._id}')" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); padding: 4px 8px; font-size: 0.7rem;">Edit</button>
+                    <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 8px; font-size: 0.7rem;">Del</button>
                 </div>
             </div>`).join('');
     }
@@ -303,26 +303,25 @@ async function updateCharts() {
             charts.topOrdered.update();
         }
         
-        if (charts.topLiked && data.topLiked) {
-            charts.topLiked.data.labels = data.topLiked.map(d => d._id);
-            charts.topLiked.data.datasets[0].data = data.topLiked.map(d => d.count);
-            charts.topLiked.update();
-        } else if (charts.topLiked) {
-            // Mock data or empty gracefully
-            charts.topLiked.data.labels = ['Design A', 'Design B', 'Design C'];
-            charts.topLiked.data.datasets[0].data = [12, 8, 5];
+        if (charts.topLiked) {
+            if (data.topLiked && data.topLiked.length > 0) {
+                charts.topLiked.data.labels = data.topLiked.map(d => d._id);
+                charts.topLiked.data.datasets[0].data = data.topLiked.map(d => d.count);
+            } else {
+                charts.topLiked.data.labels = ['No data yet'];
+                charts.topLiked.data.datasets[0].data = [0];
+            }
             charts.topLiked.update();
         }
 
-        if (charts.traffic && data.traffic) {
-            charts.traffic.data.labels = data.traffic.map(d => d._id);
-            charts.traffic.data.datasets[0].data = data.traffic.map(d => d.count);
-            charts.traffic.update();
-        } else if (charts.traffic) {
-            // Mock 30-day traffic gracefully
-            const days = Array.from({length: 30}, (_, i) => i + 1);
-            charts.traffic.data.labels = days.map(d => `Day ${d}`);
-            charts.traffic.data.datasets[0].data = days.map(() => Math.floor(Math.random() * 50) + 10);
+        if (charts.traffic) {
+            if (data.traffic && data.traffic.length > 0) {
+                charts.traffic.data.labels = data.traffic.map(d => d._id);
+                charts.traffic.data.datasets[0].data = data.traffic.map(d => d.count);
+            } else {
+                charts.traffic.data.labels = ['No data yet'];
+                charts.traffic.data.datasets[0].data = [0];
+            }
             charts.traffic.update();
         }
     } catch (e) { console.error('Chart update error:', e); }
