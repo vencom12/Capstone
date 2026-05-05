@@ -203,12 +203,18 @@ function updateBasketUI() {
     basketItemLists.forEach(list => {
         list.innerHTML = basket.map(item => `
             <div class="basket-item animate-fade" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-weight: 600;">${item.name}</span>
-                        <span style="font-size: 0.8rem; color: var(--text-dim);">$${item.price.toFixed(2)} × ${item.quantity}</span>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">$${item.price.toFixed(2)}</span>
+                            <div class="quantity-editor" style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 2px 4px; border: 1px solid var(--border-glass);">
+                                <input type="number" value="${item.quantity}" min="1" max="99" 
+                                    onchange="Actions.updateQuantity('${item.id || item._id}', this.value)"
+                                    style="width: 40px; background: none; border: none; color: white; text-align: center; font-size: 0.85rem; outline: none; padding: 4px 0;">
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn" onclick="Actions.removeFromBasket('${item.id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444; background: rgba(239,68,68,0.1);">Remove</button>
+                    <button class="btn" onclick="Actions.removeFromBasket('${item.id || item._id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444; background: rgba(239,68,68,0.1);">Remove</button>
                 </div>
             </div>`).join('');
     });
@@ -550,9 +556,20 @@ const Actions = {
     },
     removeFromBasket: (id) => {
         let basket = State.getBasket();
-        basket = basket.filter(item => item.id.toString() !== id.toString());
+        const idStr = id.toString();
+        basket = basket.filter(item => (item.id || item._id)?.toString() !== idStr);
         State.setBasket(basket);
         showToast('Item removed from basket');
+    },
+    updateQuantity: (id, newQty) => {
+        let basket = State.getBasket();
+        const idStr = id.toString();
+        const item = basket.find(i => (i.id || i._id)?.toString() === idStr);
+        if (item) {
+            const qty = Math.max(1, parseInt(newQty) || 1);
+            item.quantity = qty;
+            State.setBasket(basket);
+        }
     },
     toggleFavorite: async (productId) => {
         if (!AuthManager.isAuthenticated()) {
