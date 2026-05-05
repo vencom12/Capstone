@@ -8,6 +8,7 @@ const transactionSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
     receiptLink: { type: String },
+    receiptId: { type: String, unique: true, sparse: true }, // Added to resolve stale index conflicts in Atlas
     timestamp: { type: Date, default: Date.now, index: true }
 });
 

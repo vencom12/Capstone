@@ -142,7 +142,8 @@ exports.submitOrder = async (req, res) => {
             userID: user._id,
             amount: numTotal,
             status: (paymentMethod === 'wallet') ? 'completed' : 'pending',
-            receiptLink: `/api/customer/receipt/${secureReceiptId}/download`
+            receiptLink: `/api/customer/receipt/${secureReceiptId}/download`,
+            receiptId: secureReceiptId
         });
         await transaction.save({ session });
 
