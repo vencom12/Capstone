@@ -3,17 +3,28 @@ const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
 // Helper: Secure API fetch wrapper
-async function apiFetch(url, options = {}) {
-    const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
-    if (options.body && !(options.body instanceof FormData)) {
-        defaultHeaders['Content-Type'] = 'application/json';
-    }
-    const fetchOptions = {
-        ...options,
-        headers: { ...defaultHeaders, ...(options.headers || {}) },
-        credentials: 'include'
+    const performFetch = async () => {
+        const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (options.body && !(options.body instanceof FormData)) {
+            defaultHeaders['Content-Type'] = 'application/json';
+        }
+        const fetchOptions = {
+            ...options,
+            headers: { ...defaultHeaders, ...(options.headers || {}) },
+            credentials: 'include'
+        };
+        return fetch(url, fetchOptions);
     };
-    return fetch(url, fetchOptions);
+
+    let response = await performFetch();
+    
+    if (response.status === 401) {
+        if (!url.includes('/logout')) {
+            console.warn('Unauthorized access detected, redirecting to login...');
+            AuthManager.logout();
+        }
+    }
+    return response;
 }
 
 // --- Global Sync Indicator ---
@@ -59,9 +70,10 @@ const AuthManager = {
         } catch (err) { return { success: false, message: 'Connection error' }; }
     },
     async logout() {
-        await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
+        // Clear server session without waiting/looping
+        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
         window.location.href = 'index.html';
     },
     getSession() {
@@ -166,7 +178,7 @@ function initSocket() {
     document.head.appendChild(script);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
@@ -202,6 +214,7 @@ const UI = {
     }
 };
 
+// Initialize Form Actions
 document.addEventListener('DOMContentLoaded', () => {
     // Status button group listener
     document.addEventListener('click', (e) => {

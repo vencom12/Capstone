@@ -63,7 +63,7 @@ exports.login = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: true, // Always secure for HTTPS
+            secure: process.env.NODE_ENV === 'production', 
             sameSite: 'Lax',
             maxAge: (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
         };

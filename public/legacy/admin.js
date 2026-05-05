@@ -60,9 +60,10 @@ const AuthManager = {
         }
     },
     async logout() {
-        await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
+        // Clear server session without waiting/looping
+        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
         window.location.href = 'index.html';
     },
     getSession() {
@@ -137,8 +138,10 @@ async function apiFetch(url, options = {}) {
     let response = await performFetch();
     
     if (response.status === 401) {
-        console.warn('Unauthorized access detected, redirecting to login...');
-        AuthManager.logout();
+        if (!url.includes('/logout')) {
+            console.warn('Unauthorized access detected, redirecting to login...');
+            AuthManager.logout();
+        }
         return response;
     }
 
@@ -295,9 +298,13 @@ function initSocket() {
     document.head.appendChild(script);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
     initCharts(); // Initialize charts on load
+    
+    // Ensure CSRF token is present before first state fetch
+    if (!_csrfToken) await refreshCSRFToken();
+    
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
@@ -489,12 +496,9 @@ window.deleteProduct = async (id) => {
 };
 
 // --- Initialization ---
+// Initialize page forms and extra UI components
 document.addEventListener('DOMContentLoaded', () => {
-    refreshCSRFToken();
-    if (AuthManager.isAuthenticated()) {
-        refreshDashboardState();
-    }
-    initCharts();
+    // Product and Staff form logic
     
     // Create Product Form
     const productForm = document.getElementById('create-product-form');
