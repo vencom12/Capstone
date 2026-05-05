@@ -263,7 +263,11 @@ function updateUI() {
                             <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width: 100%; padding: 12px;">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" 
+                            data-id="${p._id.toString()}" 
+                            data-name="${p.name}" 
+                            data-price="${p.price}" 
+                            style="width: 100%; padding: 12px;">Add to Basket</button>
                     </div>
                 </div>`;
             }).join('');
@@ -513,12 +517,18 @@ const Actions = {
         }
         const basket = State.getBasket();
         // Use .toString() for safe comparison of ObjectIDs vs Strings
-        const itemId = item._id ? item._id.toString() : null;
+        const itemId = item._id ? item._id.toString() : (item.id ? item.id.toString() : null);
         if (!itemId) return showToast('Error: Product ID missing');
 
-        const existing = basket.find(b => (b._id && b._id.toString() === itemId) || (b.id && b.id.toString() === itemId));
+        // Check for existing item using a more robust comparison
+        const existing = basket.find(b => 
+            (b._id && b._id.toString() === itemId) || 
+            (b.id && b.id.toString() === itemId) ||
+            (b.productId && b.productId.toString() === itemId)
+        );
+        
         if (existing) {
-            existing.quantity += parseInt(quantity);
+            existing.quantity = (parseInt(existing.quantity) || 0) + parseInt(quantity);
         } else {
             basket.push({ 
                 _id: itemId,
