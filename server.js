@@ -788,15 +788,15 @@ app.post('/api/wallet/topup', auth(['customer']), async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        // Overwrite behavior as requested
+        // Cumulative addition behavior
         const oldBalance = user.walletBalance || 0;
-        user.walletBalance = parseFloat(amount);
+        user.walletBalance = oldBalance + parseFloat(amount);
         await user.save();
 
-        logErr(`[AUDIT] Wallet Overwrite: User ${user.username} (${user._id}) balance changed from $${oldBalance} to $${user.walletBalance}`);
+        logErr(`[AUDIT] Wallet Top-up: User ${user.username} (${user._id}) balance increased from $${oldBalance} to $${user.walletBalance}`);
 
         io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
-        res.json({ message: `Wallet balance set to $${user.walletBalance.toFixed(2)}`, walletBalance: user.walletBalance });
+        res.json({ message: `Successfully topped up $${parseFloat(amount).toFixed(2)}. New balance: $${user.walletBalance.toFixed(2)}`, walletBalance: user.walletBalance });
     } catch (err) {
         logErr('Top-up error: ' + err.message);
         res.status(500).json({ message: 'Server error during top-up' });
