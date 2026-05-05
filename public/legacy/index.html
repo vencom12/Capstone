@@ -328,7 +328,10 @@
                     </button>
                 </div>
             </div>
-        </div>
+            <div id="system-diagnostic" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
+        <span>API: <b id="diag-api">Checking...</b></span>
+        <span>Atlas: <b id="diag-atlas">Checking...</b></span>
+        <span>Session: <b id="diag-session">None</b></span>
     </div>
 
     <script src="customer.js"></script>
@@ -342,11 +345,19 @@
             document.getElementById('auth-overlay').classList.remove('active');
         }
 
+        // Diagnostic Updater
+        function updateDiagnostics() {
+            const session = AuthManager.getSession();
+            document.getElementById('diag-session').innerText = session ? session.user.username : 'Guest';
+            document.getElementById('diag-session').style.color = session ? '#10b981' : '#6366f1';
+        }
+
         // Initialize Storefront
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('[Storefront] Initializing...');
+            console.log('[Storefront] Initializing system...');
+            updateDiagnostics();
 
-            // Check Auth State for Header
+            // STEP 1: Check Auth State for Header
             const session = AuthManager.getSession();
             if (session) {
                 document.getElementById('guest-actions').style.display = 'none';
@@ -356,7 +367,29 @@
                 if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
             }
 
-            // Search Logic
+            // STEP 2: LOAD PRODUCTS (TOP PRIORITY)
+            document.getElementById('diag-api').innerText = 'Syncing...';
+            try {
+                if (window.refreshDashboardState) {
+                    const state = await window.refreshDashboardState();
+                    document.getElementById('diag-api').innerText = 'Connected';
+                    document.getElementById('diag-api').style.color = '#10b981';
+                    
+                    if (state && state.products) {
+                        document.getElementById('diag-atlas').innerText = 'Live';
+                        document.getElementById('diag-atlas').style.color = '#10b981';
+                    } else {
+                        document.getElementById('diag-atlas').innerText = 'Empty';
+                    }
+                    if (window.updateUI) window.updateUI();
+                }
+            } catch (e) {
+                document.getElementById('diag-api').innerText = 'Offline';
+                document.getElementById('diag-api').style.color = '#ef4444';
+                console.error('[Storefront] Initialization error:', e);
+            }
+
+            // STEP 3: Setup Listeners
             const searchInput = document.getElementById('storefront-search');
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => {
@@ -365,14 +398,11 @@
                 });
             }
 
-            // Category Logic
             const categoryLabels = document.querySelectorAll('.category-links label');
             const mobileCategorySelect = document.getElementById('mobile-category-select');
 
             function setCategory(category) {
                 State._cache.selectedCategory = category;
-
-                // Sync Label Styles
                 categoryLabels.forEach(l => {
                     const span = l.querySelector('span');
                     if (span.innerText === category) {
@@ -383,12 +413,7 @@
                         span.style.fontWeight = '400';
                     }
                 });
-
-                // Sync Mobile Dropdown
-                if (mobileCategorySelect) {
-                    mobileCategorySelect.value = category;
-                }
-
+                if (mobileCategorySelect) mobileCategorySelect.value = category;
                 updateUI();
             }
 
@@ -397,22 +422,9 @@
                     setCategory(label.querySelector('span').innerText);
                 });
             });
-
-            // CRITICAL: Actually fetch the products on startup!
-            console.log('[Storefront] Triggering initial state fetch...');
-            try {
-                if (typeof window.refreshDashboardState === 'function') {
-                    await window.refreshDashboardState();
-                    if (typeof window.updateUI === 'function') window.updateUI();
-                } else {
-                    console.error('[Storefront] refreshDashboardState not found!');
-                }
-            } catch (e) {
-                console.error('[Storefront] Failed to load initial state:', e);
-            }
         });
 
-        // Login Handler (Unified logic)
+        // Login Handler (Direct logic)
         const loginForm = document.getElementById('main-login-form');
         if (loginForm) {
             loginForm.addEventListener('submit', async function (e) {
@@ -425,26 +437,21 @@
                 
                 errorEl.style.display = 'none';
                 const originalBtnText = submitBtn.innerText;
-                submitBtn.innerText = 'Establishing Link...';
+                submitBtn.innerText = 'Verifying...';
                 submitBtn.disabled = true;
 
                 try {
                     if (window.AuthManager) {
                         const result = await AuthManager.login(email, password, rememberMe, 'customer');
                         if (result.success) {
-                            const session = AuthManager.getSession();
-                            const role = session ? session.user.role : 'customer';
-                            
-                            if (role === 'admin') window.location.href = 'admin.html';
-                            else if (role === 'employee') window.location.href = 'employee.html';
-                            else window.location.href = 'user.html'; 
+                            window.location.href = 'user.html'; 
                         } else {
-                            errorEl.innerText = result.message || "Access denied. Check credentials.";
+                            errorEl.innerText = result.message || "Invalid credentials.";
                             errorEl.style.display = 'block';
                         }
                     }
                 } catch (err) {
-                    errorEl.innerText = "Security gateway timeout. Retry.";
+                    errorEl.innerText = "Connection timeout. Please refresh.";
                     errorEl.style.display = 'block';
                 } finally {
                     submitBtn.innerText = originalBtnText;

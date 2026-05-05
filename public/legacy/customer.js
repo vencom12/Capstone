@@ -13,45 +13,37 @@ let _csrfToken = null;
 
 // Helper: Secure API fetch wrapper
 async function apiFetch(url, options = {}) {
-    // Refresh token if missing
-    if (!_csrfToken && url.includes('/api/')) {
-        await refreshCSRFToken();
-    }
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
     const performFetch = async () => {
-        const defaultHeaders = { 
-            'X-Requested-With': 'XMLHttpRequest'
-        };
-        if (_csrfToken) {
-            defaultHeaders['X-CSRF-Token'] = _csrfToken;
-        }
+        const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+        if (_csrfToken) defaultHeaders['X-CSRF-Token'] = _csrfToken;
         if (options.body && !(options.body instanceof FormData)) {
             defaultHeaders['Content-Type'] = 'application/json';
         }
-        const fetchOptions = {
+        return fetch(url, {
             ...options,
             headers: { ...defaultHeaders, ...(options.headers || {}) },
-            credentials: 'include'
-        };
-        return fetch(url, fetchOptions);
+            credentials: 'include',
+            signal: controller.signal
+        });
     };
 
-    let response = await performFetch();
+    try {
+        let response = await performFetch();
+        clearTimeout(id);
 
-    // If CSRF mismatch, refresh and retry once
-    if (response.status === 403) {
-        try {
-            const clone = response.clone();
-            const data = await clone.json();
-            if (data.message && data.message.includes('CSRF')) {
-                console.log('CSRF mismatch detected, refreshing token and retrying...');
-                await refreshCSRFToken();
-                response = await performFetch();
-            }
-        } catch (e) { /* Not JSON or other error */ }
+        if (response.status === 403) {
+            // CSRF mismatch? Refresh and retry ONCE
+            await refreshCSRFToken();
+            return await performFetch();
+        }
+        return response;
+    } catch (e) {
+        clearTimeout(id);
+        throw e;
     }
-    
-    return response;
 }
 
 async function refreshCSRFToken() {
@@ -60,8 +52,10 @@ async function refreshCSRFToken() {
         if (res.ok) {
             const data = await res.json();
             _csrfToken = data.csrfToken;
+            return _csrfToken;
         }
     } catch (e) { console.error('CSRF Refresh failed', e); }
+    return null;
 }
 
 // --- Global Sync Indicator ---
@@ -222,33 +216,38 @@ const State = {
         }
     },
     async getDashboardState() {
+        console.log('[State] Refreshing dashboard state...');
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
+        
         try {
-            const response = await apiFetch(`${API_URL}/dashboard-state`);
-            if (response.ok) {
+            // Attempt primary fetch with a timeout
+            const response = await Promise.race([
+                apiFetch(`${API_URL}/dashboard-state`),
+                timeout
+            ]);
+
+            if (response && response.ok) {
                 const data = await response.json();
                 if (!AuthManager.isAuthenticated()) {
                     data.favorites = []; data.orders = []; data.transactions = [];
                 }
                 this._cache = { ...this._cache, ...data };
                 return data;
-            } else {
-                // FALLBACK: Fetch products from public endpoint if dashboard-state is restricted
-                const publicRes = await fetch('/api/products');
-                if (publicRes.ok) {
-                    const products = await publicRes.json();
-                    this._cache.products = products;
-                    this._cache.favorites = []; this._cache.orders = []; this._cache.transactions = [];
-                    return { products };
-                }
             }
-        } catch (err) { 
-            console.error('[State] Fetch error, attempting public load:', err);
-            const publicRes = await fetch('/api/products').catch(() => null);
-            if (publicRes && publicRes.ok) {
+        } catch (err) {
+            console.warn('[State] Primary fetch failed or timed out, using fallback...');
+        }
+
+        // FALLBACK: Always try to get products from the public API if primary fails
+        try {
+            const publicRes = await fetch('/api/products');
+            if (publicRes.ok) {
                 const products = await publicRes.json();
                 this._cache.products = products;
                 return { products };
             }
+        } catch (err) {
+            console.error('[State] Critical Failure: Could not reach Atlas designs:', err);
         }
         return null;
     },
