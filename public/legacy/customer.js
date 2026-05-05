@@ -71,9 +71,10 @@ const AuthManager = {
         } catch (err) { return { success: false, message: 'Connection error' }; }
     },
     async logout() {
-        await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
+        try { await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' }); } catch (e) {}
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
+        localStorage.removeItem('stitch_basket'); // Clear basket on logout
         window.location.href = 'index.html';
     },
     getSession() {
@@ -108,6 +109,12 @@ const State = {
             const response = await apiFetch(`${API_URL}/dashboard-state`);
             if (response.ok) {
                 const data = await response.json();
+                // Ensure data is isolated - if guest, favorites MUST be empty
+                if (!AuthManager.isAuthenticated()) {
+                    data.favorites = [];
+                    data.orders = [];
+                    data.transactions = [];
+                }
                 this._cache = { ...this._cache, ...data };
                 return data;
             }
@@ -207,7 +214,7 @@ function updateUI() {
                 return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'white'}; cursor: pointer; backdrop-filter: blur(4px);">
+                        <button class="fav-toggle-btn" data-id="${p._id}" data-fav="${isFav}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? 'var(--primary)' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -252,24 +259,7 @@ function updateUI() {
     }
 
     // 4. Update Favorites
-    const favsGrid = document.querySelector('#section-favs .product-grid');
-    if (favsGrid) {
-        favsGrid.innerHTML = favorites.length === 0
-            ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
-            : favorites.map(p => `
-                <div class="product-card glass animate-fade">
-                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                        </button>
-                    </div>
-                    <div class="product-details">
-                        <h3 style="font-weight:600;">${p.name}</h3>
-                        <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width:100%; margin-top:10px;">Add to Basket</button>
-                    </div>
-                </div>`).join('');
-    }
+    updateFavoritesGrid();
 
     // 5. Update History (Transactions)
     const historyTable = document.querySelector('#section-history tbody');
@@ -289,6 +279,28 @@ function updateUI() {
     }
 
     updateBasketUI();
+}
+
+function updateFavoritesGrid() {
+    const favorites = State._cache.favorites || [];
+    const favsGrid = document.querySelector('#section-favs .product-grid');
+    if (favsGrid) {
+        favsGrid.innerHTML = favorites.length === 0
+            ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
+            : favorites.map(p => `
+                <div class="product-card glass animate-fade">
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
+                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: var(--primary); cursor: pointer; backdrop-filter: blur(4px);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="product-details">
+                        <h3 style="font-weight:600;">${p.name}</h3>
+                        <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width:100%; margin-top:10px;">Add to Basket</button>
+                    </div>
+                </div>`).join('');
+    }
 }
 // --- Checkout Manager ---
 const CheckoutManager = {
@@ -497,17 +509,16 @@ const Actions = {
         btns.forEach(btn => {
             const svg = btn.querySelector('svg');
             if (isFav) { // Was fav, now removing
-                btn.style.color = 'white';
+                btn.style.color = 'var(--text-dim)';
                 if (svg) svg.setAttribute('fill', 'none');
             } else { // Was not fav, now adding
-                btn.style.color = '#ef4444';
+                btn.style.color = 'var(--primary)';
                 if (svg) svg.setAttribute('fill', 'currentColor');
             }
         });
 
-        // Still update the actual favorites section if it's visible, but maybe delayed or only if needed
-        // For now, let's just do a targeted update of the favorites grid after a short delay
-        setTimeout(() => updateUI(), 500); 
+        // Only update the favorites grid
+        updateFavoritesGrid();
 
         try {
             const method = isFav ? 'DELETE' : 'POST';

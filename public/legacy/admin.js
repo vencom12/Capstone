@@ -121,14 +121,16 @@ function updateUI() {
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
         orderTable.innerHTML = orders.length === 0
-            ? '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>'
+            ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
             : orders.map(order => `
                 <tr>
                     <td><input type="checkbox" class="admin-order-checkbox" data-id="${order._id}"></td>
                     <td>${order.orderId}</td>
                     <td>${order.client || 'Guest'}</td>
                     <td>${formatOrderDesign(order)}</td>
+                    <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${order.status}</span></td>
+                    <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                     <td><button class="btn" onclick="openEditOrder('${order._id}')">Edit</button></td>
                 </tr>`).join('');
     }

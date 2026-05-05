@@ -91,17 +91,24 @@ exports.getAnalytics = async (req, res) => {
         const now = new Date();
         const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-        const orderTrends = await Order.aggregate([
-            { $match: { date: { $gte: twelveMonthsAgo } } },
-            { $project: { date: 1, total: "$totalAmount" } },
-            { $group: { _id: { year: { $year: "$date" }, month: { $month: "$date" } }, count: { $sum: 1 }, revenue: { $sum: "$total" } } },
-            { $sort: { "_id.year": 1, "_id.month": 1 } }
+        const [orderTrends, statusDistribution, topOrdered, totalStats, totalVisits] = await Promise.all([
+            Order.aggregate([
+                { $match: { date: { $gte: twelveMonthsAgo } } },
+                { $project: { date: 1, total: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } },
+                { $group: { _id: { year: { $year: "$date" }, month: { $month: "$date" } }, count: { $sum: 1 }, revenue: { $sum: "$total" } } },
+                { $sort: { "_id.year": 1, "_id.month": 1 } }
+            ]),
+            Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+            Order.aggregate([{ $unwind: "$items" }, { $group: { _id: "$items.name", count: { $sum: "$items.quantity" } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
+            Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } }, count: { $sum: 1 } } }]),
+            SiteTraffic.countDocuments()
         ]);
 
-        const statusDistribution = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
-        const topOrdered = await Order.aggregate([{ $unwind: "$items" }, { $group: { _id: "$items.name", count: { $sum: "$items.quantity" } } }, { $sort: { count: -1 } }, { $limit: 5 }]);
+        const revenue = totalStats.length > 0 ? totalStats[0].total : 0;
+        const totalOrders = totalStats.length > 0 ? totalStats[0].count : 0;
+        const avgOrderValue = totalOrders > 0 ? revenue / totalOrders : 0;
 
-        res.json({ orderTrends, statusDistribution, topOrdered });
+        res.json({ orderTrends, statusDistribution, topOrdered, revenue, avgOrderValue, totalVisits });
     } catch (err) {
         res.status(500).json({ message: 'Analytics error' });
     }
