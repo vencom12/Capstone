@@ -97,6 +97,18 @@ const AuthManager = {
             return false;
         }
         return true;
+    },
+    promptLogin() {
+        const overlay = document.getElementById('auth-overlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            // If there's an error message from a previous attempt, hide it
+            const errorEl = document.getElementById('login-error');
+            if (errorEl) errorEl.style.display = 'none';
+        } else {
+            // Fallback if modal isn't on current page (e.g. user.html might not have index.html's modal)
+            window.location.href = 'index.html?action=login';
+        }
     }
 };
 
@@ -148,46 +160,57 @@ function formatOrderDesign(order) {
 
 function updateBasketUI() {
     const basket = State.getBasket();
-    const basketCount = document.getElementById('basket-count');
     const headerBasketCount = document.getElementById('header-basket-count');
     const mobileBasketCount = document.getElementById('mobile-basket-count');
     const basketTotal = document.getElementById('basket-total');
     const checkoutBtn = document.getElementById('checkout-btn');
+    const guestMsg = document.getElementById('checkout-guest-msg');
+    const basketItemLists = document.querySelectorAll('#basket-items-list');
 
     const count = basket.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const total = basket.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
-    if (basketCount) basketCount.innerText = `${count} Items`;
     if (headerBasketCount) headerBasketCount.innerText = count;
     if (mobileBasketCount) mobileBasketCount.innerText = count;
     if (basketTotal) basketTotal.innerText = `$${total.toFixed(2)}`;
 
-    if (checkoutBtn) {
-        if (basket.length > 0) {
-            checkoutBtn.style.opacity = '1';
-            checkoutBtn.style.pointerEvents = 'auto';
-            checkoutBtn.onclick = () => Actions.checkout();
-        } else {
+    if (basket.length === 0) {
+        basketItemLists.forEach(list => {
+            list.innerHTML = '<div style="text-align:center; padding: 20px; opacity: 0.5;"><p>Basket is empty</p></div>';
+        });
+        if (checkoutBtn) {
             checkoutBtn.style.opacity = '0.5';
             checkoutBtn.style.pointerEvents = 'none';
         }
+        return;
     }
 
-    const basketItemLists = document.querySelectorAll('#basket-items-list');
+    const isGuest = !AuthManager.isAuthenticated();
+    if (checkoutBtn) {
+        checkoutBtn.style.opacity = '1';
+        checkoutBtn.style.pointerEvents = 'auto';
+        if (isGuest) {
+            checkoutBtn.innerText = 'Login to Checkout';
+            checkoutBtn.onclick = () => AuthManager.promptLogin();
+            if (guestMsg) guestMsg.style.display = 'block';
+        } else {
+            checkoutBtn.innerText = 'Checkout Now';
+            checkoutBtn.onclick = () => Actions.checkout();
+            if (guestMsg) guestMsg.style.display = 'none';
+        }
+    }
+
     basketItemLists.forEach(list => {
-        list.innerHTML = basket.length === 0 
-            ? '<div style="text-align:center;color:var(--text-dim)"><p>Basket is empty</p></div>'
-            : basket.map(item => `
-                <div class="basket-item animate-fade" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-weight: 600;">${item.name}</span>
-                            <span style="font-size: 0.8rem; color: var(--text-dim);">${item.quantity} × $${parseFloat(item.price).toFixed(2)}</span>
-                        </div>
-                        <span style="font-weight: 700; color: var(--primary);">$${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+        list.innerHTML = basket.map(item => `
+            <div class="basket-item animate-fade" style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-weight: 600;">${item.name}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-dim);">$${item.price.toFixed(2)} × ${item.quantity}</span>
                     </div>
+                    <button class="btn" onclick="Actions.removeFromBasket('${item.id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444; background: rgba(239,68,68,0.1);">Remove</button>
                 </div>
-            `).join('');
+            </div>`).join('');
     });
 }
 
@@ -481,8 +504,8 @@ document.addEventListener('DOMContentLoaded', () => {
 const Actions = {
     addToBasket: (item, quantity = 1) => {
         if (!AuthManager.isAuthenticated()) {
-            if (typeof openAuth === 'function') openAuth('login');
-            return showToast('Please login to add to basket');
+            AuthManager.promptLogin();
+            return;
         }
         const basket = State.getBasket();
         // Use .toString() for safe comparison of ObjectIDs vs Strings
@@ -506,7 +529,10 @@ const Actions = {
         showToast(`Added ${item.name} to basket`);
     },
     toggleFavorite: async (productId) => {
-        if (!AuthManager.isAuthenticated()) return showToast('Please login to save favorites');
+        if (!AuthManager.isAuthenticated()) {
+            AuthManager.promptLogin();
+            return;
+        }
         
         const favorites = State._cache.favorites || [];
         const products = State._cache.products || [];
