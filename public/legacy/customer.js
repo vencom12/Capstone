@@ -291,8 +291,7 @@ function updateUI() {
                             data-id="${p._id.toString()}"
                             data-name="${p.name}"
                             data-price="${p.price}"
-                            onclick="Actions.addToBasketById('${p._id.toString()}')"
-                            style="width: 100%; padding: 12px; background: #6366f1; color: white;">
+                            onclick="Actions.addToBasketById('${p._id.toString()}')">
                             Add to Basket
                         </button>
                     </div>
@@ -369,7 +368,7 @@ function updateFavoritesGrid() {
                     <div class="product-details">
                         <h3 style="font-weight:600;">${p.name}</h3>
                         <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width:100%; margin-top:10px;">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
                     </div>
                 </div>`).join('');
     }
