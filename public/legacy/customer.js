@@ -974,6 +974,7 @@ document.addEventListener('input', (e) => {
     }
 });
 
+// --- Final Export & Auto-Init ---
 window.Actions = Actions;
 window.CheckoutManager = CheckoutManager;
 window.AuthManager = AuthManager;
@@ -985,4 +986,13 @@ window.refreshDashboardState = refreshDashboardState;
 window.updateUI = updateUI;
 window.downloadReceipt = downloadReceipt;
 window.viewReceipt = viewReceipt;
+
+// Auto-trigger refresh if on a dashboard page
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('profile-wallet') || document.getElementById('storefront-grid')) {
+        console.log('[App] Auto-syncing dashboard state...');
+        refreshDashboardState();
+        initSocket();
+    }
+});
 

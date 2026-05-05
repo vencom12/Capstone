@@ -4,8 +4,8 @@ const customerController = require('../controllers/customerController');
 const customerAuth = require('../middleware/customerAuth');
 
 router.get('/dashboard-state', (req, res, next) => {
-    // Optional Auth: Try to decode token if it exists, but don't block if it doesn't
-    const token = req.cookies.customer_token;
+    // Optional Auth: Try to decode token if it exists
+    const token = req.cookies.customer_token || req.cookies.token;
     if (token) {
         try {
             const jwt = require('jsonwebtoken');
