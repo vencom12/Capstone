@@ -192,7 +192,7 @@ body {
     text-decoration: none;
     font-size: 1rem;
     font-weight: 500;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     transition: all var(--transition-fast);
 }
 
@@ -419,7 +419,7 @@ input[name="nav-radio"],
     padding: 14px 28px;
     border-radius: 12px;
     border: none;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     font-weight: 600;
     transition: var(--transition-fast);
     text-decoration: none;
@@ -453,7 +453,7 @@ input[name="nav-radio"],
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
 }
 
 .product-card:hover {
@@ -647,7 +647,7 @@ input[name="nav-radio"],
     color: white;
     outline: none;
     font-size: 1rem;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     backdrop-filter: blur(10px);
     -webkit-appearance: none;
     appearance: none;
@@ -915,7 +915,7 @@ td {
         width: 100% !important;
         max-width: 420px !important; /* Cap width for tablets */
         height: 100vh !important;
-        z-index: 10001 !important;
+        z-index: 100001 !important;
         background: rgba(15, 23, 42, 0.95) !important;
         backdrop-filter: blur(10px) !important;
         -webkit-backdrop-filter: blur(10px) !important;
@@ -934,7 +934,7 @@ td {
     #nav-drawer-toggle:checked~.storefront-overlay {
         opacity: 1;
         visibility: visible;
-        z-index: 10000 !important; /* Above bottom nav, below drawer */
+        z-index: 100000 !important; /* Above bottom nav, below drawer */
     }
 
     .drawer-header {
@@ -947,7 +947,7 @@ td {
 
     .close-drawer {
         font-size: 1.5rem;
-        cursor: pointer;
+        cursor: pointer; backdrop-filter: blur(4px);
         color: var(--text-dim);
         transition: color 0.2s;
     }
@@ -1072,7 +1072,7 @@ td {
     color: var(--text-dim);
     font-weight: 600;
     font-size: 0.9rem;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     transition: all 0.2s ease;
 }
 
@@ -1149,7 +1149,7 @@ td {
     position: absolute;
     top: 24px;
     right: 24px;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     color: var(--text-dim);
     transition: color 0.2s;
 }
@@ -1193,12 +1193,12 @@ td {
 .storefront-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.3);
     z-index: 4999;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.4s ease, visibility 0.4s ease;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
 }
 
 #nav-drawer-toggle:checked~.storefront-overlay {
@@ -1370,7 +1370,7 @@ td {
     align-items: center;
     padding: 12px 16px;
     border-radius: 12px;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     transition: var(--transition-fast);
     color: var(--text-dim);
 }
@@ -1566,7 +1566,7 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     padding: 16px;
     border-radius: 16px;
     color: white;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -1671,7 +1671,8 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
          t r a n s f o r m :   t r a n s l a t e Y ( 0 ) ; 
          o p a c i t y :   1 ; 
  } 
-  
+ 
+ 
  
 /* Checkout Verification Badges */
 .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid transparent; }
@@ -1686,7 +1687,7 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     display: block;
     padding: 12px 16px;
     border-radius: 12px;
-    cursor: pointer;
+    cursor: pointer; backdrop-filter: blur(4px);
     transition: all 0.3s ease;
     margin-bottom: 4px;
     border: 1px solid transparent;
