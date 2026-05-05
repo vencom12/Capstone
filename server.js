@@ -171,13 +171,11 @@ mongoose.connect(process.env.MONGODB_URI, dbOptions)
 app.post('/api/auth/register', async (req, res) => {
     try {
         logErr('Register attempt: ' + JSON.stringify(req.body));
-        const { username, email, password, role, phoneNumber, address } = req.body;
+        const { username, email, password, phoneNumber, address } = req.body;
         
         // Validation for required fields for customers
-        if (role === 'customer' || !role) {
-            if (!phoneNumber || !address) {
-                return res.status(400).json({ message: 'Phone number and address are required' });
-            }
+        if (!phoneNumber || !address) {
+            return res.status(400).json({ message: 'Phone number and address are required' });
         }
 
         let user = await User.findOne({ $or: [{ email }, { username }] });
@@ -186,7 +184,7 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        user = new User({ username, email, password, role: role || 'customer', phoneNumber, address });
+        user = new User({ username, email, password, role: 'customer', phoneNumber, address });
         await user.save();
         logErr('User registered successfully');
 
@@ -282,8 +280,16 @@ app.put('/api/auth/profile', auth(), async (req, res) => {
             { new: true }
         ).select('-password');
 
-        // Re-sign token if needed, or just return updated user
+        // Re-sign token and update cookie to keep session in sync
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
         res.json({ token, user: { id: user._id, username: user.username, role: user.role, email: user.email } });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
@@ -497,7 +503,7 @@ app.get('/api/dashboard-state', auth(), async (req, res) => {
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
             User.findById(userId).select('favorites walletBalance').populate('favorites'),
-            Transaction.find(role === 'customer' ? { userId } : {}).sort({ createdAt: -1 }).limit(50),
+            Transaction.find(role === 'customer' ? { userID: userId } : {}).sort({ timestamp: -1 }).limit(50),
             // Analytics (Admin/Employee only)
             (role !== 'customer') ? User.countDocuments() : Promise.resolve(0),
             (role !== 'customer') ? Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]) : Promise.resolve([{ total: 0 }]),
@@ -774,37 +780,34 @@ app.post('/api/payments/process', auth(), async (req, res) => {
 app.post('/api/wallet/topup', auth(['customer']), async (req, res) => {
     try {
         const { amount } = req.body;
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ message: 'Invalid top-up amount' });
+        // Accept only positive numbers (digits only)
+        if (!/^\d+(\.\d+)?$/.test(amount) || parseFloat(amount) <= 0) {
+            return res.status(400).json({ message: 'Invalid top-up amount. Use positive digits only.' });
         }
 
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        user.walletBalance = (user.walletBalance || 0) + parseFloat(amount);
+        // Overwrite behavior as requested
+        const oldBalance = user.walletBalance || 0;
+        user.walletBalance = parseFloat(amount);
         await user.save();
 
-        // Audit Log entry (using existing logErr for simplicity, but could be a DB collection)
-        logErr(`[AUDIT] Wallet Top-up: User ${user.username} (${user._id}) added $${amount}. New balance: $${user.walletBalance}`);
+        logErr(`[AUDIT] Wallet Overwrite: User ${user.username} (${user._id}) balance changed from $${oldBalance} to $${user.walletBalance}`);
 
-        // Emit update
         io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
-
-        res.json({ 
-            message: `Successfully topped up $${amount.toFixed(2)}`, 
-            walletBalance: user.walletBalance 
-        });
+        res.json({ message: `Wallet balance set to $${user.walletBalance.toFixed(2)}`, walletBalance: user.walletBalance });
     } catch (err) {
         logErr('Top-up error: ' + err.message);
         res.status(500).json({ message: 'Server error during top-up' });
     }
 });
 
-app.get('/api/payments/receipt/:receiptId', auth(), async (req, res) => {
+app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
     try {
-        const tx = await Transaction.findOne({ receiptId: req.params.receiptId });
+        const tx = await Transaction.findOne({ transactionID: req.params.transactionID });
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
-        if (tx.userId.toString() !== req.user.id && req.user.role === 'customer') {
+        if (tx.userID.toString() !== req.user.id && req.user.role === 'customer') {
             return res.status(403).json({ message: 'Unauthorized' });
         }
         res.json(tx);
@@ -858,32 +861,35 @@ app.post('/api/payment/validate', auth(['customer']), async (req, res) => {
 });
 
 app.post('/api/order/submit', auth(['customer']), async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { items, totalAmount, paymentMethod, address, deliveryTime, notes } = req.body;
         
-        // 1. Validation
-        if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
-        if (!address || !deliveryTime) return res.status(400).json({ message: 'Delivery details are required' });
+        if (!items || items.length === 0) throw new Error('Cart is empty');
+        if (!address || !deliveryTime) throw new Error('Delivery details are required');
 
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).session(session);
+        if (!user) throw new Error('User not found');
+
         if (paymentMethod === 'wallet' && user.walletBalance < totalAmount) {
-            return res.status(400).json({ message: 'Insufficient wallet balance' });
+            throw new Error('Insufficient wallet balance');
         }
 
-        // 2. Generate Cryptographically Secure IDs
         const secureOrderId = `ORD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-        const secureReceiptId = `RCP-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+        const secureTransactionId = `TX-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
-        // 3. Atomic-like Processing
         let paymentStatus = (paymentMethod === 'wallet') ? 'paid' : 'unpaid';
         let orderStatus = (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment';
 
+        // 1. Deduct Wallet (Rollbackable)
         if (paymentMethod === 'wallet') {
             user.walletBalance -= totalAmount;
-            await user.save();
+            await user.save({ session });
             logErr(`[AUDIT] Wallet Deduction: User ${user.username} spent $${totalAmount} on ${secureOrderId}`);
         }
 
+        // 2. Create Order (Rollbackable)
         const newOrder = new Order({
             orderId: secureOrderId,
             client: user.username,
@@ -898,28 +904,31 @@ app.post('/api/order/submit', auth(['customer']), async (req, res) => {
             notes,
             progress: paymentStatus === 'paid' ? 5 : 0
         });
+        await newOrder.save({ session });
 
-        await newOrder.save();
-
+        // 3. Create Transaction (Rollbackable)
         const transaction = new Transaction({
-            orderId: newOrder._id,
-            userId: user._id,
-            receiptId: secureReceiptId,
-            provider: paymentMethod === 'wallet' ? 'wallet' : 'cash_at_counter',
+            transactionID: secureTransactionId,
+            orderID: secureOrderId,
+            orderRef: newOrder._id,
+            userID: user._id,
             amount: totalAmount,
             status: paymentStatus === 'paid' ? 'completed' : 'pending',
-            receiptLink: `/api/payments/receipt/${secureReceiptId}`
+            receiptLink: `/api/payments/receipt/${secureTransactionId}`
         });
-
-        await transaction.save();
+        await transaction.save({ session });
 
         newOrder.transactionId = transaction._id;
-        await newOrder.save();
+        await newOrder.save({ session });
 
-        // 4. Notifications
-        io.to(`user:${user._id}`).to('staff').emit('dataChanged', { type: 'orders' });
+        // Commit all changes
+        await session.commitTransaction();
+        session.endSession();
+
+        // 4. Notifications & Response
+        io.to(`user:${user._id}`).to('staff').emit('ordersUpdated');
+        io.to(`user:${user._id}`).emit('transactionsUpdated');
         io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
-        io.to(`user:${user._id}`).emit('dataChanged', { type: 'transactions' });
 
         res.json({ 
             message: 'Order placed successfully, now in queue and recorded in Transactions.',
@@ -928,8 +937,10 @@ app.post('/api/order/submit', auth(['customer']), async (req, res) => {
         });
 
     } catch (err) {
-        logErr('Order Submission Error: ' + err.message);
-        res.status(500).json({ message: 'Server error during order submission' });
+        await session.abortTransaction();
+        session.endSession();
+        logErr('Order Submission Atomic Failure: ' + err.message);
+        res.status(400).json({ message: err.message });
     }
 });
 

@@ -199,11 +199,12 @@ const AuthManager = {
 
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 const data = await response.json();
-                // Update local session data
+                // Update local session data with all user fields (username, email, role, etc.)
                 const currentSession = this.getSession();
                 if (currentSession) {
-                    currentSession.user.username = data.user.username;
-                    localStorage.setItem(this.SESSION_KEY, JSON.stringify(currentSession));
+                    currentSession.user = { ...currentSession.user, ...data.user };
+                    const storage = localStorage.getItem(this.SESSION_KEY) ? localStorage : sessionStorage;
+                    storage.setItem(this.SESSION_KEY, JSON.stringify(currentSession));
                 }
                 return true;
             } else {
@@ -981,8 +982,12 @@ const CheckoutManager = {
     },
 
     async topup() {
-        const amount = parseFloat(document.getElementById('topup-amount').value);
-        if (!amount || amount <= 0) return showToast('Enter a valid amount');
+        const amountInput = document.getElementById('topup-amount').value;
+        // Accept only positive numbers (digits only)
+        if (!/^\d+(\.\d+)?$/.test(amountInput) || parseFloat(amountInput) <= 0) {
+            return showToast('Please enter a valid positive amount (digits only)');
+        }
+        const amount = parseFloat(amountInput);
 
         updateSyncIndicator(true);
         try {
@@ -1943,6 +1948,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (profileWallet) profileWallet.innerText = `$${data.balance.toFixed(2)}`;
                 if (checkoutWallet) checkoutWallet.innerText = `$${data.balance.toFixed(2)}`;
             }
+            refreshDashboardState();
+        });
+        socket.on('ordersUpdated', () => {
+            console.log('[Socket.IO] Orders update received');
+            refreshDashboardState();
+        });
+        socket.on('transactionsUpdated', () => {
+            console.log('[Socket.IO] Transactions update received');
             refreshDashboardState();
         });
         socket.on('disconnect', () => console.log('[Socket.IO] Disconnected'));
