@@ -403,6 +403,14 @@
                     setCategory(e.target.value);
                 });
             }
+
+            // CRITICAL: Actually fetch the products on startup!
+            try {
+                await refreshDashboardState();
+                updateUI();
+            } catch (e) {
+                console.error('[Storefront] Failed to load initial state:', e);
+            }
         });
 
         // Login Handler (Reuse app.js logic)
@@ -412,19 +420,32 @@
             const password = document.getElementById('login-pass').value;
             const rememberMe = document.getElementById('login-remember').checked;
             const errorEl = document.getElementById('login-error');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
             errorEl.style.display = 'none';
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.innerText = 'Connecting...';
+            submitBtn.disabled = true;
 
-            if (window.AuthManager) {
-                const result = await AuthManager.login(email, password, rememberMe, 'customer');
-                if (result.success) {
-                    const role = AuthManager.getUserRole();
-                    if (role === 'admin') window.location.href = 'admin.html';
-                    else if (role === 'employee') window.location.href = 'employee.html';
-                    else window.location.href = 'user.html'; // Direct customer to their dashboard
-                } else {
-                    errorEl.innerText = result.message || "Invalid credentials.";
-                    errorEl.style.display = 'block';
+            try {
+                if (window.AuthManager) {
+                    const result = await AuthManager.login(email, password, rememberMe, 'customer');
+                    if (result.success) {
+                        const role = AuthManager.getUserRole();
+                        if (role === 'admin') window.location.href = 'admin.html';
+                        else if (role === 'employee') window.location.href = 'employee.html';
+                        else window.location.href = 'user.html'; 
+                    } else {
+                        errorEl.innerText = result.message || "Invalid credentials.";
+                        errorEl.style.display = 'block';
+                    }
                 }
+            } catch (err) {
+                errorEl.innerText = "Connection error. Please try again.";
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
             }
         });
     </script>
