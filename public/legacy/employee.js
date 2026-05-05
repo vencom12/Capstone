@@ -173,6 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- Actions ---
+window.openEditOrder = async (id) => {
+    // This would typically open a modal and populate it
+    showToast('Processing order: ' + id);
+};
+
 window.AuthManager = AuthManager;
 window.State = State;
 window.apiFetch = apiFetch;

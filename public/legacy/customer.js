@@ -184,8 +184,7 @@ function updateUI() {
                             <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
-                        <button class="btn btn-primary add-to-basket" style="width: 100%; padding: 12px;" 
-                            onclick="Actions.addToBasket({name:'${p.name}', price:${p.price}, _id:'${p._id}', imageUrl:'${p.imageUrl}'})">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" style="width: 100%; padding: 12px;">Add to Basket</button>
                     </div>
                 </div>`;
             }).join('');
@@ -229,7 +228,7 @@ function updateUI() {
                     <div class="product-details">
                         <h3>${p.name}</h3>
                         <p>$${p.price.toFixed(2)}</p>
-                        <button class="btn btn-primary" onclick="Actions.addToBasket({name:'${p.name}', price:${p.price}, _id:'${p._id}', imageUrl:'${p.imageUrl}'})">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}">Add to Basket</button>
                     </div>
                 </div>`).join('');
     }
@@ -418,7 +417,7 @@ const Actions = {
             return showToast('Please login');
         }
         const basket = State.getBasket();
-        const existing = basket.find(b => b.name === item.name || b._id === item._id);
+        const existing = basket.find(b => b._id === item._id);
         if (existing) {
             existing.quantity += parseInt(quantity);
         } else {
@@ -433,12 +432,46 @@ const Actions = {
         State.setBasket(basket);
         showToast(`Added ${item.name}`);
     },
+    toggleFavorite: async (productId) => {
+        if (!AuthManager.isAuthenticated()) return showToast('Please login to save favorites');
+        const favorites = State._cache.favorites || [];
+        const isFav = favorites.some(f => f._id === productId);
+        
+        try {
+            const method = isFav ? 'DELETE' : 'POST';
+            const response = await apiFetch(`${API_URL}/favorites/${productId}`, { method });
+            if (response.ok) {
+                showToast(isFav ? 'Removed from favorites' : 'Added to favorites');
+                silentCacheSync();
+            }
+        } catch (e) { showToast('Error toggling favorite'); }
+    },
     checkout: () => {
         const basket = State.getBasket();
         if (basket.length === 0) return showToast('Basket is empty');
         CheckoutManager.open(basket);
     }
 };
+
+// --- Event Delegation ---
+document.addEventListener('click', (e) => {
+    // Basket additions
+    const basketBtn = e.target.closest('.add-to-basket');
+    if (basketBtn) {
+        const id = basketBtn.dataset.id;
+        const product = State._cache.products.find(p => p._id === id);
+        if (product) Actions.addToBasket(product);
+        return;
+    }
+
+    // Favorite toggles
+    const favBtn = e.target.closest('.fav-toggle-btn');
+    if (favBtn) {
+        const id = favBtn.dataset.id;
+        Actions.toggleFavorite(id);
+        return;
+    }
+});
 
 window.Actions = Actions;
 window.CheckoutManager = CheckoutManager;
