@@ -43,7 +43,9 @@ io.use((socket, next) => {
     try {
         const cookieStr = socket.request.headers.cookie || '';
         const cookies = Object.fromEntries(cookieStr.split('; ').filter(c => c).map(c => c.split('=')));
-        const token = cookies.token;
+        
+        // Check for any of the portal-specific tokens
+        const token = cookies.admin_token || cookies.employee_token || cookies.customer_token || cookies.token;
 
         if (!token) return next(); // Allow guest connections but they won't join rooms
 

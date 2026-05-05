@@ -135,6 +135,12 @@ async function apiFetch(url, options = {}) {
     };
 
     let response = await performFetch();
+    
+    if (response.status === 401) {
+        console.warn('Unauthorized access detected, redirecting to login...');
+        AuthManager.logout();
+        return response;
+    }
 
     // If CSRF mismatch, refresh and retry once
     if (response.status === 403) {
