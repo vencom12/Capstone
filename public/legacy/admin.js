@@ -683,3 +683,8 @@ window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.refreshDashboardState = refreshDashboardState;
 
+window.downloadReceipt = (receiptId) => {
+    window.location.href = `/api/customer/receipt/${receiptId}/download`;
+};
+
+
