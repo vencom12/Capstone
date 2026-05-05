@@ -549,8 +549,15 @@ window.openEditOrder = (id) => {
     
     // Highlight active status button
     document.querySelectorAll('.status-btn').forEach(btn => {
-        if (btn.dataset.value === order.status) btn.classList.add('btn-primary');
-        else btn.classList.remove('btn-primary');
+        if (btn.dataset.value === order.status) {
+            btn.classList.add('btn-primary');
+            btn.style.background = 'var(--primary)';
+            btn.style.color = 'white';
+        } else {
+            btn.classList.remove('btn-primary');
+            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.color = 'var(--text-dim)';
+        }
     });
 
     const form = document.getElementById('edit-order-form');
@@ -590,13 +597,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Status button group listener
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-btn')) {
-            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('btn-primary'));
-            e.target.classList.add('btn-primary');
-            document.getElementById('edit-order-status').value = e.target.dataset.value;
-        }
-    });
+    const statusGroup = document.getElementById('status-button-group');
+    if (statusGroup) {
+        statusGroup.addEventListener('click', (e) => {
+            const btn = e.target.closest('.status-btn');
+            if (btn) {
+                document.querySelectorAll('.status-btn').forEach(b => {
+                    b.classList.remove('btn-primary');
+                    b.style.background = 'rgba(255,255,255,0.05)';
+                    b.style.color = 'var(--text-dim)';
+                });
+                btn.classList.add('btn-primary');
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+                document.getElementById('edit-order-status').value = btn.dataset.value;
+            }
+        });
+    }
 
     // Edit order form submit
     const editOrderForm = document.getElementById('edit-order-form');
@@ -605,19 +622,22 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const id = editOrderForm.dataset.orderId;
             const status = document.getElementById('edit-order-status').value;
-            const progress = document.getElementById('edit-order-progress').value;
+
+            if (!status) return showToast('Please select a status');
 
             updateSyncIndicator(true);
-            // Reusing updateOrderStatus from employee logic (assuming it's generic enough)
             const res = await apiFetch(`${API_URL}/orders/batch-status`, { 
                 method: 'POST', 
                 body: JSON.stringify({ ids: [id], status }) 
             });
             updateSyncIndicator(false);
             if (res.ok) {
-                showToast('Order updated');
+                showToast('Order updated successfully');
                 UI.toggleModal('edit-order-modal');
                 refreshDashboardState();
+            } else {
+                const data = await res.json();
+                showToast(data.message || 'Update failed');
             }
         };
     }

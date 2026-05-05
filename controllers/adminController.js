@@ -201,3 +201,34 @@ exports.updateInventoryItem = async (req, res) => {
         res.status(500).json({ message: 'Error updating inventory' });
     }
 };
+
+exports.updateOrdersStatus = async (req, res) => {
+    try {
+        const { ids, status } = req.body;
+        if (!ids || !status) return res.status(400).json({ message: 'Missing ids or status' });
+
+        // Map status to progress for convenience
+        const progressMap = {
+            'In Queue': 10,
+            'Preparing Order': 30,
+            'In Transit': 70,
+            'Ready For Pick Up': 90,
+            'Order Delivered': 100,
+            'Order Canceled': 0
+        };
+        const progress = progressMap[status] !== undefined ? progressMap[status] : 50;
+
+        await Order.updateMany(
+            { _id: { $in: ids } },
+            { $set: { status, progress } }
+        );
+
+        const io = req.app.get('io');
+        io.emit('ordersUpdated');
+        
+        res.json({ message: 'Orders updated successfully' });
+    } catch (err) {
+        console.error('updateOrdersStatus error:', err);
+        res.status(500).json({ message: 'Error updating order status' });
+    }
+};
