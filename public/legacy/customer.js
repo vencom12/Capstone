@@ -503,12 +503,24 @@ const CheckoutManager = {
                 method: 'POST',
                 body: JSON.stringify({ items: this.currentBasket, totalAmount: this.total, paymentMethod: this.selectedMethod, address, deliveryTime, notes })
             });
+            
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                data = { message: 'Server returned invalid format.' };
+            }
+
             if (res.ok) {
-                showToast((await res.json()).message);
+                showToast(data.message || 'Order placed successfully.');
                 this.close();
                 State.setBasket([]);
                 silentCacheSync();
-            } else showToast((await res.json()).message || 'Order failed');
+            } else {
+                showToast(data.message || 'Order failed');
+            }
+        } catch (err) {
+            showToast(err.message || 'Connection error');
         } finally { updateSyncIndicator(false); }
     }
 };
