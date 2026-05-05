@@ -63,13 +63,14 @@ exports.login = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true, // Force secure for Render/Production
             sameSite: 'Lax',
-            ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 * 1000 } : {}) 
+            maxAge: (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
         };
         
-        // Use a portal-specific cookie name to prevent session overwrites
+        // Set both the specific token and the general token for backward compatibility during transition
         res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions); 
 
         res.json({ user: { id: user._id, username: user.username, role: user.role } });
     } catch (err) {

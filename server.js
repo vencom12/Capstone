@@ -117,7 +117,14 @@ const authLimiter = rateLimit({
 
 // Core Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+        // Allow all origins in development, or specific ones in production
+        if (!origin || origin.includes('render.com') || origin.includes('localhost')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json({ limit: '5mb' }));
