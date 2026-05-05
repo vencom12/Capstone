@@ -200,7 +200,10 @@ app.post('/api/auth/register', async (req, res) => {
         res.json({ user: { id: user._id, username, role: 'customer' } });
     } catch (err) {
         logErr('Register Server error: ' + err.message);
-        res.status(500).json({ message: 'Server error' });
+        const message = err.name === 'ValidationError' 
+            ? Object.values(err.errors).map(val => val.message).join(', ')
+            : 'Server error';
+        res.status(500).json({ message });
     }
 });
 

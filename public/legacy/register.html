@@ -161,7 +161,7 @@
             </div>
             <div class="input-group">
                 <label>Password</label>
-                <input type="password" id="password" placeholder="••••••••" required>
+                <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
             </div>
             <div id="register-error" class="error-message">Registration failed. Try again.</div>
 
@@ -185,6 +185,12 @@
             const errorEl = document.getElementById('register-error');
             
             errorEl.style.display = 'none';
+
+            if (password.length < 8) {
+                errorEl.innerText = "Password must be at least 8 characters long.";
+                errorEl.style.display = 'block';
+                return;
+            }
             
             if (window.AuthManager) {
                 const result = await AuthManager.register(username, email, password, 'customer', phoneNumber, address);
