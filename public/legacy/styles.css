@@ -1722,11 +1722,3 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     margin-bottom: 20px;
 }
 
-@media (max-width: 1024px) {
-    .mobile-category-container {
-        display: block;
-    }
-    .category-links {
-        display: none;
-    }
-}
