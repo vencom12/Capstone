@@ -157,13 +157,16 @@ exports.submitOrder = async (req, res) => {
 
         res.json({ message: 'Order placed successfully.', order: newOrder });
     } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         console.error('submitOrder error:', err);
         const fs = require('fs');
         const path = require('path');
         fs.appendFileSync(path.join(__dirname, '..', 'server_log.txt'), `[${new Date().toISOString()}] submitOrder error: ${err.message}\n`);
         res.status(400).json({ message: err.message || 'Failed to place order' });
+    } finally {
+        session.endSession();
     }
 };
 
