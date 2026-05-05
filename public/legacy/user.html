@@ -256,6 +256,7 @@
                                     <th style="padding: 20px 24px; font-weight: 600;">Method</th>
                                     <th style="padding: 20px 24px; font-weight: 600;">Amount</th>
                                     <th style="padding: 20px 24px; font-weight: 600;">Status</th>
+                                    <th style="padding: 20px 24px; font-weight: 600;">Receipt</th>
                                 </tr>
                             </thead>
                             <tbody id="transaction-table-body">
@@ -350,6 +351,90 @@
                 </div>
             </div>
         </aside>
+    </div>
+
+    <!-- Enhanced Checkout & Payment Modal -->
+    <div id="checkout-modal" class="modal-overlay" style="display: none;">
+        <div class="modal glass checkout-modal-content">
+            <header style="margin-bottom: 24px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                    Secure Checkout
+                </h2>
+                <span onclick="CheckoutManager.close()" style="cursor: pointer; font-size: 1.5rem; opacity: 0.5;">✕</span>
+            </header>
+
+            <div class="checkout-grid">
+                <!-- Left: Delivery & Summary -->
+                <div class="checkout-left">
+                    <div class="checkout-section">
+                        <h3 class="checkout-section-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            Delivery Details
+                        </h3>
+                        <div class="input-group">
+                            <input type="text" id="checkout-address" placeholder="Full Delivery Address" required>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="checkout-time" placeholder="Preferred Delivery Time (e.g. 2 PM - 4 PM)" required>
+                        </div>
+                        <div class="input-group">
+                            <textarea id="checkout-notes" placeholder="Special notes to seller..." rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="checkout-section" style="margin-top: 24px;">
+                        <h3 class="checkout-section-title">Order Summary</h3>
+                        <div id="checkout-summary-list" class="checkout-summary-list">
+                            <!-- Items populated by JS -->
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 16px; font-weight: 700; font-size: 1.1rem; padding: 0 8px;">
+                            <span>Total Amount:</span>
+                            <span id="checkout-total-price" style="color: var(--primary);">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Payment & Action -->
+                <div class="checkout-right">
+                    <div class="checkout-section">
+                        <h3 class="checkout-section-title">Payment Method</h3>
+                        
+                        <!-- Wallet Card -->
+                        <div class="wallet-balance-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-size: 0.8rem; opacity: 0.8;">Wallet Balance</span>
+                                <span id="checkout-wallet-balance" style="font-weight: 700; font-size: 1.1rem;">$0.00</span>
+                            </div>
+                            <div class="top-up-input-group">
+                                <input type="number" id="topup-amount" placeholder="Add Amount" min="1">
+                                <button onclick="CheckoutManager.topup()" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">Top Up</button>
+                            </div>
+                        </div>
+
+                        <button onclick="CheckoutManager.selectMethod('wallet')" id="pay-btn-wallet" class="payment-method-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+                            <span>Wallet Credits</span>
+                        </button>
+                        <button onclick="CheckoutManager.selectMethod('cash_at_counter')" id="pay-btn-cash" class="payment-method-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                            <span>Cash at Counter</span>
+                        </button>
+                    </div>
+
+                    <div class="verification-status">
+                        <span>Payment Status:</span>
+                        <span id="checkout-verification-badge" class="status-badge pending">Pending</span>
+                    </div>
+
+                    <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary" style="width: 100%; padding: 18px; font-size: 1rem; border-radius: 16px; opacity: 0.5; pointer-events: none;">
+                        Place Order
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="global-sync-indicator" class="sync-indicator">

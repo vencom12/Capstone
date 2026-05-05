@@ -7,6 +7,7 @@ const transactionSchema = new mongoose.Schema({
     provider: { type: String, required: true, enum: ['wallet', 'cash_at_counter', 'stripe_stub', 'paypal_stub'] },
     amount: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+    receiptLink: { type: String },
     createdAt: { type: Date, default: Date.now, index: true }
 });
 

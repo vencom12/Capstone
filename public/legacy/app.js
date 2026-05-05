@@ -504,39 +504,12 @@ const Actions = {
             return;
         }
         const basket = State.getBasket();
-        if (basket.length === 0) return;
-
-        const totalAmount = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-        updateSyncIndicator(true);
-        try {
-            const orderData = {
-                orderId: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
-                client: AuthManager.getSession()?.user.username || 'Client',
-                design: basket.map(i => `${i.name}${i.quantity > 1 ? ' ×' + i.quantity : ''}`).join(', '),
-                items: basket,
-                totalAmount: totalAmount
-            };
-
-            const response = await apiFetch(`${API_URL}/orders`, {
-                method: 'POST',
-                body: JSON.stringify(orderData)
-            });
-
-            if (response.ok) {
-                const newOrder = await response.json();
-                PaymentManager.open(newOrder);
-                State.setBasket([]);
-                silentCacheSync();
-            } else {
-                throw new Error('Server rejected order');
-            }
-        } catch (err) {
-            console.error('Checkout error:', err);
-            showToast('Checkout failed. Please try again.');
-        } finally {
-            updateSyncIndicator(false);
+        if (basket.length === 0) {
+            showToast('Your basket is empty.');
+            return;
         }
+        
+        CheckoutManager.open(basket);
     },
     async toggleFavorite(productId, isFavorite) {
         if (!AuthManager.isAuthenticated()) {
@@ -917,57 +890,166 @@ const EmployeeActions = {
     }
 };
 
-const PaymentManager = {
-    _currentOrder: null,
+// --- Checkout & Payment Manager ---
+const CheckoutManager = {
+    currentBasket: [],
+    selectedMethod: null,
+    total: 0,
+    isVerified: false,
 
-    open(order) {
-        this._currentOrder = order;
-        const modal = document.getElementById('payment-modal');
+    async open(basket) {
+        this.currentBasket = basket;
+        this.total = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        this.selectedMethod = null;
+        this.isVerified = false;
+
+        const modal = document.getElementById('checkout-modal');
         if (!modal) return;
 
-        document.getElementById('payment-total-amount').innerText = `$${order.totalAmount.toFixed(2)}`;
-        document.getElementById('payment-order-id').innerText = `#${order.orderId}`;
+        // Reset UI
+        document.getElementById('checkout-address').value = AuthManager.getSession()?.user.address || '';
+        document.getElementById('checkout-time').value = '';
+        document.getElementById('checkout-notes').value = '';
+        document.getElementById('checkout-total-price').innerText = `$${this.total.toFixed(2)}`;
+        document.getElementById('checkout-wallet-balance').innerText = `$${(State._cache.walletBalance || 0).toFixed(2)}`;
+        
+        const summaryList = document.getElementById('checkout-summary-list');
+        summaryList.innerHTML = basket.map(item => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;">
+                <span>${item.name} × ${item.quantity}</span>
+                <span>$${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+        `).join('');
 
-        const balance = State._cache.walletBalance || 0;
-        const balanceDisplay = document.getElementById('wallet-balance-display');
-        if (balanceDisplay) {
-            balanceDisplay.innerText = `$${balance.toFixed(2)}`;
-            balanceDisplay.style.background = balance >= order.totalAmount ? 'var(--primary)' : '#ef4444';
-        }
-
+        this.updateVerificationUI();
         modal.style.display = 'flex';
     },
 
-    async process(method) {
-        if (!this._currentOrder) return;
+    close() {
+        const modal = document.getElementById('checkout-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    async selectMethod(method) {
+        this.selectedMethod = method;
+        
+        // Update UI selection
+        document.querySelectorAll('.payment-method-btn').forEach(btn => btn.classList.remove('active'));
+        const btn = document.getElementById(`pay-btn-${method === 'wallet' ? 'wallet' : 'cash'}`);
+        if (btn) btn.classList.add('active');
+
+        // Trigger Validation
+        updateSyncIndicator(true);
+        try {
+            const response = await apiFetch(`${API_URL}/payment/validate`, {
+                method: 'POST',
+                body: JSON.stringify({ method, total: this.total })
+            });
+
+            if (response.ok) {
+                this.isVerified = true;
+                showToast('Payment method verified.');
+            } else {
+                const data = await response.json();
+                this.isVerified = false;
+                showToast(data.message || 'Verification failed');
+            }
+        } catch (e) {
+            this.isVerified = false;
+            showToast('Validation system unavailable');
+        } finally {
+            updateSyncIndicator(false);
+            this.updateVerificationUI();
+        }
+    },
+
+    updateVerificationUI() {
+        const badge = document.getElementById('checkout-verification-badge');
+        const placeBtn = document.getElementById('place-order-btn');
+        
+        if (this.isVerified) {
+            badge.innerText = 'Verified';
+            badge.className = 'status-badge verified';
+            placeBtn.style.opacity = '1';
+            placeBtn.style.pointerEvents = 'auto';
+        } else {
+            badge.innerText = 'Pending';
+            badge.className = 'status-badge pending';
+            placeBtn.style.opacity = '0.5';
+            placeBtn.style.pointerEvents = 'none';
+        }
+    },
+
+    async topup() {
+        const amount = parseFloat(document.getElementById('topup-amount').value);
+        if (!amount || amount <= 0) return showToast('Enter a valid amount');
 
         updateSyncIndicator(true);
         try {
-            const response = await apiFetch(`${API_URL}/payments/process`, {
+            const response = await apiFetch(`${API_URL}/wallet/topup`, {
+                method: 'POST',
+                body: JSON.stringify({ amount })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                State._cache.walletBalance = data.walletBalance;
+                document.getElementById('checkout-wallet-balance').innerText = `$${data.walletBalance.toFixed(2)}`;
+                const profileWallet = document.getElementById('profile-wallet');
+                if (profileWallet) profileWallet.innerText = `$${data.walletBalance.toFixed(2)}`;
+                showToast('Wallet topped up successfully');
+                document.getElementById('topup-amount').value = '';
+                
+                // If wallet was selected but failed verification, re-verify
+                if (this.selectedMethod === 'wallet') this.selectMethod('wallet');
+            }
+        } catch (e) {
+            showToast('Top-up failed');
+        } finally {
+            updateSyncIndicator(false);
+        }
+    },
+
+    async placeOrder() {
+        if (!this.isVerified) return showToast('Please verify payment method first');
+        
+        const address = document.getElementById('checkout-address').value;
+        const deliveryTime = document.getElementById('checkout-time').value;
+        const notes = document.getElementById('checkout-notes').value;
+
+        if (!address || !deliveryTime) return showToast('Delivery details are required');
+
+        updateSyncIndicator(true);
+        try {
+            const response = await apiFetch(`${API_URL}/order/submit`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    orderId: this._currentOrder._id,
-                    method: method
+                    items: this.currentBasket,
+                    totalAmount: this.total,
+                    paymentMethod: this.selectedMethod,
+                    address,
+                    deliveryTime,
+                    notes
                 })
             });
 
-            const result = await response.json();
-
             if (response.ok) {
-                showToast(result.message);
-                UI.toggleModal('payment-modal');
-                refreshDashboardState();
+                const data = await response.json();
+                showToast(data.message);
+                this.close();
+                State.setBasket([]);
+                silentCacheSync();
             } else {
-                showToast(result.message || 'Payment failed');
+                const data = await response.json();
+                showToast(data.message || 'Order failed');
             }
-        } catch (err) {
-            console.error('Payment error:', err);
-            showToast('Payment processing error');
+        } catch (e) {
+            showToast('Order submission failed');
         } finally {
             updateSyncIndicator(false);
         }
     }
 };
+window.CheckoutManager = CheckoutManager;
 
 const UI = {
     toggleModal(id) {
@@ -1584,6 +1666,9 @@ function updateTransactionsSection() {
                     ${tx.status}
                 </span>
             </td>
+            <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <button onclick="window.open('${tx.receiptLink}', '_blank')" class="btn" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(255,255,255,0.05);">View Receipt</button>
+            </td>
         </tr>
     `).join('');
 }
@@ -1851,6 +1936,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         socket.on('connect', () => console.log('[Socket.IO] Connected to server'));
         socket.on('dataChanged', (data) => {
             console.log('[Socket.IO] Real-time update received:', data.type);
+            if (data.type === 'wallet') {
+                State._cache.walletBalance = data.balance;
+                const profileWallet = document.getElementById('profile-wallet');
+                const checkoutWallet = document.getElementById('checkout-wallet-balance');
+                if (profileWallet) profileWallet.innerText = `$${data.balance.toFixed(2)}`;
+                if (checkoutWallet) checkoutWallet.innerText = `$${data.balance.toFixed(2)}`;
+            }
             refreshDashboardState();
         });
         socket.on('disconnect', () => console.log('[Socket.IO] Disconnected'));

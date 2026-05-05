@@ -22,6 +22,7 @@ const Transaction = require('./models/Transaction');
 const auth = require('./middleware/auth');
 
 const fs = require('fs');
+const crypto = require('crypto');
 const app = express();
 
 const logErr = (msg) => {
@@ -768,9 +769,40 @@ app.post('/api/payments/process', auth(), async (req, res) => {
     }
 });
 
-app.get('/api/payments/receipt/:id', auth(), async (req, res) => {
+// --- Wallet Management ---
+
+app.post('/api/wallet/topup', auth(['customer']), async (req, res) => {
     try {
-        const tx = await Transaction.findById(req.params.id);
+        const { amount } = req.body;
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'Invalid top-up amount' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.walletBalance = (user.walletBalance || 0) + parseFloat(amount);
+        await user.save();
+
+        // Audit Log entry (using existing logErr for simplicity, but could be a DB collection)
+        logErr(`[AUDIT] Wallet Top-up: User ${user.username} (${user._id}) added $${amount}. New balance: $${user.walletBalance}`);
+
+        // Emit update
+        io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
+
+        res.json({ 
+            message: `Successfully topped up $${amount.toFixed(2)}`, 
+            walletBalance: user.walletBalance 
+        });
+    } catch (err) {
+        logErr('Top-up error: ' + err.message);
+        res.status(500).json({ message: 'Server error during top-up' });
+    }
+});
+
+app.get('/api/payments/receipt/:receiptId', auth(), async (req, res) => {
+    try {
+        const tx = await Transaction.findOne({ receiptId: req.params.receiptId });
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
         if (tx.userId.toString() !== req.user.id && req.user.role === 'customer') {
             return res.status(403).json({ message: 'Unauthorized' });
@@ -802,6 +834,102 @@ app.post('/api/admin/confirm-payment', auth(['admin', 'employee']), async (req, 
     } catch (err) {
         console.error('Confirm payment error:', err);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// --- Unified Secure Checkout ---
+
+app.post('/api/payment/validate', auth(['customer']), async (req, res) => {
+    try {
+        const { method, total } = req.body;
+        if (method === 'wallet') {
+            const user = await User.findById(req.user.id);
+            if (user.walletBalance < total) {
+                return res.status(400).json({ 
+                    message: `Insufficient balance. You have $${user.walletBalance.toFixed(2)} but need $${total.toFixed(2)}.` 
+                });
+            }
+        }
+        // Simulated success for other methods
+        res.json({ status: 'Verified', message: 'Payment method is valid and ready.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Validation error' });
+    }
+});
+
+app.post('/api/order/submit', auth(['customer']), async (req, res) => {
+    try {
+        const { items, totalAmount, paymentMethod, address, deliveryTime, notes } = req.body;
+        
+        // 1. Validation
+        if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
+        if (!address || !deliveryTime) return res.status(400).json({ message: 'Delivery details are required' });
+
+        const user = await User.findById(req.user.id);
+        if (paymentMethod === 'wallet' && user.walletBalance < totalAmount) {
+            return res.status(400).json({ message: 'Insufficient wallet balance' });
+        }
+
+        // 2. Generate Cryptographically Secure IDs
+        const secureOrderId = `ORD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+        const secureReceiptId = `RCP-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+        // 3. Atomic-like Processing
+        let paymentStatus = (paymentMethod === 'wallet') ? 'paid' : 'unpaid';
+        let orderStatus = (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment';
+
+        if (paymentMethod === 'wallet') {
+            user.walletBalance -= totalAmount;
+            await user.save();
+            logErr(`[AUDIT] Wallet Deduction: User ${user.username} spent $${totalAmount} on ${secureOrderId}`);
+        }
+
+        const newOrder = new Order({
+            orderId: secureOrderId,
+            client: user.username,
+            userId: user._id,
+            items,
+            totalAmount,
+            paymentMethod,
+            paymentStatus,
+            status: orderStatus,
+            address,
+            deliveryTime,
+            notes,
+            progress: paymentStatus === 'paid' ? 5 : 0
+        });
+
+        await newOrder.save();
+
+        const transaction = new Transaction({
+            orderId: newOrder._id,
+            userId: user._id,
+            receiptId: secureReceiptId,
+            provider: paymentMethod === 'wallet' ? 'wallet' : 'cash_at_counter',
+            amount: totalAmount,
+            status: paymentStatus === 'paid' ? 'completed' : 'pending',
+            receiptLink: `/api/payments/receipt/${secureReceiptId}`
+        });
+
+        await transaction.save();
+
+        newOrder.transactionId = transaction._id;
+        await newOrder.save();
+
+        // 4. Notifications
+        io.to(`user:${user._id}`).to('staff').emit('dataChanged', { type: 'orders' });
+        io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
+        io.to(`user:${user._id}`).emit('dataChanged', { type: 'transactions' });
+
+        res.json({ 
+            message: 'Order placed successfully, now in queue and recorded in Transactions.',
+            order: newOrder,
+            transaction: transaction
+        });
+
+    } catch (err) {
+        logErr('Order Submission Error: ' + err.message);
+        res.status(500).json({ message: 'Server error during order submission' });
     }
 });
 
