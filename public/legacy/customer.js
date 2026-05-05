@@ -338,7 +338,7 @@ function updateUI() {
                 <tr>
                     <td style="padding: 16px 24px;">${tx.transactionID}</td>
                     <td style="padding: 16px 24px;">${new Date(tx.timestamp).toLocaleDateString()}</td>
-                    <td style="padding: 16px 24px;">${tx.orderID.startsWith('ORD-') ? 'Order' : 'Top-up'}</td>
+                    <td style="padding: 16px 24px;">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order' : 'Top-up') : 'N/A'}</td>
                     <td style="padding: 16px 24px;">$${tx.amount.toFixed(2)}</td>
                     <td style="padding: 16px 24px;"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td style="padding: 16px 24px;">

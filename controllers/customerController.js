@@ -43,7 +43,7 @@ exports.topupWallet = async (req, res) => {
             { $inc: { walletBalance: numAmount } },
             { new: true }
         );
-        
+
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         req.app.get('io').to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
@@ -57,7 +57,7 @@ exports.validatePayment = async (req, res) => {
     try {
         const { method, total } = req.body;
         const numTotal = parseFloat(total);
-        
+
         if (isNaN(numTotal) || numTotal <= 0) {
             return res.status(400).json({ message: 'Invalid order total for validation.' });
         }
@@ -65,11 +65,11 @@ exports.validatePayment = async (req, res) => {
         if (method === 'wallet') {
             const user = await User.findById(req.user.id);
             if (!user) return res.status(404).json({ message: 'User not found' });
-            
+
             const balance = user.walletBalance || 0;
             if (balance < numTotal) {
-                return res.status(400).json({ 
-                    message: `Insufficient balance. You have $${balance.toFixed(2)} but need $${numTotal.toFixed(2)}.` 
+                return res.status(400).json({
+                    message: `Insufficient balance. You have $${balance.toFixed(2)} but need $${numTotal.toFixed(2)}.`
                 });
             }
         }
@@ -80,93 +80,90 @@ exports.validatePayment = async (req, res) => {
 };
 
 exports.submitOrder = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
         const { items, totalAmount, paymentMethod, address, deliveryTime, notes } = req.body;
         
         if (!items || items.length === 0) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ message: 'Cart is empty' });
         }
 
-        const user = await User.findById(req.user.id).session(session);
+        const user = await User.findById(req.user.id);
         if (!user) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(404).json({ message: 'User not found' });
         }
 
         const numTotal = parseFloat(totalAmount);
         if (paymentMethod === 'wallet' && (user.walletBalance || 0) < numTotal) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
 
         const secureOrderId = `ORD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
         const secureTransactionId = `TX-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
-        // Deduct wallet balance using atomic update (bypasses schema validation on unrelated fields)
+        // Phase 1: Deduct wallet balance
+        let balanceDeducted = false;
         if (paymentMethod === 'wallet') {
-            await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -numTotal } }, { session });
+            await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -numTotal } });
+            balanceDeducted = true;
         }
 
-        const newOrder = new Order({
-            orderId: secureOrderId,
-            client: user.username,
-            userId: user._id,
-            design: "Cart Order",
-            items,
-            totalAmount: numTotal,
-            paymentMethod,
-            paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
-            status: (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment',
-            address,
-            deliveryTime,
-            notes,
-            progress: (paymentMethod === 'wallet') ? 5 : 0
-        });
-        await newOrder.save({ session });
+        try {
+            // Phase 2: Create Order and Transaction
+            const newOrder = new Order({
+                orderId: secureOrderId,
+                client: user.username,
+                userId: user._id,
+                design: "Cart Order",
+                items,
+                totalAmount: numTotal,
+                paymentMethod,
+                paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
+                status: (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment',
+                address,
+                deliveryTime,
+                notes,
+                progress: (paymentMethod === 'wallet') ? 5 : 0
+            });
+            await newOrder.save();
 
-        const transaction = new Transaction({
-            transactionID: secureTransactionId,
-            orderID: secureOrderId,
-            orderRef: newOrder._id,
-            userID: user._id,
-            amount: numTotal,
-            status: (paymentMethod === 'wallet') ? 'completed' : 'pending',
-            receiptLink: `/api/payments/receipt/${secureTransactionId}`
-        });
-        await transaction.save({ session });
+            const transaction = new Transaction({
+                transactionID: secureTransactionId,
+                orderID: secureOrderId,
+                orderRef: newOrder._id,
+                userID: user._id,
+                amount: numTotal,
+                status: (paymentMethod === 'wallet') ? 'completed' : 'pending',
+                receiptLink: `/api/payments/receipt/${secureTransactionId}`
+            });
+            await transaction.save();
 
-        newOrder.transactionId = transaction._id;
-        await newOrder.save({ session });
+            newOrder.transactionId = transaction._id;
+            await newOrder.save();
 
-        await session.commitTransaction();
-        session.endSession();
+            // Success Phase: Emit events
+            const updatedUser = await User.findById(req.user.id);
 
-        // Refresh the user's balance for the response
-        const updatedUser = await User.findById(req.user.id);
+            const io = req.app.get('io');
+            io.to(`user:${user._id}`).to('staff').emit('ordersUpdated');
+            io.to(`user:${user._id}`).emit('transactionsUpdated');
+            io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: updatedUser.walletBalance });
 
-        const io = req.app.get('io');
-        io.to(`user:${user._id}`).to('staff').emit('ordersUpdated');
-        io.to(`user:${user._id}`).emit('transactionsUpdated');
-        io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: updatedUser.walletBalance });
+            res.json({ message: 'Order placed successfully.', order: newOrder });
 
-        res.json({ message: 'Order placed successfully.', order: newOrder });
+        } catch (innerErr) {
+            // Rollback Phase: Refund wallet if deducted
+            if (balanceDeducted) {
+                await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: numTotal } });
+            }
+            throw innerErr; // Re-throw to be caught by outer catch
+        }
+
     } catch (err) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
         console.error('submitOrder error:', err);
         const fs = require('fs');
         const path = require('path');
         fs.appendFileSync(path.join(__dirname, '..', 'server_log.txt'), `[${new Date().toISOString()}] submitOrder error: ${err.message}\n`);
         res.status(400).json({ message: err.message || 'Failed to place order' });
-    } finally {
-        session.endSession();
     }
 };
 
@@ -228,7 +225,7 @@ exports.getReceipt = async (req, res) => {
     try {
         const transaction = await Transaction.findOne({ transactionID: req.params.id, userID: req.user.id }).populate('orderRef');
         if (!transaction) return res.status(404).json({ message: 'Receipt not found' });
-        
+
         // Return structured data for a receipt view
         res.json({
             transactionID: transaction.transactionID,
