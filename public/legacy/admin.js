@@ -99,12 +99,17 @@ const AuthManager = {
                 method: 'POST',
                 body: JSON.stringify({ email, password, rememberMe, portal })
             });
-            if (!response.ok) return { success: false, message: (await response.json()).message || 'Login failed' };
             const data = await response.json();
-            const storage = rememberMe ? localStorage : sessionStorage;
-            storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-            return { success: true };
-        } catch (err) { return { success: false, message: 'Connection error' }; }
+            if (response.ok) {
+                const storage = rememberMe ? localStorage : sessionStorage;
+                storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
+                return { success: true };
+            } else {
+                return { success: false, message: data.message || 'Login failed' };
+            }
+        } catch (err) { 
+            return { success: false, message: 'Connection error' }; 
+        }
     },
     async logout() {
         await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' });
@@ -452,8 +457,12 @@ window.deleteProduct = async (id) => {
     }
 };
 
-// --- Event Listeners ---
+// --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+    refreshCSRFToken();
+    if (AuthManager.isAuthenticated()) {
+        refreshDashboardState();
+    }
     initCharts();
     
     // Create Product Form
