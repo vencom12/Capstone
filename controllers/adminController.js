@@ -122,3 +122,54 @@ exports.updateOrdersStatus = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+exports.createProduct = async (req, res) => {
+    try {
+        const { name, price, tag, description, imageUrl } = req.body;
+        const newProduct = new Product({ name, price: parseFloat(price), tag, description, imageUrl });
+        await newProduct.save();
+        req.app.get('io').emit('dataChanged', { type: 'products' });
+        res.json({ message: 'Product created', product: newProduct });
+    } catch (err) {
+        res.status(500).json({ message: 'Error creating product' });
+    }
+};
+
+exports.updateProduct = async (req, res) => {
+    try {
+        const { name, price, tag, description, imageUrl } = req.body;
+        const product = await Product.findByIdAndUpdate(req.params.id, 
+            { name, price: parseFloat(price), tag, description, imageUrl }, 
+            { new: true }
+        );
+        if (!product) return res.status(404).json({ message: 'Product not found' });
+        req.app.get('io').emit('dataChanged', { type: 'products' });
+        res.json({ message: 'Product updated', product });
+    } catch (err) {
+        res.status(500).json({ message: 'Error updating product' });
+    }
+};
+
+exports.deleteProduct = async (req, res) => {
+    try {
+        await Product.findByIdAndDelete(req.params.id);
+        req.app.get('io').emit('dataChanged', { type: 'products' });
+        res.json({ message: 'Product deleted' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting product' });
+    }
+};
+
+exports.updateInventoryItem = async (req, res) => {
+    try {
+        const { count } = req.body;
+        const inventory = await Inventory.findOneAndUpdate(
+            { _id: req.params.id },
+            { count, lastUpdated: Date.now() },
+            { new: true }
+        );
+        req.app.get('io').emit('dataChanged', { type: 'inventory' });
+        res.json(inventory);
+    } catch (err) {
+        res.status(500).json({ message: 'Error updating inventory' });
+    }
+};

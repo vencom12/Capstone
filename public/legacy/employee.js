@@ -174,11 +174,69 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- Actions ---
-window.openEditOrder = async (id) => {
-    // This would typically open a modal and populate it
-    showToast('Processing order: ' + id);
+window.openEditOrder = (id) => {
+    const order = State._cache.orders.find(o => o._id === id);
+    if (!order) return;
+    
+    document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
+    document.getElementById('edit-order-client').value = order.client || '';
+    document.getElementById('edit-order-design').value = formatOrderDesign(order);
+    document.getElementById('edit-order-status').value = order.status;
+    document.getElementById('edit-order-progress').value = order.progress;
+    
+    // Highlight active status button
+    document.querySelectorAll('.status-btn').forEach(btn => {
+        if (btn.dataset.value === order.status) btn.classList.add('btn-primary');
+        else btn.classList.remove('btn-primary');
+    });
+
+    const form = document.getElementById('edit-order-form');
+    form.dataset.orderId = id;
+    UI.toggleModal('edit-order-modal');
 };
 
+const UI = {
+    toggleModal: (id) => {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Status button group listener
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('status-btn')) {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('btn-primary'));
+            e.target.classList.add('btn-primary');
+            document.getElementById('edit-order-status').value = e.target.dataset.value;
+        }
+    });
+
+    // Edit order form submit
+    const editOrderForm = document.getElementById('edit-order-form');
+    if (editOrderForm) {
+        editOrderForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = editOrderForm.dataset.orderId;
+            const status = document.getElementById('edit-order-status').value;
+            const progress = document.getElementById('edit-order-progress').value;
+
+            updateSyncIndicator(true);
+            const res = await apiFetch(`${API_URL}/order-status/${id}`, { 
+                method: 'PATCH', 
+                body: JSON.stringify({ status, progress }) 
+            });
+            updateSyncIndicator(false);
+            if (res.ok) {
+                showToast('Order status updated');
+                UI.toggleModal('edit-order-modal');
+                refreshDashboardState();
+            }
+        };
+    }
+});
+
+window.UI = UI;
 window.AuthManager = AuthManager;
 window.State = State;
 window.apiFetch = apiFetch;

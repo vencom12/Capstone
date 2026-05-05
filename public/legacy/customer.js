@@ -97,7 +97,7 @@ const AuthManager = {
 
 // --- State Management ---
 const State = {
-    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0 },
+    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
     getBasket: () => JSON.parse(localStorage.getItem('stitch_basket') || '[]'),
     setBasket: (basket) => {
         localStorage.setItem('stitch_basket', JSON.stringify(basket));
@@ -186,13 +186,24 @@ function updateUI() {
     }
 
     // 2. Update Catalog (Storefront & Shop)
-    const favIds = favorites.map(f => f._id);
+    const searchQuery = (State._cache.searchQuery || '').toLowerCase();
+    const selectedCategory = State._cache.selectedCategory || 'All';
+    
+    let filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery) || (p.description && p.description.toLowerCase().includes(searchQuery));
+        const matchesCategory = selectedCategory === 'All' || p.tag === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    const favIds = favorites.map(f => f._id.toString());
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     productGrids.forEach(grid => {
-        grid.innerHTML = products.length === 0 
-            ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>No designs found.</p></div>'
-            : products.map(p => {
-                const isFav = favIds.includes(p._id);
+        grid.innerHTML = filteredProducts.length === 0 
+            ? `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
+                <p>${products.length === 0 ? 'No designs found.' : 'No designs match your search.'}</p>
+               </div>`
+            : filteredProducts.map(p => {
+                const isFav = favIds.includes(p._id.toString());
                 return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
@@ -267,6 +278,9 @@ function updateUI() {
                     <td>${tx.orderID}</td>
                     <td>$${tx.amount.toFixed(2)}</td>
                     <td><span class="status-pill ${tx.status}">${tx.status}</span></td>
+                    <td>
+                        <button class="btn btn-secondary view-receipt-btn" data-id="${tx.transactionID}" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
+                    </td>
                 </tr>`).join('');
     }
 
@@ -487,24 +501,60 @@ const Actions = {
     }
 };
 
+// --- Settings Management ---
+async function saveSettings() {
+    const username = document.getElementById('settings-username')?.value;
+    const email = document.getElementById('settings-email')?.value;
+    const address = document.getElementById('settings-address')?.value;
+    const phone = document.getElementById('settings-phone')?.value;
+    const currentPass = document.getElementById('settings-current-pass')?.value;
+    const newPass = document.getElementById('settings-new-pass')?.value;
+
+    updateSyncIndicator(true);
+    try {
+        const res = await apiFetch(`${API_URL}/settings`, {
+            method: 'PATCH',
+            body: JSON.stringify({ username, email, address, phoneNumber: phone, currentPassword: currentPass, newPassword: newPass })
+        });
+        const data = await res.json();
+        showToast(data.message);
+        if (res.ok) {
+            localStorage.setItem(AuthManager.SESSION_KEY, JSON.stringify({ user: data.user }));
+            refreshDashboardState();
+        }
+    } catch (e) { showToast('Connection error'); }
+    finally { updateSyncIndicator(false); }
+}
+
+async function viewReceipt(id) {
+    updateSyncIndicator(true);
+    try {
+        const res = await apiFetch(`${API_URL}/receipt/${id}`);
+        if (!res.ok) return showToast('Could not fetch receipt');
+        const r = await res.json();
+        
+        // Simulating a receipt modal with a formatted alert for now
+        // In a real app, this would open a printable window or a styled modal
+        const itemsList = r.items.map(i => `${i.name} x ${i.quantity}`).join('\n');
+        alert(`RECEIPT - ${r.transactionID}\nDate: ${new Date(r.timestamp).toLocaleString()}\nTotal: $${r.amount.toFixed(2)}\nStatus: ${r.status}\n\nItems:\n${itemsList}`);
+    } catch (e) { showToast('Error loading receipt'); }
+    finally { updateSyncIndicator(false); }
+}
+
 // --- Event Delegation ---
 document.addEventListener('click', (e) => {
     // Basket additions
     const basketBtn = e.target.closest('.add-to-basket');
     if (basketBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const id = basketBtn.dataset.id;
         const product = State._cache.products.find(p => p._id.toString() === id.toString());
         if (product) {
             Actions.addToBasket(product);
         } else {
-            // Fallback for search or other lists
             const name = basketBtn.dataset.name;
             const price = basketBtn.dataset.price;
-            if (name && price) {
-                Actions.addToBasket({ _id: id, name, price: parseFloat(price) });
-            }
+            if (name && price) Actions.addToBasket({ _id: id, name, price: parseFloat(price) });
         }
         return;
     }
@@ -512,11 +562,44 @@ document.addEventListener('click', (e) => {
     // Favorite toggles
     const favBtn = e.target.closest('.fav-toggle-btn');
     if (favBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const id = favBtn.dataset.id;
         Actions.toggleFavorite(id);
         return;
+    }
+
+    // Receipt views
+    const receiptBtn = e.target.closest('.view-receipt-btn');
+    if (receiptBtn) {
+        e.preventDefault();
+        viewReceipt(receiptBtn.dataset.id);
+        return;
+    }
+
+    // Settings save
+    if (e.target.id === 'settings-save-btn') {
+        e.preventDefault();
+        saveSettings();
+        return;
+    }
+
+    // Category filters
+    const catBtn = e.target.closest('.category-btn');
+    if (catBtn) {
+        e.preventDefault();
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        catBtn.classList.add('active');
+        State._cache.selectedCategory = catBtn.dataset.category || 'All';
+        updateUI();
+        return;
+    }
+});
+
+// Search listener
+document.addEventListener('input', (e) => {
+    if (e.target.id === 'product-search' || e.target.id === 'shop-search') {
+        State._cache.searchQuery = e.target.value;
+        updateUI();
     }
 });
 

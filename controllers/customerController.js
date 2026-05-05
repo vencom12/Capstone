@@ -159,3 +159,49 @@ exports.removeFavorite = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+exports.updateSettings = async (req, res) => {
+    try {
+        const { username, email, address, phoneNumber, currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (username) user.username = username;
+        if (email) user.email = email;
+        if (address) user.address = address;
+        if (phoneNumber) user.phoneNumber = phoneNumber;
+
+        if (newPassword) {
+            if (!currentPassword) return res.status(400).json({ message: 'Current password required to change password' });
+            const isMatch = await user.comparePassword(currentPassword);
+            if (!isMatch) return res.status(400).json({ message: 'Incorrect current password' });
+            user.password = newPassword;
+        }
+
+        await user.save();
+        const safeUser = user.toObject();
+        delete safeUser.password;
+        res.json({ message: 'Settings updated successfully', user: safeUser });
+    } catch (err) {
+        res.status(500).json({ message: 'Error updating settings' });
+    }
+};
+
+exports.getReceipt = async (req, res) => {
+    try {
+        const transaction = await Transaction.findOne({ transactionID: req.params.id, userID: req.user.id }).populate('orderRef');
+        if (!transaction) return res.status(404).json({ message: 'Receipt not found' });
+        
+        // Return structured data for a receipt view
+        res.json({
+            transactionID: transaction.transactionID,
+            orderID: transaction.orderID,
+            amount: transaction.amount,
+            status: transaction.status,
+            timestamp: transaction.timestamp,
+            items: transaction.orderRef ? transaction.orderRef.items : [],
+            client: req.user.username
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching receipt' });
+    }
+};

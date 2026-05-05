@@ -152,14 +152,22 @@ function updateUI() {
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {
         productGrid.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px;">
+            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
                 <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
                 <div style="flex: 1;">
                     <h4 style="margin: 0;">${p.name}</h4>
                     <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                 </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn btn-secondary" onclick="editProduct('${p._id}')" style="padding: 4px 8px; font-size: 0.7rem;">Edit</button>
+                    <button class="btn" onclick="deleteProduct('${p._id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444;">Del</button>
+                </div>
             </div>`).join('');
     }
+
+    // 5. Update Charts
+    updateCharts();
+    updateAITip();
 }
 
 function formatOrderDesign(order) {
@@ -193,10 +201,164 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- Actions ---
-window.openEditOrder = async (id) => {
-    // This would typically open a modal and populate it
-    showToast('Editing order: ' + id);
+// --- Analytics & Charts ---
+let charts = {};
+function initCharts() {
+    const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
+    if (ctxTrends) {
+        charts.trends = new Chart(ctxTrends, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: '#6366f1', tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+    const ctxDist = document.getElementById('statusDistChart')?.getContext('2d');
+    if (ctxDist) {
+        charts.dist = new Chart(ctxDist, {
+            type: 'doughnut',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+}
+
+async function updateCharts() {
+    try {
+        const res = await apiFetch(`${API_URL}/analytics`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (charts.trends) {
+            charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
+            charts.trends.data.datasets[0].data = data.orderTrends.map(t => t.revenue);
+            charts.trends.update();
+        }
+        if (charts.dist) {
+            charts.dist.data.labels = data.statusDistribution.map(d => d._id);
+            charts.dist.data.datasets[0].data = data.statusDistribution.map(d => d.count);
+            charts.dist.update();
+        }
+    } catch (e) { console.error('Chart update error:', e); }
+}
+
+function updateAITip() {
+    const tipEl = document.querySelector('#ai-production-advice p:last-child');
+    if (!tipEl) return;
+    const lowStock = State._cache.inventory.filter(i => i.count < 10);
+    const pendingOrders = State._cache.orders.filter(o => o.status === 'In Queue').length;
+    
+    if (lowStock.length > 0) {
+        tipEl.innerText = `Stock Alert: ${lowStock[0].name} is running low (${lowStock[0].count} units). Restock recommended to avoid production delays.`;
+    } else if (pendingOrders > 5) {
+        tipEl.innerText = `Queue Alert: There are ${pendingOrders} orders waiting. Consider assigning more staff to the production line.`;
+    } else {
+        tipEl.innerText = `Everything looks good! Production is running smoothly with current resources.`;
+    }
+}
+
+// --- Product & Staff Actions ---
+window.createProduct = async (formData) => {
+    updateSyncIndicator(true);
+    const res = await apiFetch(`${API_URL}/products`, { method: 'POST', body: JSON.stringify(formData) });
+    updateSyncIndicator(false);
+    if (res.ok) {
+        showToast('Product published');
+        UI.toggleModal('create-product-modal');
+        refreshDashboardState();
+    }
+};
+
+window.editProduct = (id) => {
+    const p = State._cache.products.find(prod => prod._id === id);
+    if (!p) return;
+    // Populate create modal for editing
+    document.getElementById('product-name').value = p.name;
+    document.getElementById('product-price').value = p.price;
+    document.getElementById('product-tag').value = p.tag;
+    document.getElementById('product-desc').value = p.description || '';
+    
+    const form = document.getElementById('create-product-form');
+    form.dataset.editId = id;
+    document.querySelector('#create-product-modal h2').innerText = 'Edit Design';
+    UI.toggleModal('create-product-modal');
+};
+
+window.deleteProduct = async (id) => {
+    if (!confirm('Delete this design?')) return;
+    const res = await apiFetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
+    if (res.ok) { showToast('Product deleted'); refreshDashboardState(); }
+};
+
+// --- Event Listeners ---
+document.addEventListener('DOMContentLoaded', () => {
+    initCharts();
+    
+    // Create Product Form
+    const productForm = document.getElementById('create-product-form');
+    if (productForm) {
+        productForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('product-name').value,
+                price: document.getElementById('product-price').value,
+                tag: document.getElementById('product-tag').value,
+                description: document.getElementById('product-desc').value
+            };
+            const editId = productForm.dataset.editId;
+            if (editId) {
+                const res = await apiFetch(`${API_URL}/products/${editId}`, { method: 'PATCH', body: JSON.stringify(data) });
+                if (res.ok) {
+                    showToast('Product updated');
+                    UI.toggleModal('create-product-modal');
+                    refreshDashboardState();
+                }
+            } else {
+                window.createProduct(data);
+            }
+        };
+    }
+
+    // Create Staff Form
+    const staffForm = document.getElementById('create-staff-form');
+    if (staffForm) {
+        staffForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                username: document.getElementById('staff-username').value,
+                email: document.getElementById('staff-email').value,
+                password: document.getElementById('staff-password').value,
+                role: document.getElementById('staff-role').value
+            };
+            const res = await apiFetch(`${API_URL}/users`, { method: 'POST', body: JSON.stringify(data) });
+            if (res.ok) {
+                showToast('Personnel account established');
+                UI.toggleModal('staff-modal');
+                refreshDashboardState();
+            }
+        };
+    }
+});
+
+// --- Order Actions ---
+window.openEditOrder = (id) => {
+    const order = State._cache.orders.find(o => o._id === id);
+    if (!order) return;
+    
+    document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
+    document.getElementById('edit-order-client').value = order.client || '';
+    document.getElementById('edit-order-design').value = formatOrderDesign(order);
+    document.getElementById('edit-order-status').value = order.status;
+    document.getElementById('edit-order-progress').value = order.progress;
+    
+    // Highlight active status button
+    document.querySelectorAll('.status-btn').forEach(btn => {
+        if (btn.dataset.value === order.status) btn.classList.add('btn-primary');
+        else btn.classList.remove('btn-primary');
+    });
+
+    const form = document.getElementById('edit-order-form');
+    form.dataset.orderId = id;
+    UI.toggleModal('edit-order-modal');
 };
 
 window.deleteUser = async (id) => {
@@ -229,14 +391,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-});
 
-const UI = {
-    toggleModal: (id) => {
-        const modal = document.getElementById(id);
-        if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    // Status button group listener
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('status-btn')) {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('btn-primary'));
+            e.target.classList.add('btn-primary');
+            document.getElementById('edit-order-status').value = e.target.dataset.value;
+        }
+    });
+
+    // Edit order form submit
+    const editOrderForm = document.getElementById('edit-order-form');
+    if (editOrderForm) {
+        editOrderForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = editOrderForm.dataset.orderId;
+            const status = document.getElementById('edit-order-status').value;
+            const progress = document.getElementById('edit-order-progress').value;
+
+            updateSyncIndicator(true);
+            // Reusing updateOrderStatus from employee logic (assuming it's generic enough)
+            const res = await apiFetch(`${API_URL}/orders/batch-status`, { 
+                method: 'POST', 
+                body: JSON.stringify({ ids: [id], status }) 
+            });
+            updateSyncIndicator(false);
+            if (res.ok) {
+                showToast('Order updated');
+                UI.toggleModal('edit-order-modal');
+                refreshDashboardState();
+            }
+        };
     }
-};
+});
 
 window.UI = UI;
 window.AuthManager = AuthManager;

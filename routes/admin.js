@@ -12,5 +12,9 @@ router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 router.get('/analytics', adminController.getAnalytics);
 router.post('/orders/batch-status', adminController.updateOrdersStatus);
+router.post('/products', adminController.createProduct);
+router.patch('/products/:id', adminController.updateProduct);
+router.delete('/products/:id', adminController.deleteProduct);
+router.patch('/inventory/:id', adminController.updateInventoryItem);
 
 module.exports = router;

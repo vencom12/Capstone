@@ -12,5 +12,7 @@ router.post('/order/submit', customerController.submitOrder);
 router.get('/favorites', customerController.getFavorites);
 router.post('/favorites/:id', customerController.addFavorite);
 router.delete('/favorites/:id', customerController.removeFavorite);
+router.patch('/settings', customerController.updateSettings);
+router.get('/receipt/:id', customerController.getReceipt);
 
 module.exports = router;
