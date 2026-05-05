@@ -2,18 +2,66 @@ const API_URL = '/api/admin';
 const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
+// Global Error Handler for remote debugging
+window.onerror = function(msg, url, line, col, error) {
+    console.error('GLOBAL ERROR:', msg, 'at', line, ':', col);
+    if (typeof showToast === 'function') showToast(`Runtime Error: ${msg} (Line ${line})`);
+    return false;
+};
+
+let _csrfToken = null;
+
 // Helper: Secure API fetch wrapper
 async function apiFetch(url, options = {}) {
-    const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
-    if (options.body && !(options.body instanceof FormData)) {
-        defaultHeaders['Content-Type'] = 'application/json';
+    // Refresh token if missing
+    if (!_csrfToken && url.includes('/api/')) {
+        await refreshCSRFToken();
     }
-    const fetchOptions = {
-        ...options,
-        headers: { ...defaultHeaders, ...(options.headers || {}) },
-        credentials: 'include'
+
+    const performFetch = async () => {
+        const defaultHeaders = { 
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (_csrfToken) {
+            defaultHeaders['X-CSRF-Token'] = _csrfToken;
+        }
+        if (options.body && !(options.body instanceof FormData)) {
+            defaultHeaders['Content-Type'] = 'application/json';
+        }
+        const fetchOptions = {
+            ...options,
+            headers: { ...defaultHeaders, ...(options.headers || {}) },
+            credentials: 'include'
+        };
+        return fetch(url, fetchOptions);
     };
-    return fetch(url, fetchOptions);
+
+    let response = await performFetch();
+
+    // If CSRF mismatch, refresh and retry once
+    if (response.status === 403) {
+        try {
+            const clone = response.clone();
+            const data = await clone.json();
+            if (data.message && data.message.includes('CSRF')) {
+                console.log('CSRF mismatch detected, refreshing token and retrying...');
+                await refreshCSRFToken();
+                response = await performFetch();
+            }
+        } catch (e) { /* Not JSON or other error */ }
+    }
+    
+    return response;
+}
+
+async function refreshCSRFToken() {
+    try {
+        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            _csrfToken = data.csrfToken;
+        }
+    } catch (e) { console.error('CSRF Refresh failed', e); }
 }
 
 // --- Global Sync Indicator ---
