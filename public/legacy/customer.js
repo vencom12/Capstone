@@ -258,11 +258,15 @@ function updateUI() {
             ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
             : favorites.map(p => `
                 <div class="product-card glass animate-fade">
-                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
+                         <button class="fav-toggle-btn" data-id="${p._id}" data-fav="true" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    </div>
                     <div class="product-details">
-                        <h3>${p.name}</h3>
-                        <p>$${p.price.toFixed(2)}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}">Add to Basket</button>
+                        <h3 style="font-weight:600;">${p.name}</h3>
+                        <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
+                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}" style="width:100%; margin-top:10px;">Add to Basket</button>
                     </div>
                 </div>`).join('');
     }
@@ -476,22 +480,37 @@ const Actions = {
     },
     toggleFavorite: async (productId) => {
         if (!AuthManager.isAuthenticated()) return showToast('Please login to save favorites');
+        
         const favorites = State._cache.favorites || [];
+        const products = State._cache.products || [];
         const isFav = favorites.some(f => f._id.toString() === productId.toString());
         
+        // Optimistic Update
+        if (isFav) {
+            State._cache.favorites = favorites.filter(f => f._id.toString() !== productId.toString());
+        } else {
+            const product = products.find(p => p._id.toString() === productId.toString());
+            if (product) State._cache.favorites.push(product);
+        }
+        updateUI(); // Immediate visual change
+
         try {
-            updateSyncIndicator(true);
             const method = isFav ? 'DELETE' : 'POST';
             const response = await apiFetch(`${API_URL}/favorites/${productId}`, { method });
             if (response.ok) {
                 showToast(isFav ? 'Removed from favorites' : 'Added to favorites');
-                await State.getDashboardState();
+                // Silently sync in background to ensure server consistency
+                State.getDashboardState(); 
+            } else {
+                // Rollback on error
+                State._cache.favorites = favorites;
                 updateUI();
+                showToast('Failed to sync favorites');
             }
         } catch (e) { 
-            showToast('Error toggling favorite'); 
-        } finally {
-            updateSyncIndicator(false);
+            State._cache.favorites = favorites;
+            updateUI();
+            showToast('Connection error'); 
         }
     },
     checkout: () => {

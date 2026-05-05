@@ -148,6 +148,22 @@ function updateUI() {
                 </tr>`).join('');
     }
 
+    // 3.1 Update History Table
+    const historyTable = document.getElementById('admin-history-table-body');
+    if (historyTable) {
+        const historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
+        historyTable.innerHTML = historyOrders.length === 0
+            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
+            : historyOrders.map(o => `
+                <tr>
+                    <td>${o.orderId}</td>
+                    <td>${o.client || 'Guest'}</td>
+                    <td>${formatOrderDesign(o)}</td>
+                    <td><span class="status-pill ${o.status.toLowerCase().replace(/\s+/g, '-')}">${o.status}</span></td>
+                    <td>${new Date(o.updatedAt || o.date).toLocaleDateString()}</td>
+                </tr>`).join('');
+    }
+
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {

@@ -12,7 +12,7 @@ exports.getDashboardState = async (req, res) => {
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
             User.countDocuments(),
-            Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$price", to: "double", onError: 0, onNull: 0 } } } } }]),
+            Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
             User.find().select('-password').sort({ createdAt: -1 })
         ]);
 
