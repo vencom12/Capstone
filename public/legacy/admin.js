@@ -185,7 +185,59 @@ const updateSyncIndicator = (isStarting) => {
 
 // --- UI Rendering ---
 function updateUI() {
-    const { orders, users, inventory, products, analytics } = State._cache;
+    let { orders, users, inventory, products, analytics } = State._cache;
+
+    // Apply Search Filtering/Sorting
+    const orderSearch = document.getElementById('admin-orders-search')?.value.toLowerCase();
+    if (orderSearch) {
+        orders = orders.filter(o => 
+            o.orderId.toLowerCase().includes(orderSearch) || 
+            (o.client && o.client.toLowerCase().includes(orderSearch)) ||
+            (o.status && o.status.toLowerCase().includes(orderSearch))
+        ).sort((a, b) => {
+            const aMatch = a.orderId.toLowerCase().startsWith(orderSearch) || (a.client && a.client.toLowerCase().startsWith(orderSearch));
+            const bMatch = b.orderId.toLowerCase().startsWith(orderSearch) || (b.client && b.client.toLowerCase().startsWith(orderSearch));
+            return bMatch - aMatch;
+        });
+    }
+
+    const staffSearch = document.getElementById('admin-staff-search')?.value.toLowerCase();
+    if (staffSearch) {
+        users = users.filter(u => 
+            u.username.toLowerCase().includes(staffSearch) || 
+            u.email.toLowerCase().includes(staffSearch) ||
+            u.role.toLowerCase().includes(staffSearch)
+        ).sort((a, b) => {
+            const aMatch = a.username.toLowerCase().startsWith(staffSearch) || a.email.toLowerCase().startsWith(staffSearch);
+            const bMatch = b.username.toLowerCase().startsWith(staffSearch) || b.email.toLowerCase().startsWith(staffSearch);
+            return bMatch - aMatch;
+        });
+    }
+
+    const productSearch = document.getElementById('admin-products-search')?.value.toLowerCase();
+    if (productSearch) {
+        products = products.filter(p => 
+            p.name.toLowerCase().includes(productSearch) || 
+            p.tag.toLowerCase().includes(productSearch)
+        ).sort((a, b) => {
+            const aMatch = a.name.toLowerCase().startsWith(productSearch);
+            const bMatch = b.name.toLowerCase().startsWith(productSearch);
+            return bMatch - aMatch;
+        });
+    }
+
+    const historySearch = document.getElementById('admin-history-search')?.value.toLowerCase();
+    let historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
+    if (historySearch) {
+        historyOrders = historyOrders.filter(o => 
+            o.orderId.toLowerCase().includes(historySearch) || 
+            (o.client && o.client.toLowerCase().includes(historySearch))
+        ).sort((a, b) => {
+            const aMatch = a.orderId.toLowerCase().startsWith(historySearch) || (a.client && a.client.toLowerCase().startsWith(historySearch));
+            const bMatch = b.orderId.toLowerCase().startsWith(historySearch) || (b.client && b.client.toLowerCase().startsWith(historySearch));
+            return bMatch - aMatch;
+        });
+    }
 
     // 1. Update Stats
     if (analytics) {
@@ -239,7 +291,6 @@ function updateUI() {
 
     const historyTable = document.getElementById('admin-history-table-body');
     if (historyTable) {
-        const historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
         historyTable.innerHTML = historyOrders.length === 0
             ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
             : historyOrders.map(o => `
@@ -498,6 +549,12 @@ window.deleteProduct = async (id) => {
 // --- Initialization ---
 // Initialize page forms and extra UI components
 document.addEventListener('DOMContentLoaded', () => {
+    // Search listeners
+    ['admin-orders-search', 'admin-products-search', 'admin-staff-search', 'admin-history-search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => updateUI());
+    });
+
     // Product and Staff form logic
     
     // Create Product Form

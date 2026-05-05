@@ -333,6 +333,8 @@
                         <div class="table-header">
                             <h3>Recent Embroidery Orders</h3>
                             <div style="display: flex; gap: 12px; align-items: center;">
+                                <input type="text" id="admin-orders-search" class="glass" placeholder="Search orders..." 
+                                    style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
                                 <select id="admin-batch-status" class="glass"
                                     style="padding: 6px 12px; border-radius: 8px; color: var(--text-main); font-size: 0.85rem; background: rgba(255,255,255,0.05);">
                                     <option value="">Batch Status Update</option>
@@ -391,8 +393,11 @@
             <section id="section-inventory" class="module-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                     <h1 style="font-size: 2rem;">Product Management</h1>
-                    <button class="btn btn-primary" onclick="UI.toggleModal('create-product-modal')">+ Create New
-                        Design</button>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <input type="text" id="admin-products-search" class="glass" placeholder="Search designs..." 
+                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 200px;">
+                        <button class="btn btn-primary" onclick="UI.toggleModal('create-product-modal')">+ Create New Design</button>
+                    </div>
                 </div>
 
                 <div id="product-list-container" class="task-grid"
@@ -426,6 +431,8 @@
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Active Personnel</h3>
+                        <input type="text" id="admin-staff-search" class="glass" placeholder="Search staff..." 
+                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
                     </div>
                     <table>
                         <thead>
@@ -518,6 +525,8 @@
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Completed & Canceled Orders</h3>
+                        <input type="text" id="admin-history-search" class="glass" placeholder="Search history..." 
+                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
                     </div>
                     <table>
                         <thead>

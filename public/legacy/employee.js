@@ -3,6 +3,7 @@ const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
 // Helper: Secure API fetch wrapper
+async function apiFetch(url, options = {}) {
     const performFetch = async () => {
         const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
         if (options.body && !(options.body instanceof FormData)) {
@@ -109,7 +110,46 @@ const State = {
 
 // --- UI Rendering ---
 function updateUI() {
-    const { orders, products, machine } = State._cache;
+    let { orders, products, machine } = State._cache;
+
+    // Apply Search Filtering/Sorting
+    const orderSearch = document.getElementById('employee-orders-search')?.value.toLowerCase();
+    if (orderSearch) {
+        orders = orders.filter(o => 
+            o.orderId.toLowerCase().includes(orderSearch) || 
+            (o.client && o.client.toLowerCase().includes(orderSearch)) ||
+            (o.status && o.status.toLowerCase().includes(orderSearch))
+        ).sort((a, b) => {
+            const aMatch = a.orderId.toLowerCase().startsWith(orderSearch) || (a.client && a.client.toLowerCase().startsWith(orderSearch));
+            const bMatch = b.orderId.toLowerCase().startsWith(orderSearch) || (b.client && b.client.toLowerCase().startsWith(orderSearch));
+            return bMatch - aMatch;
+        });
+    }
+
+    const productSearch = document.getElementById('employee-products-search')?.value.toLowerCase();
+    if (productSearch) {
+        products = products.filter(p => 
+            p.name.toLowerCase().includes(productSearch) || 
+            p.tag.toLowerCase().includes(productSearch)
+        ).sort((a, b) => {
+            const aMatch = a.name.toLowerCase().startsWith(productSearch);
+            const bMatch = b.name.toLowerCase().startsWith(productSearch);
+            return bMatch - aMatch;
+        });
+    }
+
+    const historySearch = document.getElementById('employee-history-search')?.value.toLowerCase();
+    let historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
+    if (historySearch) {
+        historyOrders = historyOrders.filter(o => 
+            o.orderId.toLowerCase().includes(historySearch) || 
+            (o.client && o.client.toLowerCase().includes(historySearch))
+        ).sort((a, b) => {
+            const aMatch = a.orderId.toLowerCase().startsWith(historySearch) || (a.client && a.client.toLowerCase().startsWith(historySearch));
+            const bMatch = b.orderId.toLowerCase().startsWith(historySearch) || (b.client && b.client.toLowerCase().startsWith(historySearch));
+            return bMatch - aMatch;
+        });
+    }
 
     // 1. Machine Status
     const statusEl = document.getElementById('workbench-status');
@@ -149,6 +189,21 @@ function updateUI() {
                 </div>
             </div>`).join('');
     }
+
+    // 4. History Table
+    const historyTable = document.getElementById('employee-history-table-body');
+    if (historyTable) {
+        historyTable.innerHTML = historyOrders.length === 0
+            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical orders found.</td></tr>'
+            : historyOrders.map(o => `
+                <tr>
+                    <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
+                    <td>${o.client}</td>
+                    <td>${formatOrderDesign(o)}</td>
+                    <td><span class="status-pill">${o.status}</span></td>
+                    <td>${new Date(o.date || o.createdAt).toLocaleDateString()}</td>
+                </tr>`).join('');
+    }
 }
 
 function formatOrderDesign(order) {
@@ -180,6 +235,13 @@ function initSocket() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
+    
+    // Search listeners
+    ['employee-orders-search', 'employee-products-search', 'employee-history-search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => updateUI());
+    });
+
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
@@ -255,4 +317,3 @@ window.State = State;
 window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.refreshDashboardState = refreshDashboardState;
-
