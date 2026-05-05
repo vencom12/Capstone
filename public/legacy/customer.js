@@ -165,6 +165,16 @@ const AuthManager = {
     }
 };
 
+const UI = {
+    toggleModal: (id) => {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+    }
+};
+window.UI = UI;
+
 // --- State Management ---
 const State = {
     _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
@@ -417,40 +427,29 @@ function updateUI() {
     updateFavoritesGrid();
 
     // 5. Update History (Transactions)
-    const historyTable = document.querySelector('#section-history tbody');
+    const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
         historyTable.innerHTML = transactions.length === 0
             ? '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
-            : transactions.map(tx => `
+            : transactions.map(tx => {
+                const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
+                return `
                 <tr>
-                    <td style="padding: 16px 24px;">${tx.transactionID}</td>
+                    <td style="padding: 16px 24px; font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
                     <td style="padding: 16px 24px;">${new Date(tx.timestamp).toLocaleDateString()}</td>
-                    <td style="padding: 16px 24px;">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order' : 'Top-up') : 'N/A'}</td>
-                    <td style="padding: 16px 24px;">$${tx.amount.toFixed(2)}</td>
+                    <td style="padding: 16px 24px;">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A'}</td>
+                    <td style="padding: 16px 24px; font-weight: 600;">$${tx.amount.toFixed(2)}</td>
                     <td style="padding: 16px 24px;"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td style="padding: 16px 24px;">
-                        <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2);">View</button>
+                            ${receipt ? `<button class="btn" onclick="downloadReceipt('${receipt.receiptID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981;">Download</button>` : ''}
+                        </div>
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
     }
 
-    // 6. Update Receipts Table
-    const receiptTable = document.getElementById('receipt-table-body');
-    const receipts = State._cache.receipts || [];
-    if (receiptTable) {
-        receiptTable.innerHTML = receipts.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-dim);">No receipts generated.</td></tr>'
-            : receipts.map(rcp => `
-                <tr>
-                    <td style="padding: 16px 24px;">${rcp.receiptID}</td>
-                    <td style="padding: 16px 24px;">${rcp.orderID}</td>
-                    <td style="padding: 16px 24px;">${new Date(rcp.timestamp).toLocaleDateString()}</td>
-                    <td style="padding: 16px 24px;">$${rcp.amount.toFixed(2)}</td>
-                    <td style="padding: 16px 24px;">
-                        <button class="btn btn-primary" onclick="downloadReceipt('${rcp.receiptID}')" style="padding: 6px 12px; font-size: 0.8rem;">Download PDF</button>
-                    </td>
-                </tr>`).join('');
-    }
 
     updateBasketUI();
 }
@@ -459,9 +458,59 @@ function downloadReceipt(receiptId) {
     window.location.href = `${API_URL}/receipt/${receiptId}/download`;
 }
 
-function viewReceipt(transactionId) {
-    const receiptsNav = document.getElementById('nav-receipts');
-    if (receiptsNav) receiptsNav.checked = true;
+async function viewReceipt(transactionID) {
+    if (!transactionID) return showToast('No transaction found');
+    
+    UI.toggleModal('receipt-modal');
+    const content = document.getElementById('receipt-content');
+    content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
+    
+    try {
+        const res = await apiFetch(`/api/payments/receipt/${transactionID}`);
+        if (!res.ok) throw new Error('Failed to fetch receipt');
+        const data = await res.json();
+        
+        content.innerHTML = `
+            <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; border: 1px solid var(--border-glass);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
+                    <span style="color: var(--text-dim);">Transaction ID:</span>
+                    <span style="font-family: monospace; color: var(--primary);">${data.transactionID}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--text-dim);">Order ID:</span>
+                    <span>${data.orderID || 'N/A'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--text-dim);">Date:</span>
+                    <span>${new Date(data.timestamp).toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+                    <span style="color: var(--text-dim);">Method:</span>
+                    <span style="text-transform: capitalize;">${data.paymentMethod || 'Wallet'}</span>
+                </div>
+                
+                <h4 style="margin-bottom: 12px; color: var(--text-main);">Items</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+                    ${data.items && data.items.length > 0 ? data.items.map(item => `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                            <span>${item.name} x${item.quantity}</span>
+                            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                    `).join('') : '<p style="font-size: 0.85rem; color: var(--text-dim);">No item details (Top-up or Legacy Order).</p>'}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-glass); padding-top: 16px; font-weight: 700; font-size: 1.1rem;">
+                    <span>Total Amount:</span>
+                    <span style="color: var(--primary);">$${parseFloat(data.amount || 0).toFixed(2)}</span>
+                </div>
+                <div style="text-align: center; margin-top: 16px;">
+                    <span class="status-pill verified" style="text-transform: uppercase; font-size: 0.7rem;">${data.status}</span>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: #ef4444; text-align: center;">Error: ${err.message}</p>`;
+    }
 }
 
 function updateFavoritesGrid() {
@@ -882,20 +931,6 @@ async function saveSettings() {
     finally { updateSyncIndicator(false); }
 }
 
-async function viewReceipt(id) {
-    updateSyncIndicator(true);
-    try {
-        const res = await apiFetch(`${API_URL}/receipt/${id}`);
-        if (!res.ok) return showToast('Could not fetch receipt');
-        const r = await res.json();
-        
-        // Simulating a receipt modal with a formatted alert for now
-        // In a real app, this would open a printable window or a styled modal
-        const itemsList = r.items.map(i => `${i.name} x ${i.quantity}`).join('\n');
-        alert(`RECEIPT - ${r.transactionID}\nDate: ${new Date(r.timestamp).toLocaleString()}\nTotal: $${r.amount.toFixed(2)}\nStatus: ${r.status}\n\nItems:\n${itemsList}`);
-    } catch (e) { showToast('Error loading receipt'); }
-    finally { updateSyncIndicator(false); }
-}
 
 // --- Event Delegation ---
 document.addEventListener('click', (e) => {
