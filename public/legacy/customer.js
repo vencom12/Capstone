@@ -30,8 +30,19 @@ const updateSyncIndicator = (isStarting) => {
 
 // --- Toast Notifications ---
 function showToast(message) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.position = 'fixed';
+        container.style.bottom = '20px';
+        container.style.right = '20px';
+        container.style.zIndex = '9999';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '10px';
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = 'toast show';
     toast.textContent = message;
@@ -227,7 +238,7 @@ function updateBasketUI() {
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-weight: 600;">${item.name}</span>
                         <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-dim);">$${item.price.toFixed(2)}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">$${parseFloat(item.price || 0).toFixed(2)}</span>
                             <div class="quantity-editor" style="display: flex; align-items: center; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 2px 4px; border: 1px solid var(--border-glass);">
                                 <input type="number" value="${item.quantity}" min="1" max="99" 
                                     onchange="Actions.updateQuantity('${item.id || item._id}', this.value)"
