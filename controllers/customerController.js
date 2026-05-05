@@ -32,17 +32,22 @@ exports.getDashboardState = async (req, res) => {
 exports.topupWallet = async (req, res) => {
     try {
         const { amount } = req.body;
-        if (!/^\d+(\.\d+)?$/.test(amount.toString()) || parseFloat(amount) <= 0) {
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
             return res.status(400).json({ message: 'Invalid top-up amount. Use positive digits only.' });
         }
 
-        const user = await User.findById(req.user.id);
-        const oldBalance = user.walletBalance || 0;
-        user.walletBalance = oldBalance + parseFloat(amount);
-        await user.save();
+        // Use findByIdAndUpdate to bypass strict schema validation on unmodified fields
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { $inc: { walletBalance: numAmount } },
+            { new: true }
+        );
+        
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
         req.app.get('io').to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
-        res.json({ message: `Successfully topped up $${parseFloat(amount).toFixed(2)}`, walletBalance: user.walletBalance });
+        res.json({ message: `Successfully topped up $${numAmount.toFixed(2)}`, walletBalance: user.walletBalance });
     } catch (err) {
         res.status(500).json({ message: 'Server error during top-up' });
     }
@@ -51,11 +56,20 @@ exports.topupWallet = async (req, res) => {
 exports.validatePayment = async (req, res) => {
     try {
         const { method, total } = req.body;
+        const numTotal = parseFloat(total);
+        
+        if (isNaN(numTotal) || numTotal <= 0) {
+            return res.status(400).json({ message: 'Invalid order total for validation.' });
+        }
+
         if (method === 'wallet') {
             const user = await User.findById(req.user.id);
-            if (user.walletBalance < total) {
+            if (!user) return res.status(404).json({ message: 'User not found' });
+            
+            const balance = user.walletBalance || 0;
+            if (balance < numTotal) {
                 return res.status(400).json({ 
-                    message: `Insufficient balance. You have $${user.walletBalance.toFixed(2)} but need $${total.toFixed(2)}.` 
+                    message: `Insufficient balance. You have $${balance.toFixed(2)} but need $${numTotal.toFixed(2)}.` 
                 });
             }
         }
