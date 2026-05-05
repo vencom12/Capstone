@@ -103,8 +103,8 @@ function showToast(message) {
 
 // --- Auth Manager ---
 const AuthManager = {
-    SESSION_KEY: 'stitch_opt_session',
-    async login(email, password, rememberMe = false, portal = 'customer') {
+    SESSION_KEY: 'stitch_customer_session',
+    async login(email, password, rememberMe = false, portal = 'customer', phoneNumber, address) {
         try {
             const response = await apiFetch(`${AUTH_API_URL}/login`, {
                 method: 'POST',

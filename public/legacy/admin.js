@@ -40,7 +40,7 @@ const UI = {
 };
 
 const AuthManager = {
-    SESSION_KEY: 'stitch_opt_session',
+    SESSION_KEY: 'stitch_admin_session',
     async login(email, password, rememberMe = false, portal = 'admin') {
         try {
             const response = await apiFetch(`${AUTH_API_URL}/login`, {

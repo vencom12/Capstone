@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
 
         const token = jwt.sign({ id: user._id, role: 'customer' }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-        res.cookie('token', token, {
+        res.cookie('customer_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'Lax',
@@ -67,7 +67,9 @@ exports.login = async (req, res) => {
             sameSite: 'Lax',
             ...(rememberMe ? { maxAge: 7 * 24 * 60 * 60 * 1000 } : {}) 
         };
-        res.cookie('token', token, cookieOptions);
+        
+        // Use a portal-specific cookie name to prevent session overwrites
+        res.cookie(`${user.role}_token`, token, cookieOptions);
 
         res.json({ user: { id: user._id, username: user.username, role: user.role } });
     } catch (err) {
@@ -76,11 +78,17 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = (req, res) => {
-    res.clearCookie('token', {
+    const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Lax'
-    });
+    };
+    // Clear all possible portal tokens
+    res.clearCookie('admin_token', cookieOptions);
+    res.clearCookie('employee_token', cookieOptions);
+    res.clearCookie('customer_token', cookieOptions);
+    res.clearCookie('token', cookieOptions); // Legacy cleanup
+    
     res.json({ message: 'Logged out successfully' });
 };
 
