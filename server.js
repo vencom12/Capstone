@@ -128,7 +128,7 @@ app.get('/api/auth/csrf-token', (req, res) => {
     res.cookie('csrfToken', token, { 
         httpOnly: false, // Must be accessible by JS to send in header
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict'
+        sameSite: 'Lax'
     });
     res.json({ csrfToken: token });
 });

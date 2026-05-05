@@ -2,6 +2,13 @@ const API_URL = '/api/customer'; // Point to customer-specific endpoints
 const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
+// Global Error Handler for remote debugging
+window.onerror = function(msg, url, line, col, error) {
+    console.error('GLOBAL ERROR:', msg, 'at', line, ':', col);
+    if (typeof showToast === 'function') showToast(`Runtime Error: ${msg} (Line ${line})`);
+    return false;
+};
+
 let _csrfToken = null;
 
 // Helper: Secure API fetch wrapper
@@ -11,19 +18,40 @@ async function apiFetch(url, options = {}) {
         await refreshCSRFToken();
     }
 
-    const defaultHeaders = { 
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-Token': _csrfToken 
+    const performFetch = async () => {
+        const defaultHeaders = { 
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (_csrfToken) {
+            defaultHeaders['X-CSRF-Token'] = _csrfToken;
+        }
+        if (options.body && !(options.body instanceof FormData)) {
+            defaultHeaders['Content-Type'] = 'application/json';
+        }
+        const fetchOptions = {
+            ...options,
+            headers: { ...defaultHeaders, ...(options.headers || {}) },
+            credentials: 'include'
+        };
+        return fetch(url, fetchOptions);
     };
-    if (options.body && !(options.body instanceof FormData)) {
-        defaultHeaders['Content-Type'] = 'application/json';
+
+    let response = await performFetch();
+
+    // If CSRF mismatch, refresh and retry once
+    if (response.status === 403) {
+        try {
+            const clone = response.clone();
+            const data = await clone.json();
+            if (data.message && data.message.includes('CSRF')) {
+                console.log('CSRF mismatch detected, refreshing token and retrying...');
+                await refreshCSRFToken();
+                response = await performFetch();
+            }
+        } catch (e) { /* Not JSON or other error */ }
     }
-    const fetchOptions = {
-        ...options,
-        headers: { ...defaultHeaders, ...(options.headers || {}) },
-        credentials: 'include'
-    };
-    return fetch(url, fetchOptions);
+    
+    return response;
 }
 
 async function refreshCSRFToken() {
@@ -146,28 +174,20 @@ const AuthManager = {
 // --- State Management ---
 const State = {
     _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
-    _getBasketKey: () => {
+    getBasket() {
         const session = AuthManager.getSession();
-        if (session && session.user) {
-            const userId = session.user.id || session.user._id;
-            if (userId) return 'stitch_basket_' + userId;
-        }
-        return null; // No basket for unauthenticated users
-    },
-    getBasket: () => {
-        const key = State._getBasketKey();
-        if (!key) return [];
+        const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
+        const saved = localStorage.getItem(key);
         try {
-            return JSON.parse(localStorage.getItem(key) || '[]');
+            return saved ? JSON.parse(saved) : [];
         } catch (e) {
-            console.error('Failed to parse basket from localStorage', e);
-            localStorage.removeItem(key); // Clear corrupt data
+            console.error('Basket parse error', e);
             return [];
         }
     },
-    setBasket: (basket) => {
-        const key = State._getBasketKey();
-        if (!key) return;
+    setBasket(basket) {
+        const session = AuthManager.getSession();
+        const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
         localStorage.setItem(key, JSON.stringify(basket));
         window.dispatchEvent(new Event('basketUpdated'));
         if (typeof updateBasketUI === 'function') updateBasketUI();
@@ -267,8 +287,7 @@ function updateBasketUI() {
                         </div>
                     </div>
                     <button class="btn" onclick="Actions.removeFromBasket('${item.id || item._id}')" style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444; background: rgba(239,68,68,0.1);">Remove</button>
-                </div>
-            </div>`).join('');
+                </div>`).join('');
     });
 }
 
@@ -327,7 +346,8 @@ function updateUI() {
                         <button class="btn btn-primary add-to-basket" 
                             data-id="${(p._id || p.id)?.toString()}"
                             data-name="${p.name}"
-                            data-price="${p.price}">
+                            data-price="${p.price}"
+                            data-image="${p.imageUrl || ''}">
                             Add to Basket
                         </button>
                     </div>
@@ -682,11 +702,12 @@ const Actions = {
         } else {
             basket.push({ 
                 _id: itemId,
-                name: item.name, 
-                price: parseFloat(item.price),
-                imageUrl: item.imageUrl,
+                productId: itemId, // Redundancy for different lookup methods
+                name: item.name || 'Unknown Product', 
+                price: parseFloat(item.price || 0),
+                imageUrl: item.imageUrl || '',
                 quantity: parseInt(quantity), 
-                id: Date.now()
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5)
             });
         }
         State.setBasket(basket);
@@ -832,8 +853,9 @@ document.addEventListener('click', (e) => {
     const basketBtn = e.target.closest('.add-to-basket');
     if (basketBtn) {
         e.preventDefault(); e.stopPropagation();
+        console.log('Add to basket clicked', basketBtn.dataset.id);
         const id = basketBtn.dataset.id;
-        if (!id) return; // Robustness: Skip if ID is missing (should not happen with fixed buttons)
+        if (!id) return showToast('Error: Product ID missing from button');
         
         const products = State._cache.products || [];
         const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
@@ -843,7 +865,13 @@ document.addEventListener('click', (e) => {
         } else {
             const name = basketBtn.dataset.name;
             const price = basketBtn.dataset.price;
-            if (name && price) Actions.addToBasket({ _id: id, name, price: parseFloat(price) });
+            const imageUrl = basketBtn.dataset.image;
+            if (name && price) {
+                Actions.addToBasket({ _id: id, name, price: parseFloat(price), imageUrl });
+            } else {
+                console.warn('Product not in cache and dataset missing', id);
+                showToast('Error: Product details not found');
+            }
         }
         return;
     }
