@@ -23,8 +23,9 @@ window.showToast = showToast;
 
 // Global Error Handler for remote debugging
 window.onerror = function(msg, url, line, col, error) {
-    console.error('GLOBAL ERROR:', msg, 'at', line, ':', col);
-    showToast(`Runtime Error: ${msg} (Line ${line})`);
+    console.error('GLOBAL ERROR:', msg, 'at', line, ':', col, 'in', url);
+    const source = url ? url.split('/').pop() : 'Unknown';
+    showToast(`Runtime Error: ${msg} (${source}:${line})`);
     return false;
 };
 
@@ -299,6 +300,13 @@ function initCharts() {
         console.warn('Chart.js not loaded yet. Skipping chart initialization.');
         return;
     }
+    
+    // Destroy existing charts to prevent "Canvas already in use" error
+    Object.values(charts).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') chart.destroy();
+    });
+    charts = {};
+
     const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
     if (ctxTrends) {
         charts.trends = new Chart(ctxTrends, {
