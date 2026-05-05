@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const adminAuth = () => {
     return (req, res, next) => {
+        // Resilience: Check both specific and legacy token names
         const token = req.cookies.admin_token || req.cookies.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
 
         if (!token) {

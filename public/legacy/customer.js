@@ -226,29 +226,32 @@ const State = {
             const response = await apiFetch(`${API_URL}/dashboard-state`);
             if (response.ok) {
                 const data = await response.json();
-                // Ensure data is isolated - if guest, favorites MUST be empty
                 if (!AuthManager.isAuthenticated()) {
-                    data.favorites = [];
-                    data.orders = [];
-                    data.transactions = [];
+                    data.favorites = []; data.orders = []; data.transactions = [];
                 }
                 this._cache = { ...this._cache, ...data };
                 return data;
-            } else if (response.status === 401 || response.status === 403) {
-                // GUEST MODE: Fetch products from public endpoint
+            } else {
+                // FALLBACK: Fetch products from public endpoint if dashboard-state is restricted
                 const publicRes = await fetch('/api/products');
                 if (publicRes.ok) {
                     const products = await publicRes.json();
                     this._cache.products = products;
-                    this._cache.favorites = [];
-                    this._cache.orders = [];
-                    this._cache.transactions = [];
+                    this._cache.favorites = []; this._cache.orders = []; this._cache.transactions = [];
                     return { products };
                 }
             }
-        } catch (err) { console.error('Dashboard state error:', err); }
+        } catch (err) { 
+            console.error('[State] Fetch error, attempting public load:', err);
+            const publicRes = await fetch('/api/products').catch(() => null);
+            if (publicRes && publicRes.ok) {
+                const products = await publicRes.json();
+                this._cache.products = products;
+                return { products };
+            }
+        }
         return null;
-    }
+    },
 };
 
 // Helper: Format order design field to show all items

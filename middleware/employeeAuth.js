@@ -2,7 +2,8 @@ const jwt = require('jsonwebtoken');
 
 const employeeAuth = () => {
     return (req, res, next) => {
-        const token = req.cookies.employee_token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+        // Resilience: Check both specific and legacy token names
+        const token = req.cookies.employee_token || req.cookies.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
 
         if (!token) {
             return res.status(401).json({ message: 'No token, authorization denied' });

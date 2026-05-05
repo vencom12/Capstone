@@ -398,57 +398,60 @@
                 });
             });
 
-            if (mobileCategorySelect) {
-                mobileCategorySelect.addEventListener('change', (e) => {
-                    setCategory(e.target.value);
-                });
-            }
-
             // CRITICAL: Actually fetch the products on startup!
+            console.log('[Storefront] Triggering initial state fetch...');
             try {
-                await refreshDashboardState();
-                updateUI();
+                if (typeof window.refreshDashboardState === 'function') {
+                    await window.refreshDashboardState();
+                    if (typeof window.updateUI === 'function') window.updateUI();
+                } else {
+                    console.error('[Storefront] refreshDashboardState not found!');
+                }
             } catch (e) {
                 console.error('[Storefront] Failed to load initial state:', e);
             }
         });
 
-        // Login Handler (Reuse app.js logic)
-        document.getElementById('main-login-form').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-pass').value;
-            const rememberMe = document.getElementById('login-remember').checked;
-            const errorEl = document.getElementById('login-error');
-            const submitBtn = this.querySelector('button[type="submit"]');
-            
-            errorEl.style.display = 'none';
-            const originalBtnText = submitBtn.innerText;
-            submitBtn.innerText = 'Connecting...';
-            submitBtn.disabled = true;
+        // Login Handler (Unified logic)
+        const loginForm = document.getElementById('main-login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-pass').value;
+                const rememberMe = document.getElementById('login-remember').checked;
+                const errorEl = document.getElementById('login-error');
+                const submitBtn = this.querySelector('button[type="submit"]');
+                
+                errorEl.style.display = 'none';
+                const originalBtnText = submitBtn.innerText;
+                submitBtn.innerText = 'Establishing Link...';
+                submitBtn.disabled = true;
 
-            try {
-                if (window.AuthManager) {
-                    const result = await AuthManager.login(email, password, rememberMe, 'customer');
-                    if (result.success) {
-                        const role = AuthManager.getUserRole();
-                        if (role === 'admin') window.location.href = 'admin.html';
-                        else if (role === 'employee') window.location.href = 'employee.html';
-                        else window.location.href = 'user.html'; 
-                    } else {
-                        errorEl.innerText = result.message || "Invalid credentials.";
-                        errorEl.style.display = 'block';
+                try {
+                    if (window.AuthManager) {
+                        const result = await AuthManager.login(email, password, rememberMe, 'customer');
+                        if (result.success) {
+                            const session = AuthManager.getSession();
+                            const role = session ? session.user.role : 'customer';
+                            
+                            if (role === 'admin') window.location.href = 'admin.html';
+                            else if (role === 'employee') window.location.href = 'employee.html';
+                            else window.location.href = 'user.html'; 
+                        } else {
+                            errorEl.innerText = result.message || "Access denied. Check credentials.";
+                            errorEl.style.display = 'block';
+                        }
                     }
+                } catch (err) {
+                    errorEl.innerText = "Security gateway timeout. Retry.";
+                    errorEl.style.display = 'block';
+                } finally {
+                    submitBtn.innerText = originalBtnText;
+                    submitBtn.disabled = false;
                 }
-            } catch (err) {
-                errorEl.innerText = "Connection error. Please try again.";
-                errorEl.style.display = 'block';
-            } finally {
-                submitBtn.innerText = originalBtnText;
-                submitBtn.disabled = false;
-            }
-        });
+            });
+        }
     </script>
 </body>
-
 </html>

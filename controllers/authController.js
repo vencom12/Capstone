@@ -63,12 +63,12 @@ exports.login = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: true, // Force secure for Render/Production
+            secure: true, // Always secure for HTTPS
             sameSite: 'Lax',
             maxAge: (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
         };
         
-        // Set both the specific token and the general token for backward compatibility during transition
+        // Multi-Token Strategy: Set both names to prevent session loss
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions); 
 
