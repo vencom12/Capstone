@@ -126,7 +126,13 @@ const State = {
     getBasket: () => {
         const key = State._getBasketKey();
         if (!key) return [];
-        return JSON.parse(localStorage.getItem(key) || '[]');
+        try {
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        } catch (e) {
+            console.error('Failed to parse basket from localStorage', e);
+            localStorage.removeItem(key); // Clear corrupt data
+            return [];
+        }
     },
     setBasket: (basket) => {
         const key = State._getBasketKey();
@@ -288,10 +294,9 @@ function updateUI() {
                         </div>
                         <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
                         <button class="btn btn-primary add-to-basket" 
-                            data-id="${p._id.toString()}"
+                            data-id="${(p._id || p.id)?.toString()}"
                             data-name="${p.name}"
-                            data-price="${p.price}"
-                            onclick="Actions.addToBasketById('${p._id.toString()}')">
+                            data-price="${p.price}">
                             Add to Basket
                         </button>
                     </div>
@@ -584,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const Actions = {
     addToBasketById: (id) => {
         const products = State._cache.products || [];
-        const product = products.find(p => p._id.toString() === id.toString());
+        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
         if (product) {
             Actions.addToBasket(product);
         } else {
