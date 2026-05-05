@@ -123,15 +123,15 @@ function updateUI() {
         orderTable.innerHTML = orders.length === 0
             ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
             : orders.map(order => `
-                <tr>
+                <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
                     <td><input type="checkbox" class="admin-order-checkbox" data-id="${order._id}"></td>
-                    <td>${order.orderId}</td>
+                    <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
                     <td>${order.client || 'Guest'}</td>
                     <td>${formatOrderDesign(order)}</td>
                     <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${order.status}</span></td>
                     <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td><button class="btn" onclick="openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button></td>
+                    <td><button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button></td>
                 </tr>`).join('');
     }
 
@@ -157,8 +157,8 @@ function updateUI() {
         historyTable.innerHTML = historyOrders.length === 0
             ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
             : historyOrders.map(o => `
-                <tr>
-                    <td>${o.orderId}</td>
+                <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
+                    <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
                     <td>${o.client || 'Guest'}</td>
                     <td>${formatOrderDesign(o)}</td>
                     <td><span class="status-pill ${o.status.toLowerCase().replace(/\s+/g, '-')}">${o.status}</span></td>
@@ -535,6 +535,61 @@ const UI = {
     toggleModal: (id) => {
         const modal = document.getElementById(id);
         if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    }
+};
+
+window.viewReceipt = async (transactionID) => {
+    if (!transactionID || transactionID === 'undefined') return showToast('No transaction found for this order');
+    
+    UI.toggleModal('receipt-modal');
+    const content = document.getElementById('receipt-content');
+    content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
+    
+    try {
+        const res = await apiFetch(`/api/payments/receipt/${transactionID}`);
+        if (!res.ok) throw new Error('Failed to fetch receipt');
+        const data = await res.json();
+        
+        content.innerHTML = `
+            <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; border: 1px solid var(--border-glass);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
+                    <span style="color: var(--text-dim);">Transaction ID:</span>
+                    <span style="font-family: monospace; color: var(--primary);">${data.transactionID}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--text-dim);">Order ID:</span>
+                    <span>${data.orderID}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--text-dim);">Date:</span>
+                    <span>${new Date(data.timestamp).toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+                    <span style="color: var(--text-dim);">Client:</span>
+                    <span>${data.client || 'Guest'}</span>
+                </div>
+                
+                <h4 style="margin-bottom: 12px; color: var(--text-main);">Items</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+                    ${data.items && data.items.length > 0 ? data.items.map(item => `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                            <span>${item.name} x${item.quantity}</span>
+                            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                    `).join('') : '<p style="font-size: 0.85rem; color: var(--text-dim);">No item details available.</p>'}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-glass); padding-top: 16px; font-weight: 700; font-size: 1.1rem;">
+                    <span>Total Amount:</span>
+                    <span style="color: var(--primary);">$${parseFloat(data.amount || 0).toFixed(2)}</span>
+                </div>
+                <div style="text-align: center; margin-top: 16px;">
+                    <span class="status-pill" style="text-transform: uppercase; font-size: 0.7rem;">${data.status}</span>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: #ef4444; text-align: center;">Error: ${err.message}</p>`;
     }
 };
 

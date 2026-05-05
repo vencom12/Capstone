@@ -710,6 +710,20 @@
         </div>
     </div>
 
+    <!-- Receipt Modal -->
+    <div id="receipt-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+        <div class="modal-content glass" style="width: 500px; padding: 40px; border-radius: 24px; position: relative; border: 1px solid var(--border-glass);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h2 style="font-size: 1.5rem; color: white;">Order Receipt</h2>
+                <span style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem;" onclick="UI.toggleModal('receipt-modal')">✕</span>
+            </div>
+            <div id="receipt-content" style="color: var(--text-main);">
+                <p>Loading receipt details...</p>
+            </div>
+            <button class="btn btn-primary" onclick="UI.toggleModal('receipt-modal')" style="width: 100%; margin-top: 30px;">Close Receipt</button>
+        </div>
+    </div>
+
     <div id="global-sync-indicator" class="sync-indicator">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
             stroke-linejoin="round">
