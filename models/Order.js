@@ -17,6 +17,7 @@ const orderSchema = new mongoose.Schema({
     deliveryTime: { type: String },
     notes: { type: String },
     transactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' },
+    receiptRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' },
     totalAmount: { type: Number, default: 0 },
     date: { type: Date, default: Date.now, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }

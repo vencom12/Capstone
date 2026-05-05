@@ -131,7 +131,12 @@ function updateUI() {
                     <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${order.status}</span></td>
                     <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td><button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button></td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
+                            ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Receipt</button>` : ''}
+                        </div>
+                    </td>
                 </tr>`).join('');
     }
 
@@ -159,12 +164,17 @@ function updateUI() {
             : historyOrders.map(o => `
                 <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
                     <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
-                    <td>${o.client || 'Guest'}</td>
-                    <td>${formatOrderDesign(o)}</td>
-                    <td><span class="status-pill ${o.status.toLowerCase().replace(/\s+/g, '-')}">${o.status}</span></td>
-                    <td>${new Date(o.updatedAt || o.date).toLocaleDateString()}</td>
+                    <td>${o.client}</td>
+                    <td>$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
+                    <td><span class="status-pill">${o.status}</span></td>
+                    <td>${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}</td>
                 </tr>`).join('');
     }
+}
+
+function downloadReceipt(receiptId) {
+    window.location.href = `/api/customer/receipt/${receiptId}/download`;
+}
 
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');

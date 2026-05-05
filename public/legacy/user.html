@@ -32,6 +32,7 @@
     <input type="radio" name="nav-radio" id="nav-tracking">
     <input type="radio" name="nav-radio" id="nav-favs">
     <input type="radio" name="nav-radio" id="nav-history">
+    <input type="radio" name="nav-radio" id="nav-receipts">
     <input type="radio" name="nav-radio" id="nav-settings">
     <input type="checkbox" id="nav-drawer-toggle">
     <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false"></div>
@@ -94,6 +95,14 @@
                             <polyline points="10 9 9 9 8 9"></polyline>
                         </svg>
                         <span>My Transactions</span>
+                    </label>
+                </li>
+                <li>
+                    <label for="nav-receipts">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>My Receipts</span>
                     </label>
                 </li>
                 <li>
@@ -261,6 +270,35 @@
                             </thead>
                             <tbody id="transaction-table-body">
                                 <!-- Populated by app.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module: Receipts -->
+            <section id="section-receipts" class="module-section">
+                <header class="section-header" style="margin-bottom: 30px;">
+                    <div>
+                        <h2 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">My Receipts</h2>
+                        <p style="color: var(--text-dim);">Download official PDF receipts for your orders</p>
+                    </div>
+                </header>
+
+                <div class="glass" style="overflow: hidden; border-radius: 20px;">
+                    <div class="table-container" style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: rgba(255,255,255,0.03); color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                                    <th style="padding: 20px 24px; font-weight: 600;">Receipt ID</th>
+                                    <th style="padding: 20px 24px; font-weight: 600;">Order ID</th>
+                                    <th style="padding: 20px 24px; font-weight: 600;">Date</th>
+                                    <th style="padding: 20px 24px; font-weight: 600;">Amount</th>
+                                    <th style="padding: 20px 24px; font-weight: 600;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="receipt-table-body">
+                                <!-- Populated by customer.js -->
                             </tbody>
                         </table>
                     </div>

@@ -122,8 +122,27 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
 
-// Note: CSRF protection is handled by SameSite=Strict cookie policy.
-// No custom header check needed — Strict cookies are not sent on cross-origin requests.
+// CSRF Protection: Issue a token to the client
+app.get('/api/auth/csrf-token', (req, res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrfToken', token, { 
+        httpOnly: false, // Must be accessible by JS to send in header
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+    });
+    res.json({ csrfToken: token });
+});
+
+// Middleware to verify CSRF token for sensitive operations
+const verifyCSRF = (req, res, next) => {
+    const clientToken = req.headers['x-csrf-token'];
+    const cookieToken = req.cookies.csrfToken;
+    if (!clientToken || clientToken !== cookieToken) {
+        return res.status(403).json({ message: 'CSRF token mismatch or missing.' });
+    }
+    next();
+};
+app.set('verifyCSRF', verifyCSRF);
 
 // Force no-cache for all requests to ensure PWA updates
 app.use((req, res, next) => {

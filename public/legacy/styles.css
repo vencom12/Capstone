@@ -401,6 +401,7 @@ main {
 #nav-threads:checked~.dashboard-container #section-threads,
 #nav-products:checked~.dashboard-container #section-products,
 #nav-history:checked~.dashboard-container #section-history,
+#nav-receipts:checked~.dashboard-container #section-receipts,
 #nav-support:checked~.dashboard-container #section-support {
     display: block;
     animation: fadeIn 0.4s ease-out;

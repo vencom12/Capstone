@@ -8,7 +8,7 @@ const SiteTraffic = require('../models/SiteTraffic');
 exports.getDashboardState = async (req, res) => {
     try {
         const [orders, inventory, products, totalUsers, totalRevenue, adminUsers] = await Promise.all([
-            Order.find().populate('transactionId').sort({ date: -1 }).limit(100),
+            Order.find().populate('transactionId receiptRef').sort({ date: -1 }).limit(100),
             Inventory.find(),
             Product.find().sort({ createdAt: -1 }).limit(100),
             User.countDocuments(),

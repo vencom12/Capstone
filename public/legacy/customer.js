@@ -2,9 +2,19 @@ const API_URL = '/api/customer'; // Point to customer-specific endpoints
 const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
+let _csrfToken = null;
+
 // Helper: Secure API fetch wrapper
 async function apiFetch(url, options = {}) {
-    const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+    // Refresh token if missing
+    if (!_csrfToken && url.includes('/api/')) {
+        await refreshCSRFToken();
+    }
+
+    const defaultHeaders = { 
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-Token': _csrfToken 
+    };
     if (options.body && !(options.body instanceof FormData)) {
         defaultHeaders['Content-Type'] = 'application/json';
     }
@@ -14,6 +24,16 @@ async function apiFetch(url, options = {}) {
         credentials: 'include'
     };
     return fetch(url, fetchOptions);
+}
+
+async function refreshCSRFToken() {
+    try {
+        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            _csrfToken = data.csrfToken;
+        }
+    } catch (e) { console.error('CSRF Refresh failed', e); }
 }
 
 // --- Global Sync Indicator ---
@@ -358,12 +378,39 @@ function updateUI() {
                     <td style="padding: 16px 24px;">$${tx.amount.toFixed(2)}</td>
                     <td style="padding: 16px 24px;"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td style="padding: 16px 24px;">
-                        <button class="btn btn-secondary view-receipt-btn" data-id="${tx.transactionID}" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
+                        <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.8rem;">View</button>
+                    </td>
+                </tr>`).join('');
+    }
+
+    // 6. Update Receipts Table
+    const receiptTable = document.getElementById('receipt-table-body');
+    const receipts = State._cache.receipts || [];
+    if (receiptTable) {
+        receiptTable.innerHTML = receipts.length === 0
+            ? '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-dim);">No receipts generated.</td></tr>'
+            : receipts.map(rcp => `
+                <tr>
+                    <td style="padding: 16px 24px;">${rcp.receiptID}</td>
+                    <td style="padding: 16px 24px;">${rcp.orderID}</td>
+                    <td style="padding: 16px 24px;">${new Date(rcp.timestamp).toLocaleDateString()}</td>
+                    <td style="padding: 16px 24px;">$${rcp.amount.toFixed(2)}</td>
+                    <td style="padding: 16px 24px;">
+                        <button class="btn btn-primary" onclick="downloadReceipt('${rcp.receiptID}')" style="padding: 6px 12px; font-size: 0.8rem;">Download PDF</button>
                     </td>
                 </tr>`).join('');
     }
 
     updateBasketUI();
+}
+
+function downloadReceipt(receiptId) {
+    window.location.href = `${API_URL}/receipt/${receiptId}/download`;
+}
+
+function viewReceipt(transactionId) {
+    const receiptsNav = document.getElementById('nav-receipts');
+    if (receiptsNav) receiptsNav.checked = true;
 }
 
 function updateFavoritesGrid() {
@@ -538,6 +585,11 @@ const CheckoutManager = {
                 State.setBasket([]);
                 // Synchronously refresh so orders + transactions appear immediately
                 await State.getDashboardState();
+
+                // Navigate to receipts section
+                const rcpNav = document.getElementById('nav-receipts');
+                if (rcpNav) rcpNav.checked = true;
+
                 updateUI();
             } else {
                 showToast(data.message || 'Order failed. Please try again.');
@@ -590,6 +642,7 @@ function setupSocketListeners() {
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
+    refreshCSRFToken();
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     } else if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('Capstone/')) {
@@ -848,4 +901,6 @@ window.showToast = showToast;
 window.silentCacheSync = silentCacheSync;
 window.refreshDashboardState = refreshDashboardState;
 window.updateUI = updateUI;
+window.downloadReceipt = downloadReceipt;
+window.viewReceipt = viewReceipt;
 
