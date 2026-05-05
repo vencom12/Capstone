@@ -2,10 +2,29 @@ const API_URL = '/api/admin';
 const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
+// Export to window for inline scripts
+window.API_URL = API_URL;
+window.AUTH_API_URL = AUTH_API_URL;
+
+// --- Toast Notifications (Moved to top for error handler) ---
+function showToast(message) {
+    const container = document.getElementById('toast-container') || document.body;
+    const toast = document.createElement('div');
+    toast.className = 'toast show';
+    toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 24px; border-radius: 8px; z-index: 10000;';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+window.showToast = showToast;
+
 // Global Error Handler for remote debugging
 window.onerror = function(msg, url, line, col, error) {
     console.error('GLOBAL ERROR:', msg, 'at', line, ':', col);
-    if (typeof showToast === 'function') showToast(`Runtime Error: ${msg} (Line ${line})`);
+    showToast(`Runtime Error: ${msg} (Line ${line})`);
     return false;
 };
 
@@ -76,19 +95,7 @@ const updateSyncIndicator = (isStarting) => {
     }
 };
 
-// --- Toast Notifications ---
-function showToast(message) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast show';
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
+// --- Global Sync Indicator ---
 
 // --- Auth Manager ---
 const AuthManager = {

@@ -184,7 +184,7 @@
                     // Manually clear session locally without redirecting immediately
                     localStorage.removeItem(window.AuthManager.SESSION_KEY);
                     sessionStorage.removeItem(window.AuthManager.SESSION_KEY);
-                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => {});
+                    fetch(`${window.AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(e => {});
                 }
             }
         });
