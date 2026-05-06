@@ -34,12 +34,17 @@ const ReceiptSchema = new mongoose.Schema({
     },
     timestamp: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: true
     },
     metadata: {
         type: Map,
         of: String
     }
 });
+
+// Optimization: Index userID for fast customer dashboard loads
+ReceiptSchema.index({ userID: 1, timestamp: -1 });
+ReceiptSchema.index({ orderID: 1 });
 
 module.exports = mongoose.model('Receipt', ReceiptSchema);

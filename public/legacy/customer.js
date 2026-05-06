@@ -818,9 +818,23 @@ const CheckoutManager = {
 // --- Initialization & UI Helpers ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    await State.getDashboardState();
+    
+    // Pattern: Stale While Revalidate
+    // 1. Immediately update UI with whatever is in the current cache
     updateUI();
-    updateSyncIndicator(false);
+
+    // 2. Fetch fresh data in the background
+    try {
+        const data = await State.getDashboardState();
+        if (data) {
+            // 3. Update UI again once fresh data arrives
+            updateUI();
+        }
+    } catch (e) {
+        console.error('Refresh failed', e);
+    } finally {
+        updateSyncIndicator(false);
+    }
 }
 
 const silentCacheSync = debounce(() => {
@@ -1161,19 +1175,12 @@ window.updateUI = updateUI;
 window.downloadReceipt = downloadReceipt;
 window.viewReceipt = viewReceipt;
 
-// Auto-trigger refresh if on a dashboard page
-document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('profile-wallet') || document.getElementById('storefront-grid')) {
-        console.log('[App] Auto-syncing dashboard state...');
-        refreshDashboardState();
-        initSocket();
-    }
-
-    // Unified Date Filter Listener
-    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
+// Unified Date Filter Listener
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'history-date-filter') {
         State._cache.historyDateFilter = e.target.value;
         updateUI();
-    });
+    }
 });
 
 

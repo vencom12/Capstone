@@ -23,16 +23,21 @@ exports.getDashboardState = async (req, res) => {
 
         let orders = [], currentUser = null, transactions = [], receipts = [], totalOrders = 0;
 
-        const productsPromise = Product.find().sort({ createdAt: -1 }).skip(productSkip).limit(productLimit).lean();
+        const productsPromise = Product.find()
+            .sort({ createdAt: -1 })
+            .skip(productSkip)
+            .limit(productLimit)
+            .select('name price tag imageUrl description') // Project only needed fields
+            .lean();
         const totalProductsPromise = Product.countDocuments();
 
         if (userId) {
             const [o, u, t, r, to] = await Promise.all([
-                Order.find({ userID: userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+                Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(), // Fixed: Order uses userId
                 User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
-                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
-                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
-                Order.countDocuments({ userID: userId })
+                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(), // Transaction uses userID
+                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(), // Receipt uses userID
+                Order.countDocuments({ userId }) // Fixed: Order uses userId
             ]);
             orders = o; currentUser = u; transactions = t; receipts = r; totalOrders = to;
         }
