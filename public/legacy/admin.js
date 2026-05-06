@@ -628,7 +628,8 @@ window.createProduct = async () => {
         delete formEl.dataset.editId;
         refreshDashboardState();
     } else {
-        showToast('Error saving product');
+        const errData = await res.json().catch(() => ({}));
+        showToast(`Error saving product: ${errData.error || errData.message || 'Unknown error'}`);
     }
 };
 
@@ -764,14 +765,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             updateSyncIndicator(false);
             
-            if (!res.ok) {
+            if (res.ok) {
+                showToast('Orders updated');
+                refreshDashboardState();
+            } else {
                 // Rollback
                 State._cache = State._prevCache;
                 updateUI();
                 const data = await res.json();
                 showToast(`Failed to update: ${data.message || 'Server error'}`);
-            } else {
-                showToast('Orders updated');
             }
         };
     }

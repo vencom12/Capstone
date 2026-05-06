@@ -189,7 +189,8 @@ exports.createProduct = async (req, res) => {
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, newProduct);
         res.json({ message: 'Product created', product: newProduct });
     } catch (err) {
-        res.status(500).json({ message: 'Error creating product' });
+        console.error('createProduct error:', err);
+        res.status(500).json({ message: 'Error creating product', error: err.message });
     }
 };
 
@@ -213,7 +214,8 @@ exports.updateProduct = async (req, res) => {
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, product);
         res.json({ message: 'Product updated', product });
     } catch (err) {
-        res.status(500).json({ message: 'Error updating product' });
+        console.error('updateProduct error:', err);
+        res.status(500).json({ message: 'Error updating product', error: err.message });
     }
 };
 

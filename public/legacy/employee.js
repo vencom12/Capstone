@@ -365,11 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Product form submit
     const productForm = document.getElementById('create-product-form');
     if (productForm) {
+        console.log('[Employee] Product form found and listener attached');
         productForm.onsubmit = async (e) => {
             e.preventDefault();
+            console.log('[Employee] Product form submitted');
             const id = productForm.dataset.editId;
             const formData = new FormData();
             formData.append('name', document.getElementById('product-name').value);
@@ -397,7 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 delete productForm.dataset.editId;
                 refreshDashboardState();
             } else {
-                showToast('Error saving design');
+                const errData = await res.json().catch(() => ({}));
+                showToast(`Error saving design: ${errData.error || errData.message || 'Unknown error'}`);
             }
         };
     }
