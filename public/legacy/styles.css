@@ -28,7 +28,23 @@ body {
     background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
     color: var(--text-main);
     min-height: 100vh;
-    overflow-x: clip;
+}
+
+.dashboard-body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .dashboard-body {
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        width: 100% !important;
+    }
 }
 
 /* Custom Scrollbar Styles */
@@ -1809,5 +1825,71 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 .mobile-category-container {
     display: none;
     margin-bottom: 20px;
+}
+
+.receipt-modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 30px 20px;
+    border-radius: 24px;
+    position: relative;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-card);
+}
+
+@media (max-width: 768px) {
+    .receipt-modal-content {
+        padding: 20px 15px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Responsive Tables */
+@media (max-width: 768px) {
+    .table-container table, 
+    .table-container thead, 
+    .table-container tbody, 
+    .table-container th, 
+    .table-container td, 
+    .table-container tr {
+        display: block;
+    }
+
+    .table-container thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .table-container tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border-glass);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 10px;
+    }
+
+    .table-container td {
+        border: none;
+        position: relative;
+        padding: 10px 10px 10px 50% !important;
+        text-align: right !important;
+        font-size: 0.85rem;
+        min-height: 40px;
+    }
+
+    .table-container td:before {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-dim);
+        content: attr(data-label);
+    }
 }
 
