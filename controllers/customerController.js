@@ -57,6 +57,11 @@ exports.getDashboardState = async (req, res) => {
                 currentPage: page,
                 totalPages: Math.ceil(totalOrders / limit),
                 totalOrders
+            },
+            productPagination: {
+                currentPage: productPage,
+                totalPages: Math.ceil(totalProducts / productLimit),
+                totalProducts
             }
         });
     } catch (err) {

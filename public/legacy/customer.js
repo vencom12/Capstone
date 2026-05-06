@@ -426,6 +426,40 @@ const _updateUIInternal = debounce(() => {
             }).join('');
     });
 
+    // --- Product Pagination ---
+    const productPaginationContainer = document.getElementById('product-pagination');
+    if (productPaginationContainer && State._cache.productPagination) {
+        const { currentPage, totalPages } = State._cache.productPagination;
+        if (totalPages > 1) {
+            productPaginationContainer.innerHTML = `
+                <div class="pagination-controls" style="display: flex; justify-content: center; gap: 10px; margin-top: 30px;">
+                    <button class="btn btn-secondary ${currentPage === 1 ? 'disabled' : ''}" 
+                        onclick="changeProductPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        Previous
+                    </button>
+                    <span style="display: flex; align-items: center; padding: 0 15px; color: var(--text-dim);">
+                        Page ${currentPage} of ${totalPages}
+                    </span>
+                    <button class="btn btn-secondary ${currentPage === totalPages ? 'disabled' : ''}" 
+                        onclick="changeProductPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        Next
+                    </button>
+                </div>
+            `;
+        } else {
+            productPaginationContainer.innerHTML = '';
+        }
+    }
+    
+    // Global helper if not already defined
+    if (!window.changeProductPage) {
+        window.changeProductPage = async (page) => {
+            State._cache.productPagination.currentPage = page;
+            const data = await State.getDashboardState();
+            if (data) _updateUIInternal();
+        };
+    }
+
     // 3. Update Tracking
     const trackingList = document.querySelector('#tracking-list-container');
     if (trackingList) {
