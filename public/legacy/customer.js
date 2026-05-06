@@ -424,11 +424,22 @@ function updateUI() {
     updateFavoritesGrid();
 
     // 5. Update History (Transactions)
+    const historyDateFilter = State._cache.historyDateFilter;
+    let displayTransactions = transactions;
+    if (historyDateFilter) {
+        displayTransactions = transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp).toISOString().split('T')[0];
+            return txDate === historyDateFilter;
+        });
+    }
+
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
-        historyTable.innerHTML = transactions.length === 0
-            ? '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
-            : transactions.map(tx => {
+        historyTable.innerHTML = displayTransactions.length === 0
+            ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
+                ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
+               </td></tr>`
+            : displayTransactions.map(tx => {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
                 return `
                 <tr>
@@ -1039,3 +1050,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+// Date filter listener
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'history-date-filter') {
+        State._cache.historyDateFilter = e.target.value;
+        updateUI();
+    }
+});
