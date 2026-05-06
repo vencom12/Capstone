@@ -29,6 +29,16 @@ window.onerror = function(msg, url, line, col, error) {
     return false;
 };
 
+// Utility: Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 let _csrfToken = null;
 
 // --- Key Objects (Hoisted or defined early for window export) ---
@@ -87,16 +97,31 @@ const AuthManager = {
 
 const State = {
     _cache: { orders: [], users: [], inventory: [], products: [], analytics: null },
+    _syncPromise: null,
     async getDashboardState() {
+        if (this._syncPromise) {
+            console.log('[State] Sync already in progress, attaching to existing promise...');
+            return this._syncPromise;
+        }
+
+        this._syncPromise = (async () => {
+            console.log('[State] Refreshing dashboard state...');
+            try {
+                const response = await apiFetch(`${API_URL}/dashboard-state`);
+                if (response.ok) {
+                    const data = await response.json();
+                    this._cache = { ...this._cache, ...data };
+                    return data;
+                }
+            } catch (err) { console.error('Admin state error:', err); }
+            return null;
+        })();
+
         try {
-            const response = await apiFetch(`${API_URL}/dashboard-state`);
-            if (response.ok) {
-                const data = await response.json();
-                this._cache = { ...this._cache, ...data };
-                return data;
-            }
-        } catch (err) { console.error('Admin state error:', err); }
-        return null;
+            return await this._syncPromise;
+        } finally {
+            this._syncPromise = null;
+        }
     }
 };
 
@@ -185,6 +210,10 @@ const updateSyncIndicator = (isStarting) => {
 
 // --- UI Rendering ---
 function updateUI() {
+    _updateUIInternal();
+}
+
+const _updateUIInternal = debounce(() => {
     let { orders, users, inventory, products, analytics } = State._cache;
 
     // Apply Search Filtering/Sorting
@@ -323,7 +352,7 @@ function updateUI() {
     // 5. Update Charts
     updateCharts();
     updateAITip();
-}
+}, 250);
 
 function formatOrderDesign(order) {
     if (order.items && order.items.length > 0) return order.items.map(i => i.name).join(', ');
@@ -339,17 +368,21 @@ async function refreshDashboardState() {
 }
 
 function initSocket() {
-    const script = document.createElement('script');
-    script.src = "/socket.io/socket.io.js";
-    script.onload = () => {
-        const socket = io(SOCKET_URL, { withCredentials: true });
-        socket.on('ordersUpdated', () => {
-            refreshDashboardState();
-            showToast('Incoming Transmission: New Order Received', 'success');
-        });
-        socket.on('usersUpdated', () => refreshDashboardState());
-    };
-    document.head.appendChild(script);
+    if (typeof io === 'undefined') {
+        console.warn('[Admin] Socket.IO client not found, retrying...');
+        setTimeout(initSocket, 500);
+        return;
+    }
+    const socket = io(SOCKET_URL, { withCredentials: true });
+    socket.on('ordersUpdated', () => {
+        refreshDashboardState();
+        showToast('Incoming Transmission: New Order Received', 'success');
+    });
+    socket.on('usersUpdated', () => refreshDashboardState());
+    socket.on('dataChanged', (data) => {
+        console.log('[Admin] Data changed notification:', data.type);
+        refreshDashboardState();
+    });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
