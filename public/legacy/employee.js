@@ -187,7 +187,10 @@ function updateUI() {
                     <h4 style="margin: 0;">${p.name}</h4>
                     <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                 </div>
-                <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
+                    <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                </div>
             </div>`).join('');
     }
 
@@ -268,6 +271,17 @@ window.openEditProduct = (id) => {
     if (titleEl) titleEl.innerText = 'Customize Design';
     
     UI.toggleModal('create-product-modal');
+};
+
+window.deleteProduct = async (id) => {
+    if (!confirm('Delete this design?')) return;
+    updateSyncIndicator(true);
+    const res = await apiFetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
+    updateSyncIndicator(false);
+    if (res.ok) {
+        showToast('Design deleted');
+        refreshDashboardState();
+    }
 };
 
 window.openEditOrder = (id) => {
