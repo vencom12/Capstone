@@ -175,6 +175,9 @@ exports.getAnalytics = async (req, res) => {
     }
 };
 exports.createProduct = async (req, res) => {
+    console.log('>>> [SERVER] REACHED createProduct');
+    console.log('>>> [SERVER] Body:', req.body);
+    console.log('>>> [SERVER] File:', req.file);
     try {
         const { name, price, tag, description } = req.body;
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
@@ -195,6 +198,9 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
+    console.log('>>> [SERVER] REACHED updateProduct');
+    console.log('>>> [SERVER] Body:', req.body);
+    console.log('>>> [SERVER] File:', req.file);
     try {
         const { name, price, tag, description } = req.body;
         const updateData = { name, price: parseFloat(price), tag, description };

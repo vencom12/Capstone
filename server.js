@@ -25,6 +25,13 @@ const fs = require('fs');
 const crypto = require('crypto');
 const app = express();
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('[OK] Created missing uploads directory');
+}
+
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
     fs.appendFileSync(path.join(__dirname, 'server_log.txt'), entry);

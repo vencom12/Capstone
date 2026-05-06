@@ -398,8 +398,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 delete productForm.dataset.editId;
                 refreshDashboardState();
             } else {
-                const errData = await res.json().catch(() => ({}));
-                showToast(`Error ${res.status}: ${errData.error || errData.message || 'Unknown error'}`);
+                let errMsg = 'Unknown error';
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.error || errData.message || 'Unknown error';
+                } catch (e) {
+                    errMsg = await res.text().catch(() => 'Unknown error');
+                }
+                showToast(`Error ${res.status}: ${errMsg}`);
             }
         };
     }
