@@ -23,4 +23,9 @@ const orderSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }
 });
 
+// Advanced Indexes for Performance
+orderSchema.index({ status: 1, date: -1 }); // Dashboard filtering/sorting
+orderSchema.index({ userId: 1, date: -1 }); // Customer history
+orderSchema.index({ date: -1, orderId: 1, client: 1, totalAmount: 1, status: 1 }); // Covering index for main list
+
 module.exports = mongoose.model('Order', orderSchema);

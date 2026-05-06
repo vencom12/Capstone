@@ -187,8 +187,9 @@ window.UI = UI;
 
 // --- State Management ---
 const State = {
-    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
+    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All', pagination: { currentPage: 1, totalPages: 1, totalTransactions: 0 } },
     _syncPromise: null,
+    _prevBalance: null, // For rollbacks
     getBasket() {
         const session = AuthManager.getSession();
         const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
@@ -248,8 +249,9 @@ const State = {
             
             try {
                 // Attempt primary fetch with a timeout
+                const page = this._cache.pagination.currentPage;
                 const response = await Promise.race([
-                    apiFetch(`${API_URL}/dashboard-state`),
+                    apiFetch(`${API_URL}/dashboard-state?page=${page}`),
                     timeout
                 ]);
 
@@ -487,7 +489,16 @@ const _updateUIInternal = debounce(() => {
     }
 
     updateBasketUI();
+    updatePaginationUI();
 }, 200);
+
+function updatePaginationUI() {
+    const { pagination } = State._cache;
+    const indicator = document.getElementById('cust-orders-page-indicator');
+    if (indicator) {
+        indicator.innerText = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
+    }
+}
 
 // Add date filter listener
 document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
@@ -784,20 +795,66 @@ function initSocket() {
 }
 
 function setupSocketListeners() {
-    const socket = io(SOCKET_URL, { credentials: 'include' });
-    socket.on('ordersUpdated', () => silentCacheSync());
-    socket.on('transactionsUpdated', () => silentCacheSync());
+    const socket = io(SOCKET_URL, { 
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        randomizationFactor: 0.5
+    });
+
+    socket.on('connect', () => console.log('[Socket] Customer connection established.'));
+
     socket.on('dataChanged', (data) => {
-        if (data.type === 'wallet') {
-            State._cache.walletBalance = data.balance;
+        console.log('[Socket] Delta received:', data.action, data.entity);
+        const { action, entity, payload } = data;
+
+        if (entity === 'WALLET' && action === 'UPDATE') {
+            State._cache.walletBalance = payload.balance;
+            updateUI();
+        } else if (entity === 'ORDER' && action === 'UPDATE') {
+            State._cache.orders = State._cache.orders.map(o => {
+                if (payload.ids && payload.ids.includes(o._id)) {
+                    return { ...o, status: payload.status, progress: payload.progress };
+                }
+                return o;
+            });
+            updateUI();
+        } else {
+            silentCacheSync();
         }
-        silentCacheSync();
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.warn('[Socket] Disconnected:', reason);
+        if (reason === 'io server disconnect') socket.connect();
     });
 }
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
+    
+    // Pagination Listeners
+    const prevBtn = document.getElementById('prev-cust-orders-btn');
+    const nextBtn = document.getElementById('next-cust-orders-btn');
+    if (prevBtn) {
+        prevBtn.onclick = () => {
+            if (State._cache.pagination.currentPage > 1) {
+                State._cache.pagination.currentPage--;
+                refreshDashboardState();
+            }
+        };
+    }
+    if (nextBtn) {
+        nextBtn.onclick = () => {
+            if (State._cache.pagination.currentPage < State._cache.pagination.totalPages) {
+                State._cache.pagination.currentPage++;
+                refreshDashboardState();
+            }
+        };
+    }
     refreshCSRFToken();
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();

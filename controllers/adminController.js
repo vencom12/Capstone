@@ -2,18 +2,30 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
+const socketUtil = require('../utils/socketUtil');
+const { ACTIONS, ENTITIES } = require('../utils/apiConstants');
 const Transaction = require('../models/Transaction');
 const SiteTraffic = require('../models/SiteTraffic');
 
 exports.getDashboardState = async (req, res) => {
     try {
-        const [orders, inventory, products, totalUsers, totalRevenue, adminUsers] = await Promise.all([
-            Order.find().populate('transactionId receiptRef').sort({ date: -1 }).limit(100),
-            Inventory.find(),
-            Product.find().sort({ createdAt: -1 }).limit(100),
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = (page - 1) * limit;
+
+        const [orders, inventory, products, totalUsers, totalRevenue, adminUsers, totalOrders] = await Promise.all([
+            Order.find()
+                .populate('transactionId receiptRef')
+                .sort({ date: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Inventory.find().lean(),
+            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
             User.countDocuments(),
             Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
-            User.find().select('-password').sort({ createdAt: -1 })
+            User.find().select('-password').sort({ createdAt: -1 }).lean(),
+            Order.countDocuments()
         ]);
 
         res.json({
@@ -21,6 +33,11 @@ exports.getDashboardState = async (req, res) => {
             inventory,
             products,
             users: adminUsers,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalOrders / limit),
+                totalOrders
+            },
             analytics: {
                 userCount: totalUsers,
                 revenue: totalRevenue[0]?.total || 0,
@@ -139,7 +156,8 @@ exports.createProduct = async (req, res) => {
         const { name, price, tag, description, imageUrl } = req.body;
         const newProduct = new Product({ name, price: parseFloat(price), tag, description, imageUrl });
         await newProduct.save();
-        req.app.get('io').emit('dataChanged', { type: 'products' });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, newProduct);
         res.json({ message: 'Product created', product: newProduct });
     } catch (err) {
         res.status(500).json({ message: 'Error creating product' });
@@ -154,7 +172,8 @@ exports.updateProduct = async (req, res) => {
             { new: true }
         );
         if (!product) return res.status(404).json({ message: 'Product not found' });
-        req.app.get('io').emit('dataChanged', { type: 'products' });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, product);
         res.json({ message: 'Product updated', product });
     } catch (err) {
         res.status(500).json({ message: 'Error updating product' });
@@ -164,7 +183,8 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
     try {
         await Product.findByIdAndDelete(req.params.id);
-        req.app.get('io').emit('dataChanged', { type: 'products' });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.PRODUCT, { id: req.params.id });
         res.json({ message: 'Product deleted' });
     } catch (err) {
         res.status(500).json({ message: 'Error deleting product' });
@@ -179,7 +199,8 @@ exports.updateInventoryItem = async (req, res) => {
             { count, lastUpdated: Date.now() },
             { new: true }
         );
-        req.app.get('io').emit('dataChanged', { type: 'inventory' });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, inventory);
         res.json(inventory);
     } catch (err) {
         res.status(500).json({ message: 'Error updating inventory' });
@@ -207,8 +228,7 @@ exports.updateOrdersStatus = async (req, res) => {
             { $set: { status, progress } }
         );
 
-        const io = req.app.get('io');
-        io.emit('ordersUpdated');
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status, progress });
         
         res.json({ message: 'Orders updated successfully' });
     } catch (err) {

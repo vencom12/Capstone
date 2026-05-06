@@ -36,7 +36,35 @@ const logErr = (msg) => {
 
 const server = http.createServer(app);
 app.set('trust proxy', 1);
-const io = new Server(server, { cors: { origin: '*' } });
+
+const ioOptions = { 
+    cors: { origin: '*' },
+    transports: ['websocket', 'polling']
+};
+const io = new Server(server, ioOptions);
+
+// --- Scalability: Redis Adapter Prototype ---
+if (process.env.REDIS_URL) {
+    try {
+        const { createAdapter } = require('@socket.io/redis-adapter');
+        const { createClient } = require('redis');
+        
+        const pubClient = createClient({ url: process.env.REDIS_URL });
+        const subClient = pubClient.duplicate();
+        
+        Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+            io.adapter(createAdapter(pubClient, subClient));
+            console.log('[OK] Socket.IO Redis Adapter active (Horizontal Scale Ready)');
+        }).catch(err => {
+            console.error('[REDIS] Connection failed, falling back to in-memory adapter:', err.message);
+        });
+    } catch (err) {
+        console.warn('[REDIS] Adapter libraries missing or error. Running in single-node mode.');
+    }
+} else {
+    console.log('[INFO] No REDIS_URL found. Running Socket.IO in single-node mode.');
+}
+
 app.set('io', io);
 
 // Socket.IO Authentication Middleware
@@ -114,7 +142,26 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
     message: { message: 'Too many authentication attempts. Please try again after 15 minutes.' }
 });
-// app.use('/api/auth/', authLimiter);
+
+// Dashboard Rate Limiter: Max 50 requests per 10 minutes (for heavy state fetches)
+const dashboardLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 50,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Dashboard refresh limit reached. Please wait a few minutes.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/admin/dashboard-state', dashboardLimiter);
+app.use('/api/customer/dashboard-state', dashboardLimiter);
+
+// v1 Rate Limiters
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/v1/admin/dashboard-state', dashboardLimiter);
+app.use('/api/v1/customer/dashboard-state', dashboardLimiter);
 
 // Core Middleware
 app.use(cors({
@@ -197,10 +244,22 @@ mongoose.connect(process.env.MONGODB_URI, dbOptions)
     .catch(err => console.error('CRITICAL: MongoDB connection failed:', err));
 
 // --- Modular Routes ---
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/customer', require('./routes/customer'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/employee', require('./routes/employee'));
+const authRoutes = require('./routes/auth');
+const customerRoutes = require('./routes/customer');
+const adminRoutes = require('./routes/admin');
+const employeeRoutes = require('./routes/employee');
+
+// Legacy Routes (for compatibility)
+app.use('/api/auth', authRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/employee', employeeRoutes);
+
+// Versioned API v1
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/customer', customerRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/employee', employeeRoutes);
 
 // --- Shared/Public Routes ---
 app.get('/api/products', async (req, res) => {

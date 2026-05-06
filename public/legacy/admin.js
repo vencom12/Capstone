@@ -96,8 +96,9 @@ const AuthManager = {
 };
 
 const State = {
-    _cache: { orders: [], users: [], inventory: [], products: [], analytics: null },
+    _cache: { orders: [], users: [], inventory: [], products: [], analytics: null, pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 } },
     _syncPromise: null,
+    _prevCache: null, // For rollbacks
     async getDashboardState() {
         if (this._syncPromise) {
             console.log('[State] Sync already in progress, attaching to existing promise...');
@@ -107,7 +108,8 @@ const State = {
         this._syncPromise = (async () => {
             console.log('[State] Refreshing dashboard state...');
             try {
-                const response = await apiFetch(`${API_URL}/dashboard-state`);
+                const page = this._cache.pagination.currentPage;
+                const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
                     this._cache = { ...this._cache, ...data };
@@ -352,7 +354,16 @@ const _updateUIInternal = debounce(() => {
     // 5. Update Charts
     updateCharts();
     updateAITip();
+    updatePaginationUI();
 }, 250);
+
+function updatePaginationUI() {
+    const { pagination } = State._cache;
+    const indicator = document.getElementById('orders-page-indicator');
+    if (indicator) {
+        indicator.innerText = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
+    }
+}
 
 function formatOrderDesign(order) {
     if (order.items && order.items.length > 0) return order.items.map(i => i.name).join(', ');
@@ -373,15 +384,39 @@ function initSocket() {
         setTimeout(initSocket, 500);
         return;
     }
-    const socket = io(SOCKET_URL, { withCredentials: true });
-    socket.on('ordersUpdated', () => {
-        refreshDashboardState();
-        showToast('Incoming Transmission: New Order Received', 'success');
+    const socket = io(SOCKET_URL, { 
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        randomizationFactor: 0.5
     });
-    socket.on('usersUpdated', () => refreshDashboardState());
+
+    socket.on('connect', () => console.log('[Socket] Admin connection established.'));
+    
     socket.on('dataChanged', (data) => {
-        console.log('[Admin] Data changed notification:', data.type);
-        refreshDashboardState();
+        console.log('[Socket] Delta received:', data.action, data.entity);
+        const { action, entity, payload } = data;
+        
+        // Granular state update instead of full refresh when possible
+        if (entity === 'ORDER' && action === 'UPDATE') {
+            State._cache.orders = State._cache.orders.map(o => {
+                if (payload.ids && payload.ids.includes(o._id)) {
+                    return { ...o, status: payload.status, progress: payload.progress };
+                }
+                return o;
+            });
+            updateUI();
+        } else {
+            // Fallback to full refresh for complex changes
+            refreshDashboardState();
+        }
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.warn('[Socket] Disconnected:', reason);
+        if (reason === 'io server disconnect') socket.connect();
     });
 }
 
@@ -681,19 +716,51 @@ window.deleteUser = async (id) => {
 document.addEventListener('DOMContentLoaded', () => {
     const batchBtn = document.getElementById('admin-batch-update-btn');
     if (batchBtn) {
-        batchBtn.onclick = async () => {
             const status = document.getElementById('admin-batch-status').value;
             const selectedIds = Array.from(document.querySelectorAll('.admin-order-checkbox:checked')).map(cb => cb.dataset.id);
             if (!status || selectedIds.length === 0) return showToast('Select status and orders');
             
+            // Optimistic Update
+            State._prevCache = JSON.parse(JSON.stringify(State._cache));
+            State._cache.orders = State._cache.orders.map(o => 
+                selectedIds.includes(o._id) ? { ...o, status } : o
+            );
+            updateUI();
+
             updateSyncIndicator(true);
             const res = await apiFetch(`${API_URL}/orders/batch-status`, {
                 method: 'POST',
                 body: JSON.stringify({ ids: selectedIds, status })
             });
             updateSyncIndicator(false);
-            if (res.ok) {
+            
+            if (!res.ok) {
+                // Rollback
+                State._cache = State._prevCache;
+                updateUI();
+                const data = await res.json();
+                showToast(`Failed to update: ${data.message || 'Server error'}`);
+            } else {
                 showToast('Orders updated');
+            }
+        };
+    }
+
+    // Pagination Listeners
+    const prevBtn = document.getElementById('prev-orders-btn');
+    const nextBtn = document.getElementById('next-orders-btn');
+    if (prevBtn) {
+        prevBtn.onclick = () => {
+            if (State._cache.pagination.currentPage > 1) {
+                State._cache.pagination.currentPage--;
+                refreshDashboardState();
+            }
+        };
+    }
+    if (nextBtn) {
+        nextBtn.onclick = () => {
+            if (State._cache.pagination.currentPage < State._cache.pagination.totalPages) {
+                State._cache.pagination.currentPage++;
                 refreshDashboardState();
             }
         };

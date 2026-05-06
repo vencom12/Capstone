@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
 const customerAuth = require('../middleware/customerAuth');
+const { validate, schemas } = require('../utils/validation');
 
 router.get('/dashboard-state', (req, res, next) => {
     // Optional Auth: Try to decode token if it exists
@@ -17,9 +18,9 @@ router.get('/dashboard-state', (req, res, next) => {
 
 router.use(customerAuth());
 
-router.post('/wallet/topup', (req, res, next) => req.app.get('verifyCSRF')(req, res, next), customerController.topupWallet);
+router.post('/wallet/topup', (req, res, next) => req.app.get('verifyCSRF')(req, res, next), validate(schemas.topup), customerController.topupWallet);
 router.post('/payment/validate', (req, res, next) => req.app.get('verifyCSRF')(req, res, next), customerController.validatePayment);
-router.post('/order/submit', (req, res, next) => req.app.get('verifyCSRF')(req, res, next), customerController.submitOrder);
+router.post('/order/submit', (req, res, next) => req.app.get('verifyCSRF')(req, res, next), validate(schemas.order), customerController.submitOrder);
 router.get('/favorites', customerController.getFavorites);
 router.post('/favorites/:id', customerController.addFavorite);
 router.delete('/favorites/:id', customerController.removeFavorite);

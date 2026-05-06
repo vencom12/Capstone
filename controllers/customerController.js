@@ -6,6 +6,8 @@ const Product = require('../models/Product');
 const Inventory = require('../models/Inventory');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const socketUtil = require('../utils/socketUtil');
+const { ACTIONS, ENTITIES } = require('../utils/apiConstants');
 
 exports.getDashboardState = async (req, res) => {
     try {
@@ -25,12 +27,17 @@ exports.getDashboardState = async (req, res) => {
             });
         }
 
-        const [orders, currentUser, transactions, products, receipts] = await Promise.all([
-            Order.find({ userId }).sort({ date: -1 }).limit(50),
-            User.findById(userId).select('favorites walletBalance address').populate('favorites'),
-            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(50),
-            Product.find().sort({ createdAt: -1 }).limit(100),
-            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(50)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const [orders, currentUser, transactions, products, receipts, totalOrders] = await Promise.all([
+            Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+            User.findById(userId).select('favorites walletBalance address').populate('favorites').lean(),
+            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
+            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
+            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
+            Order.countDocuments({ userId })
         ]);
 
         res.json({
@@ -40,7 +47,12 @@ exports.getDashboardState = async (req, res) => {
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
             transactions,
-            receipts
+            receipts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalOrders / limit),
+                totalOrders
+            }
         });
     } catch (err) {
         console.error('getDashboardState error:', err);
@@ -64,8 +76,8 @@ exports.topupWallet = async (req, res) => {
         );
 
         if (!user) return res.status(404).json({ message: 'User not found' });
-
-        req.app.get('io').to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: user.walletBalance });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.WALLET, { balance: user.walletBalance }, `user:${user._id}`);
         res.json({ message: `Successfully topped up $${numAmount.toFixed(2)}`, walletBalance: user.walletBalance });
     } catch (err) {
         res.status(500).json({ message: 'Server error during top-up' });
@@ -185,9 +197,9 @@ exports.submitOrder = async (req, res) => {
         // Success Phase: Emit events (outside transaction for reliability)
         const updatedUser = await User.findById(req.user.id);
         const io = req.app.get('io');
-        io.to(`user:${user._id}`).to('staff').emit('ordersUpdated');
-        io.to(`user:${user._id}`).emit('transactionsUpdated');
-        io.to(`user:${user._id}`).emit('dataChanged', { type: 'wallet', balance: updatedUser.walletBalance });
+        socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, newOrder, [`user:${user._id}`, 'staff']);
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user._id}`);
+        socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.TRANSACTION, transaction, `user:${user._id}`);
 
         res.json({ message: 'Order placed successfully.', order: newOrder, receiptID: secureReceiptId });
 

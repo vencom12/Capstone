@@ -3,7 +3,7 @@
     --primary: #6366f1;
     --primary-glow: rgba(99, 102, 241, 0.5);
     --secondary: #a855f7;
-    --accent: #ec4899;
+    --accent: #f43f5e;
     --bg-dark: #0f172a;
     --bg-card: rgba(30, 41, 59, 0.7);
     --text-main: #f8fafc;
@@ -136,6 +136,44 @@ body {
     height: 20px;
     width: 100%;
     display: inline-block;
+}
+
+.skeleton-card {
+    height: 180px !important;
+    border-radius: 20px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-row td div {
+    height: 12px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-row td div::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+    animation: shimmer 1.5s infinite linear;
 }
 
 .skeleton-circle {

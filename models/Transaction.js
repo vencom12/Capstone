@@ -12,4 +12,8 @@ const transactionSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now, index: true }
 });
 
+// Advanced Indexes
+transactionSchema.index({ userID: 1, timestamp: -1 });
+transactionSchema.index({ orderID: 1 });
+
 module.exports = mongoose.model('Transaction', transactionSchema);

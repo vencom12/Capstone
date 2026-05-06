@@ -372,13 +372,17 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-order-table-body">
-                                <!-- Orders will be injected here by app.js -->
-                                <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">
-                                        Loading live production data...</td>
-                                </tr>
+                                <!-- Skeleton Loaders -->
+                                <tr class="skeleton-row"><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>
+                                <tr class="skeleton-row"><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>
                             </tbody>
                         </table>
+                        <!-- Pagination Controls -->
+                        <div id="admin-orders-pagination" class="pagination-controls" style="margin-top: 20px; display: flex; justify-content: center; gap: 10px; align-items: center;">
+                            <button id="prev-orders-btn" class="btn glass" style="padding: 6px 12px;">←</button>
+                            <span id="orders-page-indicator" style="color: var(--text-dim); font-size: 0.9rem;">Page 1 of 1</span>
+                            <button id="next-orders-btn" class="btn glass" style="padding: 6px 12px;">→</button>
+                        </div>
                     </div>
 
                     <!-- AI-Driven Production Optimizer -->
@@ -410,9 +414,10 @@
 
                 <div id="product-list-container" class="task-grid"
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-                    <!-- Products will be loaded here by app.js -->
-                    <div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px;">Loading
-                        product catalog...</div>
+                    <!-- Skeletons -->
+                    <div class="stat-card glass skeleton-card" style="height: 120px;"></div>
+                    <div class="stat-card glass skeleton-card" style="height: 120px;"></div>
+                    <div class="stat-card glass skeleton-card" style="height: 120px;"></div>
                 </div>
             </section>
 
