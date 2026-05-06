@@ -154,14 +154,9 @@ const dashboardLimiter = rateLimit({
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/admin/dashboard-state', dashboardLimiter);
-app.use('/api/customer/dashboard-state', dashboardLimiter);
-
 // v1 Rate Limiters
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
-app.use('/api/v1/admin/dashboard-state', dashboardLimiter);
-app.use('/api/v1/customer/dashboard-state', dashboardLimiter);
 
 // Core Middleware
 app.use(cors({

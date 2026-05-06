@@ -9,26 +9,19 @@ const SiteTraffic = require('../models/SiteTraffic');
 
 exports.getDashboardState = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
-        const skip = (page - 1) * limit;
-
-        const [orders, inventory, products, totalUsers, totalRevenue, adminUsers, totalOrders] = await Promise.all([
+        const [orders, inventory, products, totalUsers, totalRevenue, adminUsers] = await Promise.all([
             Order.find()
                 .populate('transactionId receiptRef')
                 .sort({ date: -1 })
-                .skip(skip)
-                .limit(limit)
                 .lean(),
             Inventory.find().lean(),
-            Product.find().sort({ createdAt: -1 }).limit(20).lean(), 
+            Product.find().sort({ createdAt: -1 }).lean(), 
             User.countDocuments(),
             Order.aggregate([
                 { $match: { paymentStatus: 'paid' } },
                 { $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }
             ]),
-            User.find({ role: 'admin' }).sort({ createdAt: -1 }).lean(),
-            Order.countDocuments()
+            User.find({ role: 'admin' }).sort({ createdAt: -1 }).lean()
         ]);
 
         res.json({
@@ -36,11 +29,6 @@ exports.getDashboardState = async (req, res) => {
             inventory,
             products,
             users: adminUsers,
-            pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(totalOrders / limit),
-                totalOrders
-            },
             analytics: {
                 userCount: totalUsers,
                 revenue: totalRevenue[0]?.total || 0,

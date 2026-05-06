@@ -187,7 +187,7 @@ window.UI = UI;
 
 // --- State Management ---
 const State = {
-    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All', pagination: { currentPage: 1, totalPages: 1, totalTransactions: 0 } },
+    _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
     _syncPromise: null,
     _prevBalance: null, // For rollbacks
     getBasket() {
@@ -237,43 +237,20 @@ const State = {
             }
         }
     },
-    CACHE_DURATION: 30000, // 30 seconds
     async getDashboardState() {
-        const now = Date.now();
-        if (this._cache.lastUpdated && (now - this._cache.lastUpdated < this.CACHE_DURATION)) {
-            console.log('[State] Using cached customer state');
-            return this._cache;
-        }
-
         if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
-            console.log('[State] Refreshing dashboard state...');
+            console.log('[State] Fetching state...');
             try {
-                const page = this._cache.pagination.currentPage || 1;
-                const prodPage = (this._cache.productPagination || {}).currentPage || 1;
-                
-                const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}&productPage=${prodPage}`);
-
+                const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response && response.ok) {
                     const data = await response.json();
-                    this._cache = { ...this._cache, ...data, lastUpdated: Date.now() };
+                    this._cache = { ...this._cache, ...data };
                     return data;
                 }
             } catch (err) {
-                console.error('[State] Refresh failed:', err);
-            }
-
-            // FALLBACK: Try public products if authenticated fetch fails
-            try {
-                const publicRes = await fetch('/api/products');
-                if (publicRes.ok) {
-                    const products = await publicRes.json();
-                    this._cache.products = products;
-                    return { products };
-                }
-            } catch (err) {
-                console.error('[State] Fallback failed:', err);
+                console.error('[State] Fetch failed:', err);
             }
             return null;
         })();
@@ -382,7 +359,7 @@ const _updateUIInternal = debounce(() => {
         }
     }
 
-    // 2. Optimized Catalog Rendering
+    // 2. Simple Catalog Rendering
     const searchQuery = (State._cache.searchQuery || '').toLowerCase();
     const selectedCategory = State._cache.selectedCategory || 'All';
     
@@ -392,44 +369,39 @@ const _updateUIInternal = debounce(() => {
         return matchesSearch && matchesCategory;
     });
 
-    // Only re-render grid if data/filters changed to prevent UI flicker and lag
-    const gridStateKey = `${filteredProducts.length}_${searchQuery}_${selectedCategory}_${State._cache.productPagination?.currentPage}`;
-    if (State._lastGridState !== gridStateKey) {
-        State._lastGridState = gridStateKey;
-        const favIds = favorites.map(f => (f._id || f.id)?.toString());
-        const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
-        
-        productGrids.forEach(grid => {
-            if (filteredProducts.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
-                    <p>${products.length === 0 ? 'No designs found.' : 'No designs match your search.'}</p>
-                   </div>`;
-            } else {
-                grid.innerHTML = filteredProducts.map(p => {
-                    const idStr = (p._id || p.id).toString();
-                    const isFav = favIds.includes(idStr);
-                    return `
-                    <div class="product-card glass animate-fade">
-                        <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                            <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}" 
-                                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                            </button>
+    const favIds = favorites.map(f => (f._id || f.id)?.toString());
+    const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
+    
+    productGrids.forEach(grid => {
+        if (filteredProducts.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
+                <p>No designs found.</p>
+               </div>`;
+        } else {
+            grid.innerHTML = filteredProducts.map(p => {
+                const idStr = (p._id || p.id).toString();
+                const isFav = favIds.includes(idStr);
+                return `
+                <div class="product-card glass animate-fade">
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
+                        <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}" 
+                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="product-details">
+                        <span class="product-tag">${p.tag || 'Design'}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                            <h3 style="font-weight: 600;">${p.name}</h3>
+                            <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
                         </div>
-                        <div class="product-details">
-                            <span class="product-tag">${p.tag || 'Design'}</span>
-                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                                <h3 style="font-weight: 600;">${p.name}</h3>
-                                <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
-                            </div>
-                            <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
-                            <button class="btn btn-primary add-to-basket" data-id="${idStr}" data-name="${p.name}" data-price="${p.price}" data-image="${p.imageUrl || ''}">Add to Basket</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-        });
-    }
+                        <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
+                        <button class="btn btn-primary add-to-basket" data-id="${idStr}" data-name="${p.name}" data-price="${p.price}" data-image="${p.imageUrl || ''}">Add to Basket</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    });
 
     // --- Product Pagination ---
     const productPaginationContainer = document.getElementById('product-pagination');
@@ -528,16 +500,8 @@ const _updateUIInternal = debounce(() => {
     }
 
     updateBasketUI();
-    updatePaginationUI();
 }, 200);
 
-function updatePaginationUI() {
-    const { pagination } = State._cache;
-    const indicator = document.getElementById('cust-orders-page-indicator');
-    if (indicator) {
-        indicator.innerText = `Page ${pagination.currentPage} of ${pagination.totalPages}`;
-    }
-}
 
 // Add date filter listener
 document.getElementById('history-date-filter')?.addEventListener('change', (e) => {

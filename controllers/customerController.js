@@ -13,36 +13,19 @@ exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
         
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 15; 
-        const skip = (page - 1) * limit;
-
-        const productPage = parseInt(req.query.productPage) || 1;
-        const productLimit = 15;
-        const productSkip = (productPage - 1) * productLimit;
-
-        let orders = [], currentUser = null, transactions = [], receipts = [], totalOrders = 0;
-
-        const productsPromise = Product.find()
-            .sort({ createdAt: -1 })
-            .skip(productSkip)
-            .limit(productLimit)
-            .select('name price tag imageUrl description') // Project only needed fields
-            .lean();
-        const totalProductsPromise = Product.countDocuments();
+        let orders = [], currentUser = null, transactions = [], receipts = [];
 
         if (userId) {
-            const [o, u, t, r, to] = await Promise.all([
-                Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(), // Fixed: Order uses userId
+            const [o, u, t, r] = await Promise.all([
+                Order.find({ userId }).sort({ date: -1 }).lean(), // Fetch everything (No pagination)
                 User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
-                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(), // Transaction uses userID
-                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(), // Receipt uses userID
-                Order.countDocuments({ userId }) // Fixed: Order uses userId
+                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).lean(),
+                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).lean()
             ]);
-            orders = o; currentUser = u; transactions = t; receipts = r; totalOrders = to;
+            orders = o; currentUser = u; transactions = t; receipts = r;
         }
 
-        const [products, totalProducts] = await Promise.all([productsPromise, totalProductsPromise]);
+        const products = await Product.find().sort({ createdAt: -1 }).lean(); // Fetch everything
 
         res.json({
             orders,
@@ -51,17 +34,7 @@ exports.getDashboardState = async (req, res) => {
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
             transactions,
-            receipts,
-            pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(totalOrders / limit),
-                totalOrders
-            },
-            productPagination: {
-                currentPage: productPage,
-                totalPages: Math.ceil(totalProducts / productLimit),
-                totalProducts
-            }
+            receipts
         });
     } catch (err) {
         console.error('getDashboardState error:', err);

@@ -101,26 +101,16 @@ const State = {
         pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 },
         lastUpdated: 0
     },
-    CACHE_DURATION: 30000, // 30 seconds
-    _syncPromise: null,
-    _prevCache: null, // For rollbacks
     async getDashboardState() {
-        const now = Date.now();
-        if (this._cache.lastUpdated && (now - this._cache.lastUpdated < this.CACHE_DURATION)) {
-            console.log('[State] Using cached admin state');
-            return this._cache;
-        }
-
         if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
-            console.log('[State] Refreshing dashboard state...');
+            console.log('[State] Fetching state...');
             try {
-                const page = this._cache.pagination.currentPage || 1;
-                const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
+                const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response.ok) {
                     const data = await response.json();
-                    this._cache = { ...this._cache, ...data, lastUpdated: Date.now() };
+                    this._cache = { ...this._cache, ...data };
                     return data;
                 }
             } catch (err) { console.error('Admin state error:', err); }
