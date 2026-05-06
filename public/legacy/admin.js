@@ -716,6 +716,7 @@ window.deleteUser = async (id) => {
 document.addEventListener('DOMContentLoaded', () => {
     const batchBtn = document.getElementById('admin-batch-update-btn');
     if (batchBtn) {
+        batchBtn.onclick = async () => {
             const status = document.getElementById('admin-batch-status').value;
             const selectedIds = Array.from(document.querySelectorAll('.admin-order-checkbox:checked')).map(cb => cb.dataset.id);
             if (!status || selectedIds.length === 0) return showToast('Select status and orders');
