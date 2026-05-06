@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshDashboardState();
             } else {
                 const errData = await res.json().catch(() => ({}));
-                showToast(`Error saving design: ${errData.error || errData.message || 'Unknown error'}`);
+                showToast(`Error ${res.status}: ${errData.error || errData.message || 'Unknown error'}`);
             }
         };
     }
