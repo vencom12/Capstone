@@ -76,10 +76,34 @@ graph TD
 
 ## Detailed Flows
 
-### 1. Authentication & Security
-- **JWT Persistence**: Tokens are stored in HttpOnly cookies (`token`, `admin_token`, etc.) to maintain session state.
-- **CSRF Protection**: A double-submit cookie pattern is used. The client fetches a token from `/api/auth/csrf-token` and must include it in the `X-CSRF-Token` header for state-changing requests (POST/PUT/DELETE).
-- **Socket Auth**: Socket.IO connections are authenticated by reading the JWT from the handshake cookies, allowing users to join private rooms (e.g., `user:<id>`) or role-based rooms (e.g., `staff`).
+### Summary of Accomplishments
+
+### 1. Security & Rate Limiting
+- **Hardened Endpoints**: Implemented strict rate limits for authentication and heavy dashboard state fetches in `server.js`.
+- **Authorization Verification**: Ensured all modular controllers enforce role-based access control.
+
+### 2. Architecture & Standardization
+- **API Versioning**: All requests now support `/api/v1/` routing for future-proofing.
+- **Unified Payloads**: Created `utils/apiConstants.js` to standardize `{ action, entity, payload }` schemas.
+- **Joi Validation**: Integrated schema validation for all incoming REST and Socket.IO payloads via `utils/validation.js`.
+
+### 3. Database Layer Optimization
+- **Advanced Indexing**: Deployed compound and covering indexes for `Order` and `Transaction` models to minimize disk lookups.
+- **Index Maintenance**: Created `extra_scripts/index_maintenance.js` for diagnostic monitoring of index performance.
+
+### 4. Backend & Real-time Efficiency
+- **Pagination & Lean Queries**: Enabled server-side pagination and `.lean()` queries for all dashboard views to reduce memory and payload sizes.
+- **Delta-based Synchronization**: Standardized Socket.IO to emit only granular data changes (deltas) instead of full document re-fetches.
+- **Observability**: Implemented `utils/logger.js` and `utils/socketUtil.js` to track socket payload sizes and event frequencies.
+
+### 5. Frontend UX Enhancements
+- **Perceived Performance**: Added glassmorphic skeleton loaders and pagination indicators for smooth data transitions.
+- **Resiliency**: Implemented optimistic UI updates with automatic rollback logic for status changes and wallet operations.
+- **Robust Sockets**: Configured Socket.IO with exponential backoff and reconnection strategies.
+
+### 6. Scalability Prototype
+- **Redis Adapter**: Integrated support for `@socket.io/redis-adapter` in `server.js` to enable horizontal scaling across multiple instances.
+- **Monitoring Hooks**: Added hooks for logging rollback triggers and payload size alerts.
 
 ### 2. Transactional Order Processing
 When a customer submits an order, the backend executes a **MongoDB Session Transaction** to ensure data integrity:
