@@ -238,7 +238,16 @@ function initSocket() {
         const socket = io(SOCKET_URL, { withCredentials: true });
         socket.on('ordersUpdated', () => {
             refreshDashboardState();
-            showToast('Incoming Transmission: New Order Received', 'success');
+            showToast('Incoming Transmission: Orders Synchronized', 'success');
+        });
+        socket.on('dataChanged', (data) => {
+            console.log('[Socket] Data changed:', data.entity, data.action);
+            if (data.entity === 'PRODUCT' || data.entity === 'INVENTORY') {
+                refreshDashboardState();
+                if (data.action === 'CREATE') {
+                    showToast(`New ${data.entity.toLowerCase()} added in real-time`);
+                }
+            }
         });
         socket.on('machineUpdate', (data) => {
             State._cache.machine = data;

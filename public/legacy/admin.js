@@ -402,6 +402,22 @@ function initSocket() {
         console.log('[Socket] Delta received:', data.action, data.entity);
         const { action, entity, payload } = data;
         
+        // Show user-friendly notification
+        if (entity === 'ORDER' && action === 'CREATE') {
+            showToast('New Customer Order Received!', 'success');
+        } else if (entity === 'PRODUCT' && action === 'CREATE') {
+            showToast('New Design successfully published!', 'success');
+        } else {
+            const entityLabel = entity.charAt(0) + entity.slice(1).toLowerCase();
+            if (action === 'CREATE') {
+                showToast(`New ${entityLabel} created successfully`, 'success');
+            } else if (action === 'DELETE') {
+                showToast(`${entityLabel} has been removed`, 'warning');
+            } else if (action === 'UPDATE' && entity === 'ORDER') {
+                showToast(`Order #${payload.orderId || 'Update'} status changed`, 'info');
+            }
+        }
+
         // Granular state update instead of full refresh when possible
         if (entity === 'ORDER' && action === 'UPDATE') {
             State._cache.orders = State._cache.orders.map(o => {
