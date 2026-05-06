@@ -396,51 +396,47 @@ function updateUI() {
             }).join('');
     });
 
-    // 3. Filter History (Activity Hub)
-    const historyDateFilter = State._cache.historyDateFilter;
-    let displayTransactions = transactions;
-    if (historyDateFilter) {
-        displayTransactions = transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp).toISOString().split('T')[0];
-            return txDate === historyDateFilter;
-        });
+    // 3. Update Tracking
+    const trackingList = document.querySelector('#tracking-list-container');
+    if (trackingList) {
+        if (orders.length === 0) {
+            trackingList.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-dim);"><p>No active orders.</p></div>';
+        } else {
+            trackingList.innerHTML = orders.map(order => `
+                <div class="glass animate-fade" style="padding: 32px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin-bottom: 4px;">Order #${order.orderId}</h3>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">${formatOrderDesign(order)}</p>
+                        </div>
+                        <span class="status-pill">${order.status}</span>
+                    </div>
+                    <div style="height: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+                        <div style="width: ${order.progress}%; height: 100%; background: var(--primary); box-shadow: 0 0 10px var(--primary-glow);"></div>
+                    </div>
+                    <p style="text-align: right; color: var(--text-dim); font-size: 0.85rem;">${order.progress}% Processed</p>
+                </div>
+            `).join('');
+        }
     }
 
     // 4. Update Favorites
     updateFavoritesGrid();
 
-    // 5. Update Activity Hub Table
+    // 5. Update History (Transactions)
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
-        historyTable.innerHTML = displayTransactions.length === 0
-            ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
-                ${historyDateFilter ? 'No activity found on this date.' : 'No activity found.'}
-               </td></tr>`
-            : displayTransactions.map(tx => {
+        historyTable.innerHTML = transactions.length === 0
+            ? '<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">No transactions found.</td></tr>'
+            : transactions.map(tx => {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
-                const order = orders.find(o => o.orderId === tx.orderID);
-                
-                // Enhanced status for orders
-                let statusHtml = `<span class="status-pill ${tx.status}">${tx.status}</span>`;
-                if (order && order.status !== 'Completed') {
-                    statusHtml = `
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span class="status-pill ${order.status.toLowerCase()}">${order.status}</span>
-                            <div style="width: 80px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
-                                <div style="width: ${order.progress}%; height: 100%; background: var(--primary);"></div>
-                            </div>
-                            <span style="font-size: 0.7rem; color: var(--text-dim);">${order.progress}% Processed</span>
-                        </div>
-                    `;
-                }
-
                 return `
                 <tr>
                     <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
                     <td data-label="Date">${new Date(tx.timestamp).toLocaleDateString()}</td>
                     <td data-label="Description">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A'}</td>
                     <td data-label="Amount" style="font-weight: 600;">$${tx.amount.toFixed(2)}</td>
-                    <td data-label="Status">${statusHtml}</td>
+                    <td data-label="Status"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2);">View</button>
