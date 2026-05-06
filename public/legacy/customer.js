@@ -9,6 +9,16 @@ window.onerror = function(msg, url, line, col, error) {
     return false;
 };
 
+// Utility: Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 let _csrfToken = null;
 
 // Helper: Secure API fetch wrapper
@@ -178,6 +188,7 @@ window.UI = UI;
 // --- State Management ---
 const State = {
     _cache: { orders: [], products: [], favorites: [], transactions: [], walletBalance: 0, searchQuery: '', selectedCategory: 'All' },
+    _syncPromise: null,
     getBasket() {
         const session = AuthManager.getSession();
         const key = session ? 'stitch_basket_' + (session.user.id || session.user._id) : 'stitch_basket_guest';
@@ -226,40 +237,53 @@ const State = {
         }
     },
     async getDashboardState() {
-        console.log('[State] Refreshing dashboard state...');
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
-        
-        try {
-            // Attempt primary fetch with a timeout
-            const response = await Promise.race([
-                apiFetch(`${API_URL}/dashboard-state`),
-                timeout
-            ]);
+        if (this._syncPromise) {
+            console.log('[State] Sync already in progress, attaching to existing promise...');
+            return this._syncPromise;
+        }
 
-            if (response && response.ok) {
-                const data = await response.json();
-                if (!AuthManager.isAuthenticated()) {
-                    data.favorites = []; data.orders = []; data.transactions = [];
+        this._syncPromise = (async () => {
+            console.log('[State] Refreshing dashboard state...');
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
+            
+            try {
+                // Attempt primary fetch with a timeout
+                const response = await Promise.race([
+                    apiFetch(`${API_URL}/dashboard-state`),
+                    timeout
+                ]);
+
+                if (response && response.ok) {
+                    const data = await response.json();
+                    if (!AuthManager.isAuthenticated()) {
+                        data.favorites = []; data.orders = []; data.transactions = [];
+                    }
+                    this._cache = { ...this._cache, ...data };
+                    return data;
                 }
-                this._cache = { ...this._cache, ...data };
-                return data;
+            } catch (err) {
+                console.warn('[State] Primary fetch failed or timed out, using fallback...');
             }
-        } catch (err) {
-            console.warn('[State] Primary fetch failed or timed out, using fallback...');
-        }
 
-        // FALLBACK: Always try to get products from the public API if primary fails
-        try {
-            const publicRes = await fetch('/api/products');
-            if (publicRes.ok) {
-                const products = await publicRes.json();
-                this._cache.products = products;
-                return { products };
+            // FALLBACK: Always try to get products from the public API if primary fails
+            try {
+                const publicRes = await fetch('/api/products');
+                if (publicRes.ok) {
+                    const products = await publicRes.json();
+                    this._cache.products = products;
+                    return { products };
+                }
+            } catch (err) {
+                console.error('[State] Critical Failure: Could not reach Atlas designs:', err);
             }
-        } catch (err) {
-            console.error('[State] Critical Failure: Could not reach Atlas designs:', err);
+            return null;
+        })();
+
+        try {
+            return await this._syncPromise;
+        } finally {
+            this._syncPromise = null;
         }
-        return null;
     },
 };
 
@@ -333,6 +357,10 @@ function updateBasketUI() {
 }
 
 function updateUI() {
+    _updateUIInternal();
+}
+
+const _updateUIInternal = debounce(() => {
     const basket = State.getBasket();
     const orders = State._cache.orders || [];
     const products = State._cache.products || [];
@@ -459,7 +487,7 @@ function updateUI() {
     }
 
     updateBasketUI();
-}
+}, 200);
 
 // Add date filter listener
 document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
@@ -706,11 +734,8 @@ const CheckoutManager = {
                 State.setBasket([]);
                 showToast(data.message || 'Order placed successfully!');
                 
-                // Refresh data in background
-                State.getDashboardState().then(() => {
-                    updateUI();
-                    updateSyncIndicator(false);
-                });
+                // Refresh data in background - Debounced sync will handle multiple events
+                silentCacheSync();
 
                 // Navigate to receipts section
                 const rcpNav = document.getElementById('nav-receipts');
@@ -742,9 +767,9 @@ async function refreshDashboardState() {
     updateSyncIndicator(false);
 }
 
-function silentCacheSync() {
+const silentCacheSync = debounce(() => {
     State.getDashboardState().then(() => updateUI());
-}
+}, 300);
 
 // --- Socket.IO Integration ---
 function initSocket() {
@@ -765,7 +790,6 @@ function setupSocketListeners() {
     socket.on('dataChanged', (data) => {
         if (data.type === 'wallet') {
             State._cache.walletBalance = data.balance;
-            updateUI();
         }
         silentCacheSync();
     });
