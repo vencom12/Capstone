@@ -21,9 +21,12 @@ exports.getDashboardState = async (req, res) => {
                 .limit(limit)
                 .lean(),
             Inventory.find().lean(),
-            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
+            Product.find().sort({ createdAt: -1 }).limit(20).lean(), 
             User.countDocuments(),
-            Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
+            Order.aggregate([
+                { $match: { paymentStatus: 'paid' } },
+                { $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }
+            ]),
             User.find({ role: 'admin' }).sort({ createdAt: -1 }).lean(),
             Order.countDocuments()
         ]);

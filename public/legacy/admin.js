@@ -96,23 +96,31 @@ const AuthManager = {
 };
 
 const State = {
-    _cache: { orders: [], users: [], inventory: [], products: [], analytics: null, pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 } },
+    _cache: { 
+        orders: [], users: [], inventory: [], products: [], analytics: null, 
+        pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 },
+        lastUpdated: 0
+    },
+    CACHE_DURATION: 30000, // 30 seconds
     _syncPromise: null,
     _prevCache: null, // For rollbacks
     async getDashboardState() {
-        if (this._syncPromise) {
-            console.log('[State] Sync already in progress, attaching to existing promise...');
-            return this._syncPromise;
+        const now = Date.now();
+        if (this._cache.lastUpdated && (now - this._cache.lastUpdated < this.CACHE_DURATION)) {
+            console.log('[State] Using cached admin state');
+            return this._cache;
         }
+
+        if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
             console.log('[State] Refreshing dashboard state...');
             try {
-                const page = this._cache.pagination.currentPage;
+                const page = this._cache.pagination.currentPage || 1;
                 const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
-                    this._cache = { ...this._cache, ...data };
+                    this._cache = { ...this._cache, ...data, lastUpdated: Date.now() };
                     return data;
                 }
             } catch (err) { console.error('Admin state error:', err); }
@@ -351,8 +359,7 @@ const _updateUIInternal = debounce(() => {
             </div>`).join('');
     }
 
-    // 5. Update Charts
-    updateCharts();
+    // 5. Removed redundant updateCharts() - now handled in refreshDashboardState
     updateAITip();
     updatePaginationUI();
 }, 250);
@@ -373,9 +380,16 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    await State.getDashboardState();
-    updateUI();
+    const data = await State.getDashboardState();
+    if (data) {
+        updateUI(); // Render tables immediately
+    }
     updateSyncIndicator(false);
+    
+    // Background tasks: Only run if we actually have a session
+    if (AuthManager.isAuthenticated()) {
+        updateCharts(); // This handles its own internal fetch
+    }
 }
 
 function initSocket() {
