@@ -237,37 +237,34 @@ const State = {
             }
         }
     },
+    CACHE_DURATION: 30000, // 30 seconds
     async getDashboardState() {
-        if (this._syncPromise) {
-            console.log('[State] Sync already in progress, attaching to existing promise...');
-            return this._syncPromise;
+        const now = Date.now();
+        if (this._cache.lastUpdated && (now - this._cache.lastUpdated < this.CACHE_DURATION)) {
+            console.log('[State] Using cached customer state');
+            return this._cache;
         }
+
+        if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
             console.log('[State] Refreshing dashboard state...');
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
-            
             try {
-                // Attempt primary fetch with a timeout
-                const page = this._cache.pagination.currentPage;
-                const response = await Promise.race([
-                    apiFetch(`${API_URL}/dashboard-state?page=${page}`),
-                    timeout
-                ]);
+                const page = this._cache.pagination.currentPage || 1;
+                const prodPage = (this._cache.productPagination || {}).currentPage || 1;
+                
+                const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}&productPage=${prodPage}`);
 
                 if (response && response.ok) {
                     const data = await response.json();
-                    if (!AuthManager.isAuthenticated()) {
-                        data.favorites = []; data.orders = []; data.transactions = [];
-                    }
-                    this._cache = { ...this._cache, ...data };
+                    this._cache = { ...this._cache, ...data, lastUpdated: Date.now() };
                     return data;
                 }
             } catch (err) {
-                console.warn('[State] Primary fetch failed or timed out, using fallback...');
+                console.error('[State] Refresh failed:', err);
             }
 
-            // FALLBACK: Always try to get products from the public API if primary fails
+            // FALLBACK: Try public products if authenticated fetch fails
             try {
                 const publicRes = await fetch('/api/products');
                 if (publicRes.ok) {
@@ -276,7 +273,7 @@ const State = {
                     return { products };
                 }
             } catch (err) {
-                console.error('[State] Critical Failure: Could not reach Atlas designs:', err);
+                console.error('[State] Fallback failed:', err);
             }
             return null;
         })();
@@ -286,8 +283,8 @@ const State = {
         } finally {
             this._syncPromise = null;
         }
-    },
-};
+    }
+},
 
 // Helper: Format order design field to show all items
 function formatOrderDesign(order) {

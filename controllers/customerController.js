@@ -13,22 +13,8 @@ exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
         
-        // If guest, only fetch products
-        if (!userId) {
-            const products = await Product.find().sort({ createdAt: -1 }).limit(100);
-            return res.json({
-                orders: [],
-                products,
-                favorites: [],
-                walletBalance: 0,
-                address: '',
-                transactions: [],
-                receipts: []
-            });
-        }
-
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 15; // User requested 15 per page
+        const limit = parseInt(req.query.limit) || 15; 
         const skip = (page - 1) * limit;
 
         const productPage = parseInt(req.query.productPage) || 1;
@@ -42,11 +28,11 @@ exports.getDashboardState = async (req, res) => {
 
         if (userId) {
             const [o, u, t, r, to] = await Promise.all([
-                Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+                Order.find({ userID: userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
                 User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
                 Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
                 Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
-                Order.countDocuments({ userId })
+                Order.countDocuments({ userID: userId })
             ]);
             orders = o; currentUser = u; transactions = t; receipts = r; totalOrders = to;
         }
