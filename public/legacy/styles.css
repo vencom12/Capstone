@@ -947,7 +947,7 @@ td {
     }
 
     /* Dim the background when drawer is open */
-    #nav-drawer-toggle:checked~.storefront-overlay {
+    #nav-drawer-toggle:checked~.dashboard-container .storefront-overlay {
         opacity: 1;
         visibility: visible;
         z-index: 100000 !important; /* Above bottom nav, below drawer */
