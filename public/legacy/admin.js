@@ -98,8 +98,7 @@ const AuthManager = {
 const State = {
     _cache: { 
         orders: [], users: [], inventory: [], products: [], analytics: null, 
-        pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 },
-        lastUpdated: 0
+         pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 }
     },
     async getDashboardState() {
         if (this._syncPromise) return this._syncPromise;
@@ -107,7 +106,8 @@ const State = {
         this._syncPromise = (async () => {
             console.log('[State] Fetching state...');
             try {
-                const response = await apiFetch(`${API_URL}/dashboard-state`);
+                const page = this._cache.pagination.currentPage || 1;
+                const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
                     console.log(`[Admin] Loaded ${data.users?.length || 0} users for staffing`);
@@ -350,9 +350,9 @@ const _updateUIInternal = debounce(() => {
             </div>`).join('');
     }
 
-    // 5. Removed redundant updateCharts() - now handled in refreshDashboardState
     updateAITip();
     updatePaginationUI();
+    updateCharts();
 }, 250);
 
 function updatePaginationUI() {
@@ -435,6 +435,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
+
+    // Pagination Listeners
+    document.getElementById('prev-orders-btn')?.addEventListener('click', () => {
+        if (State._cache.pagination.currentPage > 1) {
+            State._cache.pagination.currentPage--;
+            refreshDashboardState();
+        }
+    });
+
+    document.getElementById('next-orders-btn')?.addEventListener('click', () => {
+        if (State._cache.pagination.currentPage < State._cache.pagination.totalPages) {
+            State._cache.pagination.currentPage++;
+            refreshDashboardState();
+        }
+    });
 });
 
 // --- Analytics & Charts ---
