@@ -386,23 +386,31 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    console.log('[AdminState] Triggering parallel data refresh...');
+    console.log('[AdminState] Triggering optimized data refresh...');
     
-    // Fetch state and analytics in parallel to save time
-    const [stateData, analyticsData] = await Promise.all([
-        State.getDashboardState(),
-        apiFetch(`${API_URL}/analytics`).then(r => r.ok ? r.json() : null).catch(() => null)
-    ]);
-
+    // Fetch state first for immediate UI update
+    const stateData = await State.getDashboardState();
     if (stateData) {
-        if (analyticsData) State._cache.analytics = analyticsData;
         updateUI();
-        console.log('[AdminState] Parallel update complete.');
+        console.log('[AdminState] Initial UI updated, fetching analytics in background...');
+        
+        // Fetch analytics in background without blocking
+        apiFetch(`${API_URL}/analytics`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data) {
+                    State._cache.analytics = data;
+                    updateUI(); // Re-render with charts
+                    console.log('[AdminState] Analytics updated.');
+                }
+            })
+            .catch(e => console.warn('[AdminState] Analytics background fetch failed:', e))
+            .finally(() => updateSyncIndicator(false));
     } else {
-        console.error('[AdminState] Critical fetch failed.');
-        showToast('Performance Error: Data retrieval is taking too long. Please refresh.');
+        console.error('[AdminState] Dashboard state fetch failed.');
+        showToast('Error: Could not load dashboard data.');
+        updateSyncIndicator(false);
     }
-    updateSyncIndicator(false);
 }
 
 function initSocket() {

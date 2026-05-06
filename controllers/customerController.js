@@ -32,11 +32,11 @@ exports.getDashboardState = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const [orders, currentUser, transactions, products, receipts, totalOrders] = await Promise.all([
-            Order.find({ userId }).select('orderId design status progress totalAmount date items').sort({ date: -1 }).skip(skip).limit(limit).lean(),
-            User.findById(userId).select('favorites walletBalance address').populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
-            Transaction.find({ userID: userId }).select('transactionID type amount status timestamp').sort({ timestamp: -1 }).limit(20).lean(),
-            Product.find().select('name price tag imageUrl description').sort({ createdAt: -1 }).limit(40).lean(),
-            Receipt.find({ userID: userId }).select('receiptID timestamp amount').sort({ timestamp: -1 }).limit(20).lean(),
+            Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+            User.findById(userId).select('favorites walletBalance address').populate('favorites').lean(),
+            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
+            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
+            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
             Order.countDocuments({ userId })
         ]);
 

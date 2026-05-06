@@ -6,9 +6,9 @@ const Product = require('../models/Product');
 exports.getDashboardState = async (req, res) => {
     try {
         const [orders, inventory, products] = await Promise.all([
-            Order.find().select('orderId client design status progress date totalAmount items').sort({ date: -1 }).limit(40).lean(),
-            Inventory.find().select('name count').lean(),
-            Product.find().select('name price tag imageUrl').sort({ createdAt: -1 }).limit(20).lean()
+            Order.find().sort({ date: -1 }).limit(100).lean(),
+            Inventory.find().lean(),
+            Product.find().sort({ createdAt: -1 }).limit(100).lean()
         ]);
 
         res.json({
