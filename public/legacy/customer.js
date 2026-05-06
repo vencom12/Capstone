@@ -761,9 +761,23 @@ const CheckoutManager = {
         updateSyncIndicator(true);
 
         try {
+            // Filter basket items to ONLY include what the server validation (Joi) expects
+            const cleanedItems = this.currentBasket.map(item => ({
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity
+            }));
+
             const res = await apiFetch(`${API_URL}/order/submit`, {
                 method: 'POST',
-                body: JSON.stringify({ items: this.currentBasket, totalAmount: this.total, paymentMethod: this.selectedMethod, address, deliveryTime, notes })
+                body: JSON.stringify({ 
+                    items: cleanedItems, 
+                    totalAmount: this.total, 
+                    paymentMethod: this.selectedMethod, 
+                    address, 
+                    deliveryTime, 
+                    notes 
+                })
             });
             
             let data;
