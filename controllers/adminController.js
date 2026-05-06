@@ -24,7 +24,7 @@ exports.getDashboardState = async (req, res) => {
             Product.find().sort({ createdAt: -1 }).limit(100).lean(),
             User.countDocuments(),
             Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
-            User.find().select('-password').sort({ createdAt: -1 }).lean(),
+            User.find({ role: 'admin' }).sort({ createdAt: -1 }).lean(),
             Order.countDocuments()
         ]);
 

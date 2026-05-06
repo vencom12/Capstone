@@ -28,16 +28,21 @@ exports.getDashboardState = async (req, res) => {
         }
 
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const limit = parseInt(req.query.limit) || 15; // User requested 15 per page
         const skip = (page - 1) * limit;
 
-        const [orders, currentUser, transactions, products, receipts, totalOrders] = await Promise.all([
+        const productPage = parseInt(req.query.productPage) || 1;
+        const productLimit = 15;
+        const productSkip = (productPage - 1) * productLimit;
+
+        const [orders, currentUser, transactions, products, receipts, totalOrders, totalProducts] = await Promise.all([
             Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
-            User.findById(userId).select('favorites walletBalance address').populate('favorites').lean(),
-            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
-            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
-            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(50).lean(),
-            Order.countDocuments({ userId })
+            User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
+            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
+            Product.find().sort({ createdAt: -1 }).skip(productSkip).limit(productLimit).lean(),
+            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
+            Order.countDocuments({ userId }),
+            Product.countDocuments()
         ]);
 
         res.json({
