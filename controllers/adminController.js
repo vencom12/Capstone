@@ -28,7 +28,7 @@ exports.getDashboardState = async (req, res) => {
             orders,
             inventory,
             products,
-            users: adminUsers,
+            users: adminUsers || [],
             analytics: {
                 userCount: totalUsers,
                 revenue: totalRevenue[0]?.total || 0,
@@ -131,6 +131,8 @@ exports.getAnalytics = async (req, res) => {
                 { $sort: { _id: 1 } }
             ])
         ]);
+
+        console.log(`[Admin] Loaded ${adminUsers?.length || 0} users for staffing`);
 
         const revenue = totalStats.length > 0 ? totalStats[0].total : 0;
         const totalOrders = totalStats.length > 0 ? totalStats[0].count : 0;

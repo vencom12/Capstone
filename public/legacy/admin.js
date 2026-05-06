@@ -110,6 +110,7 @@ const State = {
                 const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log(`[Admin] Loaded ${data.users?.length || 0} users for staffing`);
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
