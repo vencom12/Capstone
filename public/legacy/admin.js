@@ -112,6 +112,7 @@ const State = {
                 const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('[State] Dashboard state received:', data);
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
@@ -189,13 +190,17 @@ async function apiFetch(url, options = {}) {
 }
 
 async function refreshCSRFToken() {
+    console.log('[Auth] Refreshing CSRF token...');
     try {
         const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             _csrfToken = data.csrfToken;
+            console.log('[Auth] CSRF token refreshed:', _csrfToken);
+        } else {
+            console.warn('[Auth] CSRF token refresh failed with status:', res.status);
         }
-    } catch (e) { console.error('CSRF Refresh failed', e); }
+    } catch (e) { console.error('[Auth] CSRF Refresh error:', e); }
 }
 
 // --- Global Sync Indicator ---
@@ -216,6 +221,7 @@ function updateUI() {
 }
 
 const _updateUIInternal = debounce(() => {
+    console.log('[AdminUI] Updating UI with cache:', State._cache);
     let { orders, users, inventory, products, analytics } = State._cache;
 
     // Apply Search Filtering/Sorting
@@ -373,8 +379,15 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    await State.getDashboardState();
-    updateUI();
+    console.log('[AdminState] Triggering dashboard state refresh...');
+    const data = await State.getDashboardState();
+    if (data) {
+        updateUI();
+        console.log('[AdminState] UI updated successfully.');
+    } else {
+        console.error('[AdminState] Failed to fetch dashboard state.');
+        showToast('Error: Failed to fetch dashboard data. Please try again.');
+    }
     updateSyncIndicator(false);
 }
 

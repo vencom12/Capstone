@@ -8,6 +8,7 @@ const Transaction = require('../models/Transaction');
 const SiteTraffic = require('../models/SiteTraffic');
 
 exports.getDashboardState = async (req, res) => {
+    console.log('[AdminController] Fetching dashboard state for page:', req.query.page);
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
@@ -46,6 +47,7 @@ exports.getDashboardState = async (req, res) => {
             }
         });
     } catch (err) {
+        console.error('[AdminController] Dashboard state error:', err);
         res.status(500).json({ message: 'Error fetching admin state' });
     }
 };
