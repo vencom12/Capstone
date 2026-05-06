@@ -11,8 +11,8 @@ const customerAuth = () => {
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            if (decoded.role !== 'customer') {
-                return res.status(403).json({ message: 'Access denied: Customers only' });
+            if (decoded.role !== 'customer' && decoded.role !== 'admin') {
+                return res.status(403).json({ message: 'Access denied' });
             }
             req.user = decoded;
             next();

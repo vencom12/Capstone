@@ -21,7 +21,7 @@ exports.getDashboardState = async (req, res) => {
                 { $match: { paymentStatus: 'paid' } },
                 { $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }
             ]),
-            User.find({ role: 'admin' }).sort({ createdAt: -1 }).lean()
+            User.find().sort({ role: 1, createdAt: -1 }).lean()
         ]);
 
         res.json({
