@@ -223,8 +223,11 @@ function initSocket() {
     const script = document.createElement('script');
     script.src = "/socket.io/socket.io.js";
     script.onload = () => {
-        const socket = io(SOCKET_URL, { credentials: 'include' });
-        socket.on('ordersUpdated', () => refreshDashboardState());
+        const socket = io(SOCKET_URL, { withCredentials: true });
+        socket.on('ordersUpdated', () => {
+            refreshDashboardState();
+            showToast('Incoming Transmission: New Order Received', 'success');
+        });
         socket.on('machineUpdate', (data) => {
             State._cache.machine = data;
             updateUI();
