@@ -290,6 +290,17 @@ app.post('/api/analytics/visit', async (req, res) => {
     } catch (err) { res.status(500).send(); }
 });
 
+// --- Global Error Handler ---
+app.use((err, req, res, next) => {
+    console.error('GLOBAL ERROR HANDLER:', err);
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+        message: 'Internal Server Error',
+        error: err.message || 'An unexpected error occurred',
+        stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack
+    });
+});
+
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`[OK] Server listening on port ${PORT}`);
