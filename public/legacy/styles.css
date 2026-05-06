@@ -953,6 +953,13 @@ td {
         z-index: 100000 !important; /* Above bottom nav, below drawer */
     }
 
+    /* Prevent overlay from blurring desktop dashboard */
+    @media (min-width: 769px) {
+        .dashboard-container .storefront-overlay {
+            display: none !important;
+        }
+    }
+
     .drawer-header {
         display: flex;
         justify-content: space-between;
