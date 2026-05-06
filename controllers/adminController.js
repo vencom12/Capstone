@@ -8,7 +8,6 @@ const Transaction = require('../models/Transaction');
 const SiteTraffic = require('../models/SiteTraffic');
 
 exports.getDashboardState = async (req, res) => {
-    console.log('[AdminController] Fetching dashboard state for page:', req.query.page);
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
@@ -16,6 +15,7 @@ exports.getDashboardState = async (req, res) => {
 
         const [orders, inventory, products, totalUsers, totalRevenue, adminUsers, totalOrders] = await Promise.all([
             Order.find()
+                .populate('transactionId receiptRef')
                 .sort({ date: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -24,7 +24,7 @@ exports.getDashboardState = async (req, res) => {
             Product.find().sort({ createdAt: -1 }).limit(100).lean(),
             User.countDocuments(),
             Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
-            User.find({ role: 'admin' }).select('-password').sort({ createdAt: -1 }).lean(),
+            User.find().select('-password').sort({ createdAt: -1 }).lean(),
             Order.countDocuments()
         ]);
 
@@ -46,7 +46,6 @@ exports.getDashboardState = async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('[AdminController] Dashboard state error:', err);
         res.status(500).json({ message: 'Error fetching admin state' });
     }
 };

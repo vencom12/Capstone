@@ -112,7 +112,6 @@ const State = {
                 const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('[State] Dashboard state received:', data);
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
@@ -189,26 +188,15 @@ async function apiFetch(url, options = {}) {
     return response;
 }
 
-    let _refreshPromise = null;
-    async function refreshCSRFToken() {
-        if (_refreshPromise) return _refreshPromise;
-        
-        _refreshPromise = (async () => {
-            console.log('[Auth] Refreshing CSRF token...');
-            try {
-                const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    _csrfToken = data.csrfToken;
-                    console.log('[Auth] CSRF token refreshed');
-                    return _csrfToken;
-                }
-            } catch (e) { console.error('[Auth] CSRF Refresh error:', e); }
-            finally { _refreshPromise = null; }
-            return null;
-        })();
-        return _refreshPromise;
-    }
+async function refreshCSRFToken() {
+    try {
+        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            _csrfToken = data.csrfToken;
+        }
+    } catch (e) { console.error('CSRF Refresh failed', e); }
+}
 
 // --- Global Sync Indicator ---
 let _syncCount = 0;
@@ -228,7 +216,6 @@ function updateUI() {
 }
 
 const _updateUIInternal = debounce(() => {
-    console.log('[AdminUI] Updating UI with cache:', State._cache);
     let { orders, users, inventory, products, analytics } = State._cache;
 
     // Apply Search Filtering/Sorting
@@ -386,31 +373,9 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    console.log('[AdminState] Triggering optimized data refresh...');
-    
-    // Fetch state first for immediate UI update
-    const stateData = await State.getDashboardState();
-    if (stateData) {
-        updateUI();
-        console.log('[AdminState] Initial UI updated, fetching analytics in background...');
-        
-        // Fetch analytics in background without blocking
-        apiFetch(`${API_URL}/analytics`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (data) {
-                    State._cache.analytics = data;
-                    updateUI(); // Re-render with charts
-                    console.log('[AdminState] Analytics updated.');
-                }
-            })
-            .catch(e => console.warn('[AdminState] Analytics background fetch failed:', e))
-            .finally(() => updateSyncIndicator(false));
-    } else {
-        console.error('[AdminState] Dashboard state fetch failed.');
-        showToast('Error: Could not load dashboard data.');
-        updateSyncIndicator(false);
-    }
+    await State.getDashboardState();
+    updateUI();
+    updateSyncIndicator(false);
 }
 
 function initSocket() {
@@ -525,14 +490,10 @@ function initCharts() {
 
 async function updateCharts() {
     try {
-        let data = State._cache.analytics;
-        
-        if (!data) {
-            const res = await apiFetch(`${API_URL}/analytics`);
-            if (!res.ok) return;
-            data = await res.json();
-            State._cache.analytics = data;
-        }
+        const res = await apiFetch(`${API_URL}/analytics`);
+        if (!res.ok) return;
+        const data = await res.json();
+        State._cache.analytics = data; // Save to cache for updateUI
         
         if (charts.trends && data.orderTrends) {
             charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
