@@ -189,19 +189,26 @@ async function apiFetch(url, options = {}) {
     return response;
 }
 
-async function refreshCSRFToken() {
-    console.log('[Auth] Refreshing CSRF token...');
-    try {
-        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            _csrfToken = data.csrfToken;
-            console.log('[Auth] CSRF token refreshed:', _csrfToken);
-        } else {
-            console.warn('[Auth] CSRF token refresh failed with status:', res.status);
-        }
-    } catch (e) { console.error('[Auth] CSRF Refresh error:', e); }
-}
+    let _refreshPromise = null;
+    async function refreshCSRFToken() {
+        if (_refreshPromise) return _refreshPromise;
+        
+        _refreshPromise = (async () => {
+            console.log('[Auth] Refreshing CSRF token...');
+            try {
+                const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    _csrfToken = data.csrfToken;
+                    console.log('[Auth] CSRF token refreshed');
+                    return _csrfToken;
+                }
+            } catch (e) { console.error('[Auth] CSRF Refresh error:', e); }
+            finally { _refreshPromise = null; }
+            return null;
+        })();
+        return _refreshPromise;
+    }
 
 // --- Global Sync Indicator ---
 let _syncCount = 0;
@@ -379,14 +386,21 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    console.log('[AdminState] Triggering dashboard state refresh...');
-    const data = await State.getDashboardState();
-    if (data) {
+    console.log('[AdminState] Triggering parallel data refresh...');
+    
+    // Fetch state and analytics in parallel to save time
+    const [stateData, analyticsData] = await Promise.all([
+        State.getDashboardState(),
+        apiFetch(`${API_URL}/analytics`).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    if (stateData) {
+        if (analyticsData) State._cache.analytics = analyticsData;
         updateUI();
-        console.log('[AdminState] UI updated successfully.');
+        console.log('[AdminState] Parallel update complete.');
     } else {
-        console.error('[AdminState] Failed to fetch dashboard state.');
-        showToast('Error: Failed to fetch dashboard data. Please try again.');
+        console.error('[AdminState] Critical fetch failed.');
+        showToast('Performance Error: Data retrieval is taking too long. Please refresh.');
     }
     updateSyncIndicator(false);
 }
@@ -503,10 +517,14 @@ function initCharts() {
 
 async function updateCharts() {
     try {
-        const res = await apiFetch(`${API_URL}/analytics`);
-        if (!res.ok) return;
-        const data = await res.json();
-        State._cache.analytics = data; // Save to cache for updateUI
+        let data = State._cache.analytics;
+        
+        if (!data) {
+            const res = await apiFetch(`${API_URL}/analytics`);
+            if (!res.ok) return;
+            data = await res.json();
+            State._cache.analytics = data;
+        }
         
         if (charts.trends && data.orderTrends) {
             charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);

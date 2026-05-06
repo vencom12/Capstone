@@ -16,16 +16,18 @@ exports.getDashboardState = async (req, res) => {
 
         const [orders, inventory, products, totalUsers, totalRevenue, adminUsers, totalOrders] = await Promise.all([
             Order.find()
-                .populate('transactionId receiptRef')
+                .select('orderId client design items status progress date totalAmount createdAt transactionId receiptRef')
+                .populate({ path: 'transactionId', select: 'transactionID' })
+                .populate({ path: 'receiptRef', select: 'receiptID' })
                 .sort({ date: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            Inventory.find().lean(),
-            Product.find().sort({ createdAt: -1 }).limit(100).lean(),
+            Inventory.find().select('name count').lean(),
+            Product.find().select('name price tag imageUrl').sort({ createdAt: -1 }).limit(20).lean(),
             User.countDocuments(),
             Order.aggregate([{ $group: { _id: null, total: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } }]),
-            User.find().select('-password').sort({ createdAt: -1 }).lean(),
+            User.find({ role: 'admin' }).select('username email role createdAt').sort({ createdAt: -1 }).lean(),
             Order.countDocuments()
         ]);
 
