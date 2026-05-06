@@ -2,20 +2,34 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const adminAuth = require('../middleware/adminAuth');
+const staffAuth = require('../middleware/staffAuth');
 const { validate, schemas } = require('../utils/validation');
+const multer = require('multer');
+const path = require('path');
 
-router.use(adminAuth());
+// Configure Multer for Product Images
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/'),
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
+});
 
-router.get('/dashboard-state', adminController.getDashboardState);
-router.get('/users', adminController.getAllUsers);
-router.post('/users', adminController.createUser);
-router.put('/users/:id', adminController.updateUser);
-router.delete('/users/:id', adminController.deleteUser);
-router.get('/analytics', adminController.getAnalytics);
-router.post('/orders/batch-status', validate(schemas.statusUpdate), adminController.updateOrdersStatus);
-router.post('/products', adminController.createProduct);
-router.patch('/products/:id', adminController.updateProduct);
-router.delete('/products/:id', adminController.deleteProduct);
-router.patch('/inventory/:id', adminController.updateInventoryItem);
+// --- Admin Only Routes ---
+router.get('/dashboard-state', adminAuth(), adminController.getDashboardState);
+router.get('/users', adminAuth(), adminController.getAllUsers);
+router.post('/users', adminAuth(), adminController.createUser);
+router.put('/users/:id', adminAuth(), adminController.updateUser);
+router.delete('/users/:id', adminAuth(), adminController.deleteUser);
+router.get('/analytics', adminAuth(), adminController.getAnalytics);
+
+// --- Staff (Admin + Employee) Routes ---
+router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), adminController.updateOrdersStatus);
+router.post('/products', staffAuth(), upload.single('image'), adminController.createProduct);
+router.patch('/products/:id', staffAuth(), upload.single('image'), adminController.updateProduct);
+router.delete('/products/:id', staffAuth(), adminController.deleteProduct);
+router.patch('/inventory/:id', staffAuth(), adminController.updateInventoryItem);
 
 module.exports = router;

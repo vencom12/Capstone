@@ -176,7 +176,13 @@ exports.getAnalytics = async (req, res) => {
 };
 exports.createProduct = async (req, res) => {
     try {
-        const { name, price, tag, description, imageUrl } = req.body;
+        const { name, price, tag, description } = req.body;
+        let imageUrl = req.body.imageUrl || '/icons/icon.ico';
+        
+        if (req.file) {
+            imageUrl = `/uploads/${req.file.filename}`;
+        }
+
         const newProduct = new Product({ name, price: parseFloat(price), tag, description, imageUrl });
         await newProduct.save();
         
@@ -189,9 +195,17 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const { name, price, tag, description, imageUrl } = req.body;
+        const { name, price, tag, description } = req.body;
+        const updateData = { name, price: parseFloat(price), tag, description };
+        
+        if (req.file) {
+            updateData.imageUrl = `/uploads/${req.file.filename}`;
+        } else if (req.body.imageUrl) {
+            updateData.imageUrl = req.body.imageUrl;
+        }
+
         const product = await Product.findByIdAndUpdate(req.params.id, 
-            { name, price: parseFloat(price), tag, description, imageUrl }, 
+            updateData, 
             { new: true }
         );
         if (!product) return res.status(404).json({ message: 'Product not found' });

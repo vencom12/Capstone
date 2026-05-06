@@ -209,6 +209,9 @@ app.use(express.static(path.join(__dirname, 'public', 'legacy'), { extensions: [
 // Fallback for assets in public root
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Root route serves the legacy storefront
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'legacy', 'index.html'));

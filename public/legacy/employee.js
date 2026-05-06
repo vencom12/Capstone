@@ -263,6 +263,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- Actions ---
+window.openCreateProduct = () => {
+    const form = document.getElementById('create-product-form');
+    if (form) {
+        form.reset();
+        delete form.dataset.editId;
+    }
+    const titleEl = document.querySelector('#create-product-modal h2');
+    if (titleEl) titleEl.innerText = 'Create New Design';
+    UI.toggleModal('create-product-modal');
+};
+
 window.openEditProduct = (id) => {
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
@@ -373,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = id ? `${API_URL}/products/${id}` : `${API_URL}/products`;
             const method = id ? 'PATCH' : 'POST';
             
-            const res = await fetch(url, {
+            const res = await apiFetch(url, {
                 method,
                 body: formData
             });

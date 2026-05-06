@@ -586,19 +586,46 @@ function updateAITip() {
 }
 
 // --- Product & Staff Actions ---
-window.createProduct = async (formData) => {
-    updateSyncIndicator(true);
+window.openCreateProduct = () => {
+    const form = document.getElementById('create-product-form');
+    if (form) {
+        form.reset();
+        delete form.dataset.editId;
+    }
+    const titleEl = document.querySelector('#create-product-modal h2');
+    if (titleEl) titleEl.innerText = 'Create New Design';
+    UI.toggleModal('create-product-modal');
+};
+
+window.createProduct = async () => {
     const formEl = document.getElementById('create-product-form');
-    const productId = formEl ? formEl.dataset.editId : null;
+    if (!formEl) return;
+
+    const productId = formEl.dataset.editId;
     const method = productId ? 'PATCH' : 'POST';
     const url = productId ? `${API_URL}/products/${productId}` : `${API_URL}/products`;
 
-    const res = await apiFetch(url, { method, body: JSON.stringify(formData) });
+    const formData = new FormData();
+    formData.append('name', document.getElementById('product-name').value);
+    formData.append('price', document.getElementById('product-price').value);
+    formData.append('tag', document.getElementById('product-tag').value);
+    formData.append('description', document.getElementById('product-desc').value);
+    
+    const imgFile = document.getElementById('product-image-file').files[0];
+    if (imgFile) formData.append('image', imgFile);
+
+    updateSyncIndicator(true);
+    const res = await apiFetch(url, { 
+        method, 
+        body: formData
+    });
     updateSyncIndicator(false);
+
     if (res.ok) {
         showToast(productId ? 'Product updated' : 'Product published');
         UI.toggleModal('create-product-modal');
-        if (formEl) delete formEl.dataset.editId;
+        formEl.reset();
+        delete formEl.dataset.editId;
         refreshDashboardState();
     } else {
         showToast('Error saving product');
@@ -651,23 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (productForm) {
         productForm.onsubmit = async (e) => {
             e.preventDefault();
-            const data = {
-                name: document.getElementById('product-name').value,
-                price: document.getElementById('product-price').value,
-                tag: document.getElementById('product-tag').value,
-                description: document.getElementById('product-desc').value
-            };
-            const editId = productForm.dataset.editId;
-            if (editId) {
-                const res = await apiFetch(`${API_URL}/products/${editId}`, { method: 'PATCH', body: JSON.stringify(data) });
-                if (res.ok) {
-                    showToast('Product updated');
-                    UI.toggleModal('create-product-modal');
-                    refreshDashboardState();
-                }
-            } else {
-                window.createProduct(data);
-            }
+            window.createProduct();
         };
     }
 
