@@ -882,6 +882,12 @@ window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.refreshDashboardState = refreshDashboardState;
 
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    initSocket();
+    refreshDashboardState();
+});
+
 
 
 

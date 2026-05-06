@@ -1147,19 +1147,16 @@ window.updateUI = updateUI;
 window.downloadReceipt = downloadReceipt;
 window.viewReceipt = viewReceipt;
 
-// Unified Date Filter Listener
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'history-date-filter') {
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+    initSocket();
+    
+    // Initial fetch to populate grid
+    refreshDashboardState();
+
+    // Unified Date Filter Listener
+    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
         State._cache.historyDateFilter = e.target.value;
         updateUI();
-    }
-});
-
-
-// Date filter listener
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'history-date-filter') {
-        State._cache.historyDateFilter = e.target.value;
-        updateUI();
-    }
+    });
 });
