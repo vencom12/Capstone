@@ -110,7 +110,6 @@ const State = {
                 const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`[Admin] Loaded ${data.users?.length || 0} users for staffing`);
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
@@ -289,7 +288,6 @@ const _updateUIInternal = debounce(() => {
             ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
             : orders.map(order => `
                 <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td><input type="checkbox" class="admin-order-checkbox" data-id="${order._id}"></td>
                     <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
                     <td>${order.client || 'Guest'}</td>
                     <td>${formatOrderDesign(order)}</td>

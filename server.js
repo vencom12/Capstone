@@ -222,15 +222,7 @@ app.get('/:page.html', (req, res) => {
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
 
 app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-        const duration = Date.now() - start;
-        if (duration > 1000) {
-            console.log(`[PERF WARNING] ${req.method} ${req.url} took ${duration}ms`);
-        } else {
-            console.log(`[${req.method}] ${req.url} - ${duration}ms`);
-        }
-    });
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
     next();
 });
 
