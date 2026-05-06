@@ -1165,10 +1165,10 @@ td {
     right: 0;
     bottom: 0;
     width: 380px !important;
-    z-index: 5000;
-    background: rgba(15, 23, 42, 0.9) !important;
-    backdrop-filter: blur(30px) !important;
-    -webkit-backdrop-filter: blur(30px) !important;
+    z-index: 100001;
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     transform: translateX(100%);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
     border-left: 1px solid var(--border-glass);
@@ -1183,7 +1183,7 @@ td {
 
 @media (max-width: 768px) {
     .storefront-drawer {
-        width: 85% !important;
+        width: 100% !important;
     }
 }
 
@@ -1193,12 +1193,12 @@ td {
 .storefront-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 4999;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100000;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.4s ease, visibility 0.4s ease;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer; backdrop-filter: blur(2px);
 }
 
 #nav-drawer-toggle:checked~.storefront-overlay {
@@ -1522,14 +1522,70 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 .product-grid { height: auto !important; overflow: visible !important; }
 /* --- Checkout & Wallet System Styles --- */
 .checkout-modal-content {
-    max-width: 650px !important;
+    width: 95% !important;
+    max-width: 750px !important;
+    max-height: 90vh !important;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important; /* Header and Grid will have internal padding */
+    overflow: hidden;
+}
+
+.checkout-modal-header {
+    padding: 24px 30px 16px;
+    border-bottom: 1px solid var(--border-glass);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .checkout-grid {
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
-    gap: 24px;
-    margin-top: 20px;
+    gap: 30px;
+    padding: 0 30px 30px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.checkout-right {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.checkout-right .checkout-section:last-of-type {
+    margin-bottom: 80px; /* Space for the fixed button */
+}
+
+@media (max-width: 768px) {
+    .checkout-modal-header {
+        padding: 16px 20px;
+    }
+    
+    .checkout-modal-header h2 {
+        font-size: 1.2rem !important;
+    }
+
+    .checkout-grid {
+        grid-template-columns: 1fr;
+        padding: 0 20px 20px;
+        gap: 20px;
+    }
+
+    .checkout-section-title {
+        font-size: 0.75rem !important;
+    }
+
+    .payment-method-btn {
+        padding: 8px 10px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .checkout-left, .checkout-right {
+        width: 100%;
+    }
 }
 
 
@@ -1593,13 +1649,39 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 .verification-status {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    padding: 12px 20px;
+    padding: 12px 15px;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-glass);
-    margin: 20px 0;
-    font-size: 0.9rem;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+}
+
+#place-order-btn {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    right: 30px;
+    width: calc(100% - 60px) !important;
+    z-index: 10;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    #place-order-btn {
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        width: calc(100% - 40px) !important;
+        padding: 14px !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .checkout-right .checkout-section:last-of-type {
+        margin-bottom: 70px;
+    }
 }
 
 .status-badge {
