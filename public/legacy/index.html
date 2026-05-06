@@ -335,17 +335,18 @@
                             </button>
                         </div>
                     </div>
-
                     <div class="verification-status">
                         <span>Payment Status:</span>
                         <span id="checkout-verification-badge" class="status-badge pending">Pending</span>
                     </div>
-
-                    <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary"
-                        style="opacity: 0.5; pointer-events: none;">
-                        Place Order
-                    </button>
                 </div>
+            </div>
+            
+            <div class="checkout-modal-footer">
+                <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary"
+                    style="opacity: 0.5; pointer-events: none;">
+                    Place Order
+                </button>
             </div>
             <div id="system-diagnostic" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
         <span>API: <b id="diag-api">Checking...</b></span>
