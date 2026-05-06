@@ -56,16 +56,24 @@ async function apiFetch(url, options = {}) {
     }
 }
 
+let _refreshPromise = null;
 async function refreshCSRFToken() {
-    try {
-        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            _csrfToken = data.csrfToken;
-            return _csrfToken;
-        }
-    } catch (e) { console.error('CSRF Refresh failed', e); }
-    return null;
+    if (_refreshPromise) return _refreshPromise;
+
+    _refreshPromise = (async () => {
+        console.log('[Auth] Refreshing CSRF token...');
+        try {
+            const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                _csrfToken = data.csrfToken;
+                return _csrfToken;
+            }
+        } catch (e) { console.error('CSRF Refresh failed', e); }
+        finally { _refreshPromise = null; }
+        return null;
+    })();
+    return _refreshPromise;
 }
 
 // --- Global Sync Indicator ---
