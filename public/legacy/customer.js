@@ -373,9 +373,17 @@ const _updateUIInternal = debounce(() => {
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     
     productGrids.forEach(grid => {
-        if (filteredProducts.length === 0) {
+        if (products.length === 0 && _syncCount > 0) {
+            grid.innerHTML = `
+                <div class="loader-cloud-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.3-1.7-4.2-4-4.5C17.1 6.5 14 4 10.5 4a7 7 0 0 0-6.8 5.4C2 10.1 1 12.2 1 14.5c0 3 2.5 5.5 5.5 5.5" />
+                    </svg>
+                    <p style="font-weight: 500; letter-spacing: 1px; color: var(--primary);">Synchronizing Catalog...</p>
+                </div>`;
+        } else if (filteredProducts.length === 0) {
             grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
-                <p>No designs found.</p>
+                <p>${State._cache.products ? 'No designs found for this search.' : 'Connecting to Stitch-Opt servers...'}</p>
                </div>`;
         } else {
             grid.innerHTML = filteredProducts.map(p => {
