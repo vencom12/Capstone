@@ -370,58 +370,66 @@ const _updateUIInternal = debounce(() => {
 
     // 1. Update Profile Info
     if (session) {
-        document.querySelectorAll('.profile-name').forEach(el => el.innerText = session.user.username);
+        const username = session.user.username;
+        document.querySelectorAll('.profile-name').forEach(el => {
+            if (el.innerText !== username) el.innerText = username;
+        });
+        
         const walletEl = document.getElementById('profile-wallet');
-        if (walletEl) walletEl.innerText = `$${walletBalance.toFixed(2)}`;
+        if (walletEl) {
+            const formattedBalance = `$${walletBalance.toFixed(2)}`;
+            if (walletEl.innerText !== formattedBalance) walletEl.innerText = formattedBalance;
+        }
     }
 
-    // 2. Update Catalog (Storefront & Shop)
+    // 2. Optimized Catalog Rendering
     const searchQuery = (State._cache.searchQuery || '').toLowerCase();
     const selectedCategory = State._cache.selectedCategory || 'All';
     
-    let filteredProducts = products.filter(p => {
+    const filteredProducts = products.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchQuery) || (p.description && p.description.toLowerCase().includes(searchQuery));
         const matchesCategory = selectedCategory === 'All' || p.tag === selectedCategory;
         return matchesSearch && matchesCategory;
     });
 
-    const favIds = favorites.map(f => f._id.toString());
-    const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
-    productGrids.forEach(grid => {
-        grid.innerHTML = filteredProducts.length === 0 
-            ? `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
-                <p>${products.length === 0 ? 'No designs found.' : 'No designs match your search.'}</p>
-               </div>`
-            : filteredProducts.map(p => {
-                const isFav = favIds.includes(p._id.toString());
-                return `
-                <div class="product-card glass animate-fade">
-                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                        <button class="fav-toggle-btn" 
-                            data-id="${p._id.toString()}" 
-                            data-fav="${isFav}" 
-                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                        </button>
-                    </div>
-                    <div class="product-details">
-                        <span class="product-tag">${p.tag || 'Design'}</span>
-                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-                            <h3 style="font-weight: 600;">${p.name}</h3>
-                            <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
+    // Only re-render grid if data/filters changed to prevent UI flicker and lag
+    const gridStateKey = `${filteredProducts.length}_${searchQuery}_${selectedCategory}_${State._cache.productPagination?.currentPage}`;
+    if (State._lastGridState !== gridStateKey) {
+        State._lastGridState = gridStateKey;
+        const favIds = favorites.map(f => (f._id || f.id)?.toString());
+        const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
+        
+        productGrids.forEach(grid => {
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
+                    <p>${products.length === 0 ? 'No designs found.' : 'No designs match your search.'}</p>
+                   </div>`;
+            } else {
+                grid.innerHTML = filteredProducts.map(p => {
+                    const idStr = (p._id || p.id).toString();
+                    const isFav = favIds.includes(idStr);
+                    return `
+                    <div class="product-card glass animate-fade">
+                        <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
+                            <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}" 
+                                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            </button>
                         </div>
-                        <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
-                        <button class="btn btn-primary add-to-basket" 
-                            data-id="${(p._id || p.id)?.toString()}"
-                            data-name="${p.name}"
-                            data-price="${p.price}"
-                            data-image="${p.imageUrl || ''}">
-                            Add to Basket
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
-    });
+                        <div class="product-details">
+                            <span class="product-tag">${p.tag || 'Design'}</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                                <h3 style="font-weight: 600;">${p.name}</h3>
+                                <span style="color: var(--primary); font-weight: 700; font-size: 1.1rem;">$${p.price.toFixed(2)}</span>
+                            </div>
+                            <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; margin-bottom: 20px;">${p.description || 'Professional embroidery design.'}</p>
+                            <button class="btn btn-primary add-to-basket" data-id="${idStr}" data-name="${p.name}" data-price="${p.price}" data-image="${p.imageUrl || ''}">Add to Basket</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        });
+    }
 
     // --- Product Pagination ---
     const productPaginationContainer = document.getElementById('product-pagination');
