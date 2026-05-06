@@ -10,22 +10,28 @@ const socketUtil = require('../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../utils/apiConstants');
 
 exports.getDashboardState = async (req, res) => {
+    const start = Date.now();
     try {
+        console.log('[DEBUG] getDashboardState started');
         const userId = req.user ? req.user.id : null;
         
         let orders = [], currentUser = null, transactions = [], receipts = [];
 
         if (userId) {
+            const dbStart = Date.now();
             const [o, u, t, r] = await Promise.all([
-                Order.find({ userId }).sort({ date: -1 }).lean(), // Fetch everything (No pagination)
+                Order.find({ userId }).sort({ date: -1 }).lean(),
                 User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
                 Transaction.find({ userID: userId }).sort({ timestamp: -1 }).lean(),
                 Receipt.find({ userID: userId }).sort({ timestamp: -1 }).lean()
             ]);
             orders = o; currentUser = u; transactions = t; receipts = r;
+            console.log(`[DEBUG] DB Queries took ${Date.now() - dbStart}ms`);
         }
 
-        const products = await Product.find().sort({ createdAt: -1 }).lean(); // Fetch everything
+        const prodStart = Date.now();
+        const products = await Product.find().sort({ createdAt: -1 }).lean();
+        console.log(`[DEBUG] Product Fetch took ${Date.now() - prodStart}ms`);
 
         res.json({
             orders,
@@ -36,6 +42,7 @@ exports.getDashboardState = async (req, res) => {
             transactions,
             receipts
         });
+        console.log(`[DEBUG] getDashboardState total took ${Date.now() - start}ms`);
     } catch (err) {
         console.error('getDashboardState error:', err);
         res.status(500).json({ message: 'Error fetching dashboard state' });

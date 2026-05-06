@@ -261,7 +261,7 @@ const State = {
             this._syncPromise = null;
         }
     }
-},
+};
 
 // Helper: Format order design field to show all items
 function formatOrderDesign(order) {
