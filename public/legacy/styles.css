@@ -1532,11 +1532,7 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     margin-top: 20px;
 }
 
-@media (max-width: 600px) {
-    .checkout-grid {
-        grid-template-columns: 1fr;
-    }
-}
+
 
 .checkout-summary-list {
     background: rgba(255, 255, 255, 0.03);
