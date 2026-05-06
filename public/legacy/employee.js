@@ -165,15 +165,23 @@ function updateUI() {
     if (tableBody) {
         const activeOrders = orders.filter(o => !['Order Delivered', 'Order Canceled'].includes(o.status));
         tableBody.innerHTML = activeOrders.length === 0
-            ? '<tr><td colspan="6" style="text-align:center; padding:40px;">No active orders.</td></tr>'
+            ? '<tr><td colspan="7" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>'
             : activeOrders.map(order => `
                 <tr>
-                    <td><input type="checkbox" class="order-checkbox" data-id="${order._id}"></td>
-                    <td>${order.orderId}</td>
+                    <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
                     <td>${order.client || 'Guest'}</td>
-                    <td>${formatOrderDesign(order)}</td>
+                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${formatOrderDesign(order)}">
+                        ${formatOrderDesign(order)}
+                    </td>
+                    <td style="color: var(--primary); font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${order.status}</span></td>
-                    <td><button class="btn" onclick="openEditOrder('${order._id}')">Process</button></td>
+                    <td style="color: var(--text-dim); font-size: 0.85rem;">${new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn" onclick="openEditOrder('${order._id}')" 
+                            style="background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); padding: 6px 12px; font-size: 0.8rem;">
+                            Process
+                        </button>
+                    </td>
                 </tr>`).join('');
     }
 
