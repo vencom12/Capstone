@@ -300,6 +300,15 @@ app.post('/api/analytics/visit', async (req, res) => {
 // --- Global Error Handler ---
 app.use((err, req, res, next) => {
     console.error('GLOBAL ERROR HANDLER:', err);
+    
+    // Specific handling for Multer (File Upload) errors
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+            message: 'Validation Error',
+            error: 'Image file is too large! Maximum allowed size is 2MB.'
+        });
+    }
+
     const status = err.status || err.statusCode || 500;
     res.status(status).json({
         message: 'Internal Server Error',
