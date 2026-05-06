@@ -181,12 +181,13 @@ function updateUI() {
     const productList = document.getElementById('product-list-container');
     if (productList) {
         productList.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px;">
+            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
                 <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
                 <div style="flex: 1;">
                     <h4 style="margin: 0;">${p.name}</h4>
                     <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                 </div>
+                <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
             </div>`).join('');
     }
 
@@ -251,6 +252,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- Actions ---
+window.openEditProduct = (id) => {
+    const p = State._cache.products.find(prod => prod._id === id);
+    if (!p) return;
+    
+    document.getElementById('product-name').value = p.name;
+    document.getElementById('product-price').value = p.price;
+    document.getElementById('product-tag').value = p.tag;
+    document.getElementById('product-desc').value = p.description || '';
+    
+    const form = document.getElementById('create-product-form');
+    if (form) form.dataset.editId = id;
+    
+    const titleEl = document.querySelector('#create-product-modal h2');
+    if (titleEl) titleEl.innerText = 'Customize Design';
+    
+    UI.toggleModal('create-product-modal');
+};
+
 window.openEditOrder = (id) => {
     const order = State._cache.orders.find(o => o._id === id);
     if (!order) return;
@@ -309,6 +328,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Order status updated');
                 UI.toggleModal('edit-order-modal');
                 refreshDashboardState();
+            }
+        };
+    }
+
+    // Product form submit
+    const productForm = document.getElementById('create-product-form');
+    if (productForm) {
+        productForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = productForm.dataset.editId;
+            const formData = new FormData();
+            formData.append('name', document.getElementById('product-name').value);
+            formData.append('price', document.getElementById('product-price').value);
+            formData.append('tag', document.getElementById('product-tag').value);
+            formData.append('description', document.getElementById('product-desc').value);
+            
+            const imgFile = document.getElementById('product-image-file').files[0];
+            if (imgFile) formData.append('image', imgFile);
+
+            updateSyncIndicator(true);
+            const url = id ? `${API_URL}/products/${id}` : `${API_URL}/products`;
+            const method = id ? 'PATCH' : 'POST';
+            
+            const res = await fetch(url, {
+                method,
+                body: formData
+            });
+            updateSyncIndicator(false);
+
+            if (res.ok) {
+                showToast(id ? 'Design updated' : 'Design created');
+                UI.toggleModal('create-product-modal');
+                productForm.reset();
+                delete productForm.dataset.editId;
+                refreshDashboardState();
+            } else {
+                showToast('Error saving design');
             }
         };
     }
