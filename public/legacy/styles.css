@@ -1554,20 +1554,29 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     gap: 8px;
 }
 
+.payment-methods-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
 .payment-method-btn {
     width: 100%;
     text-align: left;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-glass);
-    padding: 16px;
-    border-radius: 16px;
+    padding: 10px 12px;
+    border-radius: 12px;
     color: white;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 8px;
+    font-size: 0.8rem;
+    margin-bottom: 0;
 }
 
 .payment-method-btn:hover {
