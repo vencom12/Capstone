@@ -35,15 +35,23 @@ exports.getDashboardState = async (req, res) => {
         const productLimit = 15;
         const productSkip = (productPage - 1) * productLimit;
 
-        const [orders, currentUser, transactions, products, receipts, totalOrders, totalProducts] = await Promise.all([
-            Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
-            User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
-            Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
-            Product.find().sort({ createdAt: -1 }).skip(productSkip).limit(productLimit).lean(),
-            Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
-            Order.countDocuments({ userId }),
-            Product.countDocuments()
-        ]);
+        let orders = [], currentUser = null, transactions = [], receipts = [], totalOrders = 0;
+
+        const productsPromise = Product.find().sort({ createdAt: -1 }).skip(productSkip).limit(productLimit).lean();
+        const totalProductsPromise = Product.countDocuments();
+
+        if (userId) {
+            const [o, u, t, r, to] = await Promise.all([
+                Order.find({ userId }).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+                User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
+                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
+                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).limit(20).lean(),
+                Order.countDocuments({ userId })
+            ]);
+            orders = o; currentUser = u; transactions = t; receipts = r; totalOrders = to;
+        }
+
+        const [products, totalProducts] = await Promise.all([productsPromise, totalProductsPromise]);
 
         res.json({
             orders,
