@@ -435,13 +435,13 @@ function updateUI() {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
                 return `
                 <tr>
-                    <td data-label="Transaction ID" style="padding: 16px 24px; font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
-                    <td data-label="Date" style="padding: 16px 24px;">${new Date(tx.timestamp).toLocaleDateString()}</td>
-                    <td data-label="Description" style="padding: 16px 24px;">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A'}</td>
-                    <td data-label="Amount" style="padding: 16px 24px; font-weight: 600;">$${tx.amount.toFixed(2)}</td>
-                    <td data-label="Status" style="padding: 16px 24px;"><span class="status-pill ${tx.status}">${tx.status}</span></td>
-                    <td data-label="Actions" style="padding: 16px 24px;">
-                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
+                    <td data-label="Date">${new Date(tx.timestamp).toLocaleDateString()}</td>
+                    <td data-label="Description">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A'}</td>
+                    <td data-label="Amount" style="font-weight: 600;">$${tx.amount.toFixed(2)}</td>
+                    <td data-label="Status"><span class="status-pill ${tx.status}">${tx.status}</span></td>
+                    <td data-label="Actions">
+                        <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2);">View</button>
                             ${receipt ? `<button class="btn" onclick="downloadReceipt('${receipt.receiptID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981;">Download</button>` : ''}
                         </div>

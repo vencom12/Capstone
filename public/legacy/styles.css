@@ -1863,33 +1863,36 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     }
 
     .table-container tr {
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid var(--border-glass);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 10px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
 
     .table-container td {
         border: none;
-        position: relative;
-        padding: 10px 10px 10px 50% !important;
-        text-align: right !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 5px !important;
         font-size: 0.85rem;
-        min-height: 40px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .table-container td:last-child {
+        border-bottom: none;
+        padding-top: 15px !important;
     }
 
     .table-container td:before {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        width: 45%;
-        padding-right: 10px;
-        white-space: nowrap;
-        text-align: left;
+        content: attr(data-label);
         font-weight: 600;
         color: var(--text-dim);
-        content: attr(data-label);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 }
 
