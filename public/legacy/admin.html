@@ -509,7 +509,7 @@
                         <h1 style="font-size: 2rem;">Staff Management</h1>
                         <p style="color: var(--text-dim);">Manage administrative and production personnel access.</p>
                     </div>
-                    <button class="btn btn-primary" onclick="UI.toggleModal('staff-modal')">+ Create Staff
+                    <button class="btn btn-primary" onclick="window.openCreateStaff()">+ Create Staff
                         Account</button>
                 </header>
 
@@ -704,21 +704,33 @@
                     <input type="email" id="staff-email" placeholder="staff@stitchopt.com" required
                         style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
                 </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="input-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="staff-phone" placeholder="09XX XXX XXXX"
+                            style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                    </div>
+                    <div class="input-group">
+                        <label>Role</label>
+                        <select id="staff-role"
+                            style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; outline: none;">
+                            <option value="employee">Production Employee</option>
+                            <option value="admin">System Administrator</option>
+                            <option value="customer">External Client</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="input-group">
-                    <label>Password</label>
-                    <input type="password" id="staff-password" placeholder="••••••••"
+                    <label>Home Address</label>
+                    <input type="text" id="staff-address" placeholder="Unit, Street, City"
                         style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
                 </div>
                 <div class="input-group">
-                    <label>Role</label>
-                    <select id="staff-role"
-                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; outline: none;">
-                        <option value="employee">Production Employee</option>
-                        <option value="admin">System Administrator</option>
-                        <option value="customer">External Client</option>
-                    </select>
+                    <label id="staff-password-label">Password</label>
+                    <input type="password" id="staff-password" placeholder="••••••••"
+                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Establish Personnel
+                <button type="submit" id="staff-submit-btn" class="btn btn-primary" style="width: 100%; padding: 14px;">Establish Personnel
                     Account</button>
             </form>
         </div>

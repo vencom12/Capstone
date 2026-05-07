@@ -313,7 +313,12 @@ const _updateUIInternal = debounce(() => {
                     <td>${user.email}</td>
                     <td><span class="status-pill">${user.role}</span></td>
                     <td>${new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td><button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button></td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" onclick="openEditStaff('${user._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
+                            <button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
+                        </div>
+                    </td>
                 </tr>`).join('');
     }
 
@@ -705,22 +710,37 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Create Staff Form
+    // Create/Edit Staff Form
     const staffForm = document.getElementById('create-staff-form');
     if (staffForm) {
         staffForm.onsubmit = async (e) => {
             e.preventDefault();
+            const id = staffForm.dataset.editId;
             const data = {
                 username: document.getElementById('staff-username').value,
                 email: document.getElementById('staff-email').value,
                 password: document.getElementById('staff-password').value,
-                role: document.getElementById('staff-role').value
+                role: document.getElementById('staff-role').value,
+                phoneNumber: document.getElementById('staff-phone').value,
+                address: document.getElementById('staff-address').value
             };
-            const res = await apiFetch(`${API_URL}/users`, { method: 'POST', body: JSON.stringify(data) });
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/users/${id}` : `${API_URL}/users`;
+            
+            updateSyncIndicator(true);
+            const res = await apiFetch(url, { method, body: JSON.stringify(data) });
+            updateSyncIndicator(false);
+            
             if (res.ok) {
-                showToast('Personnel account established');
+                showToast(id ? 'Account updated successfully' : 'Personnel account established');
                 UI.toggleModal('staff-modal');
+                staffForm.reset();
+                delete staffForm.dataset.editId;
                 refreshDashboardState();
+            } else {
+                const err = await res.json();
+                showToast(err.message || 'Operation failed');
             }
         };
     }
@@ -922,6 +942,41 @@ window.viewReceipt = async (transactionID) => {
     } catch (err) {
         content.innerHTML = `<p style="color: #ef4444; text-align: center;">Error: ${err.message}</p>`;
     }
+};
+
+window.openCreateStaff = () => {
+    const form = document.getElementById('create-staff-form');
+    if (form) {
+        form.reset();
+        delete form.dataset.editId;
+        document.querySelector('#staff-modal h3').innerText = 'Create Staff Account';
+        document.getElementById('staff-submit-btn').innerText = 'Establish Personnel Account';
+        document.getElementById('staff-password-label').innerText = 'Password';
+        document.getElementById('staff-password').required = true;
+    }
+    UI.toggleModal('staff-modal');
+};
+
+window.openEditStaff = (id) => {
+    const user = State._cache.users.find(u => u._id === id);
+    if (!user) return showToast('User not found');
+
+    const form = document.getElementById('create-staff-form');
+    if (form) {
+        form.dataset.editId = id;
+        document.getElementById('staff-username').value = user.username || '';
+        document.getElementById('staff-email').value = user.email || '';
+        document.getElementById('staff-role').value = user.role || 'employee';
+        document.getElementById('staff-phone').value = user.phoneNumber || '';
+        document.getElementById('staff-address').value = user.address || '';
+        document.getElementById('staff-password').value = ''; // Don't show hashed password
+        
+        document.querySelector('#staff-modal h3').innerText = 'Edit Account Details';
+        document.getElementById('staff-submit-btn').innerText = 'Update Personnel Account';
+        document.getElementById('staff-password-label').innerText = 'Reset Password (Optional)';
+        document.getElementById('staff-password').required = false;
+    }
+    UI.toggleModal('staff-modal');
 };
 
 window.UI = UI;

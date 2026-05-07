@@ -105,6 +105,8 @@ exports.updateUser = async (req, res) => {
         if (username) user.username = username;
         if (email) user.email = email;
         if (role) user.role = role;
+        if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+        if (address !== undefined) user.address = address;
         if (password && password.trim() !== '') user.password = password;
 
         await user.save();
