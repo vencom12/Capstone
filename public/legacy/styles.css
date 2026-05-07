@@ -45,6 +45,24 @@ body {
         overflow-x: hidden !important;
         width: 100% !important;
     }
+
+    /* Mobile Performance Mode: Disable heavy effects */
+    .glass {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: #1e293b !important; /* Solid fallback */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .animate-fade, .animate-slide-up {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    * {
+        transition: none !important; /* Prevent laggy hover effects on touch */
+    }
 }
 
 /* Custom Scrollbar Styles */
