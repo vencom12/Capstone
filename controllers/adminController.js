@@ -189,7 +189,8 @@ exports.createProduct = async (req, res) => {
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
 
         if (req.file) {
-            imageUrl = `/uploads/${req.file.filename}`;
+            // Use Cloudinary secure URL
+            imageUrl = req.file.path;
         }
 
         const newProduct = new Product({ name, price: parseFloat(price), tag, description, imageUrl });
@@ -212,7 +213,8 @@ exports.updateProduct = async (req, res) => {
         const updateData = { name, price: parseFloat(price), tag, description };
 
         if (req.file) {
-            updateData.imageUrl = `/uploads/${req.file.filename}`;
+            // Use Cloudinary secure URL
+            updateData.imageUrl = req.file.path;
         } else if (req.body.imageUrl) {
             updateData.imageUrl = req.body.imageUrl;
         }

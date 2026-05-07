@@ -6,17 +6,10 @@ const employeeAuth = require('../middleware/employeeAuth');
 const multer = require('multer');
 const path = require('path');
 
-// Configure Multer for Product Images
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dest = path.join(process.cwd(), 'uploads');
-        cb(null, dest);
-    },
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
+const { storage } = require('../utils/cloudinary');
 const upload = multer({
     storage,
-    limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
 router.use(employeeAuth());
