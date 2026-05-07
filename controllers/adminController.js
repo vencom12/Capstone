@@ -102,11 +102,11 @@ exports.updateUser = async (req, res) => {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (username) user.username = username;
-        if (email) user.email = email;
-        if (role) user.role = role;
-        if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
-        if (address !== undefined) user.address = address;
+        if (username && username.trim() !== '') user.username = username;
+        if (email && email.trim() !== '') user.email = email;
+        if (role && role.trim() !== '') user.role = role;
+        if (phoneNumber && phoneNumber.trim() !== '') user.phoneNumber = phoneNumber;
+        if (address && address.trim() !== '') user.address = address;
         if (password && password.trim() !== '') user.password = password;
 
         await user.save();
