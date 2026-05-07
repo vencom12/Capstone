@@ -9,7 +9,7 @@ const path = require('path');
 // Configure Multer for Product Images
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dest = path.resolve(__dirname, '../uploads');
+        const dest = path.join(process.cwd(), 'uploads');
         cb(null, dest);
     },
     filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
