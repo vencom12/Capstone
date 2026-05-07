@@ -22,7 +22,7 @@ function showToast(message) {
 window.showToast = showToast;
 
 // Global Error Handler for remote debugging
-window.onerror = function(msg, url, line, col, error) {
+window.onerror = function (msg, url, line, col, error) {
     console.error('GLOBAL ERROR:', msg, 'at', line, ':', col, 'in', url);
     const source = url ? url.split('/').pop() : 'Unknown';
     showToast(`Runtime Error: ${msg} (${source}:${line})`);
@@ -32,7 +32,7 @@ window.onerror = function(msg, url, line, col, error) {
 // Utility: Debounce function
 function debounce(func, wait) {
     let timeout;
-    return function(...args) {
+    return function (...args) {
         const context = this;
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), wait);
@@ -65,15 +65,15 @@ const AuthManager = {
             } else {
                 return { success: false, message: data.message || 'Login failed' };
             }
-        } catch (err) { 
-            return { success: false, message: 'Connection error' }; 
+        } catch (err) {
+            return { success: false, message: 'Connection error' };
         }
     },
     async logout() {
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
         // Clear server session without waiting/looping
-        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
         window.location.href = 'index.html';
     },
     getSession() {
@@ -96,9 +96,9 @@ const AuthManager = {
 };
 
 const State = {
-    _cache: { 
-        orders: [], users: [], inventory: [], products: [], analytics: null, 
-         pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 }
+    _cache: {
+        orders: [], users: [], inventory: [], products: [], analytics: null,
+        pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 }
     },
     async getDashboardState() {
         if (this._syncPromise) return this._syncPromise;
@@ -143,7 +143,7 @@ async function apiFetch(url, options = {}) {
     }
 
     const performFetch = async () => {
-        const defaultHeaders = { 
+        const defaultHeaders = {
             'X-Requested-With': 'XMLHttpRequest'
         };
         if (_csrfToken) {
@@ -161,7 +161,7 @@ async function apiFetch(url, options = {}) {
     };
 
     let response = await performFetch();
-    
+
     if (response.status === 401) {
         if (!url.includes('/logout')) {
             console.warn('Unauthorized access detected, redirecting to login...');
@@ -182,7 +182,7 @@ async function apiFetch(url, options = {}) {
             }
         } catch (e) { /* Not JSON or other error */ }
     }
-    
+
     return response;
 }
 
@@ -219,8 +219,8 @@ const _updateUIInternal = debounce(() => {
     // Apply Search Filtering/Sorting
     const orderSearch = document.getElementById('admin-orders-search')?.value.toLowerCase();
     if (orderSearch) {
-        orders = orders.filter(o => 
-            o.orderId.toLowerCase().includes(orderSearch) || 
+        orders = orders.filter(o =>
+            o.orderId.toLowerCase().includes(orderSearch) ||
             (o.client && o.client.toLowerCase().includes(orderSearch)) ||
             (o.status && o.status.toLowerCase().includes(orderSearch))
         ).sort((a, b) => {
@@ -232,8 +232,8 @@ const _updateUIInternal = debounce(() => {
 
     const staffSearch = document.getElementById('admin-staff-search')?.value.toLowerCase();
     if (staffSearch) {
-        users = users.filter(u => 
-            u.username.toLowerCase().includes(staffSearch) || 
+        users = users.filter(u =>
+            u.username.toLowerCase().includes(staffSearch) ||
             u.email.toLowerCase().includes(staffSearch) ||
             u.role.toLowerCase().includes(staffSearch)
         ).sort((a, b) => {
@@ -245,8 +245,8 @@ const _updateUIInternal = debounce(() => {
 
     const productSearch = document.getElementById('admin-products-search')?.value.toLowerCase();
     if (productSearch) {
-        products = products.filter(p => 
-            p.name.toLowerCase().includes(productSearch) || 
+        products = products.filter(p =>
+            p.name.toLowerCase().includes(productSearch) ||
             p.tag.toLowerCase().includes(productSearch)
         ).sort((a, b) => {
             const aMatch = a.name.toLowerCase().startsWith(productSearch);
@@ -258,8 +258,8 @@ const _updateUIInternal = debounce(() => {
     const historySearch = document.getElementById('admin-history-search')?.value.toLowerCase();
     let historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
     if (historySearch) {
-        historyOrders = historyOrders.filter(o => 
-            o.orderId.toLowerCase().includes(historySearch) || 
+        historyOrders = historyOrders.filter(o =>
+            o.orderId.toLowerCase().includes(historySearch) ||
             (o.client && o.client.toLowerCase().includes(historySearch))
         ).sort((a, b) => {
             const aMatch = a.orderId.toLowerCase().startsWith(historySearch) || (a.client && a.client.toLowerCase().startsWith(historySearch));
@@ -272,7 +272,7 @@ const _updateUIInternal = debounce(() => {
     if (analytics) {
         const revEl = document.getElementById('overview-revenue');
         if (revEl) revEl.innerText = `$${parseFloat(analytics.revenue || 0).toFixed(2)}`;
-        
+
         // Low stock indicators (midnight/gold)
         const midnight = inventory.find(i => i.name.toLowerCase().includes('midnight'))?.count || 0;
         const gold = inventory.find(i => i.name.toLowerCase().includes('gold'))?.count || 0;
@@ -379,7 +379,7 @@ async function refreshDashboardState() {
         updateUI(); // Render tables immediately
     }
     updateSyncIndicator(false);
-    
+
     // Background tasks: Only run if we actually have a session
     if (AuthManager.isAuthenticated()) {
         updateCharts(); // This handles its own internal fetch
@@ -392,7 +392,7 @@ function initSocket() {
         setTimeout(initSocket, 500);
         return;
     }
-    const socket = io(SOCKET_URL, { 
+    const socket = io(SOCKET_URL, {
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: Infinity,
@@ -402,11 +402,11 @@ function initSocket() {
     });
 
     socket.on('connect', () => console.log('[Socket] Admin connection established.'));
-    
+
     socket.on('dataChanged', (data) => {
         console.log('[Socket] Delta received:', data.action, data.entity);
         const { action, entity, payload } = data;
-        
+
         // Show user-friendly notification
         if (entity === 'ORDER' && action === 'CREATE') {
             showToast('New Customer Order Received!', 'success');
@@ -447,10 +447,10 @@ function initSocket() {
 document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
     initCharts(); // Initialize charts on load
-    
+
     // Ensure CSRF token is present before first state fetch
     if (!_csrfToken) await refreshCSRFToken();
-    
+
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
@@ -478,7 +478,7 @@ function initCharts() {
         console.warn('Chart.js not loaded yet. Skipping chart initialization.');
         return;
     }
-    
+
     // Destroy existing charts to prevent "Canvas already in use" error
     Object.values(charts).forEach(chart => {
         if (chart && typeof chart.destroy === 'function') chart.destroy();
@@ -533,7 +533,7 @@ async function updateCharts() {
         if (!res.ok) return;
         const data = await res.json();
         State._cache.analytics = data; // Save to cache for updateUI
-        
+
         if (charts.trends && data.orderTrends) {
             charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
             charts.trends.data.datasets[0].data = data.orderTrends.map(t => t.revenue);
@@ -548,7 +548,7 @@ async function updateCharts() {
         // Update Stat Cards
         const visitsEl = document.getElementById('analytics-total-visits');
         if (visitsEl) visitsEl.innerText = (data.totalVisits || 0).toLocaleString();
-        
+
         const avgEl = document.getElementById('analytics-avg-order');
         if (avgEl) avgEl.innerText = `$${parseFloat(data.avgOrderValue || 0).toFixed(2)}`;
 
@@ -566,7 +566,7 @@ async function updateCharts() {
             charts.topOrdered.data.datasets[0].data = data.topOrdered.map(d => d.count);
             charts.topOrdered.update();
         }
-        
+
         if (charts.topLiked) {
             if (data.topLiked && data.topLiked.length > 0) {
                 charts.topLiked.data.labels = data.topLiked.map(d => d._id);
@@ -590,21 +590,69 @@ async function updateCharts() {
         }
     } catch (e) { console.error('Chart update error:', e); }
 }
-
 function updateAITip() {
-    const tipEl = document.querySelector('#ai-production-advice p:last-child');
-    if (!tipEl) return;
-    const lowStock = State._cache.inventory.filter(i => i.count < 10);
-    const pendingOrders = State._cache.orders.filter(o => o.status === 'In Queue').length;
+    const tipEl = document.getElementById('ai-main-tip');
+    const insightsContainer = document.getElementById('ai-insights-container');
+    if (!tipEl || !insightsContainer) return;
+
+    const orders = State._cache.orders || [];
+    const products = State._cache.products || [];
     
-    if (lowStock.length > 0) {
-        tipEl.innerText = `Stock Alert: ${lowStock[0].name} is running low (${lowStock[0].count} units). Restock recommended to avoid production delays.`;
-    } else if (pendingOrders > 5) {
-        tipEl.innerText = `Queue Alert: There are ${pendingOrders} orders waiting. Consider assigning more staff to the production line.`;
+    const pendingOrders = orders.filter(o => o.status === 'In Queue' || o.status === 'In Production');
+    const completedOrders = orders.filter(o => o.status === 'Completed' || o.status === 'Picked Up');
+    
+    // 1. Determine Main Tip
+    if (pendingOrders.length > 10) {
+        tipEl.innerText = `Revenue Alert: High volume detected. ${pendingOrders.length} orders are currently generating value in the queue.`;
+    } else if (pendingOrders.length > 0) {
+        tipEl.innerText = `Operational Health: Stable. You have ${pendingOrders.length} active orders moving through the system.`;
     } else {
-        tipEl.innerText = `Everything looks good! Production is running smoothly with current resources.`;
+        tipEl.innerText = `System Status: Ready. All orders have been fulfilled. Awaiting new designs or customer checkout.`;
     }
+
+    // 2. Build Insights Cards
+    const insights = [];
+
+    // Revenue Projection
+    const projectedRev = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+    insights.push(`
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Queued Revenue</p>
+            <p style="font-size: 0.85rem; color: #10b981; font-weight: 600;">$${projectedRev.toFixed(2)}</p>
+        </div>
+    `);
+
+    // Total Completed Sales
+    const totalSales = completedOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+    insights.push(`
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Realized Revenue</p>
+            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">$${totalSales.toFixed(2)}</p>
+        </div>
+    `);
+
+    // MVP Design
+    if (products.length > 0) {
+        const topProduct = products[0];
+        insights.push(`
+            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Top Catalog Design</p>
+                <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">${topProduct.name}</p>
+            </div>
+        `);
+    }
+
+    // Active Velocity
+    insights.push(`
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Order Velocity</p>
+            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">${pendingOrders.length} Active</p>
+        </div>
+    `);
+
+    insightsContainer.innerHTML = insights.join('');
 }
+
 
 // --- Product & Staff Actions ---
 window.openCreateProduct = () => {
@@ -631,13 +679,13 @@ window.createProduct = async () => {
     formData.append('price', document.getElementById('product-price').value);
     formData.append('tag', document.getElementById('product-tag').value);
     formData.append('description', document.getElementById('product-desc').value);
-    
+
     const imgFile = document.getElementById('product-image-file').files[0];
     if (imgFile) formData.append('image', imgFile);
 
     updateSyncIndicator(true);
-    const res = await apiFetch(url, { 
-        method, 
+    const res = await apiFetch(url, {
+        method,
         body: formData
     });
     updateSyncIndicator(false);
@@ -663,19 +711,19 @@ window.createProduct = async () => {
 window.editProduct = (id) => {
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
-    
+
     // Populate modal for editing
     document.getElementById('product-name').value = p.name;
     document.getElementById('product-price').value = p.price;
     document.getElementById('product-tag').value = p.tag;
     document.getElementById('product-desc').value = p.description || '';
-    
+
     const form = document.getElementById('create-product-form');
     if (form) form.dataset.editId = id;
-    
+
     const titleEl = document.querySelector('#create-product-modal h2');
     if (titleEl) titleEl.innerText = 'Edit Design';
-    
+
     UI.toggleModal('create-product-modal');
 };
 
@@ -700,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Product and Staff form logic
-    
+
     // Create Product Form
     const productForm = document.getElementById('create-product-form');
     if (productForm) {
@@ -724,14 +772,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 phoneNumber: document.getElementById('staff-phone').value,
                 address: document.getElementById('staff-address').value
             };
-            
+
             const method = id ? 'PUT' : 'POST';
             const url = id ? `${API_URL}/users/${id}` : `${API_URL}/users`;
-            
+
             updateSyncIndicator(true);
             const res = await apiFetch(url, { method, body: JSON.stringify(data) });
             updateSyncIndicator(false);
-            
+
             if (res.ok) {
                 showToast(id ? 'Account updated successfully' : 'Personnel account established');
                 UI.toggleModal('staff-modal');
@@ -750,13 +798,13 @@ document.addEventListener('DOMContentLoaded', () => {
 window.openEditOrder = (id) => {
     const order = State._cache.orders.find(o => o._id === id);
     if (!order) return;
-    
+
     document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
     document.getElementById('edit-order-client').value = order.client || '';
     document.getElementById('edit-order-design').value = formatOrderDesign(order);
     document.getElementById('edit-order-status').value = order.status;
     document.getElementById('edit-order-progress').value = order.progress;
-    
+
     // Highlight active status button
     document.querySelectorAll('.status-btn').forEach(btn => {
         if (btn.dataset.value === order.status) {
@@ -792,10 +840,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const status = document.getElementById('admin-batch-status').value;
             const selectedIds = Array.from(document.querySelectorAll('.admin-order-checkbox:checked')).map(cb => cb.dataset.id);
             if (!status || selectedIds.length === 0) return showToast('Select status and orders');
-            
+
             // Optimistic Update
             State._prevCache = JSON.parse(JSON.stringify(State._cache));
-            State._cache.orders = State._cache.orders.map(o => 
+            State._cache.orders = State._cache.orders.map(o =>
                 selectedIds.includes(o._id) ? { ...o, status } : o
             );
             updateUI();
@@ -806,7 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ ids: selectedIds, status })
             });
             updateSyncIndicator(false);
-            
+
             if (res.ok) {
                 showToast('Orders updated');
                 refreshDashboardState();
@@ -870,9 +918,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!status) return showToast('Please select a status');
 
             updateSyncIndicator(true);
-            const res = await apiFetch(`${API_URL}/orders/batch-status`, { 
-                method: 'POST', 
-                body: JSON.stringify({ ids: [id], status }) 
+            const res = await apiFetch(`${API_URL}/orders/batch-status`, {
+                method: 'POST',
+                body: JSON.stringify({ ids: [id], status })
             });
             updateSyncIndicator(false);
             if (res.ok) {
@@ -891,16 +939,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.viewReceipt = async (transactionID) => {
     if (!transactionID || transactionID === 'undefined') return showToast('No transaction found for this order');
-    
+
     UI.toggleModal('receipt-modal');
     const content = document.getElementById('receipt-content');
     content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
-    
+
     try {
         const res = await apiFetch(`/api/payments/receipt/${transactionID}`);
         if (!res.ok) throw new Error('Failed to fetch receipt');
         const data = await res.json();
-        
+
         content.innerHTML = `
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; border: 1px solid var(--border-glass);">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
@@ -970,7 +1018,7 @@ window.openEditStaff = (id) => {
         document.getElementById('staff-phone').value = user.phoneNumber || '';
         document.getElementById('staff-address').value = user.address || '';
         document.getElementById('staff-password').value = ''; // Don't show hashed password
-        
+
         document.querySelector('#staff-modal h3').innerText = 'Edit Account Details';
         document.getElementById('staff-submit-btn').innerText = 'Update Personnel Account';
         document.getElementById('staff-password-label').innerText = 'Reset Password (Optional)';
