@@ -98,7 +98,7 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
     try {
-        const { username, email, role, password } = req.body;
+        const { username, email, role, password, phoneNumber, address } = req.body;
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
