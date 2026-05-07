@@ -340,10 +340,10 @@ const _updateUIInternal = debounce(() => {
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {
         productGrid.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
-                <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
+            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
+                <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
                 <div style="flex: 1;">
-                    <h4 style="margin: 0;">${p.name}</h4>
+                    <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
                     <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                 </div>
                 <div style="display: flex; gap: 8px;">

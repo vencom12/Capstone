@@ -16,7 +16,7 @@ exports.getDashboardState = async (req, res) => {
         const [orders, inventory, products, totalUsers, totalRevenue, adminUsers, totalOrders, trafficData] = await Promise.all([
             Order.find().populate('transactionId receiptRef').sort({ date: -1 }).skip(skip).limit(limit).lean(),
             Inventory.find().lean(),
-            Product.find().sort({ createdAt: -1 }).lean(), 
+            Product.find().sort({ createdAt: -1 }).lean(),
             User.countDocuments(),
             Order.aggregate([
                 { $match: { paymentStatus: 'paid' } },
@@ -30,13 +30,15 @@ exports.getDashboardState = async (req, res) => {
         // Calculate Analytics Trends for Charts
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
+
         const revenueTrend = await Order.aggregate([
             { $match: { date: { $gte: sevenDaysAgo }, paymentStatus: 'paid' } },
-            { $group: { 
-                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } }, 
-                revenue: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } 
-            }},
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                    revenue: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } }
+                }
+            },
             { $sort: { _id: 1 } }
         ]);
 
@@ -158,10 +160,12 @@ exports.getAnalytics = async (req, res) => {
             // Site Traffic: daily visits for last 30 days
             SiteTraffic.aggregate([
                 { $match: { timestamp: { $gte: thirtyDaysAgo } } },
-                { $group: {
-                    _id: { $dateToString: { format: "%m/%d", date: "$timestamp" } },
-                    count: { $sum: 1 }
-                }},
+                {
+                    $group: {
+                        _id: { $dateToString: { format: "%m/%d", date: "$timestamp" } },
+                        count: { $sum: 1 }
+                    }
+                },
                 { $sort: { _id: 1 } }
             ])
         ]);
@@ -183,14 +187,14 @@ exports.createProduct = async (req, res) => {
     try {
         const { name, price, tag, description } = req.body;
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
-        
+
         if (req.file) {
             imageUrl = `/uploads/${req.file.filename}`;
         }
 
         const newProduct = new Product({ name, price: parseFloat(price), tag, description, imageUrl });
         await newProduct.save();
-        
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, newProduct);
         res.json({ message: 'Product created', product: newProduct });
     } catch (err) {
@@ -206,19 +210,19 @@ exports.updateProduct = async (req, res) => {
     try {
         const { name, price, tag, description } = req.body;
         const updateData = { name, price: parseFloat(price), tag, description };
-        
+
         if (req.file) {
             updateData.imageUrl = `/uploads/${req.file.filename}`;
         } else if (req.body.imageUrl) {
             updateData.imageUrl = req.body.imageUrl;
         }
 
-        const product = await Product.findByIdAndUpdate(req.params.id, 
-            updateData, 
+        const product = await Product.findByIdAndUpdate(req.params.id,
+            updateData,
             { new: true }
         );
         if (!product) return res.status(404).json({ message: 'Product not found' });
-        
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, product);
         res.json({ message: 'Product updated', product });
     } catch (err) {
@@ -230,7 +234,7 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
     try {
         await Product.findByIdAndDelete(req.params.id);
-        
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.PRODUCT, { id: req.params.id });
         res.json({ message: 'Product deleted' });
     } catch (err) {
@@ -246,7 +250,7 @@ exports.updateInventoryItem = async (req, res) => {
             { count, lastUpdated: Date.now() },
             { new: true }
         );
-        
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, inventory);
         res.json(inventory);
     } catch (err) {
@@ -276,7 +280,7 @@ exports.updateOrdersStatus = async (req, res) => {
         );
 
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status, progress });
-        
+
         res.json({ message: 'Orders updated successfully' });
     } catch (err) {
         console.error('updateOrdersStatus error:', err);
