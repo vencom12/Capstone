@@ -57,10 +57,11 @@ body {
     }
 
     /* Disable blur on rows specifically (the biggest performance killers) */
-    tr, .stat-card {
+    tr, .stat-card, canvas {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         background: rgba(30, 41, 59, 0.9) !important;
+        transform: translateZ(0); /* Force GPU paint for overview cards and charts */
     }
 
     /* Keep glass on main containers but with reduced intensity */
