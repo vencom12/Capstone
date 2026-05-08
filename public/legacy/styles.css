@@ -54,19 +54,33 @@ body {
     .table-container {
         -webkit-overflow-scrolling: touch; 
         transform: translateZ(0); 
+        will-change: transform; /* Aggressive hint for modern browsers */
+        background: #1e293b !important; /* Solid, reliable background */
+        border-radius: 12px;
     }
 
-    /* Disable blur on rows specifically (the biggest performance killers) */
+    /* Standardize rows for speed - No transparency layering on mobile */
     tr, .stat-card, canvas {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        background: rgba(30, 41, 59, 0.9) !important;
-        transform: translateZ(0); /* Force GPU paint for overview cards and charts */
+        background: transparent !important;
+        transform: translateZ(0);
+        will-change: transform;
     }
 
-    /* Keep glass on main containers but with reduced intensity */
+    /* Ensure table content is prioritized */
+    table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Keep glass on main outer containers only */
     .glass {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        overflow: visible !important;
     }
 }
 
