@@ -208,13 +208,21 @@ const State = {
         try {
             const rawBasket = saved ? JSON.parse(saved) : [];
             // Hydrate the minimal stored data with full product details from cache
-            return rawBasket.map(item => {
-                const product = (State._cache.products || []).find(p => (p._id || p.id)?.toString() === item.productId);
+            return rawBasket.map(function(item) {
+                var products = State._cache.products || [];
+                var product = null;
+                for (var i = 0; i < products.length; i++) {
+                    var p = products[i];
+                    var pid = (p._id || p.id || '').toString();
+                    if (pid === item.productId) { product = p; break; }
+                }
                 return {
-                    ...item,
-                    name: product?.name || item.name || 'Unknown Product',
-                    price: product?.price || item.price || 0,
-                    imageUrl: product?.imageUrl || item.imageUrl || ''
+                    id: item.id,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    name: (product && product.name) || item.name || 'Product',
+                    price: (product && product.price) || item.price || 0,
+                    imageUrl: (product && product.imageUrl) || item.imageUrl || ''
                 };
             });
         } catch (e) {
@@ -408,7 +416,10 @@ const _updateUIInternal = debounce(() => {
         return matchesSearch && matchesCategory;
     });
 
-    const favIds = favorites.map(f => (f._id || f.id)?.toString());
+    var favIds = favorites.map(function(f) { 
+        var id = f._id || f.id;
+        return id ? id.toString() : '';
+    });
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     
     productGrids.forEach(grid => {
@@ -531,8 +542,15 @@ const _updateUIInternal = debounce(() => {
                 ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
                     ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
                    </td></tr>`
-                : displayTransactions.map(tx => {
-                    const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
+                : displayTransactions.map(function(tx) {
+                    var receipts = State._cache.receipts || [];
+                    var receipt = null;
+                    for (var i = 0; i < receipts.length; i++) {
+                        var r = receipts[i];
+                        if (r.transactionID === tx.transactionID || r.orderID === tx.orderID) {
+                            receipt = r; break;
+                        }
+                    }
                 return `
                 <tr>
                     <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
@@ -626,11 +644,13 @@ function updateFavoritesGrid() {
     if (favsGrid) {
         favsGrid.innerHTML = favorites.length === 0
             ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
-            : favorites.map(p => `
+            : favorites.map(function(p) { 
+                var pid = (p._id || p.id || '').toString();
+                return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
                          <button class="fav-toggle-btn" 
-                            data-id="${p._id.toString()}" 
+                            data-id="${pid}" 
                             data-fav="true" 
                             style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -660,7 +680,9 @@ const CheckoutManager = {
         const modal = document.getElementById('checkout-modal');
         if (!modal) return;
 
-        document.getElementById('checkout-address').value = AuthManager.getSession()?.user.address || '';
+        var session = AuthManager.getSession();
+        var userAddr = (session && session.user && session.user.address) || '';
+        document.getElementById('checkout-address').value = userAddr;
         document.getElementById('checkout-total-price').innerText = `$${this.total.toFixed(2)}`;
         document.getElementById('checkout-wallet-balance').innerText = `$${(State._cache.walletBalance || 0).toFixed(2)}`;
         
@@ -849,10 +871,19 @@ async function refreshDashboardState() {
 
     // 2. Fetch fresh data in the background
     try {
-        const data = await State.getDashboardState();
+        var data = await State.getDashboardState();
         if (data) {
-            // 3. Update UI again once fresh data arrives
             updateUI();
+            // Heartbeat check: If we're on a dashboard page but data seems missing (orders/favs), retry once
+            if (window.location.pathname.includes('user.html') && 
+                (!data.orders || data.orders.length === 0) && 
+                AuthManager.isAuthenticated()) {
+                console.log('[Heartbeat] Retrying sync for session persistence...');
+                setTimeout(async function() {
+                    var fresh = await State.getDashboardState(1);
+                    if (fresh) updateUI();
+                }, 800;
+            }
         }
     } catch (e) {
         console.error('Refresh failed', e);
