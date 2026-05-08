@@ -46,19 +46,26 @@ body {
         width: 100% !important;
     }
 
-    /* High-Performance Glass for Mobile */
-    :root {
-        --glass-blur: blur(4px) !important; /* Lighter blur = Much faster scrolling */
+    /* Safe & Stable Mobile Mode */
+    * {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        transform: none !important; /* Kill the GPU layer conflicts */
+        will-change: auto !important;
     }
 
     .table-container {
-        -webkit-overflow-scrolling: touch; 
         overflow-x: auto !important;
-        transform: translateZ(0); 
+        -webkit-overflow-scrolling: touch;
+        background: #1e293b !important; /* Solid, no-fail background */
+        padding: 12px !important;
+        border-radius: 12px;
     }
 
-    tr, .stat-card, canvas {
-        transform: translateZ(0);
+    .glass {
+        background: #1e293b !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
     }
 }
 
