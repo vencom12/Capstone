@@ -661,7 +661,8 @@ function updateFavoritesGrid() {
                         <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
                         <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
     }
 }
 // --- Checkout Manager ---
