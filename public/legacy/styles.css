@@ -59,6 +59,19 @@ body {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
         padding: 12px !important;
+        display: block !important; /* Ensure container allows scrolling */
+    }
+
+    table {
+        display: table !important; /* Force table format */
+        min-width: 700px !important; /* Force horizontal expansion */
+        border-collapse: collapse !important;
+    }
+
+    th, td {
+        display: table-cell !important;
+        padding: 12px !important;
+        white-space: nowrap !important; /* Prevent text wrapping from breaking layout */
     }
 
     .glass {

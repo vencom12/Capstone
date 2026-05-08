@@ -100,11 +100,11 @@ const State = {
         orders: [], users: [], inventory: [], products: [], analytics: null,
         pagination: { currentPage: 1, totalPages: 1, totalOrders: 0 }
     },
-    async getDashboardState() {
+    async getDashboardState(retries = 3) {
         if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
-            console.log('[State] Fetching state...');
+            console.log(`[State] Fetching state (Attempts left: ${retries})...`);
             try {
                 const page = this._cache.pagination.currentPage || 1;
                 const response = await apiFetch(`${API_URL}/dashboard-state?page=${page}`);
@@ -113,7 +113,21 @@ const State = {
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
-            } catch (err) { console.error('Admin state error:', err); }
+
+                if (retries > 0) {
+                    console.warn(`[State] Admin server busy, retrying... (${retries} left)`);
+                    await new Promise(r => setTimeout(r, 1000));
+                    this._syncPromise = null;
+                    return this.getDashboardState(retries - 1);
+                }
+            } catch (err) { 
+                console.error('Admin state error:', err);
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    this._syncPromise = null;
+                    return this.getDashboardState(retries - 1);
+                }
+            }
             return null;
         })();
 

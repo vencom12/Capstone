@@ -237,20 +237,34 @@ const State = {
             }
         }
     },
-    async getDashboardState() {
+    async getDashboardState(retries = 3) {
         if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
-            console.log('[State] Fetching state...');
+            console.log(`[State] Fetching state (Attempts left: ${retries})...`);
             try {
                 const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response && response.ok) {
                     const data = await response.json();
                     this._cache = { ...this._cache, ...data };
+                    console.log('[State] Dashboard state synchronized.');
                     return data;
+                }
+                
+                // If response is not ok (e.g., 503 or 502 from Render), try again
+                if (retries > 0) {
+                    console.warn(`[State] Server busy, retrying in 1s... (${retries} left)`);
+                    await new Promise(r => setTimeout(r, 1000));
+                    this._syncPromise = null; // Reset to allow retry
+                    return this.getDashboardState(retries - 1);
                 }
             } catch (err) {
                 console.error('[State] Fetch failed:', err);
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    this._syncPromise = null;
+                    return this.getDashboardState(retries - 1);
+                }
             }
             return null;
         })();
