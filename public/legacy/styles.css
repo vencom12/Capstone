@@ -46,14 +46,27 @@ body {
         width: 100% !important;
     }
 
-    /* Mobile Optimization: Keeping GPU hints but restoring effects */
+    /* High-Performance Glass for Mobile */
+    :root {
+        --glass-blur: blur(4px) !important; /* Lighter blur = Much faster scrolling */
+    }
+
     .table-container {
         -webkit-overflow-scrolling: touch; 
         transform: translateZ(0); 
     }
 
-    /* Note: We are no longer disabling backdrop-filter or animations globally 
-       to allow the premium effects to return on high-end mobile devices. */
+    /* Disable blur on rows specifically (the biggest performance killers) */
+    tr, .stat-card {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(30, 41, 59, 0.9) !important;
+    }
+
+    /* Keep glass on main containers but with reduced intensity */
+    .glass {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    }
 }
 
 /* Custom Scrollbar Styles */
