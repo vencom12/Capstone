@@ -1979,6 +1979,12 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
         padding: 14px !important;
         font-size: 0.9rem !important;
     }
+
+    .modal-overlay {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(0, 0, 0, 0.85) !important;
+    }
 }
 
 .status-badge {
@@ -2057,4 +2063,22 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 .toast.show {
     transform: translateY(0);
     opacity: 1;
+}
+
+/* Final Rendering Optimizations for Mobile GPU Stability */
+@media (max-width: 768px) {
+    :root {
+        --glass-blur: blur(6px) !important;
+    }
+    .modal-overlay {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(0, 0, 0, 0.85) !important;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+    }
+    .modal-content.glass, .modal.glass {
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+    }
 }
