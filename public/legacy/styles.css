@@ -46,23 +46,14 @@ body {
         width: 100% !important;
     }
 
-    /* Mobile Performance Mode: Disable heavy effects */
-    .glass {
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-        background: #1e293b !important; /* Solid fallback */
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    /* Mobile Optimization: Keeping GPU hints but restoring effects */
+    .table-container {
+        -webkit-overflow-scrolling: touch; 
+        transform: translateZ(0); 
     }
 
-    .animate-fade, .animate-slide-up {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-    }
-
-    * {
-        transition: none !important; /* Prevent laggy hover effects on touch */
-    }
+    /* Note: We are no longer disabling backdrop-filter or animations globally 
+       to allow the premium effects to return on high-end mobile devices. */
 }
 
 /* Custom Scrollbar Styles */
