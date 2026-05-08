@@ -345,12 +345,26 @@ const _updateUIInternal = debounce(() => {
     const walletBalance = State._cache.walletBalance || 0;
     const session = AuthManager.getSession();
 
-    // 1. Update Profile Info
+    // 1. Update Profile Info & Settings Fields
     if (session) {
-        const username = session.user.username;
+        const { username, email, phoneNumber, address } = session.user;
+        
         document.querySelectorAll('.profile-name').forEach(el => {
             if (el.innerText !== username) el.innerText = username;
         });
+
+        // Populate settings fields if they are empty (to allow initial edit)
+        const nameInput = document.getElementById('settings-username');
+        if (nameInput && !nameInput.value) nameInput.value = username || '';
+        
+        const emailInput = document.getElementById('settings-email');
+        if (emailInput && !emailInput.value) emailInput.value = email || '';
+
+        const phoneInput = document.getElementById('settings-phone');
+        if (phoneInput && !phoneInput.value) phoneInput.value = phoneNumber || '';
+
+        const addrInput = document.getElementById('settings-address');
+        if (addrInput && !addrInput.value) addrInput.value = address || '';
         
         const walletEl = document.getElementById('profile-wallet');
         if (walletEl) {

@@ -270,22 +270,24 @@
             <section id="section-settings" class="module-section">
                 <h1 style="font-size: 2.2rem; margin-bottom: 32px;">Settings</h1>
                 <div class="glass" style="padding: 32px; max-width: 600px;">
-                    <div style="margin-bottom: 24px;">
-                        <label
-                            style="display: block; color: var(--text-dim); margin-bottom: 8px; font-size: 0.9rem;">Display
-                            Name</label>
-                        <input type="text" id="settings-username" value="John Doe"
-                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 12px; color: white;">
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="settings-username" placeholder="Display Name"
+                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem;">
                     </div>
-                    <div style="margin-bottom: 24px;">
-                        <label
-                            style="display: block; color: var(--text-dim); margin-bottom: 8px; font-size: 0.9rem;">Email
-                            Address</label>
-                        <input type="email" id="settings-email" value="john.doe@example.com"
-                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 12px; color: white;">
+                    <div style="margin-bottom: 20px;">
+                        <input type="email" id="settings-email" placeholder="Email Address"
+                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem;">
                     </div>
-                    <div style="display: flex; gap: 12px; margin-top: 32px;">
-                        <button id="settings-save-btn" class="btn btn-primary">Save Changes</button>
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="settings-phone" placeholder="Phone Number"
+                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <textarea id="settings-address" placeholder="Shipping Address" rows="3"
+                            style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem; resize: none;"></textarea>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 12px;">
+                        <button id="settings-save-btn" class="btn btn-primary" style="padding: 12px 32px;">Update Profile</button>
                     </div>
                 </div>
             </section>
