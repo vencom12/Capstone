@@ -38,15 +38,9 @@ body {
     height: 100vh;
 }
 
+/* Responsive Tables (Horizontal Scroll) */
 @media (max-width: 768px) {
-    /* Refined Mobile Table Layout */
-    .content-area, .dashboard-container, main {
-        display: block !important;
-        width: 100% !important;
-    }
-
     .table-container {
-        display: block !important;
         width: 100% !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
@@ -1952,55 +1946,6 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     .table-container thead tr {
         position: absolute;
         top: -9999px;
-        left: -9999px;
-    }
-
-    .table-container tr {
-        margin-bottom: 20px;
-        border: 1px solid var(--border-glass);
-        border-radius: 20px;
-        background: rgba(15, 23, 42, 0.95); /* More opaque for stability */
-        padding: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        backdrop-filter: none !important; /* Disable blur on rows to prevent GPU glitches */
-        -webkit-backdrop-filter: none !important;
-        position: relative;
-        z-index: 1;
-        overflow: visible;
-    }
-
-    .table-container td {
-        border: none;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 5px !important;
-        font-size: 0.85rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: transparent !important;
-        min-height: 45px;
-    }
-
-    .table-container td:last-child {
-        border-bottom: none;
-        padding-top: 15px !important;
-    }
-
-    .table-container td:before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: var(--text-dim);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        flex-shrink: 0;
-        margin-right: 15px;
-    }
-}
-
-/* Middle Loader Cloud for Products */
-.loader-cloud-container {
-    grid-column: 1/-1;
     display: flex;
     flex-direction: column;
     align-items: center;

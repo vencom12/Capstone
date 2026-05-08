@@ -882,7 +882,7 @@ async function refreshDashboardState() {
                 setTimeout(async function() {
                     var fresh = await State.getDashboardState(1);
                     if (fresh) updateUI();
-                }, 800;
+                }, 800);
             }
         }
     } catch (e) {
@@ -978,9 +978,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const Actions = {
-    addToBasketById: (id) => {
-        const products = State._cache.products || [];
-        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
+    addToBasketById: function(id) {
+        var products = State._cache.products || [];
+        var product = null;
+        for (var i = 0; i < products.length; i++) {
+            var p = products[i];
+            var pid = (p._id || p.id || '').toString();
+            if (pid === id.toString()) { product = p; break; }
+        }
         if (product) {
             Actions.addToBasket(product);
         } else {
@@ -1043,10 +1048,14 @@ const Actions = {
             return;
         }
         
-        const favorites = State._cache.favorites || [];
-        const products = State._cache.products || [];
-        const pIdStr = productId.toString();
-        const isFav = favorites.some(f => (f._id || f.id)?.toString() === pIdStr);
+        var favorites = State._cache.favorites || [];
+        var products = State._cache.products || [];
+        var pIdStr = productId.toString();
+        var isFav = false;
+        for (var i = 0; i < favorites.length; i++) {
+            var f = favorites[i];
+            if ((f._id || f.id || '').toString() === pIdStr) { isFav = true; break; }
+        }
         
         // Optimistic Update
         if (isFav) {
@@ -1116,12 +1125,19 @@ const Actions = {
 
 // --- Settings Management ---
 async function saveSettings() {
-    const username = document.getElementById('settings-username')?.value;
-    const email = document.getElementById('settings-email')?.value;
-    const address = document.getElementById('settings-address')?.value;
-    const phone = document.getElementById('settings-phone')?.value;
-    const currentPass = document.getElementById('settings-current-pass')?.value;
-    const newPass = document.getElementById('settings-new-pass')?.value;
+    var uEl = document.getElementById('settings-username');
+    var eEl = document.getElementById('settings-email');
+    var aEl = document.getElementById('settings-address');
+    var pEl = document.getElementById('settings-phone');
+    var cpEl = document.getElementById('settings-current-pass');
+    var npEl = document.getElementById('settings-new-pass');
+
+    var username = uEl ? uEl.value : '';
+    var email = eEl ? eEl.value : '';
+    var address = aEl ? aEl.value : '';
+    var phone = pEl ? pEl.value : '';
+    var currentPass = cpEl ? cpEl.value : '';
+    var newPass = npEl ? npEl.value : '';
 
     updateSyncIndicator(true);
     try {
@@ -1150,8 +1166,13 @@ document.addEventListener('click', (e) => {
         const id = basketBtn.dataset.id;
         if (!id) return showToast('Error: Product ID missing from button');
         
-        const products = State._cache.products || [];
-        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
+        var products = State._cache.products || [];
+        var product = null;
+        for (var i = 0; i < products.length; i++) {
+            var p = products[i];
+            var pid = (p._id || p.id || '').toString();
+            if (pid === id.toString()) { product = p; break; }
+        }
         
         if (product) {
             Actions.addToBasket(product);
@@ -1238,8 +1259,11 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshDashboardState();
 
     // Unified Date Filter Listener
-    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
-        State._cache.historyDateFilter = e.target.value;
-        updateUI();
-    });
+    var dateFilter = document.getElementById('history-date-filter');
+    if (dateFilter) {
+        dateFilter.addEventListener('change', function(e) {
+            State._cache.historyDateFilter = e.target.value;
+            updateUI();
+        });
+    }
 });
