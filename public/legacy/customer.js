@@ -412,7 +412,7 @@ const _updateUIInternal = debounce(() => {
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     
     productGrids.forEach(grid => {
-        if (products.length === 0 && _syncCount > 0) {
+        if (products.length === 0) {
             grid.innerHTML = Array(6).fill(0).map(() => `
                 <div class="skeleton-card shimmer">
                     <div class="skeleton-img skeleton"></div>
@@ -548,6 +548,7 @@ const _updateUIInternal = debounce(() => {
                     </td>
                 </tr>`;
             }).join('');
+        }
     }
 
     updateBasketUI();

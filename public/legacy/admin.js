@@ -310,7 +310,7 @@ const _updateUIInternal = debounce(() => {
 
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
-        if (orders.length === 0 && _isSyncing) {
+        if (orders.length === 0) {
             orderTable.innerHTML = Array(5).fill(0).map(() => `
                 <tr class="skeleton-row shimmer"><td colspan="7"></td></tr>`).join('');
         } else {
@@ -336,7 +336,7 @@ const _updateUIInternal = debounce(() => {
 
     const staffTable = document.getElementById('staff-table-body');
     if (staffTable) {
-        if (users.length === 0 && _isSyncing) {
+        if (users.length === 0) {
             staffTable.innerHTML = Array(4).fill(0).map(() => `
                 <tr class="skeleton-row shimmer"><td colspan="5"></td></tr>`).join('');
         } else {
@@ -360,7 +360,7 @@ const _updateUIInternal = debounce(() => {
 
     const historyTable = document.getElementById('admin-history-table-body');
     if (historyTable) {
-        if (historyOrders.length === 0 && _isSyncing) {
+        if (historyOrders.length === 0) {
             historyTable.innerHTML = Array(4).fill(0).map(() => `
                 <tr class="skeleton-row shimmer"><td colspan="5"></td></tr>`).join('');
         } else {
@@ -380,7 +380,7 @@ const _updateUIInternal = debounce(() => {
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {
-        if (products.length === 0 && _isSyncing) {
+        if (products.length === 0) {
             productGrid.innerHTML = Array(4).fill(0).map(() => `
                 <div class="stat-card skeleton shimmer" style="height: 80px;"></div>`).join('');
         } else {
