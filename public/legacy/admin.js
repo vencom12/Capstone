@@ -39,6 +39,18 @@ function debounce(func, wait) {
     };
 }
 
+let _isSyncing = false;
+
+// Helper: Optimize Cloudinary URLs
+function optimizeImageUrl(url, width = 400) {
+    if (!url || !url.includes('cloudinary.com')) return url;
+    if (url.includes('/upload/')) {
+        if (url.includes('f_auto') && url.includes('q_auto')) return url;
+        return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_scale/`);
+    }
+    return url;
+}
+
 let _csrfToken = null;
 
 // --- Key Objects (Hoisted or defined early for window export) ---
@@ -298,73 +310,96 @@ const _updateUIInternal = debounce(() => {
 
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
-        orderTable.innerHTML = orders.length === 0
-            ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
-            : orders.map(order => `
-                <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
-                    <td>${order.client || 'Guest'}</td>
-                    <td>${formatOrderDesign(order)}</td>
-                    <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
-                    <td><span class="status-pill">${order.status}</span></td>
-                    <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
-                            ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download Receipt</button>` : ''}
-                        </div>
-                    </td>
-                </tr>`).join('');
+        if (orders.length === 0 && _isSyncing) {
+            orderTable.innerHTML = Array(5).fill(0).map(() => `
+                <tr class="skeleton-row shimmer"><td colspan="7"></td></tr>`).join('');
+        } else {
+            orderTable.innerHTML = orders.length === 0
+                ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
+                : orders.map(order => `
+                    <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
+                        <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
+                        <td>${order.client || 'Guest'}</td>
+                        <td>${formatOrderDesign(order)}</td>
+                        <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
+                        <td><span class="status-pill">${order.status}</span></td>
+                        <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
+                                ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download Receipt</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>`).join('');
+        }
     }
 
     const staffTable = document.getElementById('staff-table-body');
     if (staffTable) {
-        staffTable.innerHTML = users.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No personnel found.</td></tr>'
-            : users.map(user => `
-                <tr>
-                    <td>${user.username}</td>
-                    <td>${user.email}</td>
-                    <td><span class="status-pill">${user.role}</span></td>
-                    <td>${new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="openEditStaff('${user._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
-                            <button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
-                        </div>
-                    </td>
-                </tr>`).join('');
+        if (users.length === 0 && _isSyncing) {
+            staffTable.innerHTML = Array(4).fill(0).map(() => `
+                <tr class="skeleton-row shimmer"><td colspan="5"></td></tr>`).join('');
+        } else {
+            staffTable.innerHTML = users.length === 0
+                ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No personnel found.</td></tr>'
+                : users.map(user => `
+                    <tr>
+                        <td>${user.username}</td>
+                        <td>${user.email}</td>
+                        <td><span class="status-pill">${user.role}</span></td>
+                        <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn" onclick="openEditStaff('${user._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
+                                <button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+        }
     }
 
     const historyTable = document.getElementById('admin-history-table-body');
     if (historyTable) {
-        historyTable.innerHTML = historyOrders.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
-            : historyOrders.map(o => `
-                <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
-                    <td>${o.client}</td>
-                    <td>$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
-                    <td><span class="status-pill">${o.status}</span></td>
-                    <td>${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download Receipt</button>` : 'N/A'}</td>
-                </tr>`).join('');
+        if (historyOrders.length === 0 && _isSyncing) {
+            historyTable.innerHTML = Array(4).fill(0).map(() => `
+                <tr class="skeleton-row shimmer"><td colspan="5"></td></tr>`).join('');
+        } else {
+            historyTable.innerHTML = historyOrders.length === 0
+                ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
+                : historyOrders.map(o => `
+                    <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
+                        <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
+                        <td>${o.client}</td>
+                        <td>$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
+                        <td><span class="status-pill">${o.status}</span></td>
+                        <td>${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download Receipt</button>` : 'N/A'}</td>
+                    </tr>`).join('');
+        }
     }
 
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {
-        productGrid.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
-                <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
-                <div style="flex: 1;">
-                    <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
-                    <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn" onclick="editProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Edit</button>
-                    <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
-                </div>
-            </div>`).join('');
+        if (products.length === 0 && _isSyncing) {
+            productGrid.innerHTML = Array(4).fill(0).map(() => `
+                <div class="stat-card skeleton shimmer" style="height: 80px;"></div>`).join('');
+        } else {
+            productGrid.innerHTML = products.map(p => {
+                const optimizedImg = optimizeImageUrl(p.imageUrl, 200);
+                return `
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
+                    <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${optimizedImg}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
+                    <div style="flex: 1;">
+                        <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
+                        <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" onclick="editProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Edit</button>
+                        <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
     }
 
     updateAITip();
@@ -387,11 +422,13 @@ function formatOrderDesign(order) {
 
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
+    _isSyncing = true;
     updateSyncIndicator(true);
     const data = await State.getDashboardState();
     if (data) {
         updateUI(); // Render tables immediately
     }
+    _isSyncing = false;
     updateSyncIndicator(false);
 
     // Background tasks: Only run if we actually have a session
