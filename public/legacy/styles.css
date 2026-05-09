@@ -1057,7 +1057,7 @@ tbody tr:hover {
     }
 
     .module-section {
-        padding: 20px 8px;
+        padding: 20px 12px; /* Balanced side padding */
     }
 
     /* Mobile Drawer System */
@@ -2121,6 +2121,7 @@ body {
     .table-container tr {
         display: flex;
         flex-wrap: wrap;
+        gap: 5%; /* Clean separation between columns */
         margin-bottom: 12px;
         margin-left: 0;
         margin-right: 0;
@@ -2143,10 +2144,10 @@ body {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        flex: 1 1 50%;
-        max-width: 50%;
-        padding: 6px 4px !important; /* Reduced column margins */
-        font-size: 0.8rem; /* Compact text */
+        flex: 0 0 45%; /* Narrower fixed-base width */
+        max-width: 45%;
+        padding: 6px 2px !important; /* Minimal internal padding */
+        font-size: 0.8rem;
         background: transparent !important;
         min-height: auto;
     }
