@@ -535,6 +535,10 @@ input[name="nav-radio"],
     box-shadow: 0 0 20px var(--primary-glow);
 }
 
+.btn-secondary {
+    color: white !important;
+}
+
 .add-to-basket {
     margin-top: auto;
     width: 100%;

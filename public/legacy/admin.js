@@ -296,8 +296,9 @@ const _updateUIInternal = debounce(() => {
                     <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                     <td>
                         <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${order.transactionId?.transactionID}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 6px 12px; font-size: 0.75rem;">View</button>
                             <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
-                            ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download Receipt</button>` : ''}
+                            ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
                         </div>
                     </td>
                 </tr>`).join('');
@@ -332,7 +333,12 @@ const _updateUIInternal = debounce(() => {
                     <td>${o.client}</td>
                     <td>$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
                     <td><span class="status-pill">${o.status}</span></td>
-                    <td>${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download Receipt</button>` : 'N/A'}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${o.transactionId?.transactionID}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 8px; font-size: 0.75rem;">View</button>
+                            ${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}
+                        </div>
+                    </td>
                 </tr>`).join('');
     }
 
