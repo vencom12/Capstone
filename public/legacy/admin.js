@@ -536,12 +536,24 @@ function initCharts() {
     });
     charts = {};
 
+    const isMobile = window.innerWidth <= 768;
+    const commonOptions = { 
+        responsive: true, 
+        maintainAspectRatio: false,
+        animation: isMobile ? false : { duration: 1000 },
+        plugins: {
+            legend: {
+                display: !isMobile // Hide legend on mobile to save space
+            }
+        }
+    };
+
     const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
     if (ctxTrends) {
         charts.trends = new Chart(ctxTrends, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: '#6366f1', tension: 0.4 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            options: commonOptions
         });
     }
     const ctxDist = document.getElementById('statusDistChart')?.getContext('2d');
@@ -549,7 +561,7 @@ function initCharts() {
         charts.dist = new Chart(ctxDist, {
             type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: commonOptions
         });
     }
     const ctxTopOrdered = document.getElementById('topOrderedChart')?.getContext('2d');
@@ -557,7 +569,7 @@ function initCharts() {
         charts.topOrdered = new Chart(ctxTopOrdered, {
             type: 'bar',
             data: { labels: [], datasets: [{ label: 'Orders', data: [], backgroundColor: '#10b981' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: commonOptions
         });
     }
     const ctxTopLiked = document.getElementById('topLikedChart')?.getContext('2d');
@@ -565,7 +577,7 @@ function initCharts() {
         charts.topLiked = new Chart(ctxTopLiked, {
             type: 'bar',
             data: { labels: [], datasets: [{ label: 'Likes', data: [], backgroundColor: '#f59e0b' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: commonOptions
         });
     }
     const ctxTraffic = document.getElementById('trafficChart')?.getContext('2d');
@@ -573,7 +585,7 @@ function initCharts() {
         charts.traffic = new Chart(ctxTraffic, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Visits', data: [], borderColor: '#8b5cf6', tension: 0.4, fill: true, backgroundColor: 'rgba(139, 92, 246, 0.1)' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: commonOptions
         });
     }
 }
