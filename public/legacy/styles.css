@@ -2085,9 +2085,9 @@ body {
 
     .table-container {
         padding: 0 !important;
-        margin: 15px 0 !important; /* Match top blocks left margin */
-        width: 100% !important;
-        max-width: min(400px, 100%) !important;
+        margin: 15px 0 15px 22px !important; /* Fixed left margin to match top */
+        width: 92% !important; /* Slightly narrower to create right-side gap */
+        max-width: 400px !important;
         overflow: visible !important;
         border-radius: 20px;
         background: transparent !important;
