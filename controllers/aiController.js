@@ -15,24 +15,38 @@ exports.chat = async (req, res) => {
             });
         }
 
-        // Prepare the system prompt with context
+        // Create a smart summary to bypass truncation issues
+        const orderSummary = {
+            total: context.orders?.length || 0,
+            delivered: context.orders?.filter(o => o.status === 'Order Delivered' || o.status === 'Delivered')?.length || 0,
+            queue: context.orders?.filter(o => o.status === 'In Queue')?.length || 0,
+            preparing: context.orders?.filter(o => o.status === 'Preparing Order')?.length || 0,
+            canceled: context.orders?.filter(o => o.status === 'Order Canceled' || o.status === 'Canceled')?.length || 0,
+            recent: context.orders?.slice(-15).map(o => ({ id: o.orderId, status: o.status, client: o.clientName }))
+        };
+
+        // Prepare the system prompt with a much more reliable summary
         const systemPrompt = `You are StitchMaster AI, an expert production assistant for Stitch-Opt (a premium embroidery business).
         
-        CURRENT SYSTEM DATA:
-        - Orders: ${context.orders?.length || 0}
-        - Products: ${context.products?.length || 0}
-        - Inventory: ${context.inventory?.length || 0}
-        - Staff: ${context.users?.length || 0}
-        - Revenue: $${context.revenue || 0}
+        CRITICAL SYSTEM METRICS (ALWAYS USE THESE FOR COUNTS):
+        - Total Orders: ${orderSummary.total}
+        - Delivered/Completed: ${orderSummary.delivered} 
+        - In Queue: ${orderSummary.queue}
+        - Preparing: ${orderSummary.preparing}
+        - Canceled: ${orderSummary.canceled}
         
-        DETAILED DATA SNAPSHOT:
-        ${JSON.stringify(context).substring(0, 5000)}
+        BUSINESS SNAPSHOT:
+        - Total Products: ${context.products?.length || 0}
+        - Stock Items: ${context.inventory?.length || 0}
+        - Total Revenue: $${context.revenue || 0}
+        
+        RECENT ORDERS (LAST 15):
+        ${JSON.stringify(orderSummary.recent)}
         
         GUIDELINES:
-        1. Be professional, helpful, and concise.
-        2. Use the provided data to answer specific questions about orders, stock, or revenue.
-        3. If asked for suggestions, analyze the stock levels and order queue.
-        4. Use markdown for formatting (bolding, lists).`;
+        1. Use the "CRITICAL SYSTEM METRICS" for all status and count questions.
+        2. Be professional, helpful, and concise.
+        3. Use markdown for lists and bolding.`;
 
         // Format history for OpenAI-compatible Groq API
         const messages = [
