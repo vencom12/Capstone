@@ -8,6 +8,7 @@
     "postbuild": "echo Build Complete"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.11.4",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "compression": "^1.8.1",

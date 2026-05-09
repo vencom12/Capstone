@@ -1,6 +1,4 @@
-const fetch = global.fetch || require('node-fetch'); // Fallback if needed, though Node 18+ has it
-
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent';
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 exports.chat = async (req, res) => {
     try {
@@ -13,6 +11,10 @@ exports.chat = async (req, res) => {
                 reply: "I'm currently in 'Local Mode' because no Gemini API key was found in the .env file. Please add your free key to enable my advanced AI features! 🤖✨" 
             });
         }
+
+        // Initialize the SDK
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Prepare the system prompt with context
         const systemPrompt = `You are StitchMaster AI, an expert production assistant for Stitch-Opt (a premium embroidery business).
@@ -34,51 +36,36 @@ exports.chat = async (req, res) => {
         4. If you don't know something based on the data, say so politely.
         5. Use markdown for formatting (bolding, lists).`;
 
-        const contents = [
-            { role: 'user', parts: [{ text: systemPrompt }] },
-            ...history.map(h => ({
-                role: h.role === 'user' ? 'user' : 'model',
-                parts: [{ text: h.text }]
-            })),
-            { role: 'user', parts: [{ text: message }] }
-        ];
-
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents })
+        // Format history for the SDK
+        const chat = model.startChat({
+            history: [
+                { role: 'user', parts: [{ text: systemPrompt }] },
+                ...history.map(h => ({
+                    role: h.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: h.text }]
+                }))
+            ]
         });
 
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error('Gemini API Error Details:', JSON.stringify(data.error, null, 2));
-            return res.status(500).json({ 
-                success: false, 
-                message: `Gemini API Error: ${data.error.message || 'Unknown error'}`,
-                details: data.error
-            });
-        }
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        const reply = response.text();
 
-        if (!data.candidates || !data.candidates[0].content) {
-             return res.json({ success: false, message: 'AI returned an empty response. Check safety filters.' });
-        }
-
-        const reply = data.candidates[0].content.parts[0].text;
         res.json({ success: true, reply });
 
     } catch (error) {
-        console.error('AI Controller Error:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error('AI SDK Error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: `AI Processing failed: ${error.message || 'Unknown error'}` 
+        });
     }
 };
 
+// Simple diagnostic route
 exports.listModels = async (req, res) => {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        const data = await response.json();
-        res.json(data);
+        res.json({ message: "SDK is active. Model: gemini-1.5-flash" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
