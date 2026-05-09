@@ -1156,8 +1156,8 @@ tbody tr:hover {
     .table-container {
         padding: 0 !important;
         margin: 0 auto 20px auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
+        width: 92% !important; /* Narrower for floating feel */
+        max-width: 500px !important; /* Cap for tablets */
         overflow-x: hidden !important;
         border-radius: 20px;
         background: transparent !important;
@@ -2144,10 +2144,10 @@ body {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        flex: 0 0 40%; /* Ultra-compact width */
-        max-width: 40%;
-        padding: 4px 0 !important; /* Minimal internal padding */
-        font-size: 0.75rem; /* Slightly smaller for density */
+        flex: 0 0 42%; /* Slightly adjusted for larger font */
+        max-width: 42%;
+        padding: 6px 0 !important;
+        font-size: 0.95rem; /* Increased as requested */
         background: transparent !important;
         min-height: auto;
     }
@@ -2169,12 +2169,12 @@ body {
     .table-container td:before {
         content: attr(data-label);
         font-weight: 700;
-        color: var(--primary); /* Highlight labels */
-        font-size: 0.6rem; /* Much smaller label */
+        color: var(--primary);
+        font-size: 0.7rem; /* Bumping label size too */
         text-transform: uppercase;
         letter-spacing: 0.8px;
         flex-shrink: 0;
-        margin-bottom: 2px; /* Small gap to data */
+        margin-bottom: 2px;
         opacity: 0.8;
     }
 }
