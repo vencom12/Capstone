@@ -1155,10 +1155,10 @@ tbody tr:hover {
 
     .table-container {
         padding: 0 !important;
-        margin: 0 auto 20px auto !important;
-        width: 92% !important;
-        max-width: 500px !important;
-        overflow: visible !important; /* Allow rounded corners to show */
+        margin: 15px auto !important; /* Centered with top/bottom gap */
+        width: 95% !important; /* Slightly wider for stability */
+        max-width: 550px !important;
+        overflow: visible !important;
         border-radius: 20px;
         background: transparent !important;
         border: none !important;
@@ -2108,7 +2108,13 @@ body {
         padding: 15px 0 !important;
     }
 
-    .table-container table,
+    .table-container table {
+        border-collapse: separate !important;
+        border-spacing: 0 12px !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
     .table-container thead,
     .table-container tbody,
     .table-container th,
@@ -2128,21 +2134,21 @@ body {
     .table-container tr {
         display: flex;
         flex-wrap: wrap;
-        gap: 4%; /* Tightened column distance */
-        margin-bottom: 12px;
+        gap: 4%;
+        margin-bottom: 0; /* Managed by border-spacing */
         margin-left: 0;
         margin-right: 0;
         border: 1px solid var(--border-glass);
-        border-radius: 12px; /* Tighter radius for slim look */
+        border-radius: 16px !important; /* Force rounded corners */
         background: var(--bg-sidebar);
-        padding: 8px; /* Tighter internal padding */
+        padding: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         position: relative;
         z-index: 1;
-        overflow: hidden;
-        width: 100%;
+        overflow: visible !important; /* Ensure corners aren't clipped */
+        width: 100% !important;
         box-sizing: border-box;
     }
 
