@@ -911,8 +911,7 @@ tbody tr:hover {
 
     /* Transform Sidebar into Fixed Top Navbar */
     .dashboard-container {
-        padding-top: 70px;
-        /* Space for top nav bar */
+        padding-top: 90px; /* More room for the navbar */
         display: block !important;
         min-height: 100vh;
         overflow: visible !important;
@@ -937,10 +936,11 @@ tbody tr:hover {
         flex-direction: row;
         border-right: none;
         border-bottom: 1px solid var(--border-glass);
-        background: var(--bg-sidebar);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        background: var(--bg-dark) !important; /* Solid background for clarity */
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
         z-index: 9999;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
 
     .nav-logo,
