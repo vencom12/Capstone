@@ -7,5 +7,6 @@ const auth = require('../middleware/auth');
 router.use(auth());
 
 router.post('/chat', aiController.chat);
+router.get('/models', aiController.listModels);
 
 module.exports = router;
