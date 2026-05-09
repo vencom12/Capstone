@@ -253,12 +253,14 @@ const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customer');
 const adminRoutes = require('./routes/admin');
 const employeeRoutes = require('./routes/employee');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Legacy Routes (for compatibility)
 app.use('/api/auth', authRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/employee', employeeRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Versioned API v1
 app.use('/api/v1/auth', authRoutes);
