@@ -1156,9 +1156,9 @@ tbody tr:hover {
     .table-container {
         padding: 0 !important;
         margin: 0 auto 20px auto !important;
-        width: 92% !important; /* Narrower for floating feel */
-        max-width: 500px !important; /* Cap for tablets */
-        overflow-x: hidden !important;
+        width: 92% !important;
+        max-width: 500px !important;
+        overflow: visible !important; /* Allow rounded corners to show */
         border-radius: 20px;
         background: transparent !important;
         border: none !important;
@@ -2101,6 +2101,13 @@ body {
 /* Responsive Tables */
 @media (max-width: 768px) {
 
+    .table-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 15px 0 !important;
+    }
+
     .table-container table,
     .table-container thead,
     .table-container tbody,
@@ -2108,7 +2115,7 @@ body {
     .table-container td,
     .table-container tr {
         display: block;
-        width: 100%;
+        width: 100% !important;
         box-sizing: border-box;
     }
 
