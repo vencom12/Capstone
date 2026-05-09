@@ -82,16 +82,15 @@ exports.logout = (req, res) => {
     const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
-        path: '/'
+        sameSite: 'Lax'
     };
-    // Clear all possible portal tokens with explicit path
+    // Clear all possible portal tokens
     res.clearCookie('admin_token', cookieOptions);
     res.clearCookie('employee_token', cookieOptions);
     res.clearCookie('customer_token', cookieOptions);
-    res.clearCookie('token', cookieOptions); 
+    res.clearCookie('token', cookieOptions); // Legacy cleanup
     
-    res.json({ success: true, message: 'Logged out successfully' });
+    res.json({ message: 'Logged out successfully' });
 };
 
 exports.me = async (req, res) => {

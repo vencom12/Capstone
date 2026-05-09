@@ -12,41 +12,29 @@ const { ACTIONS, ENTITIES } = require('../utils/apiConstants');
 exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
+        
         let orders = [], currentUser = null, transactions = [], receipts = [];
 
-        // STRICT: Only fetch user data if req.user is definitely present
         if (userId) {
-            try {
-                const [o, u, t, r] = await Promise.all([
-                    Order.find({ userId }).sort({ date: -1 }).lean(),
-                    User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
-                    Transaction.find({ userID: userId }).sort({ timestamp: -1 }).lean(),
-                    Receipt.find({ userID: userId }).sort({ timestamp: -1 }).lean()
-                ]);
-                
-                if (u) {
-                    orders = o;
-                    currentUser = u;
-                    transactions = t;
-                    receipts = r;
-                }
-            } catch (fetchErr) {
-                console.error('[DashboardState] Data fetch error:', fetchErr);
-                // Continue with empty user data rather than crashing
-            }
+            const [o, u, t, r] = await Promise.all([
+                Order.find({ userId }).sort({ date: -1 }).lean(),
+                User.findById(userId).populate({ path: 'favorites', select: 'name price tag imageUrl' }).lean(),
+                Transaction.find({ userID: userId }).sort({ timestamp: -1 }).lean(),
+                Receipt.find({ userID: userId }).sort({ timestamp: -1 }).lean()
+            ]);
+            orders = o; currentUser = u; transactions = t; receipts = r;
         }
 
         const products = await Product.find().sort({ createdAt: -1 }).lean();
 
-        // Final sanity check: if no currentUser, force sensitive arrays to empty
         res.json({
-            orders: currentUser ? orders : [],
+            orders,
             products,
-            favorites: currentUser ? (currentUser.favorites || []) : [],
-            walletBalance: currentUser ? (currentUser.walletBalance || 0) : 0,
-            address: currentUser ? (currentUser.address || '') : '',
-            transactions: currentUser ? transactions : [],
-            receipts: currentUser ? receipts : []
+            favorites: currentUser ? currentUser.favorites : [],
+            walletBalance: currentUser ? currentUser.walletBalance : 0,
+            address: currentUser ? currentUser.address : '',
+            transactions,
+            receipts
         });
     } catch (err) {
         console.error('getDashboardState error:', err);

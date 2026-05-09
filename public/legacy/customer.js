@@ -19,17 +19,6 @@ function debounce(func, wait) {
     };
 }
 
-// Helper: Optimize Cloudinary URLs
-function optimizeImageUrl(url, width = 400) {
-    if (!url || !url.includes('cloudinary.com')) return url;
-    if (url.includes('/upload/')) {
-        // Avoid double-optimization if already present
-        if (url.includes('f_auto') && url.includes('q_auto')) return url;
-        return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_scale/`);
-    }
-    return url;
-}
-
 let _csrfToken = null;
 
 // Helper: Secure API fetch wrapper
@@ -208,21 +197,13 @@ const State = {
         try {
             const rawBasket = saved ? JSON.parse(saved) : [];
             // Hydrate the minimal stored data with full product details from cache
-            return rawBasket.map(function(item) {
-                var products = State._cache.products || [];
-                var product = null;
-                for (var i = 0; i < products.length; i++) {
-                    var p = products[i];
-                    var pid = (p._id || p.id || '').toString();
-                    if (pid === item.productId) { product = p; break; }
-                }
+            return rawBasket.map(item => {
+                const product = (State._cache.products || []).find(p => (p._id || p.id)?.toString() === item.productId);
                 return {
-                    id: item.id,
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    name: (product && product.name) || item.name || 'Product',
-                    price: (product && product.price) || item.price || 0,
-                    imageUrl: (product && product.imageUrl) || item.imageUrl || ''
+                    ...item,
+                    name: product?.name || item.name || 'Unknown Product',
+                    price: product?.price || item.price || 0,
+                    imageUrl: product?.imageUrl || item.imageUrl || ''
                 };
             });
         } catch (e) {
@@ -256,34 +237,20 @@ const State = {
             }
         }
     },
-    async getDashboardState(retries = 3) {
+    async getDashboardState() {
         if (this._syncPromise) return this._syncPromise;
 
         this._syncPromise = (async () => {
-            console.log(`[State] Fetching state (Attempts left: ${retries})...`);
+            console.log('[State] Fetching state...');
             try {
                 const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response && response.ok) {
                     const data = await response.json();
                     this._cache = { ...this._cache, ...data };
-                    console.log('[State] Dashboard state synchronized.');
                     return data;
-                }
-                
-                // If response is not ok (e.g., 503 or 502 from Render), try again
-                if (retries > 0) {
-                    console.warn(`[State] Server busy, retrying in 1s... (${retries} left)`);
-                    await new Promise(r => setTimeout(r, 1000));
-                    this._syncPromise = null; // Reset to allow retry
-                    return this.getDashboardState(retries - 1);
                 }
             } catch (err) {
                 console.error('[State] Fetch failed:', err);
-                if (retries > 0) {
-                    await new Promise(r => setTimeout(r, 1500));
-                    this._syncPromise = null;
-                    return this.getDashboardState(retries - 1);
-                }
             }
             return null;
         })();
@@ -416,20 +383,18 @@ const _updateUIInternal = debounce(() => {
         return matchesSearch && matchesCategory;
     });
 
-    var favIds = favorites.map(function(f) { 
-        var id = f._id || f.id;
-        return id ? id.toString() : '';
-    });
+    const favIds = favorites.map(f => (f._id || f.id)?.toString());
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
     
     productGrids.forEach(grid => {
-        if (products.length === 0) {
-            grid.innerHTML = Array(6).fill(0).map(() => `
-                <div class="skeleton-card shimmer">
-                    <div class="skeleton-img skeleton"></div>
-                    <div class="skeleton-title skeleton"></div>
-                    <div class="skeleton-price skeleton"></div>
-                </div>`).join('');
+        if (products.length === 0 && _syncCount > 0) {
+            grid.innerHTML = `
+                <div class="loader-cloud-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.3-1.7-4.2-4-4.5C17.1 6.5 14 4 10.5 4a7 7 0 0 0-6.8 5.4C2 10.1 1 12.2 1 14.5c0 3 2.5 5.5 5.5 5.5" />
+                    </svg>
+                    <p style="font-weight: 500; letter-spacing: 1px; color: var(--primary);">Synchronizing Catalog...</p>
+                </div>`;
         } else if (filteredProducts.length === 0) {
             grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);">
                 <p>${State._cache.products ? 'No designs found for this search.' : 'Connecting to Stitch-Opt servers...'}</p>
@@ -438,12 +403,11 @@ const _updateUIInternal = debounce(() => {
             grid.innerHTML = filteredProducts.map(p => {
                 const idStr = (p._id || p.id).toString();
                 const isFav = favIds.includes(idStr);
-                const optimizedImg = optimizeImageUrl(p.imageUrl, 500);
                 return `
                 <div class="product-card glass animate-fade">
-                    <div class="product-image" style="background-image: url('${optimizedImg}'); background-size: cover; background-position: center; position: relative;">
+                    <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
                         <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}" 
-                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer;">
+                            style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
                     </div>
@@ -534,23 +498,12 @@ const _updateUIInternal = debounce(() => {
 
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
-        if (transactions.length === 0 && _syncCount > 0) {
-            historyTable.innerHTML = Array(5).fill(0).map(() => `
-                <tr class="skeleton-row shimmer"><td colspan="6"></td></tr>`).join('');
-        } else {
-            historyTable.innerHTML = displayTransactions.length === 0
-                ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
-                    ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
-                   </td></tr>`
-                : displayTransactions.map(function(tx) {
-                    var receipts = State._cache.receipts || [];
-                    var receipt = null;
-                    for (var i = 0; i < receipts.length; i++) {
-                        var r = receipts[i];
-                        if (r.transactionID === tx.transactionID || r.orderID === tx.orderID) {
-                            receipt = r; break;
-                        }
-                    }
+        historyTable.innerHTML = displayTransactions.length === 0
+            ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
+                ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
+               </td></tr>`
+            : displayTransactions.map(tx => {
+                const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
                 return `
                 <tr>
                     <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
@@ -566,7 +519,6 @@ const _updateUIInternal = debounce(() => {
                     </td>
                 </tr>`;
             }).join('');
-        }
     }
 
     updateBasketUI();
@@ -644,13 +596,11 @@ function updateFavoritesGrid() {
     if (favsGrid) {
         favsGrid.innerHTML = favorites.length === 0
             ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
-            : favorites.map(function(p) { 
-                var pid = (p._id || p.id || '').toString();
-                return `
+            : favorites.map(p => `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
                          <button class="fav-toggle-btn" 
-                            data-id="${pid}" 
+                            data-id="${p._id.toString()}" 
                             data-fav="true" 
                             style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -661,8 +611,7 @@ function updateFavoritesGrid() {
                         <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
                         <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
                     </div>
-                </div>`;
-            }).join('');
+                </div>`).join('');
     }
 }
 // --- Checkout Manager ---
@@ -681,9 +630,7 @@ const CheckoutManager = {
         const modal = document.getElementById('checkout-modal');
         if (!modal) return;
 
-        var session = AuthManager.getSession();
-        var userAddr = (session && session.user && session.user.address) || '';
-        document.getElementById('checkout-address').value = userAddr;
+        document.getElementById('checkout-address').value = AuthManager.getSession()?.user.address || '';
         document.getElementById('checkout-total-price').innerText = `$${this.total.toFixed(2)}`;
         document.getElementById('checkout-wallet-balance').innerText = `$${(State._cache.walletBalance || 0).toFixed(2)}`;
         
@@ -872,19 +819,10 @@ async function refreshDashboardState() {
 
     // 2. Fetch fresh data in the background
     try {
-        var data = await State.getDashboardState();
+        const data = await State.getDashboardState();
         if (data) {
+            // 3. Update UI again once fresh data arrives
             updateUI();
-            // Heartbeat check: If we're on a dashboard page but data seems missing (orders/favs), retry once
-            if (window.location.pathname.includes('user.html') && 
-                (!data.orders || data.orders.length === 0) && 
-                AuthManager.isAuthenticated()) {
-                console.log('[Heartbeat] Retrying sync for session persistence...');
-                setTimeout(async function() {
-                    var fresh = await State.getDashboardState(1);
-                    if (fresh) updateUI();
-                }, 800);
-            }
         }
     } catch (e) {
         console.error('Refresh failed', e);
@@ -979,14 +917,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const Actions = {
-    addToBasketById: function(id) {
-        var products = State._cache.products || [];
-        var product = null;
-        for (var i = 0; i < products.length; i++) {
-            var p = products[i];
-            var pid = (p._id || p.id || '').toString();
-            if (pid === id.toString()) { product = p; break; }
-        }
+    addToBasketById: (id) => {
+        const products = State._cache.products || [];
+        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
         if (product) {
             Actions.addToBasket(product);
         } else {
@@ -1049,14 +982,10 @@ const Actions = {
             return;
         }
         
-        var favorites = State._cache.favorites || [];
-        var products = State._cache.products || [];
-        var pIdStr = productId.toString();
-        var isFav = false;
-        for (var i = 0; i < favorites.length; i++) {
-            var f = favorites[i];
-            if ((f._id || f.id || '').toString() === pIdStr) { isFav = true; break; }
-        }
+        const favorites = State._cache.favorites || [];
+        const products = State._cache.products || [];
+        const pIdStr = productId.toString();
+        const isFav = favorites.some(f => (f._id || f.id)?.toString() === pIdStr);
         
         // Optimistic Update
         if (isFav) {
@@ -1126,19 +1055,12 @@ const Actions = {
 
 // --- Settings Management ---
 async function saveSettings() {
-    var uEl = document.getElementById('settings-username');
-    var eEl = document.getElementById('settings-email');
-    var aEl = document.getElementById('settings-address');
-    var pEl = document.getElementById('settings-phone');
-    var cpEl = document.getElementById('settings-current-pass');
-    var npEl = document.getElementById('settings-new-pass');
-
-    var username = uEl ? uEl.value : '';
-    var email = eEl ? eEl.value : '';
-    var address = aEl ? aEl.value : '';
-    var phone = pEl ? pEl.value : '';
-    var currentPass = cpEl ? cpEl.value : '';
-    var newPass = npEl ? npEl.value : '';
+    const username = document.getElementById('settings-username')?.value;
+    const email = document.getElementById('settings-email')?.value;
+    const address = document.getElementById('settings-address')?.value;
+    const phone = document.getElementById('settings-phone')?.value;
+    const currentPass = document.getElementById('settings-current-pass')?.value;
+    const newPass = document.getElementById('settings-new-pass')?.value;
 
     updateSyncIndicator(true);
     try {
@@ -1167,13 +1089,8 @@ document.addEventListener('click', (e) => {
         const id = basketBtn.dataset.id;
         if (!id) return showToast('Error: Product ID missing from button');
         
-        var products = State._cache.products || [];
-        var product = null;
-        for (var i = 0; i < products.length; i++) {
-            var p = products[i];
-            var pid = (p._id || p.id || '').toString();
-            if (pid === id.toString()) { product = p; break; }
-        }
+        const products = State._cache.products || [];
+        const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
         
         if (product) {
             Actions.addToBasket(product);
@@ -1260,11 +1177,8 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshDashboardState();
 
     // Unified Date Filter Listener
-    var dateFilter = document.getElementById('history-date-filter');
-    if (dateFilter) {
-        dateFilter.addEventListener('change', function(e) {
-            State._cache.historyDateFilter = e.target.value;
-            updateUI();
-        });
-    }
+    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
+        State._cache.historyDateFilter = e.target.value;
+        updateUI();
+    });
 });
