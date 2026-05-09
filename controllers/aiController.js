@@ -12,9 +12,10 @@ exports.chat = async (req, res) => {
             });
         }
 
-        // Initialize the SDK
+        // Initialize the SDK and FORCE STABLE V1
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Explicitly set apiVersion to 'v1' in the model options
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: 'v1' });
 
         // Prepare the system prompt with context
         const systemPrompt = `You are StitchMaster AI, an expert production assistant for Stitch-Opt (a premium embroidery business).
@@ -27,7 +28,7 @@ exports.chat = async (req, res) => {
         - Revenue: $${context.revenue || 0}
         
         DETAILED DATA SNAPSHOT:
-        ${JSON.stringify(context).substring(0, 5000)} // Truncate to keep prompt size reasonable
+        ${JSON.stringify(context).substring(0, 5000)}
         
         GUIDELINES:
         1. Be professional, helpful, and concise.
@@ -36,7 +37,6 @@ exports.chat = async (req, res) => {
         4. If you don't know something based on the data, say so politely.
         5. Use markdown for formatting (bolding, lists).`;
 
-        // Format history for the SDK
         const chat = model.startChat({
             history: [
                 { role: 'user', parts: [{ text: systemPrompt }] },
@@ -57,15 +57,22 @@ exports.chat = async (req, res) => {
         console.error('AI SDK Error:', error);
         res.status(500).json({ 
             success: false, 
-            message: `AI Processing failed: ${error.message || 'Unknown error'}` 
+            message: `AI Processing failed: ${error.message || 'Unknown error'}. Try checking /api/ai/models for available versions.` 
         });
     }
 };
 
-// Simple diagnostic route
+// Diagnostic route to see what Render can actually "see"
 exports.listModels = async (req, res) => {
     try {
-        res.json({ message: "SDK is active. Model: gemini-1.5-flash" });
+        const fetch = global.fetch || require('node-fetch');
+        const apiKey = process.env.GEMINI_API_KEY;
+        // Try BOTH v1 and v1beta to see which one works
+        const [v1, v1beta] = await Promise.all([
+            fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`).then(r => r.json()),
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`).then(r => r.json())
+        ]);
+        res.json({ v1, v1beta });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
