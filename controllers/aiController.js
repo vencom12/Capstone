@@ -1,6 +1,6 @@
 const fetch = global.fetch || require('node-fetch'); // Fallback if needed, though Node 18+ has it
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent';
 
 exports.chat = async (req, res) => {
     try {
