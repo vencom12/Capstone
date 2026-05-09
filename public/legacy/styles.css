@@ -1157,14 +1157,14 @@ tbody tr:hover {
 
     .table-container {
         padding: 0 !important;
-        margin: 15px 0 !important; 
-        width: 100% !important; 
-        max-width: min(400px, 100%) !important; /* Cap width but fit screen */
+        margin: 20px auto !important; /* Centered tiny strip */
+        width: 100px !important; 
+        max-width: 100px !important; 
         overflow: visible !important;
-        border-radius: 20px;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        border-radius: 25px !important; /* Forced visible rounding */
+        background: var(--bg-sidebar) !important; /* Make it visible */
+        border: 2px solid var(--primary) !important; /* Visible boundary */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
     }
 }
 
