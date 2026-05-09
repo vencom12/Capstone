@@ -52,8 +52,16 @@ exports.chat = async (req, res) => {
         const data = await response.json();
         
         if (data.error) {
-            console.error('Gemini API Error:', data.error);
-            return res.status(500).json({ success: false, message: 'AI processing failed' });
+            console.error('Gemini API Error Details:', JSON.stringify(data.error, null, 2));
+            return res.status(500).json({ 
+                success: false, 
+                message: `Gemini API Error: ${data.error.message || 'Unknown error'}`,
+                details: data.error
+            });
+        }
+
+        if (!data.candidates || !data.candidates[0].content) {
+             return res.json({ success: false, message: 'AI returned an empty response. Check safety filters.' });
         }
 
         const reply = data.candidates[0].content.parts[0].text;

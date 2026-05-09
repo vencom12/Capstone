@@ -118,7 +118,7 @@ const Assistant = {
                 this.addMsg(data.reply, 'bot');
                 this.memory.push({ role: 'bot', text: data.reply });
             } else {
-                this.reply("I'm having a bit of trouble connecting to my central brain. 🧠 Check if your **Gemini API Key** is set in the .env file!");
+                this.reply(`**Connection Issue:** ${data.message || "I'm having trouble connecting to my central brain. 🧠 Check if your Gemini API Key is set correctly in Render!"}`);
             }
 
         } catch (error) {
