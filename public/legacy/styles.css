@@ -2128,7 +2128,9 @@ body {
         border-collapse: separate !important;
         border-spacing: 0 12px !important;
         width: 100% !important;
+        max-width: 100% !important; /* Lock width */
         margin: 0 !important;
+        table-layout: fixed !important; /* Force content to respect width */
     }
 
     .table-container thead,
@@ -2138,7 +2140,9 @@ body {
     .table-container tr {
         display: block;
         width: 100% !important;
+        max-width: 100% !important; /* Lock width */
         box-sizing: border-box;
+        overflow: hidden; /* Stop the leak */
     }
 
     .table-container thead tr {
@@ -2173,12 +2177,14 @@ body {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        flex: 0 0 42%; /* Slightly adjusted for larger font */
+        flex: 0 0 42%;
         max-width: 42%;
         padding: 6px 0 !important;
-        font-size: 0.95rem; /* Increased as requested */
+        font-size: 0.95rem;
         background: transparent !important;
         min-height: auto;
+        word-break: break-all; /* Force long text to wrap */
+        overflow-wrap: break-word;
     }
 
     /* Exceptions for Full-Width Fields & Clean Bottom */
