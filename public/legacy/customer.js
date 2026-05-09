@@ -504,11 +504,22 @@ const _updateUIInternal = debounce(() => {
                </td></tr>`
             : displayTransactions.map(tx => {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
+                const order = (orders || []).find(o => o.orderId === tx.orderID || o._id === tx.orderID);
+                let description = tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A';
+                
+                if (order) {
+                    description = formatOrderDesign(order);
+                }
+
                 return `
                 <tr>
                     <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
-                    <td data-label="Date">${new Date(tx.timestamp).toLocaleDateString()}</td>
-                    <td data-label="Description">${tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A'}</td>
+                    <td data-label="Description">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 2px;">${new Date(tx.timestamp).toLocaleDateString()}</span>
+                            <span style="font-weight: 500;">${description}</span>
+                        </div>
+                    </td>
                     <td data-label="Amount" style="font-weight: 600;">$${tx.amount.toFixed(2)}</td>
                     <td data-label="Status"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td data-label="Actions">
