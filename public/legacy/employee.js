@@ -168,38 +168,55 @@ function updateUI() {
             ? '<tr><td colspan="7" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>'
             : activeOrders.map(order => `
                 <tr>
-                    <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
-                    <td>${order.client || 'Guest'}</td>
-                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${formatOrderDesign(order)}">
+                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
+                    <td data-label="Client">${order.client || 'Guest'}</td>
+                    <td data-label="Design" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${formatOrderDesign(order)}">
                         ${formatOrderDesign(order)}
                     </td>
-                    <td style="color: var(--primary); font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
-                    <td><span class="status-pill">${order.status}</span></td>
-                    <td style="color: var(--text-dim); font-size: 0.85rem;">${new Date(order.createdAt).toLocaleDateString()}</td>
-                    <td>
+                    <td data-label="Total" style="color: var(--primary); font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
+                    <td data-label="Status"><span class="status-pill">${order.status}</span></td>
+                    <td data-label="Date" style="color: var(--text-dim); font-size: 0.85rem;">${new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Action">
                         <button class="btn" onclick="openEditOrder('${order._id}')" 
                             style="background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); padding: 6px 12px; font-size: 0.8rem;">
                             Process
                         </button>
                     </td>
-                </tr>`).join('');
+                </tr>
+`).join('');
     }
 
     // 3. Inventory/Catalog
     const productList = document.getElementById('product-list-container');
     if (productList) {
-        productList.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
-                <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
-                <div style="flex: 1;">
-                    <h4 style="margin: 0;">${p.name}</h4>
-                    <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
+        if (products.length === 0 && _syncCount > 0) {
+            productList.innerHTML = `
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; height: 112px;">
+                    <div class="skeleton" style="width: 80px; height: 80px; border-radius: 12px;"></div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="skeleton" style="width: 120px; height: 20px;"></div>
+                        <div class="skeleton" style="width: 90px; height: 14px;"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="skeleton" style="width: 80px; height: 35px; border-radius: 8px;"></div>
+                        <div class="skeleton" style="width: 80px; height: 35px; border-radius: 8px;"></div>
+                    </div>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
-                    <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
-                </div>
-            </div>`).join('');
+            `;
+        } else {
+            productList.innerHTML = products.map(p => `
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
+                    <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0;">${p.name}</h4>
+                        <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
+                        <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                    </div>
+                </div>`).join('');
+        }
     }
 
     // 4. History Table
@@ -209,11 +226,11 @@ function updateUI() {
             ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical orders found.</td></tr>'
             : historyOrders.map(o => `
                 <tr>
-                    <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
-                    <td>${o.client}</td>
-                    <td>${formatOrderDesign(o)}</td>
-                    <td><span class="status-pill">${o.status}</span></td>
-                    <td>${new Date(o.date || o.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
+                    <td data-label="Client">${o.client}</td>
+                    <td data-label="Design">${formatOrderDesign(o)}</td>
+                    <td data-label="Status"><span class="status-pill">${o.status}</span></td>
+                    <td data-label="Date">${new Date(o.date || o.createdAt).toLocaleDateString()}</td>
                 </tr>`).join('');
     }
 }

@@ -288,13 +288,13 @@ const _updateUIInternal = debounce(() => {
             ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
             : orders.map(order => `
                 <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
-                    <td>${order.client || 'Guest'}</td>
-                    <td>${formatOrderDesign(order)}</td>
-                    <td style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
-                    <td><span class="status-pill">${order.status}</span></td>
-                    <td style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                    <td>
+                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
+                    <td data-label="Customer">${order.client || 'Guest'}</td>
+                    <td data-label="Design">${formatOrderDesign(order)}</td>
+                    <td data-label="Total" style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
+                    <td data-label="Status"><span class="status-pill">${order.status}</span></td>
+                    <td data-label="Date" style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
                             <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
                             ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
@@ -309,11 +309,11 @@ const _updateUIInternal = debounce(() => {
             ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No personnel found.</td></tr>'
             : users.map(user => `
                 <tr>
-                    <td>${user.username}</td>
-                    <td>${user.email}</td>
-                    <td><span class="status-pill">${user.role}</span></td>
-                    <td>${new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td>
+                    <td data-label="Username">${user.username}</td>
+                    <td data-label="Email">${user.email}</td>
+                    <td data-label="Role"><span class="status-pill">${user.role}</span></td>
+                    <td data-label="Joined">${new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
                             <button class="btn" onclick="openEditStaff('${user._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
                             <button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
@@ -328,11 +328,11 @@ const _updateUIInternal = debounce(() => {
             ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
             : historyOrders.map(o => `
                 <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
-                    <td>${o.client}</td>
-                    <td>$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
-                    <td><span class="status-pill">${o.status}</span></td>
-                    <td>
+                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
+                    <td data-label="Client">${o.client}</td>
+                    <td data-label="Total">$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
+                    <td data-label="Status"><span class="status-pill">${o.status}</span></td>
+                    <td data-label="View Details">
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${o.transactionId?.transactionID}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 8px; font-size: 0.75rem;">View</button>
                             ${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}
@@ -344,18 +344,45 @@ const _updateUIInternal = debounce(() => {
     // 4. Update Product Grid
     const productGrid = document.getElementById('product-list-container');
     if (productGrid) {
-        productGrid.innerHTML = products.map(p => `
-            <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
-                <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
-                <div style="flex: 1;">
-                    <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
-                    <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
+        if (products.length === 0 && _syncCount > 0) {
+            productGrid.innerHTML = `
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px;">
+                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="skeleton" style="width: 140px; height: 18px;"></div>
+                        <div class="skeleton" style="width: 80px; height: 14px;"></div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn" onclick="editProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Edit</button>
-                    <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px; opacity: 0.6;">
+                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="skeleton" style="width: 140px; height: 18px;"></div>
+                        <div class="skeleton" style="width: 80px; height: 14px;"></div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
+                    </div>
                 </div>
-            </div>`).join('');
+            `;
+        } else {
+            productGrid.innerHTML = products.map(p => `
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
+                    <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
+                    <div style="flex: 1;">
+                        <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
+                        <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" onclick="editProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Edit</button>
+                        <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                    </div>
+                </div>`).join('');
+        }
     }
 
     updateAITip();
