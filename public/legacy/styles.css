@@ -4,7 +4,7 @@
     --primary-glow: rgba(99, 102, 241, 0.5);
     --secondary: #a855f7;
     --accent: #f43f5e;
-    
+
     /* Default Dark Theme (Deep Space) */
     --bg-dark: #0f172a;
     --bg-gradient: radial-gradient(circle at top left, #1e1b4b, #0f172a);
@@ -76,7 +76,8 @@ body {
     .table-container {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
-        background: #1e293b !important; /* Solid, no-fail background */
+        background: #1e293b !important;
+        /* Solid, no-fail background */
         padding: 12px !important;
         border-radius: 12px;
     }
@@ -250,7 +251,7 @@ body {
 .sidebar {
     width: 280px;
     flex-shrink: 0;
-    padding: 40px 20px;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -264,10 +265,10 @@ body {
 
 .nav-links {
     list-style: none;
-    margin-top: 20px;
+    margin-top: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .nav-links li {
@@ -281,19 +282,21 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 14px 20px;
-    border-radius: 16px;
+    padding: 10px 16px;
+    border-radius: 12px;
     color: var(--text-dim);
     text-decoration: none;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     transition: all var(--transition-fast);
 }
 
 .nav-links label:hover,
 .nav-links a:hover,
-.logout-btn:hover {
+.logout-btn:hover,
+.theme-toggle-nav:hover {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
     transform: translateX(5px);
@@ -514,7 +517,8 @@ input[name="nav-radio"],
     padding: 14px 28px;
     border-radius: 12px;
     border: none;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     font-weight: 600;
     transition: var(--transition-fast);
     text-decoration: none;
@@ -548,7 +552,8 @@ input[name="nav-radio"],
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
 }
 
 .product-card:hover {
@@ -745,7 +750,8 @@ input[name="nav-radio"],
     color: white;
     outline: none;
     font-size: 1rem;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     backdrop-filter: blur(10px);
     -webkit-appearance: none;
     appearance: none;
@@ -1016,12 +1022,14 @@ tbody tr:hover {
     #nav-drawer-toggle {
         display: none;
     }
+
     .right-panel {
         position: fixed !important;
         top: 0 !important;
         right: 0 !important;
         width: 100% !important;
-        max-width: 420px !important; /* Cap width for tablets */
+        max-width: 420px !important;
+        /* Cap width for tablets */
         height: 100vh !important;
         z-index: 100001 !important;
         background: rgba(15, 23, 42, 0.95) !important;
@@ -1042,7 +1050,8 @@ tbody tr:hover {
     #nav-drawer-toggle:checked~.dashboard-container .storefront-overlay {
         opacity: 1;
         visibility: visible;
-        z-index: 100000 !important; /* Above bottom nav, below drawer */
+        z-index: 100000 !important;
+        /* Above bottom nav, below drawer */
     }
 
     /* Prevent overlay from blurring desktop dashboard */
@@ -1062,7 +1071,8 @@ tbody tr:hover {
 
     .close-drawer {
         font-size: 1.5rem;
-        cursor: pointer; backdrop-filter: blur(4px);
+        cursor: pointer;
+        backdrop-filter: blur(4px);
         color: var(--text-dim);
         transition: color 0.2s;
     }
@@ -1187,7 +1197,8 @@ tbody tr:hover {
     color: var(--text-dim);
     font-weight: 600;
     font-size: 0.9rem;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     transition: all 0.2s ease;
 }
 
@@ -1264,7 +1275,8 @@ tbody tr:hover {
     position: absolute;
     top: 24px;
     right: 24px;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     color: var(--text-dim);
     transition: color 0.2s;
 }
@@ -1313,7 +1325,8 @@ tbody tr:hover {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.4s ease, visibility 0.4s ease;
-    cursor: pointer; backdrop-filter: blur(2px);
+    cursor: pointer;
+    backdrop-filter: blur(2px);
 }
 
 #nav-drawer-toggle:checked~.storefront-overlay {
@@ -1485,7 +1498,8 @@ tbody tr:hover {
     align-items: center;
     padding: 12px 16px;
     border-radius: 12px;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     transition: var(--transition-fast);
     color: var(--text-dim);
 }
@@ -1502,7 +1516,8 @@ tbody tr:hover {
 /* ── Tablet / half-screen PC (769px – 1024px) ── */
 @media (max-width: 1024px) and (min-width: 769px) {
     .storefront-dashboard-layout {
-        flex-direction: row; /* Keep sidebar on the side */
+        flex-direction: row;
+        /* Keep sidebar on the side */
         padding: 20px;
         padding-top: calc(var(--header-height) + 20px);
         gap: 16px;
@@ -1518,7 +1533,8 @@ tbody tr:hover {
 
     .storefront-main {
         flex: 1;
-        min-width: 0; /* prevent flex overflow */
+        min-width: 0;
+        /* prevent flex overflow */
     }
 
     /* Hide hero texts (h2, p) in tablet view */
@@ -1549,9 +1565,11 @@ tbody tr:hover {
 /* ── Mobile (≤768px) ── */
 @media (max-width: 768px) {
     .storefront-dashboard-layout {
-        flex-direction: column; /* Sidebar stacks above grid */
+        flex-direction: column;
+        /* Sidebar stacks above grid */
         padding: 15px;
-        padding-top: 130px; /* Clear the fixed mobile header (~120px min-height + gap) */
+        padding-top: 130px;
+        /* Clear the fixed mobile header (~120px min-height + gap) */
         gap: 10px;
     }
 
@@ -1611,7 +1629,8 @@ tbody tr:hover {
         align-items: center;
         justify-content: center;
         gap: 0;
-        transform: none; /* Override the translateX hover from base styles */
+        transform: none;
+        /* Override the translateX hover from base styles */
     }
 
     .category-links label:hover {
@@ -1624,7 +1643,8 @@ tbody tr:hover {
     .category-links label span {
         font-size: 0.75rem;
         font-weight: 500;
-        display: inline !important; /* Ensure text stays visible */
+        display: inline !important;
+        /* Ensure text stays visible */
     }
 
     .storefront-main {
@@ -1633,8 +1653,19 @@ tbody tr:hover {
 }
 
 /* Force body scrolling and ensure grid expands */
-html, body { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; }
-.product-grid { height: auto !important; overflow: visible !important; }
+html,
+body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+.product-grid {
+    height: auto !important;
+    overflow: visible !important;
+}
+
 /* --- Checkout & Wallet System Styles --- */
 .checkout-modal-content {
     width: 95% !important;
@@ -1642,7 +1673,8 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     max-height: 90vh !important;
     display: flex;
     flex-direction: column;
-    padding: 0 !important; /* Header and Grid will have internal padding */
+    padding: 0 !important;
+    /* Header and Grid will have internal padding */
     overflow: hidden;
 }
 
@@ -1678,7 +1710,7 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
     .checkout-modal-header {
         padding: 16px 20px;
     }
-    
+
     .checkout-modal-header h2 {
         font-size: 1.2rem !important;
     }
@@ -1697,8 +1729,9 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
         padding: 8px 10px !important;
         font-size: 0.75rem !important;
     }
-    
-    .checkout-left, .checkout-right {
+
+    .checkout-left,
+    .checkout-right {
         width: 100%;
     }
 }
@@ -1847,51 +1880,107 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 
 /* Animations for status changes */
 @keyframes verifiedPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .status-badge.verified {
     animation: verifiedPulse 0.5s ease-out;
 }
 
- / *   T o a s t   N o t i f i c a t i o n s   * / 
- . t o a s t   { 
-         b a c k g r o u n d :   r g b a ( 3 0 ,   4 1 ,   5 9 ,   0 . 8 ) ; 
-         b a c k d r o p - f i l t e r :   b l u r ( 1 2 p x ) ; 
-         b o r d e r :   1 p x   s o l i d   r g b a ( 2 5 5 ,   2 5 5 ,   2 5 5 ,   0 . 1 ) ; 
-         c o l o r :   w h i t e ; 
-         p a d d i n g :   1 2 p x   2 4 p x ; 
-         b o r d e r - r a d i u s :   1 2 p x ; 
-         f o n t - s i z e :   0 . 9 r e m ; 
-         b o x - s h a d o w :   0   1 0 p x   1 5 p x   - 3 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 1 ) ; 
-         t r a n s f o r m :   t r a n s l a t e Y ( 2 0 p x ) ; 
-         o p a c i t y :   0 ; 
-         t r a n s i t i o n :   a l l   0 . 3 s   c u b i c - b e z i e r ( 0 . 4 ,   0 ,   0 . 2 ,   1 ) ; 
- } 
- 
- . t o a s t . s h o w   { 
-         t r a n s f o r m :   t r a n s l a t e Y ( 0 ) ; 
-         o p a c i t y :   1 ; 
- } 
- 
- 
- 
+ / *   T o a s t   N o t i f i c a t i o n s   * /   . t o a s t    {
+               b a c k g r o u n d :    r g b a ( 3 0 ,    4 1 ,    5 9 ,    0 . 8 ) ;
+               b a c k d r o p - f i l t e r :    b l u r ( 1 2 p x ) ;
+               b o r d e r :    1 p x   s o l i d   r g b a ( 2 5 5 ,    2 5 5 ,    2 5 5 ,    0 . 1 ) ;
+               c o l o r :    w h i t e ;
+               p a d d i n g :    1 2 p x   2 4 p x ;
+               b o r d e r - r a d i u s :    1 2 p x ;
+               f o n t - s i z e :    0 . 9 r e m ;
+               b o x - s h a d o w :    0   1 0 p x   1 5 p x   - 3 p x   r g b a ( 0 ,    0 ,    0 ,    0 . 1 ) ;
+               t r a n s f o r m :    t r a n s l a t e Y ( 2 0 p x ) ;
+               o p a c i t y :    0 ;
+               t r a n s i t i o n :    a l l   0 . 3 s   c u b i c - b e z i e r ( 0 . 4 ,    0 ,    0 . 2 ,    1 ) ;
+       
+}
+
+     . t o a s t . s h o w    {
+               t r a n s f o r m :    t r a n s l a t e Y ( 0 ) ;
+               o p a c i t y :    1 ;
+       
+}
+
+       
+
 /* Checkout Verification Badges */
-.status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid transparent; }
-.status-badge.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
-.status-badge.verified { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
-.payment-method-btn.active { background: rgba(99, 102, 241, 0.15) !important; border-color: var(--primary) !important; color: white !important; box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
-.wallet-balance-card { background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)); border: 1px solid var(--border-glass); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
-.top-up-input-group { display: flex; gap: 8px; }
-.top-up-input-group input { flex: 1 !important; background: rgba(0, 0, 0, 0.2) !important; border: 1px solid var(--border-glass) !important; border-radius: 8px !important; padding: 8px 12px !important; color: white !important; outline: none !important; }
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.status-badge.verified {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+}
+
+.payment-method-btn.active {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-color: var(--primary) !important;
+    color: white !important;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.wallet-balance-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.top-up-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.top-up-input-group input {
+    flex: 1 !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    color: white !important;
+    outline: none !important;
+}
+
 /* Category Sidebar Styles */
 .category-btn {
     display: block;
     padding: 12px 16px;
     border-radius: 12px;
-    cursor: pointer; backdrop-filter: blur(4px);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
     transition: all 0.3s ease;
     margin-bottom: 4px;
     border: 1px solid transparent;
@@ -1946,11 +2035,12 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 
 /* Responsive Tables */
 @media (max-width: 768px) {
-    .table-container table, 
-    .table-container thead, 
-    .table-container tbody, 
-    .table-container th, 
-    .table-container td, 
+
+    .table-container table,
+    .table-container thead,
+    .table-container tbody,
+    .table-container th,
+    .table-container td,
     .table-container tr {
         display: block;
     }
@@ -1965,10 +2055,12 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
         margin-bottom: 20px;
         border: 1px solid var(--border-glass);
         border-radius: 20px;
-        background: var(--bg-sidebar); /* More opaque for stability */
+        background: var(--bg-sidebar);
+        /* More opaque for stability */
         padding: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        backdrop-filter: none !important; /* Disable blur on rows to prevent GPU glitches */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        backdrop-filter: none !important;
+        /* Disable blur on rows to prevent GPU glitches */
         -webkit-backdrop-filter: none !important;
         position: relative;
         z-index: 1;
@@ -2024,6 +2116,15 @@ html, body { height: auto !important; min-height: 100vh !important; overflow-y: 
 }
 
 @keyframes cloud-float {
-    0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
-    50% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: translateY(-10px) scale(1.1);
+        opacity: 1;
+    }
 }

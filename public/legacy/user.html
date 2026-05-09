@@ -38,7 +38,7 @@
         <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false"></div>
         <!-- Left Sidebar -->
         <aside class="sidebar glass">
-            <a href="index.html" class="nav-logo" style="margin-bottom: 30px;">
+            <a href="index.html" class="nav-logo" style="margin-bottom: 15px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -121,24 +121,23 @@
                         <span>Cart</span>
                     </label>
                 </li>
+                <li>
+                    <label onclick="toggleTheme()" class="theme-toggle-nav" style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
+                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <span>Theme Mode</span>
+                    </label>
+                </li>
             </ul>
-
-            <div class="theme-picker" style="padding: 10px 20px; margin-top: auto; display: flex; gap: 10px; align-items: center;">
-                <button onclick="toggleTheme()" class="glass" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white;">
-                    <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                </button>
-                <span style="font-size: 0.85rem; color: var(--text-dim);">Theme Mode</span>
-            </div>
 
             <script>
                 function toggleTheme() {
