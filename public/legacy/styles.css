@@ -536,7 +536,7 @@ input[name="nav-radio"],
 }
 
 .btn-secondary {
-    color: white !important;
+    color: var(--text-main);
 }
 
 .add-to-basket {
