@@ -87,6 +87,20 @@ body {
         backdrop-filter: none !important;
         box-shadow: none !important;
     }
+
+    /* Product Grid - 2 Columns on Mobile */
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .product-details {
+        padding: 12px !important;
+    }
+
+    .product-details h3 {
+        font-size: 1rem !important;
+    }
 }
 
 /* Custom Scrollbar Styles */
@@ -459,7 +473,7 @@ main {
         padding: 28px 20px;
     }
 
-    /* Tighter product grid - Locked to 3 columns */
+    /* Tighter product grid - Locked to 3 columns for Tablet */
     .product-grid {
         grid-template-columns: repeat(3, 1fr) !important;
         gap: 16px;
@@ -558,10 +572,10 @@ input[name="nav-radio"],
     width: 100%;
 }
 
-/* Product Grid Styles - Always 3 columns on Desktop/Tablet */
+/* Product Grid Styles - Always 4 columns on Desktop */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
 }
 
