@@ -74,15 +74,6 @@ body {
         will-change: auto !important;
     }
 
-    .table-container {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        background: var(--bg-card) !important;
-        /* Theme-aware background */
-        padding: 12px !important;
-        border-radius: 12px;
-    }
-
     .glass {
         background: var(--bg-card) !important;
         backdrop-filter: none !important;
@@ -1155,17 +1146,6 @@ tbody tr:hover {
         box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
     }
 
-    .table-container {
-        padding: 0 !important;
-        margin: 15px 0 !important; /* Left-aligned to match top blocks */
-        width: 100% !important;
-        max-width: min(400px, 100%) !important;
-        overflow: visible !important;
-        border-radius: 20px;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
 }
 
 .mobile-only {
@@ -2102,6 +2082,18 @@ body {
 
 /* Responsive Tables */
 @media (max-width: 768px) {
+
+    .table-container {
+        padding: 0 !important;
+        margin: 15px 0 !important; /* Match top blocks left margin */
+        width: 100% !important;
+        max-width: min(400px, 100%) !important;
+        overflow: visible !important;
+        border-radius: 20px;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
 
     .table-header {
         flex-direction: column !important;
