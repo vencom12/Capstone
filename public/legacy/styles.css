@@ -1158,9 +1158,9 @@ tbody tr:hover {
 
     .table-container {
         padding: 0 !important;
-        margin: 15px auto !important;
-        width: 90% !important; /* Slightly narrower for iron-clad centering */
-        max-width: 500px !important;
+        margin: 15px 0 !important; /* Align to left margin of parent */
+        width: 100% !important; 
+        max-width: 400px !important; /* Strict width cap as requested */
         overflow: visible !important;
         border-radius: 20px;
         background: transparent !important;
