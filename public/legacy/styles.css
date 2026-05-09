@@ -53,9 +53,9 @@ body {
 .dashboard-body {
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    width: 100vw;
-    height: 100vh;
+    overflow: visible;
+    height: auto;
+    min-height: 100vh;
 }
 
 @media (max-width: 768px) {
