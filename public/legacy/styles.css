@@ -76,14 +76,14 @@ body {
     .table-container {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
-        background: #1e293b !important;
-        /* Solid, no-fail background */
+        background: var(--bg-card) !important;
+        /* Theme-aware background */
         padding: 12px !important;
         border-radius: 12px;
     }
 
     .glass {
-        background: #1e293b !important;
+        background: var(--bg-card) !important;
         backdrop-filter: none !important;
         box-shadow: none !important;
     }
@@ -807,8 +807,8 @@ input[name="nav-radio"],
 }
 
 .glass-select option {
-    background: #0f172a;
-    color: white;
+    background: var(--bg-dark);
+    color: var(--text-main);
     padding: 10px;
 }
 
@@ -943,7 +943,7 @@ tbody tr:hover {
         flex-direction: row;
         border-right: none;
         border-bottom: 1px solid var(--border-glass);
-        background: rgba(15, 23, 42, 0.95);
+        background: var(--bg-sidebar);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         z-index: 9999;
@@ -1071,7 +1071,7 @@ tbody tr:hover {
         /* Cap width for tablets */
         height: 100vh !important;
         z-index: 100001 !important;
-        background: rgba(15, 23, 42, 0.95) !important;
+        background: var(--bg-sidebar) !important;
         backdrop-filter: blur(10px) !important;
         -webkit-backdrop-filter: blur(10px) !important;
         border-left: 1px solid var(--border-glass) !important;
@@ -1172,7 +1172,7 @@ tbody tr:hover {
 }
 
 .storefront-header.scrolled {
-    background: rgba(15, 23, 42, 0.95);
+    background: var(--bg-sidebar);
     height: 70px;
 }
 
@@ -1181,7 +1181,7 @@ tbody tr:hover {
     align-items: center;
     gap: 12px;
     text-decoration: none;
-    color: white;
+    color: var(--text-main);
 }
 
 .header-brand h1 {
@@ -1208,7 +1208,7 @@ tbody tr:hover {
     padding: 12px 20px;
     padding-right: 48px;
     border-radius: 12px;
-    color: white;
+    color: var(--text-main);
     outline: none;
     font-size: 0.95rem;
     transition: all 0.3s ease;
@@ -1286,7 +1286,7 @@ tbody tr:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(15, 23, 42, 0.8);
+    background: var(--bg-sidebar);
     backdrop-filter: blur(20px);
     z-index: 99999;
     align-items: center;
@@ -1332,7 +1332,7 @@ tbody tr:hover {
     bottom: 0;
     width: 380px !important;
     z-index: 100001;
-    background: rgba(15, 23, 42, 0.95) !important;
+    background: var(--bg-sidebar) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     transform: translateX(100%);
