@@ -74,6 +74,13 @@ input[name="nav-radio"],
     overflow: hidden;
 }
 
+@media (max-width: 768px) {
+    .dashboard-container, 
+    .storefront-container {
+        padding-top: 70px; /* Offset for fixed top bar */
+    }
+}
+
 main {
     flex: 1;
     height: 100vh;
