@@ -2253,28 +2253,12 @@ body {
     }
 
     /* Compact Pairing Overrides */
-    .table-container td[data-label="Date"],
-    .table-container td[data-label="Timestamp"],
-    .table-container td[data-label="Joined"],
-    .table-container td[data-label="Total"] {
-        align-items: flex-end;
-        text-align: right;
-    }
-
     .table-container td[data-label="Status"] {
         align-items: flex-start;
         text-align: left;
     }
 
     /* Force pair alignment for labels */
-    .table-container td[data-label="Date"]:before,
-    .table-container td[data-label="Timestamp"]:before,
-    .table-container td[data-label="Joined"]:before,
-    .table-container td[data-label="Total"]:before {
-        width: 100%;
-        text-align: right;
-    }
-
     .table-container td[data-label="Actions"]:before,
     .table-container td[data-label="Action"]:before,
     .table-container td[data-label="View Details"]:before {
