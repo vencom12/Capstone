@@ -105,8 +105,7 @@ tbody tr:hover {
     }
 }
 
-@media (max-width: 650px) {
-
+@media (max-width: 1100px) {
     /* Hide headers */
     .table-container thead {
         display: none;
@@ -227,7 +226,7 @@ td {
     color: var(--text-main);
 }
 
-@media (max-width: 650px) {
+@media (max-width: 1100px) {
 
     th,
     td {
