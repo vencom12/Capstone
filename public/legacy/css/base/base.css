@@ -108,8 +108,8 @@ main {
     z-index: 1000;
 }
 
-/* Desktop & Large Tablet: Always Open (Above 1000px) */
-@media (min-width: 1001px) {
+/* Desktop & Large Tablet: Always Open (Above 1100px) */
+@media (min-width: 1101px) {
     .right-panel {
         transform: translateX(0);
         position: relative;
@@ -120,8 +120,8 @@ main {
     }
 }
 
-/* Tablet & Mobile: Slide-in Drawer (Below 1000px) */
-@media (max-width: 1000px) {
+/* Tablet & Mobile: Slide-in Drawer (Below 1100px) */
+@media (max-width: 1100px) {
     .right-panel {
         position: fixed;
         top: 0;

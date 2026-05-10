@@ -48,7 +48,7 @@
 }
 
 /* Hide Cart from Nav in Desktop */
-@media (min-width: 1001px) {
+@media (min-width: 1101px) {
     .basket-nav-item {
         display: none !important;
     }
