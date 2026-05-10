@@ -326,21 +326,21 @@
 
             <!-- Section: Order Queue -->
             <section id="section-orders" class="module-section">
-                <div class="table-container glass">
-                    <div class="table-header">
-                        <h3>Active Order Queue</h3>
-                        <div class="table-controls">
-                            <input type="text" id="employee-orders-search" placeholder="Search queue...">
-                            <select id="employee-batch-status">
-                                <option value="">Batch Status Update</option>
-                                <option value="Preparing Order">Preparing Order</option>
-                                <option value="In Transit">In Transit</option>
-                                <option value="Ready For Pick Up">Ready For Pick Up</option>
-                                <option value="Order Delivered">Order Delivered</option>
-                            </select>
-                            <button id="employee-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
-                        </div>
+                <header class="section-header-top">
+                    <h1>Active Order Queue</h1>
+                    <div class="table-controls">
+                        <input type="text" id="employee-orders-search" placeholder="Search queue...">
+                        <select id="employee-batch-status">
+                            <option value="">Batch Status Update</option>
+                            <option value="Preparing Order">Preparing Order</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Ready For Pick Up">Ready For Pick Up</option>
+                            <option value="Order Delivered">Order Delivered</option>
+                        </select>
+                        <button id="employee-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
                     </div>
+                </header>
+                <div class="table-container glass">
                     <table>
                         <thead>
                             <tr>
@@ -399,16 +399,14 @@
                 </div>
             </section>
 
-            <!-- Section: Order History -->
             <section id="section-history" class="module-section">
-                <h1 style="font-size: 2rem; margin-bottom: 24px;">Order History</h1>
-                <div class="table-container glass">
-                    <div class="table-header">
-                        <h3>Completed & Canceled Orders</h3>
-                        <div class="table-controls">
-                            <input type="text" id="employee-history-search" placeholder="Search history...">
-                        </div>
+                <header class="section-header-top">
+                    <h1>Order History</h1>
+                    <div class="table-controls">
+                        <input type="text" id="employee-history-search" placeholder="Search history...">
                     </div>
+                </header>
+                <div class="table-container glass">
                     <table>
                         <thead>
                             <tr>

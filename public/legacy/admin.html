@@ -286,23 +286,23 @@
                     </div>
                 </div>
 
-                <div class="content-area">
-                    <div class="table-container glass">
-                        <div class="table-header">
-                            <h3>Recent Embroidery Orders</h3>
-                            <div class="table-controls">
-                                <input type="text" id="admin-orders-search" placeholder="Search orders...">
-                                <select id="admin-batch-status">
-                                    <option value="">Batch Status Update</option>
-                                    <option value="Preparing Order">Preparing Order</option>
-                                    <option value="In Transit">In Transit</option>
-                                    <option value="Ready For Pick Up">Ready For Pick Up</option>
-                                    <option value="Order Delivered">Order Delivered</option>
-                                </select>
-                                <button id="admin-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
-                                <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
-                            </div>
-                        </div>
+            <section id="section-orders" class="module-section">
+                <header class="section-header-top">
+                    <h1>Recent Embroidery Orders</h1>
+                    <div class="table-controls">
+                        <input type="text" id="admin-orders-search" placeholder="Search orders...">
+                        <select id="admin-batch-status">
+                            <option value="">Batch Status Update</option>
+                            <option value="Preparing Order">Preparing Order</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Ready For Pick Up">Ready For Pick Up</option>
+                            <option value="Order Delivered">Order Delivered</option>
+                        </select>
+                        <button id="admin-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
+                        <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
+                    </div>
+                </header>
+                <div class="table-container glass">
                         <table>
                             <thead>
                                 <tr>
@@ -416,7 +416,6 @@
                     </div>
                     <button class="btn btn-primary" onclick="window.openCreateStaff()">+ Create Staff
                         Account</button>
-                    <button class="btn btn-primary" onclick="window.openCreateStaff()">+ Create Staff Account</button>
                 </header>
 
                 <div class="table-container glass">
@@ -508,16 +507,14 @@
                 </div>
             </section>
 
-            <!-- Section: Order History -->
             <section id="section-history" class="module-section">
-                <h1 style="font-size: 2rem; margin-bottom: 24px;">Order History</h1>
-                <div class="table-container glass">
-                    <div class="table-header">
-                        <h3>Completed & Canceled Orders</h3>
-                        <div class="table-controls">
-                            <input type="text" id="admin-history-search" placeholder="Search history...">
-                        </div>
+                <header class="section-header-top">
+                    <h1>Order History</h1>
+                    <div class="table-controls">
+                        <input type="text" id="admin-history-search" placeholder="Search history...">
                     </div>
+                </header>
+                <div class="table-container glass">
                     <table>
                         <thead>
                             <tr>
