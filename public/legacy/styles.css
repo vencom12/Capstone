@@ -1579,7 +1579,6 @@ body {
     border-radius: 20px;
     background: var(--bg-card);
     border: 1px solid var(--border-glass);
-    margin-top: 20px;
 }
 .table-header {
     padding: 24px 30px;
