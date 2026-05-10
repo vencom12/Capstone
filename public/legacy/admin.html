@@ -771,7 +771,7 @@
 
     <!-- Failsafe View Navigation JS -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        (function() {
             const radios = document.querySelectorAll('input[name="nav-radio"]');
             function updateViews() {
                 radios.forEach(radio => {
@@ -787,10 +787,12 @@
                     }
                 });
             }
-            radios.forEach(r => r.addEventListener('change', updateViews));
-            // Run once on load
-            setTimeout(updateViews, 100);
-        });
+            if (radios.length > 0) {
+                radios.forEach(r => r.addEventListener('change', updateViews));
+                // Run immediately
+                updateViews();
+            }
+        })();
     </script>
 </body>
 
