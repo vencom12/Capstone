@@ -1100,6 +1100,26 @@ tbody tr:hover {
         }
     }
 
+    /* Toast Notifications */
+    .toast {
+        background: rgba(30, 41, 59, 0.8);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
     .drawer-header {
         display: flex;
         justify-content: space-between;
