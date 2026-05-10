@@ -37,11 +37,11 @@
         gap: 8px !important;
     }
     .header-search {
-        order: 4;
-        width: 100% !important;
-        margin: 5px 0 0 0 !important;
+        order: 3;
+        flex: 1 !important;
+        margin: 0 !important;
         max-width: none !important;
-        flex: none !important;
+        position: relative;
     }
     .header-search input {
         padding: 10px 16px !important;

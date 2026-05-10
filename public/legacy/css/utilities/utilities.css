@@ -630,8 +630,8 @@
 /* Tablet Overlap Fix */
 @media (max-width: 1100px) and (min-width: 651px) {
     .storefront-dashboard-layout {
-        margin-top: 132px !important;
-        height: calc(100vh - 132px) !important;
+        margin-top: 110px !important;
+        height: calc(100vh - 110px) !important;
     }
 }
 
@@ -670,7 +670,7 @@
     .storefront-dashboard-layout {
         flex-direction: column !important;
         padding: 0 !important;
-        margin-top: 175px !important; /* Total header height with 3 rows */
+        margin-top: 125px !important; /* Shorter header with 2 rows */
     }
     
     .storefront-sidebar {
@@ -679,9 +679,9 @@
     
     .mobile-category-dropdown {
         display: block !important;
-        width: 100%;
-        padding: 5px 12px 10px 12px; /* Adjusted spacing */
-        background: transparent; /* Seamless in header */
+        flex: 1;
+        padding: 0;
+        background: transparent;
         border-bottom: none;
         margin-top: 0;
         z-index: 1000;
