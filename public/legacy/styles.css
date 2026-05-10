@@ -2594,3 +2594,36 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     padding: 0 !important;
 }
 
+
+/* --- TOTAL ISOLATION OVERRIDES --- */
+.admin-sidebar-isolated {
+    width: 280px !important;
+    flex-shrink: 0 !important;
+    height: 100vh !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    display: block !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: blur(20px) !important;
+}
+
+.admin-module-section {
+    display: none;
+    padding: 40px;
+    width: 100% !important;
+    min-height: 100vh !important;
+}
+
+.admin-module-section.active {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#admin-main-content {
+    flex: 1 !important;
+    display: block !important;
+    position: relative !important;
+}
+

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | Stitch-Opt</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="stylesheet" href="styles.css?v=5">
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
@@ -105,7 +105,7 @@
     <input type="radio" name="nav-radio" id="nav-history">
 
     <div class="admin-portal-wrapper">
-        <aside class="sidebar glass">
+        <aside class="admin-sidebar-isolated glass">
             <a href="admin.html" class="nav-logo" style="margin-bottom: 15px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
@@ -262,7 +262,7 @@
 
         <main id="admin-main-content">
             <!-- Section: Overview -->
-            <section id="section-overview" class="module-section active">
+            <section id="section-overview" class="admin-module-section active">
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Admin Console</h1>
@@ -365,7 +365,7 @@
             </section>
 
             <!-- Section: Inventory (Remade) -->
-            <section id="section-inventory" class="module-section">
+            <section id="section-inventory" class="admin-module-section">
                 <header class="section-header-top">
                     <div>
                         <h1>Inventory Management</h1>
@@ -402,7 +402,7 @@
             </section>
 
             <!-- Section: Production -->
-            <section id="section-production" class="module-section">
+            <section id="section-production" class="admin-module-section">
                 <h1 style="font-size: 2rem; margin-bottom: 24px;">Live Production</h1>
                 <div class="glass" style="padding: 40px; text-align: center; color: var(--text-dim);">
                     <p>Detailed machine metrics and schedules.</p>
@@ -410,7 +410,7 @@
             </section>
 
             <!-- Section: Staff Management -->
-            <section id="section-staffing" class="module-section">
+            <section id="section-staffing" class="admin-module-section">
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Staff Management</h1>
@@ -445,7 +445,7 @@
             </section>
 
             <!-- Section: Analytics -->
-            <section id="section-analytics" class="module-section">
+            <section id="section-analytics" class="admin-module-section">
                 <header style="margin-bottom: 40px;">
                     <h1 style="font-size: 2rem;">Production Analytics</h1>
                     <p style="color: var(--text-dim);">Real-time metrics and historical performance data.</p>
@@ -509,7 +509,7 @@
                 </div>
             </section>
 
-            <section id="section-history" class="module-section">
+            <section id="section-history" class="admin-module-section">
                 <header class="section-header-top">
                     <h1>Order History</h1>
                     <div class="table-controls">
@@ -776,7 +776,7 @@
     <script>
         (function() {
             const labels = document.querySelectorAll('.nav-links label');
-            const sections = document.querySelectorAll('.module-section');
+            const sections = document.querySelectorAll('.admin-module-section');
             const radios = document.querySelectorAll('input[name="nav-radio"]');
 
             function switchTo(targetId) {
