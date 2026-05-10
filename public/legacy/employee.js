@@ -214,15 +214,15 @@ function updateUI() {
             `;
         } else {
             productList.innerHTML = products.map(p => `
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
-                    <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
-                    <div style="flex: 1;">
-                        <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
+                <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">
+                    <div style="width: 100%; height: 120px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
+                    <div style="flex: 1; text-align: center;">
+                        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: white;">${p.name}</h4>
                         <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
-                        <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button class="btn" onclick="openEditProduct('${p._id}')" style="flex: 1; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Customize</button>
+                        <button class="btn" onclick="deleteProduct('${p._id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
                     </div>
                 </div>`).join('');
         }

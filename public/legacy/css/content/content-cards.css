@@ -12,13 +12,6 @@
     .product-grid {
         grid-template-columns: repeat(4, 1fr) !important;
     }
-    
-    /* Specific for Customer Dashboard: Stay 3 columns until Ultra-Wide */
-    @media (max-width: 1400px) {
-        .product-grid:not(#product-list-container):not(:has(.stat-card)) {
-            grid-template-columns: repeat(3, 1fr) !important;
-        }
-    }
 }
 
 /* --- WIDE TABLET (3 Columns - 901px to 1150px) --- */
@@ -43,12 +36,7 @@
     /* Respect the column rules above */
 }
 
-/* Force 2 Columns for Shop/Catalog on mobile/tablet if not caught above */
-@media (max-width: 1100px) {
-    .product-grid:not(#product-list-container):not(:has(.stat-card)) {
-        /* Already handled by .product-grid base rules above */
-    }
-}
+
 
 /* Stat Card Mobile Stacking */
 @media (max-width: 768px) {
