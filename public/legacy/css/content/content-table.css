@@ -62,6 +62,13 @@ tbody tr:hover {
     border: 1px solid var(--border-glass);
 }
 
+@media (max-width: 768px) {
+    .table-container {
+        background: transparent;
+        border-color: transparent;
+    }
+}
+
 .table-header {
     padding: 24px 30px;
     display: flex;
@@ -84,6 +91,13 @@ tbody tr:hover {
     color: var(--text-main);
     outline: none;
     font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .table-controls input, .table-controls select {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
 }
 
 th, td { padding: 18px 30px; border-bottom: 1px solid var(--border-glass); text-align: left; color: var(--text-main); }
