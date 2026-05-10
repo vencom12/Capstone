@@ -159,8 +159,10 @@
     z-index: 2000;
     background: var(--bg-sidebar);
     border-left: 1px solid var(--border-glass);
-    transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateX(101%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
@@ -182,6 +184,8 @@
 
 #nav-drawer-toggle:checked ~ .storefront-drawer {
     transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
 }
 
 #nav-drawer-toggle:checked ~ .storefront-overlay {
@@ -242,9 +246,10 @@
     .storefront-header {
         display: grid !important;
         grid-template-areas: "brand actions" "search search";
-        padding: 10px 15px !important;
-        min-height: 100px !important;
-        gap: 8px !important;
+        padding: 8px 15px !important;
+        height: auto !important;
+        min-height: 90px !important;
+        gap: 6px !important;
     }
 
     .header-brand h1 { font-size: 1.1rem; }
@@ -256,7 +261,7 @@
 
     .storefront-dashboard-layout {
         flex-direction: column !important;
-        padding-top: 110px !important;
+        padding-top: 90px !important;
         height: auto !important;
         overflow-y: visible !important;
     }
@@ -264,9 +269,9 @@
     .storefront-sidebar {
         width: 100% !important;
         position: sticky !important;
-        top: 100px;
-        padding: 12px 15px !important;
-        margin-bottom: 10px !important;
+        top: 90px;
+        padding: 8px 15px !important;
+        margin-bottom: 0 !important;
         background: var(--bg-header) !important;
         backdrop-filter: blur(20px);
         z-index: 100;
