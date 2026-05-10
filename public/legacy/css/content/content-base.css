@@ -160,19 +160,11 @@ main {
     margin-bottom: 30px;
 }
 
-/* --- MOBILE PHONE (2 Columns - Below 650px) --- */
+/* --- MOBILE PHONE (Grid settings handled by content-cards.css) --- */
 @media (max-width: 650px) {
-    .product-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+    .module-section {
+        padding: 10px;
     }
-}
-
-/* Intelligent Grid for Inventory/Stats (Adapts 1-2 columns) */
-.product-grid#product-list-container,
-.product-grid:has(.stat-card) {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-    gap: 15px;
 }
 
 /* Stat Card Mobile Stacking (Only when constrained) */
