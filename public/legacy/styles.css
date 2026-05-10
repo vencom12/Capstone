@@ -1050,7 +1050,7 @@ tbody tr:hover {
     }
 
     .module-section {
-        padding: 20px 22px; /* Increased side margins for focused feel */
+        padding: 20px 12px; /* Reduced side margins to fit more content */
     }
 
     /* Mobile Drawer System */
@@ -2085,9 +2085,9 @@ body {
 
     .table-container {
         padding: 0 !important;
-        margin: 15px 0 15px 22px !important; /* Fixed left margin to match top */
-        width: 92% !important; /* Slightly narrower to create right-side gap */
-        max-width: 400px !important;
+        margin: 15px auto !important; /* Centered layout */
+        width: 100% !important; /* Fill parent width */
+        max-width: none !important; /* Remove restrictive cap */
         overflow: visible !important;
         border-radius: 20px;
         background: transparent !important;
@@ -2148,9 +2148,7 @@ body {
         display: flex;
         flex-wrap: wrap;
         gap: 4%;
-        margin-bottom: 0;
-        margin-left: 0;
-        margin-right: 0;
+        margin: 0 0 12px 0; /* No auto margin, use full width */
         border: 1px solid var(--border-glass);
         border-radius: 16px !important;
         background: var(--bg-sidebar);
@@ -2161,7 +2159,7 @@ body {
         position: relative;
         z-index: 1;
         overflow: visible !important;
-        width: calc(100% - 5px) !important; /* Small safety gap on right */
+        width: 100% !important; /* Full width card */
         box-sizing: border-box;
     }
 
