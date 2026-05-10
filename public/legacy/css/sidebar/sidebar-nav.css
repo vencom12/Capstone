@@ -61,7 +61,11 @@
 #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
 #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
 #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"],
-#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"] {
+#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"],
+#nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"],
+#nav-products:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-products"],
+#nav-support:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-support"],
+#nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"] {
     background: var(--primary) !important;
     color: white !important;
     box-shadow: 0 4px 15px var(--primary-glow);
@@ -83,7 +87,11 @@
 #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"]::after,
 #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"]::after,
 #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"]::after,
-#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"]::after {
+#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"]::after,
+#nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"]::after,
+#nav-products:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-products"]::after,
+#nav-support:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-support"]::after,
+#nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"]::after {
     content: '';
     position: absolute;
     left: 0;
