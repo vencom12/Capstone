@@ -502,7 +502,7 @@ const _updateUIInternal = debounce(() => {
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
         historyTable.innerHTML = displayTransactions.length === 0
-            ? `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-dim);">
+            ? `<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">
                 ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
                </td></tr>`
             : displayTransactions.map(tx => {
@@ -514,17 +514,21 @@ const _updateUIInternal = debounce(() => {
                     description = formatOrderDesign(order);
                 }
 
+                const dateObj = new Date(tx.timestamp);
+                const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
                 return `
                 <tr>
-                    <td data-label="Transaction ID" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">${tx.transactionID}</td>
+                    <td data-label="ID & Status">
+                        <div class="order-id-main" style="font-family: monospace; font-size: 0.85rem;">${tx.transactionID}</div>
+                        <span class="status-pill-small ${tx.status}">${tx.status}</span>
+                    </td>
                     <td data-label="Description">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 2px;">${new Date(tx.timestamp).toLocaleDateString()}</span>
-                            <span style="font-weight: 500;">${description}</span>
-                        </div>
+                        <div class="timestamp-sub">${dateStr}, ${timeStr}</div>
+                        <div style="font-weight: 500;">${description}</div>
                     </td>
                     <td data-label="Amount" style="font-weight: 600;">$${tx.amount.toFixed(2)}</td>
-                    <td data-label="Status"><span class="status-pill ${tx.status}">${tx.status}</span></td>
                     <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="viewReceipt('${tx.transactionID}')" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2);">View</button>

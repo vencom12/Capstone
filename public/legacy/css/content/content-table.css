@@ -11,10 +11,6 @@
     border-radius: 0;
 }
 
-/* Responsive Adjustments — Tablet / Half-screen PC (769px – 1100px) */
-
-
-
 .product-tag {
     display: inline-block;
     padding: 4px 10px;
@@ -25,12 +21,6 @@
     font-weight: 600;
     margin-bottom: 12px;
 }
-
-/* Right Panel Styles (Order Queue & Basket Drawer) */
-/* Right Panel Drawer (Mobile/Tablet Only) */
-
-
-/* Global Stats & Metrics */
 
 .responsive-table-wrapper {
     width: 100%;
@@ -60,10 +50,6 @@ tbody tr:hover {
     background: rgba(255, 255, 255, 0.03);
 }
 
-/* Core Mobile Breakpoint */
-
-
-
 .receipt-modal-content {
     width: 90%;
     max-width: 500px;
@@ -74,15 +60,10 @@ tbody tr:hover {
     background: var(--bg-card);
 }
 
-
-
-/* Responsive Tables */
-
-
-/* Middle Loader Cloud for Products */
-
+/* Adaptive Fluidity */
 .table-container {
     width: 100%;
+    max-width: 100%; 
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 20px;
@@ -113,7 +94,7 @@ tbody tr:hover {
     outline: none;
     font-size: 0.85rem;
 }
-table { width: 100%; border-collapse: collapse; }
+
 th, td { padding: 18px 30px; border-bottom: 1px solid var(--border-glass); text-align: left; color: var(--text-main); }
 th { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; background: rgba(0,0,0,0.1); }
 tr:hover td { background: rgba(255, 255, 255, 0.02); }
@@ -122,4 +103,24 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
 .table-empty-msg { text-align: center !important; padding: 40px !important; color: var(--text-dim) !important; font-style: italic; }
 
-/* Status Badges */
+/* Stacked Data Hierarchy */
+.order-id-main {
+    color: var(--primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.timestamp-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+}
+
+.status-pill-small {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border: 1px solid var(--border-glass);
+}

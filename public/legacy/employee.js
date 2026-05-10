@@ -161,29 +161,37 @@ function updateUI() {
     if (progressEl) progressEl.style.width = `${machine.progress}%`;
 
     // 2. Active Orders Table
-    const tableBody = document.getElementById('employee-order-table-body');
     if (tableBody) {
         const activeOrders = orders.filter(o => !['Order Delivered', 'Order Canceled'].includes(o.status));
         tableBody.innerHTML = activeOrders.length === 0
-            ? '<tr><td colspan="7" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>'
-            : activeOrders.map(order => `
+            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>'
+            : activeOrders.map(order => {
+                const dateObj = new Date(order.date || order.createdAt);
+                const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                return `
                 <tr>
-                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
-                    <td data-label="Client">${order.client || 'Guest'}</td>
-                    <td data-label="Design" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${formatOrderDesign(order)}">
+                    <td data-label="Order ID">
+                        <div class="order-id-main">${order.orderId}</div>
+                        <span class="status-pill-small">${order.status}</span>
+                    </td>
+                    <td data-label="Client">
+                        <div class="timestamp-sub">${dateStr}, ${timeStr}</div>
+                        <div class="client-name">${order.client || 'Guest'}</div>
+                    </td>
+                    <td data-label="Design" class="design-cell" title="${formatOrderDesign(order)}">
                         ${formatOrderDesign(order)}
                     </td>
-                    <td data-label="Total" style="color: var(--primary); font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
-                    <td data-label="Status"><span class="status-pill">${order.status}</span></td>
-                    <td data-label="Date" style="color: var(--text-dim); font-size: 0.85rem;">${new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Total" class="price-cell">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td data-label="Action">
                         <button class="btn" onclick="openEditOrder('${order._id}')" 
                             style="background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); padding: 6px 12px; font-size: 0.8rem;">
                             Process
                         </button>
                     </td>
-                </tr>
-`).join('');
+                </tr>`;
+            }).join('');
     }
 
     // 3. Inventory/Catalog

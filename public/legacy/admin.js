@@ -282,25 +282,34 @@ const _updateUIInternal = debounce(() => {
         if (goldEl) goldEl.innerText = `${gold} Cones`;
     }
 
-    const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
         orderTable.innerHTML = orders.length === 0
-            ? '<tr><td colspan="8" style="text-align:center; padding:40px;">No orders found.</td></tr>'
-            : orders.map(order => `
+            ? '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>'
+            : orders.map(order => {
+                const dateObj = new Date(order.date || order.createdAt);
+                const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                return `
                 <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
-                    <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${order.orderId}</td>
-                    <td data-label="Customer">${order.client || 'Guest'}</td>
+                    <td data-label="Order ID">
+                        <div class="order-id-main">${order.orderId}</div>
+                        <span class="status-pill-small">${order.status}</span>
+                    </td>
+                    <td data-label="Customer">
+                        <div class="timestamp-sub">${dateStr}, ${timeStr}</div>
+                        <div style="font-weight: 500;">${order.client || 'Guest'}</div>
+                    </td>
                     <td data-label="Design">${formatOrderDesign(order)}</td>
                     <td data-label="Total" style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
-                    <td data-label="Status"><span class="status-pill">${order.status}</span></td>
-                    <td data-label="Date" style="font-size: 0.85rem; color: var(--text-dim);">${new Date(order.date || order.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                     <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
                             <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
                             ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
                         </div>
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
     }
 
     const staffTable = document.getElementById('staff-table-body');
