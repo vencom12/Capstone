@@ -170,10 +170,10 @@ tbody tr:hover {
         min-height: 60px;
     }
 
-    /* Values on right side of card rows */
+    /* Keep all values left-aligned within the card */
     .table-container td:nth-child(even) {
-        align-items: flex-end;
-        text-align: right;
+        align-items: flex-start;
+        text-align: left;
     }
 
     .table-container td::before {
