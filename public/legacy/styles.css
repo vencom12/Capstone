@@ -500,26 +500,54 @@ main {
     min-height: 100%;
 }
 
+/* --- Robust Dashboard Layout System --- */
+.dashboard-container {
+    display: flex !important; /* Force side-by-side */
+    flex-direction: row !important;
+    min-height: 100vh;
+    background: var(--bg-gradient);
+    overflow: hidden;
+}
+
+.dashboard-container > aside.sidebar {
+    width: 280px !important;
+    flex-shrink: 0;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.dashboard-container > main {
+    flex: 1 !important;
+    height: 100vh;
+    overflow-y: auto;
+    position: relative;
+    padding: 0; /* Padding handled by sections */
+}
+
+/* --- Clean Section Visibility --- */
+.module-section {
+    display: none; /* Hidden by default */
+    padding: 40px;
+    width: 100%;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.module-section.active {
+    display: block !important; /* Visible when active class present */
+}
+
+/* --- Legacy Radio Sync (Optional for Label Styling) --- */
 #nav-shop:checked~.dashboard-container #section-shop,
-#nav-tracking:checked~.dashboard-container #section-tracking,
-#nav-favs:checked~.dashboard-container #section-favs,
-#nav-settings:checked~.dashboard-container #section-settings,
-#nav-overview:checked~.dashboard-container #section-overview,
 #nav-inventory:checked~.dashboard-container #section-inventory,
 #nav-production:checked~.dashboard-container #section-production,
 #nav-staffing:checked~.dashboard-container #section-staffing,
 #nav-analytics:checked~.dashboard-container #section-analytics,
-#nav-workbench:checked~.dashboard-container #section-workbench,
-#nav-status:checked~.dashboard-container #section-status,
-#nav-threads:checked~.dashboard-container #section-threads,
-#nav-products:checked~.dashboard-container #section-products,
-#nav-history:checked~.dashboard-container #section-history,
-#nav-receipts:checked~.dashboard-container #section-receipts,
-#nav-support:checked~.dashboard-container #section-support,
-.module-section.active {
-    display: block !important;
-    animation: fadeIn 0.4s ease-out;
+#nav-history:checked~.dashboard-container #section-history {
+    display: block;
 }
+
 
 /* Radio logic handled in section above with .active */
 
