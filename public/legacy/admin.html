@@ -788,7 +788,24 @@
                 });
             }
             if (radios.length > 0) {
+                // Listen to native radio changes
                 radios.forEach(r => r.addEventListener('change', updateViews));
+                
+                // BULLETPROOF FALLBACK: Listen to label clicks directly
+                const labels = document.querySelectorAll('.nav-links label');
+                labels.forEach(label => {
+                    label.addEventListener('click', () => {
+                        const targetId = label.getAttribute('for');
+                        if (targetId) {
+                            const radio = document.getElementById(targetId);
+                            if (radio && !radio.checked) {
+                                radio.checked = true;
+                                updateViews();
+                            }
+                        }
+                    });
+                });
+
                 // Run immediately
                 updateViews();
             }
