@@ -25,7 +25,7 @@
         height: auto !important;
         padding: 10px 15px !important;
         gap: 8px !important;
-        justify-content: flex-start;
+        justify-content: space-between;
     }
     .header-brand {
         order: 1;
@@ -35,7 +35,6 @@
         order: 2;
         flex: 0 1 auto !important;
         gap: 8px !important;
-        margin-left: 5px;
     }
     .header-search {
         order: 4;
@@ -53,11 +52,11 @@
     
     /* Shrink buttons more to fit inline */
     .header-actions {
-        gap: 8px !important;
+        gap: 12px !important;
     }
     .header-actions .header-btn {
-        padding: 5px 8px !important;
-        font-size: 0.75rem !important;
+        padding: 6px 12px !important;
+        font-size: 0.8rem !important;
         min-width: auto !important;
     }
     .header-actions .header-btn svg {
