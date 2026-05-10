@@ -8,7 +8,7 @@
     border-right: 1px solid var(--border-glass);
     display: flex;
     flex-direction: column;
-    padding: 0; /* Flush to top */
+    padding: 0 0 20px 0; /* Bottom padding for safety */
     transition: width 0.3s ease, transform 0.3s ease;
     z-index: 1100;
 }
@@ -37,8 +37,10 @@
     .sidebar .nav-links label span,
     .sidebar .nav-links a span,
     .sidebar-profile .profile-info,
-    .sidebar-profile .profile-name {
-        display: none;
+    .sidebar-profile .profile-name,
+    .logout-container span,
+    .logout-btn span {
+        display: none !important;
     }
     
     .sidebar .nav-links label,
