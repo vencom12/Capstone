@@ -116,13 +116,13 @@ main {
     margin-bottom: 40px;
 }
 
-.analytics-grid > div h3 {
+.analytics-grid>div h3 {
     margin-bottom: 20px;
     font-size: 1.1rem;
     color: var(--text-main);
 }
 
-.analytics-grid > div > div {
+.analytics-grid>div>div {
     height: 350px;
     position: relative;
     width: 100%;
