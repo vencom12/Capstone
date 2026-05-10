@@ -18,6 +18,7 @@
 }
 
 .section-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
+.section-header-top .btn { margin-left: auto; }
 
 /* --- PHONE (Top Navigation Bar - Below 650px) --- */
 @media (max-width: 650px) {
