@@ -268,10 +268,10 @@
 
     .storefront-sidebar {
         width: 100% !important;
-        position: sticky !important;
-        top: 90px;
-        padding: 8px 15px !important;
-        margin-bottom: 0 !important;
+        position: relative !important;
+        top: 0 !important;
+        padding: 10px 15px !important;
+        margin-bottom: 5px !important;
         background: var(--bg-header) !important;
         backdrop-filter: blur(20px);
         z-index: 100;
@@ -304,7 +304,7 @@
     }
 
     .storefront-main {
-        padding: 10px 15px !important;
+        padding: 0 15px 20px !important;
     }
 
     .hero-section { padding: 120px 20px 40px !important; }

@@ -261,8 +261,7 @@
         </aside>
 
         <main>
-            <!-- Section: Overview -->
-            <section id="section-overview" class="module-section">
+            <!-- Section: Overview -->            <section id="section-overview" class="module-section">
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Admin Console</h1>
@@ -270,7 +269,6 @@
                     </div>
                     <div class="btn btn-primary">+ New Production Run</div>
                 </header>
-
                 <div class="stats-grid">
                     <div class="stat-card glass">
                         <span class="stat-label">Midnight Blue Thread</span>
@@ -285,23 +283,24 @@
                         <span id="overview-revenue" class="stat-value">---</span>
                     </div>
                 </div>
+                <div style="margin-top: 40px;">
+                    <header class="section-header-top">
+                        <h1>Recent Embroidery Orders</h1>
+                        <div class="table-controls">
+                            <input type="text" id="admin-orders-search" placeholder="Search orders...">
+                            <select id="admin-batch-status">
+                                <option value="">Batch Status Update</option>
+                                <option value="Preparing Order">Preparing Order</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Ready For Pick Up">Ready For Pick Up</option>
+                                <option value="Order Delivered">Order Delivered</option>
+                            </select>
+                            <button id="admin-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
+                            <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
+                        </div>
+                    </header>
+                </div>
 
-            <section id="section-orders" class="module-section">
-                <header class="section-header-top">
-                    <h1>Recent Embroidery Orders</h1>
-                    <div class="table-controls">
-                        <input type="text" id="admin-orders-search" placeholder="Search orders...">
-                        <select id="admin-batch-status">
-                            <option value="">Batch Status Update</option>
-                            <option value="Preparing Order">Preparing Order</option>
-                            <option value="In Transit">In Transit</option>
-                            <option value="Ready For Pick Up">Ready For Pick Up</option>
-                            <option value="Order Delivered">Order Delivered</option>
-                        </select>
-                        <button id="admin-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
-                        <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
-                    </div>
-                </header>
                 <div class="table-container glass">
                         <table>
                             <thead>
