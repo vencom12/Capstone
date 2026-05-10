@@ -1,7 +1,7 @@
 /* SIDEBAR TRANSFORMATION ENGINE */
 
 .sidebar {
-    width: 280px;
+    width: 260px;
     height: 100vh;
     background: var(--bg-sidebar);
     backdrop-filter: var(--glass-blur);
@@ -16,7 +16,7 @@
 /* --- DESKTOP (Full View - Above 1100px) --- */
 @media (min-width: 1101px) {
     .sidebar {
-        width: 280px;
+        width: 260px;
     }
     .sidebar .nav-logo span,
     .sidebar .nav-links label span,

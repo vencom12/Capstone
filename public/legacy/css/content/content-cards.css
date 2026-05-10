@@ -14,10 +14,10 @@
     }
 }
 
-/* --- TABLET (3 Columns - 651px to 1100px) --- */
+/* --- TABLET (2 Columns - 651px to 1100px) --- */
 @media (min-width: 651px) and (max-width: 1100px) {
     .product-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 15px;
     }
 }
@@ -25,7 +25,7 @@
 /* --- MOBILE PHONE (2 Columns - Below 650px) --- */
 @media (max-width: 650px) {
     .product-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 12px;
     }
 }
