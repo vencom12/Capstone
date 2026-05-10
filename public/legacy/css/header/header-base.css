@@ -26,6 +26,8 @@
         padding: 10px 15px !important;
         gap: 8px !important;
         justify-content: space-between;
+        border-bottom: none !important;
+        box-shadow: none !important;
     }
     .header-brand {
         order: 1;
@@ -38,8 +40,9 @@
     }
     .header-search {
         order: 3;
-        flex: 1 !important;
-        margin: 0 !important;
+        width: calc(50% - 4px) !important;
+        flex: none !important;
+        margin: 5px 0 0 0 !important;
         max-width: none !important;
         position: relative;
     }
@@ -48,6 +51,8 @@
         padding-right: 40px !important;
         font-size: 0.9rem !important;
         height: 40px !important;
+        border: none !important;
+        background: rgba(255, 255, 255, 0.05) !important;
     }
     
     /* Shrink buttons more to fit inline */

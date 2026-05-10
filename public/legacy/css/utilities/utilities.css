@@ -680,11 +680,13 @@
     
     .mobile-category-dropdown {
         display: block !important;
-        flex: 1;
-        padding: 0;
-        background: transparent;
-        border-bottom: none;
-        margin-top: 0;
+        width: calc(50% - 4px) !important;
+        flex: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin-top: 5px !important;
         z-index: 1000;
         order: 3;
     }
@@ -701,7 +703,7 @@
         padding-right: 40px;
         appearance: none;
         background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-glass);
+        border: none !important;
         border-radius: 12px;
         color: var(--text-main);
         font-size: 0.9rem;
