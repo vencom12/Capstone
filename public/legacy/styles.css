@@ -2121,6 +2121,7 @@ body {
         border-spacing: 0 12px !important;
         width: 100% !important;
         max-width: 100% !important; /* Lock width */
+        min-width: auto !important; /* CRITICAL: Break the min-width constraint */
         margin: 0 !important;
         table-layout: fixed !important; /* Force content to respect width */
     }
@@ -2183,7 +2184,12 @@ body {
     .table-container td[data-label="Actions"],
     .table-container td[data-label="Action"],
     .table-container td[data-label="Date"],
+    .table-container td[data-label="Joined"],
+    .table-container td[data-label="Timestamp"],
     .table-container td[data-label="View Details"],
+    .table-container td[data-label="Client"],
+    .table-container td[data-label="Customer"],
+    .table-container td[data-label="Status"],
     .table-container td:last-child {
         flex: 1 1 100%;
         max-width: 100%;
