@@ -363,20 +363,22 @@
                 </div>
             </section>
 
-            <!-- Section: Inventory -->
+            <!-- Section: Inventory (Remade) -->
             <section id="section-inventory" class="module-section">
                 <header class="section-header-top">
-                    <h1 style="font-size: 2rem;">Product Management</h1>
-                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <h1>Inventory Management</h1>
+                        <p style="color: var(--text-dim);">Manage your product catalog and stock levels.</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
                         <input type="text" id="admin-products-search" class="glass" placeholder="Search designs..."
-                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 200px;">
-                        <button class="btn btn-primary" onclick="openCreateProduct()">+ Create New
-                            Design</button>
+                            style="padding: 10px 20px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none;">
+                        <button class="btn btn-primary" onclick="openCreateProduct()">+ Create Design</button>
                     </div>
                 </header>
 
-                <div id="product-list-container" class="product-grid">
-                    <!-- High Fidelity Skeletons -->
+                <div class="product-grid" id="product-list-container" style="min-height: 400px;">
+                    <!-- Skeletons will be replaced by admin.js -->
                     <div class="skeleton-card">
                         <div class="skeleton skeleton-img"></div>
                         <div class="skeleton skeleton-title"></div>
@@ -806,8 +808,9 @@
                     });
                 });
 
-                // Run immediately
+                // Run immediately and every 500ms (Brute-force Failsafe)
                 updateViews();
+                setInterval(updateViews, 500);
             }
         })();
     </script>
