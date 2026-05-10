@@ -71,8 +71,8 @@ main {
     z-index: 1000;
 }
 
-/* Desktop: Always Open (Above 1300px) */
-@media (min-width: 1301px) {
+/* Desktop: Always Open (Above 1100px) */
+@media (min-width: 1101px) {
     .right-panel {
         transform: translateX(0);
         position: relative;
@@ -83,8 +83,8 @@ main {
     }
 }
 
-/* Tablet & Mobile: Slide-in Drawer (Below 1300px) */
-@media (max-width: 1300px) {
+/* Tablet & Mobile: Slide-in Drawer (Below 1100px) */
+@media (max-width: 1100px) {
     .right-panel {
         position: fixed;
         top: 0;
