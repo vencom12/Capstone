@@ -206,6 +206,11 @@ main {
     }
 }
 
+.analytics-grid > div {
+    max-width: 300px;
+    width: 100%;
+}
+
 .analytics-grid>div h3 {
     margin-bottom: 20px;
     font-size: 1.1rem;

@@ -79,6 +79,23 @@ tbody tr:hover {
     gap: 20px;
 }
 
+.analytics-grid > div {
+    max-width: 300px;
+    width: 100%;
+}
+
+.analytics-grid>div h3 {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.analytics-grid>div>div {
+    height: 350px;
+    position: relative;
+    width: 100%;
+}
+
 .table-header h3 {
     margin: 0;
     font-size: 1.25rem;
@@ -115,7 +132,7 @@ tbody tr:hover {
     .table-container table,
     .table-container tbody {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
         gap: 15px;
     }
 
