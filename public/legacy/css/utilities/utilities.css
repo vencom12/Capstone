@@ -613,27 +613,32 @@
 
 .storefront-dashboard-layout {
     display: flex;
-    gap: 10px; /* Tightened gap between sidebar and main */
-    padding: 5px 15px; /* Reduced vertical gap to 5px */
     margin-top: var(--header-height);
     height: calc(100vh - var(--header-height));
     width: 100%;
     overflow: hidden;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 
 .storefront-sidebar {
-    position: sticky;
-    top: var(--header-height);
     width: 215px;
-    max-height: calc(100vh - var(--header-height) - 40px);
-    overflow-y: auto;
-    padding: 20px 15px;
-    border-radius: 16px;
+    height: 100%;
+    background: var(--bg-sidebar);
+    backdrop-filter: var(--glass-blur);
+    border-right: 1px solid var(--border-glass);
     display: flex;
     flex-direction: column;
-    transition: width 0.3s ease, padding 0.3s ease;
+    padding: 20px 0;
+    transition: width 0.3s ease;
+    overflow-y: auto;
+}
+
+.storefront-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 25px;
+    background: rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile Sidebar -> Dropbar Conversion */

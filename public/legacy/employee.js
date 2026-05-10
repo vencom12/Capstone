@@ -200,27 +200,27 @@ function updateUI() {
     if (productList) {
         if (products.length === 0 && _syncCount > 0) {
             productList.innerHTML = `
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; height: 112px;">
-                    <div class="skeleton" style="width: 80px; height: 80px; border-radius: 12px;"></div>
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px;">
+                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                        <div class="skeleton" style="width: 120px; height: 20px;"></div>
+                        <div class="skeleton" style="width: 120px; height: 18px;"></div>
                         <div class="skeleton" style="width: 90px; height: 14px;"></div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div class="skeleton" style="width: 80px; height: 35px; border-radius: 8px;"></div>
-                        <div class="skeleton" style="width: 80px; height: 35px; border-radius: 8px;"></div>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
+                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
                     </div>
                 </div>
             `;
         } else {
             productList.innerHTML = products.map(p => `
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 20px; padding: 15px; position: relative;">
-                    <div style="width: 80px; height: 80px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center;"></div>
+                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; position: relative;">
+                    <div style="width: 60px; height: 60px; border-radius: 10px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
                     <div style="flex: 1;">
-                        <h4 style="margin: 0;">${p.name}</h4>
+                        <h4 style="font-size: 0.95rem; margin-bottom: 2px;">${p.name}</h4>
                         <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; gap: 8px;">
                         <button class="btn" onclick="openEditProduct('${p._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 8px 16px; font-size: 0.8rem;">Customize</button>
                         <button class="btn" onclick="deleteProduct('${p._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; font-size: 0.8rem;">Delete</button>
                     </div>
