@@ -1,15 +1,6 @@
 /* Refactored from styles.css */
 
-.right-panel {
-    width: 340px;
-    flex-shrink: 0;
-    height: 100vh;
-    /* Fixed height for internal scroll */
-    overflow-y: auto;
-    position: sticky;
-    top: 0;
-    border-radius: 0;
-}
+/* Right panel styles removed - controlled by base.css */
 
 .product-tag {
     display: inline-block;
