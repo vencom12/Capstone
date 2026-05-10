@@ -264,7 +264,12 @@
 
             <!-- Module: My Favorites -->
             <section id="section-favs" class="module-section">
-                <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
+                <header class="section-header-top">
+                    <div>
+                        <h1 style="font-size: 2rem;">My Favorites</h1>
+                        <p style="color: var(--text-dim);">Designs you've saved for later</p>
+                    </div>
+                </header>
                 <div class="product-grid"
                     style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px;">
                     <div
@@ -285,12 +290,14 @@
 
             <!-- Transactions Section -->
             <section id="section-history" class="module-section">
+                <header class="section-header-top">
+                    <div>
+                        <h1 style="font-size: 2rem;">My Transactions</h1>
+                        <p style="color: var(--text-dim);">Your payment history and digital receipts</p>
+                    </div>
+                </header>
                 <div class="table-container glass" style="border-radius: 20px;">
-                    <header class="table-header">
-                        <div>
-                            <h2 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">My Transactions</h2>
-                            <p style="color: var(--text-dim);">Your payment history and digital receipts</p>
-                        </div>
+                    <header class="table-header" style="display: none;"> <!-- Redundant now -->
                         <div class="table-controls" style="display: flex; gap: 12px; align-items: center;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">

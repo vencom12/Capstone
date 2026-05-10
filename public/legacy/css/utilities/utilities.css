@@ -688,6 +688,4 @@
 
 /* Section Headers & Analytics */
 
-.section-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
-
-.section-header-top h1 { font-size: 2rem; color: var(--text-main); margin: 0; }
+/* Section Headers handled by content-base.css */
