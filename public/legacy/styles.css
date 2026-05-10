@@ -2239,35 +2239,46 @@ body {
     .table-container td[data-label="Actions"],
     .table-container td[data-label="Action"],
     .table-container td[data-label="View Details"],
-    .table-container td[data-label="Design"],
     .table-container td:last-child {
         flex: 1 1 100%;
         max-width: 100%;
-        border-top: 1px solid rgba(255, 255, 255, 0.03);
-        margin-top: 4px;
-        padding-top: 8px !important;
-        border-bottom: none !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        margin-top: 8px;
+        padding-top: 12px !important;
+        padding-bottom: 8px !important;
+        justify-content: center; /* Center buttons horizontally */
+        align-items: center;
+        flex-direction: row; /* Buttons side-by-side */
+        gap: 10px;
     }
 
     /* Compact Pairing Overrides */
     .table-container td[data-label="Date"],
     .table-container td[data-label="Timestamp"],
-    .table-container td[data-label="Joined"] {
-        flex: 1 1 100%;
-        max-width: 100%;
-        font-size: 0.8rem;
-        opacity: 0.7;
-        margin-top: 2px;
-    }
-
-    .table-container td[data-label="Status"] {
+    .table-container td[data-label="Joined"],
+    .table-container td[data-label="Total"] {
         align-items: flex-end;
         text-align: right;
     }
-    
-    .table-container td[data-label="Status"]:before {
+
+    .table-container td[data-label="Status"] {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    /* Force pair alignment for labels */
+    .table-container td[data-label="Date"]:before,
+    .table-container td[data-label="Timestamp"]:before,
+    .table-container td[data-label="Joined"]:before,
+    .table-container td[data-label="Total"]:before {
         width: 100%;
         text-align: right;
+    }
+
+    .table-container td[data-label="Actions"]:before,
+    .table-container td[data-label="Action"]:before,
+    .table-container td[data-label="View Details"]:before {
+        display: none;
     }
 
     .table-container td:before {
