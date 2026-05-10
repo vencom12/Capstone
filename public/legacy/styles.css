@@ -1204,6 +1204,10 @@ tbody tr:hover {
     display: none;
 }
 
+.desktop-only {
+    display: flex;
+}
+
 /* --- Storefront Styles (/) --- */
 
 .storefront-header {
@@ -1677,6 +1681,7 @@ tbody tr:hover {
 
 /* ── Mobile (≤768px) ── */
 @media (max-width: 768px) {
+    /* Storefront Mobile Responsive Scrolling Fixes */
     .storefront-dashboard-layout {
         flex-direction: column;
         /* Sidebar stacks above grid */
@@ -1684,6 +1689,18 @@ tbody tr:hover {
         padding-top: 110px; /* Adjusted to fit the 110px header */
         margin-top: 0 !important; /* REMOVE REDUNDANT MARGIN */
         gap: 5px;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .storefront-main {
+        height: auto !important;
+        overflow: visible !important;
+        width: 100%;
+    }
+
+    .desktop-only {
+        display: none !important;
     }
 
     .storefront-sidebar {

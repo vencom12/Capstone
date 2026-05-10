@@ -126,16 +126,21 @@
                     style="font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-left: 10px;">
                     Categories</h3>
 
-                <!-- Mobile Category Dropbar -->
-                <div class="mobile-category-container">
-                    <input type="checkbox" id="category-drop-toggle" style="display: none;">
-                    <label for="category-drop-toggle" class="category-dropbar glass">
-                        <span>All Designs</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </label>
+                <!-- Mobile Category Dropdown -->
+                <div class="mobile-category-dropdown mobile-only">
+                    <div class="glass-select-wrapper" style="margin-bottom: 20px; position: relative;">
+                        <select id="mobile-category-select" class="glass-select" style="width: 100%; padding: 14px 20px; padding-right: 40px; appearance: none; background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: 12px; color: var(--text-main); font-size: 1rem; font-weight: 600; cursor: pointer;">
+                            <option value="All Designs">All Designs</option>
+                            <option value="Premium Embroidery">Premium Embroidery</option>
+                            <option value="Apparel & Fashion">Apparel & Fashion</option>
+                            <option value="Towels & Linens">Towels & Linens</option>
+                            <option value="Patches & Logos">Patches & Logos</option>
+                        </select>
+                        <svg class="select-icon" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-main);" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
                 </div>
 
-                <ul class="nav-links category-links">
+                <ul class="nav-links category-links desktop-only">
                     <li>
                         <label class="category-btn active" data-category="All">
                             <span style="font-weight: 600;">All Designs</span>
@@ -499,6 +504,12 @@
                     setCategory(label.querySelector('span').innerText);
                 });
             });
+
+            if (mobileCategorySelect) {
+                mobileCategorySelect.addEventListener('change', (e) => {
+                    setCategory(e.target.value);
+                });
+            }
         });
 
         // Login Handler (Direct logic)
