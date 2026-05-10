@@ -670,7 +670,7 @@
     .storefront-dashboard-layout {
         flex-direction: column !important;
         padding: 0 !important;
-        margin-top: 108px !important; /* Total header height */
+        margin-top: 155px !important; /* Total header height with 3 rows */
     }
     
     .storefront-sidebar {
@@ -680,15 +680,11 @@
     .mobile-category-dropdown {
         display: block !important;
         width: 100%;
-        padding: 8px 12px;
-        background: var(--bg-header);
-        border-bottom: 1px solid var(--border-glass);
+        padding: 5px 12px 10px 12px; /* Adjusted spacing */
+        background: transparent; /* Seamless in header */
+        border-bottom: none;
         margin-top: 0;
-        position: sticky;
-        top: 108px;
         z-index: 1000;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
     }
 
     .glass-select-wrapper {
