@@ -300,7 +300,6 @@
                             <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
                         </div>
                     </header>
-                </div>
 
                 <div class="table-container glass">
                         <table>
@@ -326,15 +325,6 @@
                                     <td data-label="Timestamp"><div class="skeleton skeleton-line"></div></td>
                                     <td data-label="Action"><div class="skeleton skeleton-line"></div></td>
                                 </tr>
-                                <tr class="skeleton-row">
-                                    <td data-label="Order ID"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Customer"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Design"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Total"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Status"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Timestamp"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Action"><div class="skeleton skeleton-line"></div></td>
-                                </tr>
                             </tbody>
                         </table>
                         <!-- Pagination Controls -->
@@ -348,8 +338,21 @@
                     </div>
 
                     <!-- AI-Driven Production Optimizer -->
+                    <div id="ai-production-advice" class="glass"
+                        style="margin-top: 24px; padding: 24px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <div
+                                style="width:10px; height:10px; border-radius:50%; background:var(--primary); box-shadow:0 0 10px var(--primary);">
+                            </div>
+                            <p style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Stitch-Opt Intelligence Report</p>
+                        </div>
+                        <p id="ai-main-tip" style="font-size:0.85rem; color:var(--text-main); margin-top:4px; line-height:1.4; font-weight: 500;">Analyzing current production queue...</p>
+                        <div id="ai-insights-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                            <!-- Dynamically filled by JS -->
+                        </div>
+                    </div>
+            </section>
 
-            <!-- Section: Inventory (Remade) -->
             <section id="section-inventory" class="module-section">
                 <header class="section-header-top">
                     <div>
