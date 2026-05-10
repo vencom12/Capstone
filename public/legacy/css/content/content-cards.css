@@ -20,6 +20,11 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
+    /* Stat cards (Inventory) should be 1-column on mobile to prevent clipping */
+    .product-grid:has(.stat-card),
+    .product-grid#product-list-container {
+        grid-template-columns: 1fr;
+    }
 }
 
 .product-card {

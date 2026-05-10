@@ -80,8 +80,21 @@
     
     .sidebar .nav-logo,
     .sidebar-profile,
+    .logout-container span,
     .sidebar .nav-links label span,
     .sidebar .nav-links a span {
         display: none;
+    }
+
+    .logout-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .logout-btn {
+        padding: 10px !important;
     }
 }

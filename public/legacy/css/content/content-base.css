@@ -53,7 +53,7 @@ main {
 
 .module-section {
     display: none;
-    padding: 20px; /* Standard 30px on all sides */
+    padding: 20px; /* Standard 20px on all sides */
     min-height: 100%;
     width: 100%;
     overflow-x: hidden;
@@ -61,7 +61,7 @@ main {
 
 @media (max-width: 768px) {
     .module-section {
-        padding: 15px; /* Mobile Density */
+        padding: 10px; /* 10px border on both sides */
     }
 }
 
