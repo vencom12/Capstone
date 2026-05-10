@@ -641,9 +641,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 25px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-glass);
-    border-radius: 20px;
+    background: transparent;
 }
 
 /* Tablet Storefront Sidebar */
