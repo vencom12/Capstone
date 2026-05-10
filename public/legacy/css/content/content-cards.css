@@ -7,10 +7,18 @@
     width: 100%;
 }
 
-/* --- DESKTOP & TABLET (3 Columns - Above 768px) --- */
-@media (min-width: 769px) {
+/* --- DESKTOP (3 Columns - Above 1100px) --- */
+@media (min-width: 1101px) {
     .product-grid {
         grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* --- TABLET (2 Columns - 769px to 1100px) --- */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
     }
 }
 
@@ -20,10 +28,28 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
-    /* Stat cards (Inventory) should be 1-column on mobile to prevent clipping */
-    .product-grid:has(.stat-card),
-    .product-grid#product-list-container {
-        grid-template-columns: 1fr;
+    /* Force 1-column for inventory/stat grids on mobile */
+    .product-grid#product-list-container,
+    .product-grid:has(.stat-card) {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Stat Card Mobile Stacking */
+@media (max-width: 768px) {
+    .stat-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 20px !important;
+    }
+    .stat-card > div:last-child {
+        width: 100%;
+        display: flex;
+        gap: 10px;
+    }
+    .stat-card > div:last-child button {
+        flex: 1;
     }
 }
 
