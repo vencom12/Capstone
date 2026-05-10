@@ -142,8 +142,25 @@
     border: 1px solid var(--border-glass);
 }
 
-.stat-value { font-size: 2.2rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
-.stat-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+.module-section h1, .section-header-top h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
+.stat-label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+
+@media (max-width: 768px) {
+    .stat-value { font-size: 1.5rem !important; }
+    .stat-label { font-size: 0.7rem !important; }
+    .stat-card { padding: 16px !important; gap: 4px !important; }
+    
+    .section-header-top h1, 
+    .module-section h1,
+    .section-header h3 { 
+        font-size: 1.3rem !important; 
+    }
+}
 
 /* Panel Sections & Items */
 .panel-section { padding: 32px; flex: 1; overflow-y: auto; }
