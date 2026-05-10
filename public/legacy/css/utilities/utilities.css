@@ -685,6 +685,7 @@
         border-bottom: none;
         margin-top: 0;
         z-index: 1000;
+        order: 3;
     }
 
     .glass-select-wrapper {
