@@ -9,24 +9,24 @@
     display: flex;
     flex-direction: column;
     padding: 20px 0;
-    transition: all 0.3s ease;
+    transition: width 0.3s ease, transform 0.3s ease;
     z-index: 1100;
 }
 
-/* --- DESKTOP (Full View) --- */
-@media (min-width: 1025px) {
+/* --- DESKTOP (Full View - Above 1300px) --- */
+@media (min-width: 1301px) {
     .sidebar {
         width: 280px;
     }
     .sidebar .nav-logo span,
     .sidebar .nav-links label span,
     .sidebar .nav-links a span {
-        display: inline !important;
+        display: inline;
     }
 }
 
-/* --- TABLET (Icon Rail) --- */
-@media (max-width: 1024px) and (min-width: 769px) {
+/* --- TABLET / HALF-SCREEN (Icon Rail - 769px to 1300px) --- */
+@media (max-width: 1300px) and (min-width: 769px) {
     .sidebar {
         width: 80px;
         align-items: center;
@@ -38,7 +38,7 @@
     .sidebar .nav-links a span,
     .sidebar-profile .profile-info,
     .sidebar-profile .profile-name {
-        display: none !important;
+        display: none;
     }
     
     .sidebar .nav-links label,
@@ -46,6 +46,7 @@
         justify-content: center;
         padding: 15px 0;
         width: 100%;
+        gap: 0;
     }
 
     .sidebar-profile {
@@ -54,7 +55,7 @@
     }
 }
 
-/* --- PHONE (Top Navigation Bar) --- */
+/* --- PHONE (Top Navigation Bar - Below 768px) --- */
 @media (max-width: 768px) {
     .sidebar {
         position: fixed;
@@ -68,26 +69,19 @@
         justify-content: space-around;
         border-right: none;
         border-bottom: 1px solid var(--border-glass);
-        margin: 0 !important;
-        border-radius: 0 !important;
+        border-radius: 0;
     }
     
     .sidebar .nav-links {
-        flex-direction: row !important;
+        flex-direction: row;
         width: 100%;
         justify-content: space-around;
-        margin: 0 !important;
     }
     
     .sidebar .nav-logo,
     .sidebar-profile,
     .sidebar .nav-links label span,
     .sidebar .nav-links a span {
-        display: none !important;
-    }
-
-    /* Shift content down on mobile to clear the top nav */
-    .dashboard-container {
-        padding-top: 70px;
+        display: none;
     }
 }

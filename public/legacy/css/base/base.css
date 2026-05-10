@@ -26,7 +26,9 @@
     font-family: 'Outfit', sans-serif;
 }
 
-body {
+html, body {
+    margin: 0;
+    padding: 0;
     background: var(--bg-gradient);
     color: var(--text-main);
     min-height: 100vh;
@@ -37,25 +39,16 @@ body {
 /* Hide navigation functional elements (THE DOTS) */
 input[name="nav-radio"],
 #nav-drawer-toggle {
-    display: none !important;
-}
-
-/* Base Glass Utility */
-.glass {
-    background: var(--bg-card);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border-glass);
-    border-radius: 24px;
+    display: none;
 }
 
 /* Master Layout */
-.dashboard-container {
+.dashboard-container, 
+.storefront-container {
     display: flex;
     width: 100%;
     height: 100vh;
     overflow: hidden;
-    margin-top: 0; /* FLUSH TOP */
 }
 
 main {
@@ -78,24 +71,20 @@ main {
     z-index: 1000;
 }
 
-/* Desktop: Always Open */
-@media (min-width: 1025px) {
+/* Desktop: Always Open (Above 1300px) */
+@media (min-width: 1301px) {
     .right-panel {
-        transform: translateX(0) !important;
+        transform: translateX(0);
         position: relative;
-        margin-right: 0;
-        border-radius: 0;
     }
-    
-    /* Hide the open-basket button on desktop as it's always open */
     label[for="nav-drawer-toggle"].header-btn,
     .open-basket-btn {
-        display: none !important;
+        display: none !important; /* Kept for absolute hidden state */
     }
 }
 
-/* Tablet & Mobile: Slide-in Drawer */
-@media (max-width: 1024px) {
+/* Tablet & Mobile: Slide-in Drawer (Below 1300px) */
+@media (max-width: 1300px) {
     .right-panel {
         position: fixed;
         top: 0;
@@ -103,16 +92,14 @@ main {
         transform: translateX(100%);
         box-shadow: -20px 0 50px rgba(0,0,0,0.3);
         border-radius: 24px 0 0 24px;
-        margin: 0;
     }
     
     #nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .right-panel {
         transform: translateX(0);
     }
 
-    /* Disable Blur/Overlay as requested */
     .storefront-overlay {
-        display: none !important;
+        display: none;
     }
 }
 
