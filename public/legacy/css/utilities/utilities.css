@@ -576,6 +576,13 @@
     flex-direction: column;
 }
 
+/* Hide Close button in Desktop (since drawer is persistent) */
+@media (min-width: 1101px) {
+    .close-drawer {
+        display: none !important;
+    }
+}
+
 
 #nav-drawer-toggle:checked~.storefront-drawer,
 
