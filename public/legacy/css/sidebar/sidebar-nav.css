@@ -10,6 +10,7 @@
 
 .nav-links li {
     width: 100%;
+    padding: 0 10px;
 }
 
 .nav-links label,
@@ -26,6 +27,8 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     position: relative;
+    background: rgba(255, 255, 255, 0.02); /* Subtle container */
+    border: 1px solid transparent;
 }
 
 .nav-links label:hover,
@@ -33,6 +36,7 @@
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
     transform: translateX(5px);
+    border-color: var(--border-glass);
 }
 
 .nav-links .active,
@@ -40,4 +44,12 @@
     background: var(--primary) !important;
     color: white !important;
     box-shadow: 0 4px 15px var(--primary-glow);
+    border-color: transparent;
+}
+
+/* Hide Cart from Nav in Desktop */
+@media (min-width: 1101px) {
+    .basket-nav-item {
+        display: none !important;
+    }
 }

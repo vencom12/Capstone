@@ -13,8 +13,8 @@
     z-index: 1100;
 }
 
-/* --- DESKTOP (Full View - Above 1100px) --- */
-@media (min-width: 1101px) {
+/* --- DESKTOP (Full View - Above 1000px) --- */
+@media (min-width: 1001px) {
     .sidebar {
         width: 280px;
     }
@@ -25,8 +25,8 @@
     }
 }
 
-/* --- TABLET / HALF-SCREEN (Icon Rail - 769px to 1100px) --- */
-@media (max-width: 1100px) and (min-width: 769px) {
+/* --- TABLET / HALF-SCREEN (Icon Rail - 769px to 1000px) --- */
+@media (max-width: 1000px) and (min-width: 769px) {
     .sidebar {
         width: 80px;
         align-items: center;

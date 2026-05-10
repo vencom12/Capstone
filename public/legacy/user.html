@@ -52,7 +52,9 @@
         <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false"></div>
         <!-- Left Sidebar -->
         <aside class="sidebar">
-
+            <div class="nav-logo" style="padding: 24px; margin-bottom: 10px;">
+                <span>Stitch Opt</span>
+            </div>
             <ul class="nav-links">
                 <li>
                     <label for="nav-shop">
@@ -175,13 +177,13 @@
                 updateThemeIcon(savedTheme);
             </script>
 
-            <div class="sidebar-profile" style="margin-top: 10px;">
-                <div class="profile-avatar"></div>
-                <div class="profile-info">
-                    <span class="profile-name">User Name</span>
+            <div class="sidebar-profile" style="margin-top: auto; padding: 20px; border-top: 1px solid var(--border-glass);">
+                <div class="profile-avatar" style="flex-shrink: 0;"></div>
+                <div class="profile-info" style="min-width: 0; overflow: hidden;">
+                    <span class="profile-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">User Name</span>
                     <span class="profile-role">Customer</span>
                     <div id="profile-wallet"
-                        style="margin-top: 4px; font-size: 0.8rem; color: var(--primary); font-weight: 700; background: rgba(99, 102, 241, 0.1); padding: 2px 8px; border-radius: 12px; width: fit-content;">
+                        style="margin-top: 4px; font-size: 0.8rem; color: var(--primary); font-weight: 700; background: rgba(99, 102, 241, 0.1); padding: 4px 10px; border-radius: 12px; width: fit-content;">
                         $0.00</div>
                 </div>
             </div>

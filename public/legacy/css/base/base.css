@@ -42,6 +42,29 @@ input[name="nav-radio"],
     display: none;
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
 /* Master Layout */
 .dashboard-container, 
 .storefront-container {
@@ -71,20 +94,20 @@ main {
     z-index: 1000;
 }
 
-/* Desktop: Always Open (Above 1100px) */
-@media (min-width: 1101px) {
+/* Desktop & Large Tablet: Always Open (Above 1000px) */
+@media (min-width: 1001px) {
     .right-panel {
         transform: translateX(0);
         position: relative;
     }
     label[for="nav-drawer-toggle"].header-btn,
     .open-basket-btn {
-        display: none !important; /* Kept for absolute hidden state */
+        display: none !important;
     }
 }
 
-/* Tablet & Mobile: Slide-in Drawer (Below 1100px) */
-@media (max-width: 1100px) {
+/* Tablet & Mobile: Slide-in Drawer (Below 1000px) */
+@media (max-width: 1000px) {
     .right-panel {
         position: fixed;
         top: 0;

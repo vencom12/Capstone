@@ -7,14 +7,14 @@
     width: 100%;
 }
 
-/* --- DESKTOP & TABLET (3 Columns) --- */
+/* --- DESKTOP & TABLET (3 Columns - Above 768px) --- */
 @media (min-width: 769px) {
     .product-grid {
         grid-template-columns: repeat(3, 1fr);
     }
 }
 
-/* --- PHONE (2 Columns) --- */
+/* --- MOBILE PHONE (2 Columns - Below 768px) --- */
 @media (max-width: 768px) {
     .product-grid {
         grid-template-columns: repeat(2, 1fr);
