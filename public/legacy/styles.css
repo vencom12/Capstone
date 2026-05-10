@@ -953,17 +953,17 @@ tbody tr:hover {
     /* Only Storefront stays responsive */
     .storefront-container {
         padding-top: 90px; /* More room for the navbar */
-        display: block !important;
+        display: block;
         min-height: 100vh;
-        overflow: visible !important;
+        overflow: visible;
     }
 
-    main {
-        height: auto !important;
-        min-height: 0 !important;
-        overflow: visible !important;
-        position: static !important;
-        display: block !important;
+    .storefront-main {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+        position: static;
+        display: block;
     }
 
     .sidebar {
@@ -977,7 +977,7 @@ tbody tr:hover {
         flex-direction: row;
         border-right: none;
         border-bottom: 1px solid var(--border-glass);
-        background: var(--bg-dark) !important; /* Solid background for clarity */
+        background: var(--bg-dark); /* Solid background for clarity */
         backdrop-filter: blur(25px);
         -webkit-backdrop-filter: blur(25px);
         z-index: 9999;
@@ -986,7 +986,7 @@ tbody tr:hover {
 
     .nav-logo,
     .sidebar-profile {
-        display: none !important;
+        display: none;
         /* Hide branding and profile on main bottom nav */
     }
 
@@ -1047,9 +1047,9 @@ tbody tr:hover {
     #nav-products:checked~.storefront-container .sidebar label[for="nav-products"],
     #nav-history:checked~.storefront-container .sidebar label[for="nav-history"],
     #nav-support:checked~.storefront-container .sidebar label[for="nav-support"] {
-        background: transparent !important;
+        background: transparent;
         box-shadow: none;
-        color: var(--primary) !important;
+        color: var(--primary);
     }
 
     /* Highlight the active icon with a glowing dot */
@@ -1084,10 +1084,10 @@ tbody tr:hover {
     }
 
     .content-area,
-    main {
-        padding: 0 !important;
-        margin-left: 0 !important;
-        width: 100% !important;
+    .storefront-main {
+        padding: 0;
+        margin-left: 0;
+        width: 100%;
     }
 
     .module-section {
@@ -2538,3 +2538,32 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 40px; }
 .analytics-grid > div h3 { margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main); }
 .analytics-grid > div > div { height: 350px; position: relative; width: 100%; }
+
+/* --- CLEAN DASHBOARD LAYOUT --- */
+@media (min-width: 769px) {
+    .dashboard-container {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        overflow-y: auto;
+    }
+
+    #admin-main-content {
+        flex: 1;
+        height: 100vh;
+        overflow-y: auto;
+        min-width: 0;
+        display: block;
+    }
+}
