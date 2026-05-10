@@ -246,10 +246,15 @@
     .storefront-header {
         display: grid !important;
         grid-template-areas: "brand actions" "search search";
-        padding: 8px 15px !important;
+        padding: 10px 15px !important;
+        position: sticky !important;
+        top: 0;
         height: auto !important;
-        min-height: 90px !important;
-        gap: 6px !important;
+        z-index: 1000;
+        background: var(--bg-header) !important;
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border-glass);
+        gap: 8px !important;
     }
 
     .header-brand h1 { font-size: 1.1rem; }
@@ -261,7 +266,7 @@
 
     .storefront-dashboard-layout {
         flex-direction: column !important;
-        padding-top: 75px !important;
+        padding-top: 0 !important;
         height: auto !important;
         overflow-y: visible !important;
     }
@@ -269,10 +274,8 @@
     .storefront-sidebar {
         width: 100% !important;
         position: relative !important;
-        top: 0 !important;
-        padding: 0 15px !important;
-        margin-top: -10px !important;
-        margin-bottom: 10px !important;
+        padding: 10px 15px !important;
+        margin: 0 !important;
         background: var(--bg-header) !important;
         backdrop-filter: blur(20px);
         z-index: 100;
@@ -282,24 +285,28 @@
     .sidebar-hero-content, .sidebar-categories h3 { display: none !important; }
     .category-links span { display: inline-block !important; }
     
-    .mobile-category-container { display: none !important; } /* Hide the select dropdown */
-    
     .category-links { 
         display: flex !important; 
         flex-direction: column !important;
-        gap: 6px !important;
-        padding: 10px 0 !important;
+        gap: 8px !important;
+        padding: 0 !important;
     }
-    
-    .category-links li { flex-shrink: 0; }
-    
+
     .category-links label {
-        padding: 12px 16px !important;
-        font-size: 0.9rem !important;
+        padding: 12px 20px !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
         width: 100% !important;
-        justify-content: flex-start !important;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--border-glass);
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid var(--border-glass) !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+    }
+
+    .category-links .active {
+        background: var(--primary) !important;
+        box-shadow: 0 4px 15px var(--primary-glow) !important;
     }
 
     .storefront-main {
