@@ -262,7 +262,7 @@
 
         <main id="admin-main-content">
             <!-- Section: Overview -->
-            <section id="section-overview" class="module-section active">
+            <section id="section-overview" class="module-section active" style="display: block;">
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Admin Console</h1>
@@ -783,10 +783,14 @@
                 const sectionId = 'section-' + targetId.replace('nav-', '');
                 
                 // 1. Update Sections
-                sections.forEach(s => s.classList.remove('active'));
+                sections.forEach(s => {
+                    s.classList.remove('active');
+                    s.style.display = 'none'; // FORCE HIDE
+                });
                 const targetSection = document.getElementById(sectionId);
                 if (targetSection) {
                     targetSection.classList.add('active');
+                    targetSection.style.display = 'block'; // FORCE SHOW
                     // Scroll the main container to the top
                     const main = document.getElementById('admin-main-content');
                     if (main) main.scrollTop = 0;
