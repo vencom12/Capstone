@@ -567,18 +567,19 @@ body {
 
     .right-panel {
         position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        width: 100% !important;
+        top: 15px !important;
+        right: 15px !important;
+        width: calc(100% - 30px) !important;
         max-width: 420px !important;
         /* Cap width for tablets */
-        height: 100vh !important;
+        height: calc(100vh - 30px) !important;
         z-index: 100001 !important;
         background: var(--bg-sidebar) !important;
         backdrop-filter: blur(10px) !important;
         -webkit-backdrop-filter: blur(10px) !important;
-        border-left: 1px solid var(--border-glass) !important;
-        transform: translateX(100%);
+        border: 1px solid var(--border-glass) !important;
+        border-radius: 24px !important;
+        transform: translateX(calc(100% + 30px));
         display: flex !important;
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
         box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5) !important;

@@ -3,28 +3,24 @@
 .sidebar {
     width: 280px;
     flex-shrink: 0;
-    padding: 0;
-    margin: 0;
+    padding: 20px;
+    margin: 15px; /* Added floating margin */
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: calc(100vh - 30px); /* Adjust height for margins */
     position: sticky;
-    top: 0;
-    border-radius: 0;
+    top: 15px;
+    border-radius: 24px; /* Restored curved corners */
     background: var(--bg-sidebar);
-    border-right: 1px solid var(--border-glass);
+    border: 1px solid var(--border-glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     z-index: 100;
 }
 
-/* 
-   SOLVED CONFLICT: 
-   The 'glass' class has been removed from sidebar elements in the HTML.
-   No more specificity fighting required.
-*/
-
 #nav-shop:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-shop"],
 #nav-tracking:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-tracking"],
-#nav-favs:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-favs"],
+#nav-favs:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-tracking"],
 #nav-settings:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-settings"],
 #nav-overview:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-overview"],
 #nav-inventory:checked~:is(.storefront-container, .dashboard-container) .sidebar label[for="nav-inventory"],
@@ -49,7 +45,7 @@
     margin-top: auto;
     padding: 20px;
     background: var(--bg-surface);
-    border-radius: 0;
+    border-radius: 20px;
     border: 1px solid var(--border-glass);
     display: flex;
     align-items: center;
@@ -71,10 +67,11 @@
     .sidebar {
         width: 280px;
         flex-shrink: 0;
-        height: 100vh;
+        height: calc(100vh - 30px);
         position: sticky;
-        top: 0;
+        top: 15px;
         overflow-y: auto;
-        margin: 0;
+        margin: 15px;
+        border-radius: 24px;
     }
 }
