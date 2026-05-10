@@ -1902,10 +1902,16 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     /* Only Storefront stays responsive */
     .storefront-container {
-        padding-top: 115px; /* 110px header + 5px gap */
+        padding-top: 130px; /* Increased to safely clear the mobile header + 5px gap */
         display: block;
         min-height: 100vh;
         overflow: visible;
+    }
+
+    .dashboard-container {
+        padding-top: 75px; /* Clear the 70px mobile sidebar + 5px gap */
+        display: block;
+        min-height: 100vh;
     }
 
     .storefront-main {
