@@ -405,35 +405,23 @@
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Completed & Canceled Orders</h3>
-                        <div class="table-controls" style="display: flex; gap: 12px; align-items: center;">
-                            <input type="text" id="employee-history-search" class="glass" placeholder="Search history..." 
-                                style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
+                        <div class="table-controls">
+                            <input type="text" id="employee-history-search" placeholder="Search history...">
                         </div>
                     </div>
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <table>
                         <thead>
                             <tr>
-                                <th
-                                    style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">
-                                    Order ID</th>
-                                <th
-                                    style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">
-                                    Client</th>
-                                <th
-                                    style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">
-                                    Design</th>
-                                <th
-                                    style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">
-                                    Status</th>
-                                <th
-                                    style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">
-                                    Resolved Date</th>
+                                <th>Order ID</th>
+                                <th>Client</th>
+                                <th>Design</th>
+                                <th>Status</th>
+                                <th>Resolved Date</th>
                             </tr>
                         </thead>
                         <tbody id="employee-history-table-body">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No
-                                    historical orders found.</td>
+                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No historical orders found.</td>
                             </tr>
                         </tbody>
                     </table>

@@ -416,13 +416,13 @@
                     </div>
                     <button class="btn btn-primary" onclick="window.openCreateStaff()">+ Create Staff
                         Account</button>
+                    <button class="btn btn-primary" onclick="window.openCreateStaff()">+ Create Staff Account</button>
                 </header>
 
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Active Personnel</h3>
-                        <input type="text" id="admin-staff-search" class="glass" placeholder="Search staff..."
-                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
+                        <input type="text" id="admin-staff-search" class="glass" placeholder="Search staff...">
                     </div>
                     <table>
                         <thead>
@@ -436,8 +436,7 @@
                         </thead>
                         <tbody id="staff-table-body">
                             <tr>
-                                <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 40px;">
-                                    Fetching personnel data...</td>
+                                <td colspan="4" class="table-empty-msg">Fetching personnel data...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -466,43 +465,43 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                <div class="analytics-grid">
                     <!-- Order Trends Chart -->
-                    <div class="glass" style="padding: 24px;">
-                        <h3 style="margin-bottom: 20px;">Order & Revenue Trends</h3>
-                        <div style="height: 300px; position: relative;">
+                    <div class="glass">
+                        <h3>Order & Revenue Trends</h3>
+                        <div>
                             <canvas id="orderTrendsChart"></canvas>
                         </div>
                     </div>
 
                     <!-- Status Distribution -->
-                    <div class="glass" style="padding: 24px;">
-                        <h3 style="margin-bottom: 20px;">Order Status Breakdown</h3>
-                        <div style="height: 300px; position: relative;">
+                    <div class="glass">
+                        <h3>Order Status Breakdown</h3>
+                        <div>
                             <canvas id="statusDistChart"></canvas>
                         </div>
                     </div>
 
                     <!-- Top Products Bar Chart -->
-                    <div class="glass" style="padding: 24px;">
-                        <h3 style="margin-bottom: 20px;">Top Ordered Designs</h3>
-                        <div style="height: 300px; position: relative;">
+                    <div class="glass">
+                        <h3>Top Ordered Designs</h3>
+                        <div>
                             <canvas id="topOrderedChart"></canvas>
                         </div>
                     </div>
 
                     <!-- Top Liked Bar Chart -->
-                    <div class="glass" style="padding: 24px;">
-                        <h3 style="margin-bottom: 20px;">Most Liked Designs</h3>
-                        <div style="height: 300px; position: relative;">
+                    <div class="glass">
+                        <h3>Most Liked Designs</h3>
+                        <div>
                             <canvas id="topLikedChart"></canvas>
                         </div>
                     </div>
 
                     <!-- Site Traffic -->
-                    <div class="glass" style="grid-column: 1 / -1; padding: 24px;">
-                        <h3 style="margin-bottom: 20px;">Site Traffic (Last 30 Days)</h3>
-                        <div style="height: 300px; position: relative;">
+                    <div class="glass">
+                        <h3>Site Traffic (Last 30 Days)</h3>
+                        <div>
                             <canvas id="trafficChart"></canvas>
                         </div>
                     </div>
@@ -515,8 +514,9 @@
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Completed & Canceled Orders</h3>
-                        <input type="text" id="admin-history-search" class="glass" placeholder="Search history..."
-                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
+                        <div class="table-controls">
+                            <input type="text" id="admin-history-search" placeholder="Search history...">
+                        </div>
                     </div>
                     <table>
                         <thead>
@@ -530,7 +530,6 @@
                         </thead>
                         <tbody id="admin-history-table-body">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No
                                     historical orders found.</td>
                             </tr>
                         </tbody>
