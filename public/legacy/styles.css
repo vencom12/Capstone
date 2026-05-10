@@ -1363,15 +1363,7 @@ body {
     font-weight: 600;
 }
 
-/* Animations for status changes */
-@keyframes verifiedPulse {
-    0% {
-        transform: scale(1);
-    }
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid transparent;
-}
+
 
 .status-badge.pending {
     background: rgba(245, 158, 11, 0.1);

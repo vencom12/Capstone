@@ -267,16 +267,6 @@ body {
     }
 }
 
-@keyframes verifiedPulse {
-    0% {
-        transform: scale(1);
-    }
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid transparent;
-}
-
-
 @keyframes cloud-float {
 
     0%,
