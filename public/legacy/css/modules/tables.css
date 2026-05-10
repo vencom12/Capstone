@@ -1,8 +1,42 @@
-/* Table System */
 .table-container {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+}
+
+.table-header {
+    padding: 24px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-glass);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.table-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.table-controls input, .table-controls select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 10px 16px;
+    border-radius: 12px;
+    color: white;
+    outline: none;
+    font-size: 0.85rem;
 }
 
 table {
@@ -11,9 +45,18 @@ table {
 }
 
 th, td {
-    padding: 16px 24px;
+    padding: 18px 30px;
     border-bottom: 1px solid var(--border-glass);
     text-align: left;
+}
+
+th:first-child, td:first-child {
+    padding-left: 30px;
+}
+
+th:last-child, td:last-child {
+    padding-right: 30px;
+    text-align: right;
 }
 
 th {

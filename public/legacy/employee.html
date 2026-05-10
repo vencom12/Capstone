@@ -326,39 +326,36 @@
 
             <!-- Section: Order Queue -->
             <section id="section-orders" class="module-section">
-                <header class="section-header-top">
-                    <h1 style="font-size: 2rem; margin-bottom: 0;">Active Order Queue</h1>
-                    <div class="table-controls" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="employee-orders-search" class="glass" placeholder="Search queue..." 
-                            style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 180px;">
-                        <select id="employee-batch-status" class="glass"
-                            style="padding: 6px 12px; border-radius: 8px; color: var(--text-main); font-size: 0.85rem; background: rgba(255,255,255,0.05);">
-                            <option value="">Batch Status Update</option>
-                            <option value="Preparing Order">Preparing Order</option>
-                            <option value="In Transit">In Transit</option>
-                            <option value="Ready For Pick Up">Ready For Pick Up</option>
-                            <option value="Order Delivered">Order Delivered</option>
-                        </select>
-                        <button id="employee-batch-update-btn" class="btn btn-primary"
-                            style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
-                    </div>
-                </header>
                 <div class="table-container glass">
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <div class="table-header">
+                        <h3>Active Order Queue</h3>
+                        <div class="table-controls">
+                            <input type="text" id="employee-orders-search" placeholder="Search queue...">
+                            <select id="employee-batch-status">
+                                <option value="">Batch Status Update</option>
+                                <option value="Preparing Order">Preparing Order</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Ready For Pick Up">Ready For Pick Up</option>
+                                <option value="Order Delivered">Order Delivered</option>
+                            </select>
+                            <button id="employee-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
+                        </div>
+                    </div>
+                    <table>
                         <thead>
                             <tr>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Order ID</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Client</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Design</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Total</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Status</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Timestamp</th>
-                                <th style="text-align: left; padding: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border-glass);">Action</th>
+                                <th>Order ID</th>
+                                <th>Client</th>
+                                <th>Design</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Timestamp</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="employee-order-table-body">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">
+                                <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 40px;">
                                     Fetching active queue...</td>
                             </tr>
                         </tbody>
