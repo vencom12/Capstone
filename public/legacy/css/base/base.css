@@ -85,7 +85,7 @@ main {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
-    padding: 20px; /* PC Default */
+    padding: 0; /* Handled by module-sections */
     background: transparent;
 }
 

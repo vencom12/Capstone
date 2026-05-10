@@ -33,8 +33,10 @@ main {
 
 .module-section {
     display: none;
-    padding: 40px;
+    padding: 30px; /* Standard 30px on all sides */
     min-height: 100%;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 #nav-overview:checked~:is(.storefront-container, .dashboard-container) #section-overview,
