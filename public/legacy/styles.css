@@ -1454,9 +1454,9 @@ tbody tr:hover {
     }
 
     .hero-section {
-        padding-top: 150px;
+        padding-top: 120px;
         /* Space for the taller mobile header */
-        padding-bottom: 40px;
+        padding-bottom: 30px;
     }
 
     .hero-section h2 {
@@ -1635,9 +1635,9 @@ tbody tr:hover {
         flex-direction: column;
         /* Sidebar stacks above grid */
         padding: 15px;
-        padding-top: 130px;
+        padding-top: 120px;
         /* Clear the fixed mobile header (~120px min-height + gap) */
-        gap: 10px;
+        gap: 5px;
     }
 
     .storefront-sidebar {
@@ -1672,7 +1672,7 @@ tbody tr:hover {
 
     .mobile-category-container {
         display: block !important;
-        margin: 10px 0 20px;
+        margin: 0 0 15px;
     }
 
     /* Hide the horizontal scrollable tabs as we're using a dropdown now */
