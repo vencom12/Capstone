@@ -33,7 +33,7 @@ main {
 
 .module-section {
     display: none;
-    padding: 30px; /* Standard 30px on all sides */
+    padding: 20px; /* Standard 30px on all sides */
     min-height: 100%;
     width: 100%;
     overflow-x: hidden;
