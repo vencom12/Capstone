@@ -625,7 +625,7 @@
 
 .storefront-sidebar {
     position: sticky;
-    top: calc(var(--header-height) + 5px);
+    top: var(--header-height);
     width: 215px;
     max-height: calc(100vh - var(--header-height) - 40px);
     overflow-y: auto;
@@ -634,14 +634,6 @@
     display: flex;
     flex-direction: column;
     transition: width 0.3s ease, padding 0.3s ease;
-}
-
-/* Tablet Sidebar Shrink */
-@media (max-width: 1024px) {
-    .storefront-sidebar {
-        width: 180px;
-        padding: 15px 10px;
-    }
 }
 
 /* Mobile Sidebar -> Dropbar Conversion */
