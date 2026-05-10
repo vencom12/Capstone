@@ -1404,8 +1404,8 @@ tbody tr:hover {
             "search search";
         padding: 15px !important;
         height: auto !important;
-        min-height: 120px !important;
-        gap: 15px !important;
+        min-height: 110px !important;
+        gap: 10px !important;
         align-items: center;
     }
 
@@ -1635,8 +1635,8 @@ tbody tr:hover {
         flex-direction: column;
         /* Sidebar stacks above grid */
         padding: 15px;
-        padding-top: 120px;
-        /* Clear the fixed mobile header (~120px min-height + gap) */
+        padding-top: 110px; /* Adjusted to fit the 110px header */
+        margin-top: 0 !important; /* REMOVE REDUNDANT MARGIN */
         gap: 5px;
     }
 
