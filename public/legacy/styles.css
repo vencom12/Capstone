@@ -502,13 +502,25 @@ main {
 
 
 /* Radio logic handled in section above with .active */
+/* Radio logic + JS .active class: show the correct section */
+#nav-overview:checked~.dashboard-container #section-overview,
 #nav-shop:checked~.dashboard-container #section-shop,
+#nav-tracking:checked~.dashboard-container #section-tracking,
+#nav-favs:checked~.dashboard-container #section-favs,
+#nav-settings:checked~.dashboard-container #section-settings,
 #nav-inventory:checked~.dashboard-container #section-inventory,
 #nav-production:checked~.dashboard-container #section-production,
 #nav-staffing:checked~.dashboard-container #section-staffing,
 #nav-analytics:checked~.dashboard-container #section-analytics,
-#nav-history:checked~.dashboard-container #section-history {
-    display: block;
+#nav-workbench:checked~.dashboard-container #section-workbench,
+#nav-orders:checked~.dashboard-container #section-orders,
+#nav-products:checked~.dashboard-container #section-products,
+#nav-history:checked~.dashboard-container #section-history,
+#nav-receipts:checked~.dashboard-container #section-receipts,
+#nav-support:checked~.dashboard-container #section-support,
+.module-section.active {
+    display: block !important;
+    animation: fadeIn 0.4s ease-out;
 }
 
 
@@ -2527,103 +2539,128 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 .analytics-grid > div h3 { margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main); }
 .analytics-grid > div > div { height: 350px; position: relative; width: 100%; }
 
-/* --- FINAL OVERRIDE: Robust Dashboard Layout System --- */
-.dashboard-container {
-    display: flex !important; /* Force side-by-side */
-    flex-direction: row !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-    background: var(--bg-gradient);
-    overflow: hidden !important;
+/* --- TABLET RESPONSIVE: COLLAPSED SIDEBAR --- */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .sidebar {
+        width: 80px !important;
+        padding: 20px 10px !important;
+        align-items: center !important;
+    }
+
+    .sidebar .nav-logo span,
+    .sidebar .nav-links span,
+    .sidebar .profile-info,
+    .sidebar .logout-btn span {
+        display: none !important;
+    }
+
+    .sidebar .nav-logo {
+        justify-content: center !important;
+        margin-bottom: 30px !important;
+    }
+
+    .sidebar .nav-links label,
+    .sidebar .nav-links a,
+    .sidebar .logout-btn {
+        justify-content: center !important;
+        padding: 12px !important;
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 12px !important;
+    }
+
+    .sidebar .nav-links svg,
+    .sidebar .logout-btn svg {
+        margin: 0 !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    .sidebar-profile {
+        justify-content: center !important;
+    }
+    
+    .profile-avatar {
+        margin: 0 !important;
+    }
 }
 
-.dashboard-container > aside.sidebar {
-    width: 280px !important;
-    flex-shrink: 0 !important;
-    height: 100vh !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
-}
+/* --- MOBILE REFINEMENT: TOP NAVIGATION --- */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding-top: 80px !important; /* Space for fixed top nav */
+        display: block !important;
+    }
 
-.dashboard-container > main {
-    flex: 1 !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    position: relative !important;
-    padding: 0 !important;
-}
+    .sidebar {
+        height: 70px !important;
+        width: 100% !important;
+        flex-direction: row !important;
+        padding: 0 15px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border-glass) !important;
+    }
 
-.module-section {
-    display: none;
-    padding: 40px;
-    width: 100%;
-    min-height: 100%;
-}
+    .nav-links {
+        flex-direction: row !important;
+        gap: 10px !important;
+        margin: 0 !important;
+        height: 100% !important;
+        align-items: center !important;
+    }
 
-.module-section.active {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
+    .nav-links li {
+        width: auto !important;
+    }
 
-/* --- DEFINITIVE ADMIN ISOLATION --- */
-.admin-portal-wrapper {
-    display: flex !important;
-    flex-direction: row !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-    background: var(--bg-gradient);
-    overflow: hidden !important;
-}
+    .nav-links label, .nav-links a {
+        padding: 8px !important;
+        gap: 0 !important;
+    }
 
-.admin-portal-wrapper > aside.sidebar {
-    width: 280px !important;
-    flex-shrink: 0 !important;
-    height: 100vh !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
-}
-
-.admin-portal-wrapper > main {
-    flex: 1 !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    position: relative !important;
-    padding: 0 !important;
+    .nav-links span, .sidebar-profile, .nav-logo span {
+        display: none !important;
+    }
+    
+    .logout-container {
+        margin: 0 !important;
+    }
+    
+    .module-section {
+        padding: 20px 15px !important;
+    }
 }
 
 
-/* --- TOTAL ISOLATION OVERRIDES --- */
-.admin-sidebar-isolated {
-    width: 280px !important;
-    flex-shrink: 0 !important;
-    height: 100vh !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
-    display: block !important;
-    background: rgba(15, 23, 42, 0.8) !important;
-    backdrop-filter: blur(20px) !important;
-}
+/* --- DASHBOARD STABILITY SYSTEM --- */
+@media (min-width: 769px) {
+    .dashboard-container {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: stretch !important;
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
 
-.admin-module-section {
-    display: none;
-    padding: 40px;
-    width: 100% !important;
-    min-height: 100vh !important;
-}
-
-.admin-module-section.active {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-#admin-main-content {
-    flex: 1 !important;
-    display: block !important;
-    position: relative !important;
+    .dashboard-container > main {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        display: block !important;
+        min-width: 0 !important;
+    }
+    
+    .module-section {
+        width: 100% !important;
+        display: none;
+    }
+    
+    .module-section.active {
+        display: block !important;
+    }
 }
 
