@@ -14,10 +14,10 @@
     }
 }
 
-/* --- TABLET (2 Columns - 651px to 1100px) --- */
+/* --- TABLET (3 Columns - 651px to 1100px) --- */
 @media (min-width: 651px) and (max-width: 1100px) {
     .product-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 15px;
     }
 }
@@ -30,18 +30,16 @@
     }
 }
 
-/* Intelligent Grid for Inventory/Stats (Adapts 1-2 columns based on available space) */
+/* Intelligent Grid for Inventory/Stats */
 .product-grid#product-list-container,
 .product-grid:has(.stat-card) {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
-    gap: 20px;
+    /* Respect the column rules above */
 }
 
-/* Force 2 Columns for Shop/Catalog on mobile/tablet */
-@media (max-width: 1024px) {
+/* Force 2 Columns for Shop/Catalog on mobile/tablet if not caught above */
+@media (max-width: 1100px) {
     .product-grid:not(#product-list-container):not(:has(.stat-card)) {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px;
+        /* Already handled by .product-grid base rules above */
     }
 }
 
