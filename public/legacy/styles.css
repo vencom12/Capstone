@@ -669,6 +669,38 @@ input[name="nav-radio"],
     }
 }
 
+/* Global Stats & Metrics */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card, .task-card {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+}
+
+.stat-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+}
+
+.stat-label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .panel-section {
     padding: 32px;
     flex: 1;
@@ -1627,6 +1659,20 @@ tbody tr:hover {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 16px;
     }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px !important;
+    }
+
+    .stat-card,
+    .task-card {
+        padding: 18px !important;
+    }
+
+    .stat-value {
+        font-size: 1.8rem !important;
+    }
 }
 
 /* ── Mobile (≤768px) ── */
@@ -2152,10 +2198,38 @@ body {
     }
 
     .table-header {
+        display: flex !important;
         flex-direction: column !important;
-        align-items: stretch !important; /* Full width children */
-        gap: 15px !important;
-        padding: 0 !important; /* ZERO GAP */
+        align-items: flex-start !important; /* Title to the left */
+        gap: 12px !important;
+        padding: 0 !important; 
+        width: 100% !important;
+        margin-bottom: 20px !important;
+    }
+
+    .table-header h1,
+    .table-header h2 {
+        font-size: 1.5rem !important;
+        margin-bottom: 5px !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .stat-card,
+    .task-card {
+        padding: 15px !important;
+        gap: 4px !important;
+    }
+
+    .stat-value {
+        font-size: 1.6rem !important;
+    }
+
+    .stat-label {
+        font-size: 0.75rem !important;
     }
 
     .table-controls {
