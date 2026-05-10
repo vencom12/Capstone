@@ -50,8 +50,10 @@
         </div>
 
         <div class="header-actions">
-            <button onclick="toggleTheme()" class="header-btn" style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button onclick="toggleTheme()" class="header-btn"
+                style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
                     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -143,14 +145,20 @@
                 <!-- Mobile Category Dropdown -->
                 <div class="mobile-category-dropdown mobile-only">
                     <div class="glass-select-wrapper" style="margin-bottom: 20px; position: relative;">
-                        <select id="mobile-category-select" class="glass-select" style="width: 100%; padding: 14px 20px; padding-right: 40px; appearance: none; background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: 12px; color: var(--text-main); font-size: 1rem; font-weight: 600; cursor: pointer;">
+                        <select id="mobile-category-select" class="glass-select"
+                            style="width: 100%; padding: 14px 20px; padding-right: 40px; appearance: none; background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: 12px; color: var(--text-main); font-size: 1rem; font-weight: 600; cursor: pointer;">
                             <option value="All Designs">All Designs</option>
                             <option value="Premium Embroidery">Premium Embroidery</option>
                             <option value="Apparel & Fashion">Apparel & Fashion</option>
                             <option value="Towels & Linens">Towels & Linens</option>
                             <option value="Patches & Logos">Patches & Logos</option>
                         </select>
-                        <svg class="select-icon" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-main);" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="select-icon"
+                            style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text-main);"
+                            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </div>
                 </div>
 
@@ -391,19 +399,23 @@
                                 </svg>
                                 <span>Cash at Counter</span>
                             </button>
-                            
+
                             <!-- Placeholders for future integrations -->
-                            <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007df2" stroke-width="2">
+                            <button disabled class="payment-method-btn"
+                                style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007df2"
+                                    stroke-width="2">
                                     <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                     <circle cx="12" cy="15" r="2"></circle>
                                 </svg>
                                 <span>GCash</span>
                             </button>
-                            
-                            <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+
+                            <button disabled class="payment-method-btn"
+                                style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a"
+                                    stroke-width="2">
                                     <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
                                     <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
                                 </svg>
@@ -417,153 +429,155 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="checkout-modal-footer">
                 <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary"
                     style="opacity: 0.5; pointer-events: none;">
                     Place Order
                 </button>
             </div>
-            <div id="system-diagnostic" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
-        <span>API: <b id="diag-api">Checking...</b></span>
-        <span>Atlas: <b id="diag-atlas">Checking...</b></span>
-        <span>Session: <b id="diag-session">None</b></span>
-    </div>
+            <div id="system-diagnostic"
+                style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
+                <span>API: <b id="diag-api">Checking...</b></span>
+                <span>Atlas: <b id="diag-atlas">Checking...</b></span>
+                <span>Session: <b id="diag-session">None</b></span>
+            </div>
 
-    <script src="customer.js"></script>
-    <script>
-        // --- Storefront Specific Logic ---
-        function openAuth(mode) {
-            document.getElementById('auth-overlay').classList.add('active');
-        }
-
-        function closeAuth() {
-            document.getElementById('auth-overlay').classList.remove('active');
-        }
-
-        // Diagnostic Updater
-        function updateDiagnostics() {
-            const session = AuthManager.getSession();
-            document.getElementById('diag-session').innerText = session ? session.user.username : 'Guest';
-            document.getElementById('diag-session').style.color = session ? '#10b981' : '#6366f1';
-        }
-
-        // Initialize Storefront
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('[Storefront] Initializing system...');
-            updateDiagnostics();
-
-            // STEP 1: Check Auth State for Header
-            const session = AuthManager.getSession();
-            if (session) {
-                document.getElementById('guest-actions').style.display = 'none';
-                document.getElementById('user-actions').style.display = 'flex';
-                document.getElementById('header-user-name').innerText = session.user.username;
-                const avatar = document.getElementById('header-user-avatar');
-                if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
-            }
-
-            // STEP 2: LOAD PRODUCTS (TOP PRIORITY)
-            document.getElementById('diag-api').innerText = 'Syncing...';
-            try {
-                if (window.refreshDashboardState) {
-                    const state = await window.refreshDashboardState();
-                    document.getElementById('diag-api').innerText = 'Connected';
-                    document.getElementById('diag-api').style.color = '#10b981';
-                    
-                    if (state && state.products) {
-                        document.getElementById('diag-atlas').innerText = 'Live';
-                        document.getElementById('diag-atlas').style.color = '#10b981';
-                    } else {
-                        document.getElementById('diag-atlas').innerText = 'Empty';
-                    }
-                    if (window.updateUI) window.updateUI();
+            <script src="customer.js"></script>
+            <script>
+                // --- Storefront Specific Logic ---
+                function openAuth(mode) {
+                    document.getElementById('auth-overlay').classList.add('active');
                 }
-            } catch (e) {
-                document.getElementById('diag-api').innerText = 'Offline';
-                document.getElementById('diag-api').style.color = '#ef4444';
-                console.error('[Storefront] Initialization error:', e);
-            }
 
-            // STEP 3: Setup Listeners
-            const searchInput = document.getElementById('storefront-search');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    State._cache.searchQuery = e.target.value;
-                    updateUI();
-                });
-            }
+                function closeAuth() {
+                    document.getElementById('auth-overlay').classList.remove('active');
+                }
 
-            const categoryLabels = document.querySelectorAll('.category-links label');
-            const mobileCategorySelect = document.getElementById('mobile-category-select');
+                // Diagnostic Updater
+                function updateDiagnostics() {
+                    const session = AuthManager.getSession();
+                    document.getElementById('diag-session').innerText = session ? session.user.username : 'Guest';
+                    document.getElementById('diag-session').style.color = session ? '#10b981' : '#6366f1';
+                }
 
-            function setCategory(category) {
-                State._cache.selectedCategory = category;
-                categoryLabels.forEach(l => {
-                    const span = l.querySelector('span');
-                    if (span.innerText === category) {
-                        span.style.color = 'var(--primary)';
-                        span.style.fontWeight = '600';
-                    } else {
-                        span.style.color = 'var(--text-dim)';
-                        span.style.fontWeight = '400';
+                // Initialize Storefront
+                document.addEventListener('DOMContentLoaded', async () => {
+                    console.log('[Storefront] Initializing system...');
+                    updateDiagnostics();
+
+                    // STEP 1: Check Auth State for Header
+                    const session = AuthManager.getSession();
+                    if (session) {
+                        document.getElementById('guest-actions').style.display = 'none';
+                        document.getElementById('user-actions').style.display = 'flex';
+                        document.getElementById('header-user-name').innerText = session.user.username;
+                        const avatar = document.getElementById('header-user-avatar');
+                        if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
                     }
-                });
-                if (mobileCategorySelect) mobileCategorySelect.value = category;
-                updateUI();
-            }
 
-            categoryLabels.forEach(label => {
-                label.addEventListener('click', () => {
-                    setCategory(label.querySelector('span').innerText);
-                });
-            });
+                    // STEP 2: LOAD PRODUCTS (TOP PRIORITY)
+                    document.getElementById('diag-api').innerText = 'Syncing...';
+                    try {
+                        if (window.refreshDashboardState) {
+                            const state = await window.refreshDashboardState();
+                            document.getElementById('diag-api').innerText = 'Connected';
+                            document.getElementById('diag-api').style.color = '#10b981';
 
-            if (mobileCategorySelect) {
-                mobileCategorySelect.addEventListener('change', (e) => {
-                    setCategory(e.target.value);
-                });
-            }
-        });
-
-        // Login Handler (Direct logic)
-        const loginForm = document.getElementById('main-login-form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', async function (e) {
-                e.preventDefault();
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-pass').value;
-                const rememberMe = document.getElementById('login-remember').checked;
-                const errorEl = document.getElementById('login-error');
-                const submitBtn = this.querySelector('button[type="submit"]');
-                
-                errorEl.style.display = 'none';
-                const originalBtnText = submitBtn.innerText;
-                submitBtn.innerText = 'Verifying...';
-                submitBtn.disabled = true;
-
-                try {
-                    if (typeof AuthManager !== 'undefined') {
-                        const result = await AuthManager.login(email, password, rememberMe, 'customer');
-                        if (result.success) {
-                            window.location.href = 'user.html'; 
-                        } else {
-                            errorEl.innerText = result.message || "Invalid credentials.";
-                            errorEl.style.display = 'block';
+                            if (state && state.products) {
+                                document.getElementById('diag-atlas').innerText = 'Live';
+                                document.getElementById('diag-atlas').style.color = '#10b981';
+                            } else {
+                                document.getElementById('diag-atlas').innerText = 'Empty';
+                            }
+                            if (window.updateUI) window.updateUI();
                         }
-                    } else {
-                        errorEl.innerText = "System still initializing. Please wait 2 seconds and try again.";
-                        errorEl.style.display = 'block';
+                    } catch (e) {
+                        document.getElementById('diag-api').innerText = 'Offline';
+                        document.getElementById('diag-api').style.color = '#ef4444';
+                        console.error('[Storefront] Initialization error:', e);
                     }
-                } catch (err) {
-                    errorEl.innerText = "Connection timeout. Please refresh.";
-                    errorEl.style.display = 'block';
-                } finally {
-                    submitBtn.innerText = originalBtnText;
-                    submitBtn.disabled = false;
+
+                    // STEP 3: Setup Listeners
+                    const searchInput = document.getElementById('storefront-search');
+                    if (searchInput) {
+                        searchInput.addEventListener('input', (e) => {
+                            State._cache.searchQuery = e.target.value;
+                            updateUI();
+                        });
+                    }
+
+                    const categoryLabels = document.querySelectorAll('.category-links label');
+                    const mobileCategorySelect = document.getElementById('mobile-category-select');
+
+                    function setCategory(category) {
+                        State._cache.selectedCategory = category;
+                        categoryLabels.forEach(l => {
+                            const span = l.querySelector('span');
+                            if (span.innerText === category) {
+                                span.style.color = 'var(--primary)';
+                                span.style.fontWeight = '600';
+                            } else {
+                                span.style.color = 'var(--text-dim)';
+                                span.style.fontWeight = '400';
+                            }
+                        });
+                        if (mobileCategorySelect) mobileCategorySelect.value = category;
+                        updateUI();
+                    }
+
+                    categoryLabels.forEach(label => {
+                        label.addEventListener('click', () => {
+                            setCategory(label.querySelector('span').innerText);
+                        });
+                    });
+
+                    if (mobileCategorySelect) {
+                        mobileCategorySelect.addEventListener('change', (e) => {
+                            setCategory(e.target.value);
+                        });
+                    }
+                });
+
+                // Login Handler (Direct logic)
+                const loginForm = document.getElementById('main-login-form');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', async function (e) {
+                        e.preventDefault();
+                        const email = document.getElementById('login-email').value;
+                        const password = document.getElementById('login-pass').value;
+                        const rememberMe = document.getElementById('login-remember').checked;
+                        const errorEl = document.getElementById('login-error');
+                        const submitBtn = this.querySelector('button[type="submit"]');
+
+                        errorEl.style.display = 'none';
+                        const originalBtnText = submitBtn.innerText;
+                        submitBtn.innerText = 'Verifying...';
+                        submitBtn.disabled = true;
+
+                        try {
+                            if (typeof AuthManager !== 'undefined') {
+                                const result = await AuthManager.login(email, password, rememberMe, 'customer');
+                                if (result.success) {
+                                    window.location.href = 'user.html';
+                                } else {
+                                    errorEl.innerText = result.message || "Invalid credentials.";
+                                    errorEl.style.display = 'block';
+                                }
+                            } else {
+                                errorEl.innerText = "System still initializing. Please wait 2 seconds and try again.";
+                                errorEl.style.display = 'block';
+                            }
+                        } catch (err) {
+                            errorEl.innerText = "Connection timeout. Please refresh.";
+                            errorEl.style.display = 'block';
+                        } finally {
+                            submitBtn.innerText = originalBtnText;
+                            submitBtn.disabled = false;
+                        }
+                    });
                 }
-            });
-        }
-    </script>
+            </script>
 </body>
+
 </html>

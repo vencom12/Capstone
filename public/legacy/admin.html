@@ -46,6 +46,7 @@
         .unauthorized-hide .dashboard-container {
             display: none !important;
         }
+
         .nav-logo {
             font-size: 1.5rem;
             font-weight: 700;
@@ -211,8 +212,10 @@
                     </a>
                 </li>
                 <li>
-                    <label onclick="toggleTheme()" class="theme-toggle-nav" style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
-                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <label onclick="toggleTheme()" class="theme-toggle-nav"
+                        style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
+                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="5"></circle>
                             <line x1="12" y1="1" x2="12" y2="3"></line>
                             <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -273,7 +276,7 @@
                 </a>
             </div>
         </aside>
- 
+
         <main id="admin-main-content">
             <!-- Section: Overview -->
             <section id="section-overview" class="module-section active">
@@ -310,12 +313,15 @@
                                 <option value="Ready For Pick Up">Ready For Pick Up</option>
                                 <option value="Order Delivered">Order Delivered</option>
                             </select>
-                            <button id="admin-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
-                            <a href="#" style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View All</a>
+                            <button id="admin-batch-update-btn" class="btn btn-primary"
+                                style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
+                            <a href="#"
+                                style="color: var(--primary); font-size: 0.9rem; text-decoration: none; margin-left: 10px;">View
+                                All</a>
                         </div>
                     </header>
 
-                <div class="table-container glass">
+                    <div class="table-container glass">
                         <table>
                             <thead>
                                 <tr>
@@ -331,13 +337,27 @@
                             <tbody id="admin-order-table-body">
                                 <!-- Skeleton Loaders -->
                                 <tr class="skeleton-row">
-                                    <td data-label="Order ID"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Customer"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Design"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Total"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Status"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Timestamp"><div class="skeleton skeleton-line"></div></td>
-                                    <td data-label="Action"><div class="skeleton skeleton-line"></div></td>
+                                    <td data-label="Order ID">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Customer">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Design">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Total">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Status">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Timestamp">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
+                                    <td data-label="Action">
+                                        <div class="skeleton skeleton-line"></div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -358,10 +378,14 @@
                             <div
                                 style="width:10px; height:10px; border-radius:50%; background:var(--primary); box-shadow:0 0 10px var(--primary);">
                             </div>
-                            <p style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Stitch-Opt Intelligence Report</p>
+                            <p style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Stitch-Opt
+                                Intelligence Report</p>
                         </div>
-                        <p id="ai-main-tip" style="font-size:0.85rem; color:var(--text-main); margin-top:4px; line-height:1.4; font-weight: 500;">Analyzing current production queue...</p>
-                        <div id="ai-insights-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                        <p id="ai-main-tip"
+                            style="font-size:0.85rem; color:var(--text-main); margin-top:4px; line-height:1.4; font-weight: 500;">
+                            Analyzing current production queue...</p>
+                        <div id="ai-insights-container"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                             <!-- Dynamically filled by JS -->
                         </div>
                     </div>
@@ -776,14 +800,14 @@
 
     <!-- Robust View Navigation JS (Active Class System) -->
     <script>
-        (function() {
+        (function () {
             const labels = document.querySelectorAll('.nav-links label');
             const sections = document.querySelectorAll('.module-section');
             const radios = document.querySelectorAll('input[name="nav-radio"]');
 
             function switchTo(targetId) {
                 const sectionId = 'section-' + targetId.replace('nav-', '');
-                
+
                 // 1. Update Sections
                 sections.forEach(s => {
                     s.classList.remove('active');

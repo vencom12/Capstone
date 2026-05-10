@@ -37,7 +37,9 @@
         }
     </script>
     <style>
-        .unauthorized-hide .dashboard-container { display: none !important; }
+        .unauthorized-hide .dashboard-container {
+            display: none !important;
+        }
     </style>
     <style>
         .task-grid {
@@ -102,18 +104,33 @@
 
 <body>
     <!-- Standalone Employee Login Gateway -->
-    <div id="module-login-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 9999; justify-content: center; align-items: center;">
-        <div class="glass" style="padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 20px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div id="module-login-screen"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 9999; justify-content: center; align-items: center;">
+        <div class="glass"
+            style="padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 20px;">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
             <h2 style="margin-bottom: 8px; font-size: 1.8rem;">Staff Terminal</h2>
             <p style="color: var(--text-dim); margin-bottom: 30px;">Employee identification required</p>
             <form id="employee-login-form">
-                <input type="text" id="employee-login-email" placeholder="Staff ID / Email" required style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
-                <input type="password" id="employee-login-pass" placeholder="Passcode" required style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
-                <p id="employee-login-error" style="color: #ef4444; font-size: 0.9rem; display: none; margin-bottom: 20px; text-align: left;"></p>
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem;">Authenticate</button>
+                <input type="text" id="employee-login-email" placeholder="Staff ID / Email" required
+                    style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
+                <input type="password" id="employee-login-pass" placeholder="Passcode" required
+                    style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
+                <p id="employee-login-error"
+                    style="color: #ef4444; font-size: 0.9rem; display: none; margin-bottom: 20px; text-align: left;">
+                </p>
+                <button type="submit" class="btn btn-primary"
+                    style="width: 100%; padding: 14px; font-size: 1rem;">Authenticate</button>
             </form>
-            <a href="index.html" style="display: block; margin-top: 25px; color: var(--text-dim); text-decoration: none; font-size: 0.85rem;">← Return to Public Storefront</a>
+            <a href="index.html"
+                style="display: block; margin-top: 25px; color: var(--text-dim); text-decoration: none; font-size: 0.85rem;">←
+                Return to Public Storefront</a>
         </div>
     </div>
     <script>
@@ -135,7 +152,7 @@
                 if (res.success) {
                     // Manually clear session locally without redirecting immediately
                     localStorage.removeItem(window.AuthManager.SESSION_KEY);
-                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => {});
+                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => { });
                 }
             }
         });
@@ -209,14 +226,22 @@
                     </label>
                 </li>
                 <li>
-                    <a href="#" onclick="event.preventDefault(); document.getElementById('ai-float-window').classList.toggle('ai-hidden');" style="color: var(--text-dim);">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/><circle cx="17" cy="7" r="5"/></svg>
+                    <a href="#"
+                        onclick="event.preventDefault(); document.getElementById('ai-float-window').classList.toggle('ai-hidden');"
+                        style="color: var(--text-dim);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" />
+                            <circle cx="17" cy="7" r="5" />
+                        </svg>
                         <span>AI Assistant</span>
                     </a>
                 </li>
                 <li>
-                    <label onclick="toggleTheme()" class="theme-toggle-nav" style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
-                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <label onclick="toggleTheme()" class="theme-toggle-nav"
+                        style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
+                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="5"></circle>
                             <line x1="12" y1="1" x2="12" y2="3"></line>
                             <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -284,7 +309,8 @@
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Workbench: Station B</h1>
-                        <p style="color: var(--text-dim);">Good morning, Employee #402. You have 4 tasks for this shift.</p>
+                        <p style="color: var(--text-dim);">Good morning, Employee #402. You have 4 tasks for this shift.
+                        </p>
                     </div>
                 </header>
 
@@ -351,7 +377,8 @@
                             <option value="Ready For Pick Up">Ready For Pick Up</option>
                             <option value="Order Delivered">Order Delivered</option>
                         </select>
-                        <button id="employee-batch-update-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
+                        <button id="employee-batch-update-btn" class="btn btn-primary"
+                            style="padding: 8px 16px; font-size: 0.85rem;">Apply</button>
                     </div>
                 </header>
                 <div class="table-container glass">
@@ -382,7 +409,7 @@
                 <header class="section-header-top">
                     <h1 style="font-size: 2rem;">Manage Designs</h1>
                     <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="employee-products-search" class="glass" placeholder="Search designs..." 
+                        <input type="text" id="employee-products-search" class="glass" placeholder="Search designs..."
                             style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 200px;">
                         <button class="btn btn-primary" onclick="openCreateProduct()">+ Create New Design</button>
                     </div>
@@ -433,7 +460,8 @@
                         </thead>
                         <tbody id="employee-history-table-body">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No historical orders found.</td>
+                                <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No
+                                    historical orders found.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -443,27 +471,52 @@
     </div>
 
     <!-- Floating AI Chat Window -->
-    <div id="ai-float-window" class="ai-hidden" style="position: fixed; bottom: 24px; left: 300px; width: 420px; height: 520px; background: rgba(15, 23, 42, 0.15); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(99,102,241,0.1); z-index: 9999; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border-glass); background: rgba(99,102,241,0.05);">
+    <div id="ai-float-window" class="ai-hidden"
+        style="position: fixed; bottom: 24px; left: 300px; width: 420px; height: 520px; background: rgba(15, 23, 42, 0.15); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(99,102,241,0.1); z-index: 9999; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border-glass); background: rgba(99,102,241,0.05);">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"/><circle cx="17" cy="7" r="5"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                    <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" />
+                    <circle cx="17" cy="7" r="5" />
+                </svg>
                 <span style="font-weight: 700; font-size: 1rem; color: white;">StitchMaster AI</span>
             </div>
-            <span onclick="document.getElementById('ai-float-window').classList.add('ai-hidden')" style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem; padding: 4px 8px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'">✕</span>
+            <span onclick="document.getElementById('ai-float-window').classList.add('ai-hidden')"
+                style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem; padding: 4px 8px; border-radius: 8px; transition: background 0.2s;"
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                onmouseout="this.style.background='transparent'">✕</span>
         </div>
-        <div id="ai-chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px;"></div>
+        <div id="ai-chat-messages"
+            style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px;"></div>
         <div style="padding: 12px 16px; border-top: 1px solid var(--border-glass); background: rgba(0,0,0,0.2);">
             <input type="text" id="ai-chat-input" placeholder="Ask me anything about the system..."
-                style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border-glass); padding: 12px 16px; border-radius: 12px; color: white; outline: none; font-size: 0.9rem; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
+                style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border-glass); padding: 12px 16px; border-radius: 12px; color: white; outline: none; font-size: 0.9rem; transition: border-color 0.2s;"
+                onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
         </div>
     </div>
     <style>
-        .ai-hidden { opacity: 0 !important; pointer-events: none !important; transform: translateY(20px) scale(0.95) !important; }
-        @media (max-width: 768px) {
-            #ai-float-window { left: 10px !important; right: 10px !important; width: auto !important; bottom: 80px !important; height: 60vh !important; }
+        .ai-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(20px) scale(0.95) !important;
         }
+
+        @media (max-width: 768px) {
+            #ai-float-window {
+                left: 10px !important;
+                right: 10px !important;
+                width: auto !important;
+                bottom: 80px !important;
+                height: 60vh !important;
+            }
+        }
+
         @media (min-width: 769px) and (max-width: 1100px) {
-            #ai-float-window { left: 90px !important; width: 380px !important; }
+            #ai-float-window {
+                left: 90px !important;
+                width: 380px !important;
+            }
         }
     </style>
 

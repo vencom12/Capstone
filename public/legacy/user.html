@@ -88,7 +88,8 @@
                 </li>
                 <li>
                     <label for="nav-history">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                             <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -136,8 +137,10 @@
                     </label>
                 </li>
                 <li>
-                    <label onclick="toggleTheme()" class="theme-toggle-nav" style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
-                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <label onclick="toggleTheme()" class="theme-toggle-nav"
+                        style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
+                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="5"></circle>
                             <line x1="12" y1="1" x2="12" y2="3"></line>
                             <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -183,7 +186,9 @@
                 <div class="profile-info">
                     <span class="profile-name">User Name</span>
                     <span class="profile-role">Customer</span>
-                    <div id="profile-wallet" style="margin-top: 4px; font-size: 0.8rem; color: var(--primary); font-weight: 700; background: rgba(99, 102, 241, 0.1); padding: 2px 8px; border-radius: 12px; width: fit-content;">$0.00</div>
+                    <div id="profile-wallet"
+                        style="margin-top: 4px; font-size: 0.8rem; color: var(--primary); font-weight: 700; background: rgba(99, 102, 241, 0.1); padding: 2px 8px; border-radius: 12px; width: fit-content;">
+                        $0.00</div>
                 </div>
             </div>
 
@@ -233,7 +238,7 @@
                     </div>
                 </div>
             </section>
-            
+
             <section id="section-shop" class="module-section">
                 <header
                     style="margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
@@ -264,7 +269,8 @@
             <!-- Module: My Favorites -->
             <section id="section-favs" class="module-section">
                 <h1 style="font-size: 2.2rem; margin-bottom: 24px;">My Favorites</h1>
-                <div class="product-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px;">
+                <div class="product-grid"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px;">
                     <div
                         style="height: 300px; border: 2px dashed var(--border-glass); border-radius: 24px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); text-align: center; padding: 20px;">
                         <div>
@@ -290,18 +296,21 @@
                             <p style="color: var(--text-dim);">Your payment history and digital receipts</p>
                         </div>
                         <div class="table-controls" style="display: flex; gap: 12px; align-items: center;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                 <line x1="16" y1="2" x2="16" y2="6"></line>
                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
-                            <input type="date" id="history-date-filter" style="background: none; border: none; color: var(--text-main); outline: none; font-size: 0.9rem; cursor: pointer;">
+                            <input type="date" id="history-date-filter"
+                                style="background: none; border: none; color: var(--text-main); outline: none; font-size: 0.9rem; cursor: pointer;">
                         </div>
                     </header>
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
                         <thead>
-                            <tr style="background: var(--bg-surface); color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                            <tr
+                                style="background: var(--bg-surface); color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
                                 <th style="padding: 20px 24px; font-weight: 600;">Transaction ID</th>
                                 <th style="padding: 20px 24px; font-weight: 600;">Description</th>
                                 <th style="padding: 20px 24px; font-weight: 600;">Amount</th>
@@ -338,7 +347,8 @@
                             style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem; resize: none;"></textarea>
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 12px;">
-                        <button id="settings-save-btn" class="btn btn-primary" style="padding: 12px 32px;">Update Profile</button>
+                        <button id="settings-save-btn" class="btn btn-primary" style="padding: 12px 32px;">Update
+                            Profile</button>
                     </div>
                 </div>
             </section>
@@ -411,11 +421,14 @@
             <div class="checkout-modal-header">
                 <h2 style="margin: 0; display: flex; align-items: center; gap: 12px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                        <path d="M3 6h18" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
                     </svg>
                     Secure Checkout
                 </h2>
-                <span onclick="CheckoutManager.close()" style="cursor: pointer; font-size: 1.5rem; opacity: 0.5;">✕</span>
+                <span onclick="CheckoutManager.close()"
+                    style="cursor: pointer; font-size: 1.5rem; opacity: 0.5;">✕</span>
             </div>
 
             <div class="checkout-grid">
@@ -423,15 +436,22 @@
                 <div class="checkout-left">
                     <div class="checkout-section">
                         <h3 class="checkout-section-title">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
                             Delivery Details
                         </h3>
                         <div class="input-group">
-                            <input type="text" id="checkout-address" placeholder="Registered Address" readonly style="background: rgba(255,255,255,0.05); color: var(--text-dim); cursor: not-allowed;">
-                            <p style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">To change address, please update your profile settings.</p>
+                            <input type="text" id="checkout-address" placeholder="Registered Address" readonly
+                                style="background: rgba(255,255,255,0.05); color: var(--text-dim); cursor: not-allowed;">
+                            <p style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">To change address,
+                                please update your profile settings.</p>
                         </div>
                         <div class="input-group">
-                            <input type="text" id="checkout-time" placeholder="Preferred Delivery Time (e.g. 2 PM - 4 PM)" required>
+                            <input type="text" id="checkout-time"
+                                placeholder="Preferred Delivery Time (e.g. 2 PM - 4 PM)" required>
                         </div>
                         <div class="input-group">
                             <textarea id="checkout-notes" placeholder="Special notes to seller..." rows="2"></textarea>
@@ -443,7 +463,8 @@
                         <div id="checkout-summary-list" class="checkout-summary-list">
                             <!-- Items populated by JS -->
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 16px; font-weight: 700; font-size: 1.1rem; padding: 0 8px;">
+                        <div
+                            style="display: flex; justify-content: space-between; margin-top: 16px; font-weight: 700; font-size: 1.1rem; padding: 0 8px;">
                             <span>Total Amount:</span>
                             <span id="checkout-total-price" style="color: var(--primary);">$0.00</span>
                         </div>
@@ -454,41 +475,60 @@
                 <div class="checkout-right">
                     <div class="checkout-section">
                         <h3 class="checkout-section-title">Payment Method</h3>
-                        
+
                         <!-- Wallet Card -->
                         <div class="wallet-balance-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                 <span style="font-size: 0.8rem; opacity: 0.8;">Wallet Balance</span>
-                                <span id="checkout-wallet-balance" style="font-weight: 700; font-size: 1.1rem;">$0.00</span>
+                                <span id="checkout-wallet-balance"
+                                    style="font-weight: 700; font-size: 1.1rem;">$0.00</span>
                             </div>
                             <div class="top-up-input-group">
                                 <input type="number" id="topup-amount" placeholder="Add Amount" min="1">
-                                <button onclick="CheckoutManager.topup()" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">Top Up</button>
+                                <button onclick="CheckoutManager.topup()" class="btn btn-primary"
+                                    style="padding: 8px 12px; font-size: 0.8rem;">Top Up</button>
                             </div>
                         </div>
 
                         <div class="payment-methods-grid">
-                            <button onclick="CheckoutManager.selectMethod('wallet')" id="pay-btn-wallet" class="payment-method-btn">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+                            <button onclick="CheckoutManager.selectMethod('wallet')" id="pay-btn-wallet"
+                                class="payment-method-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                                    <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+                                    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
+                                </svg>
                                 <span>Wallet Credits</span>
                             </button>
-                            <button onclick="CheckoutManager.selectMethod('cash_at_counter')" id="pay-btn-cash" class="payment-method-btn">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                            <button onclick="CheckoutManager.selectMethod('cash_at_counter')" id="pay-btn-cash"
+                                class="payment-method-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                                    <circle cx="12" cy="12" r="2" />
+                                    <path d="M6 12h.01M18 12h.01" />
+                                </svg>
                                 <span>Cash at Counter</span>
                             </button>
-                            
+
                             <!-- Placeholders for future integrations -->
-                            <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007df2" stroke-width="2">
+                            <button disabled class="payment-method-btn"
+                                style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007df2"
+                                    stroke-width="2">
                                     <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                     <circle cx="12" cy="15" r="2"></circle>
                                 </svg>
                                 <span>GCash</span>
                             </button>
-                            
-                            <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+
+                            <button disabled class="payment-method-btn"
+                                style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a"
+                                    stroke-width="2">
                                     <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
                                     <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
                                 </svg>
@@ -505,7 +545,8 @@
             </div>
 
             <div class="checkout-modal-footer">
-                <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary" style="opacity: 0.5; pointer-events: none;">
+                <button id="place-order-btn" onclick="CheckoutManager.placeOrder()" class="btn btn-primary"
+                    style="opacity: 0.5; pointer-events: none;">
                     Place Order
                 </button>
             </div>
@@ -513,20 +554,24 @@
     </div>
 
     <!-- Receipt Modal -->
-    <div id="receipt-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200000; align-items: center; justify-content: center;">
+    <div id="receipt-modal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200000; align-items: center; justify-content: center;">
         <div class="modal-content glass receipt-modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                 <h2 style="font-size: 1.5rem; color: white;">Transaction Receipt</h2>
-                <span style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem;" onclick="UI.toggleModal('receipt-modal')">✕</span>
+                <span style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem;"
+                    onclick="UI.toggleModal('receipt-modal')">✕</span>
             </div>
             <div id="receipt-content" style="color: var(--text-main);">
                 <p>Loading receipt details...</p>
             </div>
-            <button class="btn btn-primary" onclick="UI.toggleModal('receipt-modal')" style="width: 100%; margin-top: 30px;">Close Receipt</button>
+            <button class="btn btn-primary" onclick="UI.toggleModal('receipt-modal')"
+                style="width: 100%; margin-top: 30px;">Close Receipt</button>
         </div>
     </div>
 
-    <div id="system-diagnostic" style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
+    <div id="system-diagnostic"
+        style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #6366f1; font-size: 0.7rem; padding: 4px 10px; z-index: 10000; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.8;">
         <span>API: <b id="diag-api">Checking...</b></span>
         <span>Atlas: <b id="diag-atlas">Checking...</b></span>
         <span>Session: <b id="diag-session">None</b></span>
@@ -543,4 +588,5 @@
         document.addEventListener('DOMContentLoaded', updateDiagnostics);
     </script>
 </body>
+
 </html>
