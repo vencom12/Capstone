@@ -990,7 +990,8 @@ tbody tr:hover {
     flex-direction: column;
 }
 
-#nav-drawer-toggle:checked~.storefront-drawer {
+#nav-drawer-toggle:checked~.storefront-drawer,
+#nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .right-panel {
     transform: translateX(0);
 }
 
@@ -1011,7 +1012,8 @@ tbody tr:hover {
     backdrop-filter: blur(2px);
 }
 
-#nav-drawer-toggle:checked~.storefront-overlay {
+#nav-drawer-toggle:checked~.storefront-overlay,
+#nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .storefront-overlay {
     opacity: 1;
     visibility: visible;
 }
@@ -2070,16 +2072,17 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
         box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5) !important;
     }
 
-    #nav-drawer-toggle:checked~.storefront-container .right-panel {
+    #nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .right-panel,
+    #nav-drawer-toggle:checked~.storefront-drawer {
         transform: translateX(0) !important;
     }
 
     /* Dim the background when drawer is open */
-    #nav-drawer-toggle:checked~.storefront-container .storefront-overlay {
-        opacity: 1;
-        visibility: visible;
+    #nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .storefront-overlay,
+    #nav-drawer-toggle:checked~.storefront-overlay {
+        opacity: 1 !important;
+        visibility: visible !important;
         z-index: 100000 !important;
-        /* Above bottom nav, below drawer */
     }
 
     /* Prevent overlay from blurring desktop dashboard */
