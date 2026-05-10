@@ -630,8 +630,8 @@
 /* Tablet Overlap Fix */
 @media (max-width: 1100px) and (min-width: 651px) {
     .storefront-dashboard-layout {
-        margin-top: 130px !important;
-        height: calc(100vh - 130px) !important;
+        margin-top: 112px !important;
+        height: calc(100vh - 112px) !important;
     }
 }
 
