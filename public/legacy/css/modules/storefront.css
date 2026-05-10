@@ -149,8 +149,96 @@
 
 .mobile-category-container { display: none; }
 
+/* Basket Drawer */
+.storefront-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 450px;
+    height: 100vh;
+    z-index: 2000;
+    background: var(--bg-sidebar);
+    border-left: 1px solid var(--border-glass);
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.storefront-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    z-index: 1999;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition-fast);
+}
+
+#nav-drawer-toggle:checked ~ .storefront-drawer {
+    transform: translateX(0);
+}
+
+#nav-drawer-toggle:checked ~ .storefront-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+.basket-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.basket-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid var(--border-glass);
+    margin-bottom: 12px;
+}
+
+.basket-item img {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.basket-item-info { flex: 1; }
+.basket-item-info h4 { margin: 0 0 4px; font-size: 0.95rem; }
+.basket-item-info p { margin: 0; font-size: 0.85rem; color: var(--text-dim); }
+
+.basket-item-remove {
+    color: #ff4444;
+    cursor: pointer;
+    font-size: 1.2rem;
+    opacity: 0.6;
+    transition: 0.2s;
+}
+
+.basket-item-remove:hover { opacity: 1; }
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
+    .storefront-drawer {
+        width: 100%;
+        border-left: none;
+    }
+    
+    .drawer-header, .panel-section {
+        padding: 24px !important;
+    }
+    
+    .basket-items { padding: 15px; }
+
     .storefront-header {
         display: grid !important;
         grid-template-areas: "brand actions" "search search";
