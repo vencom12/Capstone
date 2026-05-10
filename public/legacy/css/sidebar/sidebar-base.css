@@ -32,10 +32,10 @@
         align-items: center;
     }
     
-    /* Hide Text Labels */
-    .sidebar .nav-logo span,
-    .sidebar .nav-links label span,
-    .sidebar .nav-links a span,
+    /* Hide Text Labels (Except Storefront) */
+    .sidebar:not(.storefront-sidebar) .nav-logo span,
+    .sidebar:not(.storefront-sidebar) .nav-links label span,
+    .sidebar:not(.storefront-sidebar) .nav-links a span,
     .sidebar-profile .profile-info,
     .sidebar-profile .profile-name,
     .logout-container span,

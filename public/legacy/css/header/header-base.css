@@ -50,11 +50,18 @@
         height: 40px !important;
     }
     
-    /* Shrink buttons to fit inline */
+    /* Shrink buttons more to fit inline */
+    .header-actions {
+        gap: 5px !important;
+    }
     .header-actions .header-btn {
-        padding: 6px 10px !important;
-        font-size: 0.8rem !important;
+        padding: 5px 8px !important;
+        font-size: 0.75rem !important;
         min-width: auto !important;
+    }
+    .header-actions .header-btn svg {
+        width: 14px !important;
+        height: 14px !important;
     }
 }
 
