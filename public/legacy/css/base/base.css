@@ -42,6 +42,13 @@ input[name="nav-radio"],
     display: none;
 }
 
+/* Visibility Utilities */
+@media (max-width: 650px) {
+    .desktop-only {
+        display: none !important;
+    }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
