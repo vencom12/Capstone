@@ -2155,7 +2155,7 @@ body {
         flex-direction: column !important;
         align-items: stretch !important; /* Full width children */
         gap: 15px !important;
-        padding: 0 0 10px 0 !important; /* Move cards up */
+        padding: 0 !important; /* ZERO GAP */
     }
 
     .table-controls {
@@ -2173,8 +2173,8 @@ body {
     }
 
     .table-container table {
-        border-collapse: separate !important;
-        border-spacing: 0 8px !important;
+        border-collapse: collapse !important; /* Use collapse to remove spacing */
+        border-spacing: 0 !important;
         width: 100% !important;
         max-width: 100% !important; /* Lock width */
         min-width: auto !important; /* CRITICAL: Break the min-width constraint */
