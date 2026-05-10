@@ -2720,3 +2720,22 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     }
 }
 
+
+/* --- ADMIN STOREFRONT-STYLE SYNC --- */
+.storefront-dashboard-layout:has(#admin-main-content) {
+    margin-top: 0 !important;
+    height: 100vh !important;
+    padding: 0 !important;
+}
+
+.storefront-dashboard-layout:has(#admin-main-content) .storefront-sidebar {
+    top: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+}
+
+.storefront-dashboard-layout:has(#admin-main-content) .storefront-main {
+    padding: 0 !important;
+}
+
