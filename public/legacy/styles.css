@@ -2093,7 +2093,7 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     /* Prevent overlay from blurring desktop dashboard */
     @media (min-width: 769px) {
-        .storefront-container .storefront-overlay {
+        :is(.storefront-container, .dashboard-container) .storefront-overlay {
             display: none !important;
         }
     }
