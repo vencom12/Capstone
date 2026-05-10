@@ -73,6 +73,14 @@
     transform: translateX(5px);
 }
 
+/* Tablet / Rail Mode: Square highlights */
+@media (max-width: 1100px) and (min-width: 651px) {
+    .nav-links label,
+    .nav-links a {
+        border-radius: 0 !important; /* Square look */
+    }
+}
+
 /* Active indicator line */
 #nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"]::after,
 #nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"]::after,
@@ -100,6 +108,73 @@
     width: 4px;
     background: white;
     border-radius: 0 4px 4px 0;
+}
+
+/* Tablet / Rail Mode: Profile-style highlights */
+@media (max-width: 1100px) and (min-width: 651px) {
+    .nav-links {
+        padding: 10px 0 !important;
+        gap: 8px !important;
+    }
+
+    .nav-links li {
+        display: flex;
+        justify-content: center;
+        padding: 0 !important;
+    }
+    
+    .nav-links label,
+    .nav-links a {
+        width: 40px;
+        height: 40px;
+        padding: 0 !important;
+        border-radius: 12px !important; /* Match OP avatar */
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid var(--border-glass) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .nav-links label:hover,
+    .nav-links a:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        transform: scale(1.1) !important;
+    }
+
+    /* Active Highlight: Larger and Gradient (Like OP) */
+    .nav-links .active,
+    #nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
+    #nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
+    #nav-production:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
+    #nav-orders:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-orders"],
+    #nav-customers:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-customers"],
+    #nav-history:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
+    #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
+    #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"],
+    #nav-store:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-store"],
+    #nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
+    #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
+    #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
+    #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"],
+    #nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"],
+    #nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"],
+    #nav-products:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-products"],
+    #nav-support:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-support"],
+    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"] {
+        width: 50px !important; /* Larger than OP (40px) */
+        height: 50px !important;
+        background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        transform: scale(1) !important;
+        margin: 4px 0 !important; /* Vertical spacing for the larger button */
+    }
+
+    /* Remove indicators for this style */
+    .nav-links label::after,
+    .nav-links a::after {
+        display: none !important;
+    }
 }
 
 /* Hide Cart from Nav in Desktop */
