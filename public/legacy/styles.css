@@ -2342,9 +2342,10 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
         width: 100%;
     }
 
-    .mobile-category-container {
-        display: block !important;
-        margin: 0 0 15px;
+    .mobile-category-dropdown {
+        width: 100%;
+        padding: 0 15px;
+        box-sizing: border-box;
     }
 
     /* Hide the horizontal scrollable tabs as we're using a dropdown now */
