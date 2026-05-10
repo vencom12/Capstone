@@ -1,0 +1,61 @@
+/* Authentication & Access Modals */
+
+.auth-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-sidebar);
+    backdrop-filter: blur(20px);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-overlay.active {
+    display: flex;
+    animation: fadeIn 0.4s ease;
+}
+
+.auth-dialog {
+    width: 100%;
+    max-width: 500px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 32px;
+    padding: 40px;
+    position: relative;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+}
+
+.close-auth {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: color 0.2s;
+}
+
+.close-auth:hover { color: white; }
+
+/* Unauthorized Screen (Security Guard) */
+.unauthorized-hide .dashboard-container {
+    display: none !important;
+}
+
+#module-login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #0f172a;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

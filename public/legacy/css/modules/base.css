@@ -1,0 +1,97 @@
+:root {
+    /* Color Palette - Elegant & Modern */
+    --primary: #6366f1;
+    --primary-glow: rgba(99, 102, 241, 0.5);
+    --secondary: #a855f7;
+    --accent: #f43f5e;
+
+    /* Default Dark Theme (Deep Space) */
+    --bg-dark: #0f172a;
+    --bg-gradient: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+    --bg-card: rgba(30, 41, 59, 0.7);
+    --bg-sidebar: rgba(15, 23, 42, 0.4);
+    --bg-header: rgba(30, 41, 59, 0.3);
+    --bg-surface: rgba(255, 255, 255, 0.03);
+    --text-main: #f8fafc;
+    --text-dim: #94a3b8;
+    --border-glass: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(12px);
+
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    --header-height: 80px;
+}
+
+/* Whitey Theme (Light Mode) */
+[data-theme="light"] {
+    --bg-dark: #f1f5f9;
+    --bg-gradient: radial-gradient(circle at top left, #e2e8f0, #f1f5f9);
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --bg-sidebar: rgba(255, 255, 255, 0.6);
+    --bg-header: rgba(255, 255, 255, 0.4);
+    --bg-surface: rgba(0, 0, 0, 0.03);
+    --text-main: #0f172a;
+    --text-dim: #475569;
+    --border-glass: rgba(0, 0, 0, 0.1);
+    --glass-blur: blur(12px);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+body {
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    min-height: 100vh;
+}
+
+.dashboard-body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+@media (max-width: 768px) {
+    .dashboard-body {
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        width: 100% !important;
+    }
+
+    /* Safe & Stable Mobile Mode */
+    * {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        will-change: auto !important;
+    }
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-glass);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+    background-clip: content-box;
+}
