@@ -261,7 +261,8 @@
         </aside>
 
         <main>
-            <!-- Section: Overview -->            <section id="section-overview" class="module-section">
+            <!-- Section: Overview -->
+            <section id="section-overview" class="module-section active">
                 <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Admin Console</h1>
@@ -771,47 +772,61 @@
         </svg>
     </div>
 
-    <!-- Failsafe View Navigation JS -->
+    <!-- Robust View Navigation JS (Active Class System) -->
     <script>
         (function() {
+            const labels = document.querySelectorAll('.nav-links label');
+            const sections = document.querySelectorAll('.module-section');
             const radios = document.querySelectorAll('input[name="nav-radio"]');
-            function updateViews() {
-                radios.forEach(radio => {
-                    const sectionId = 'section-' + radio.id.replace('nav-', '');
-                    const section = document.getElementById(sectionId);
-                    if (section) {
-                        if (radio.checked) {
-                            section.style.setProperty('display', 'block', 'important');
-                            section.style.opacity = '1';
-                        } else {
-                            section.style.setProperty('display', 'none', 'important');
-                        }
+
+            function switchTo(targetId) {
+                const sectionId = 'section-' + targetId.replace('nav-', '');
+                
+                // 1. Update Sections
+                sections.forEach(s => s.classList.remove('active'));
+                const targetSection = document.getElementById(sectionId);
+                if (targetSection) targetSection.classList.add('active');
+
+                // 2. Update Labels
+                labels.forEach(l => {
+                    if (l.getAttribute('for') === targetId) {
+                        l.classList.add('active');
+                    } else {
+                        l.classList.remove('active');
                     }
                 });
-            }
-            if (radios.length > 0) {
-                // Listen to native radio changes
-                radios.forEach(r => r.addEventListener('change', updateViews));
-                
-                // BULLETPROOF FALLBACK: Listen to label clicks directly
-                const labels = document.querySelectorAll('.nav-links label');
-                labels.forEach(label => {
-                    label.addEventListener('click', () => {
-                        const targetId = label.getAttribute('for');
-                        if (targetId) {
-                            const radio = document.getElementById(targetId);
-                            if (radio && !radio.checked) {
-                                radio.checked = true;
-                                updateViews();
-                            }
-                        }
-                    });
-                });
 
-                // Run immediately and every 500ms (Brute-force Failsafe)
-                updateViews();
-                setInterval(updateViews, 500);
+                // 3. Keep radios in sync
+                const radio = document.getElementById(targetId);
+                if (radio) radio.checked = true;
             }
+
+            // Bind click events to labels
+            labels.forEach(label => {
+                label.addEventListener('click', (e) => {
+                    const targetId = label.getAttribute('for');
+                    if (targetId) switchTo(targetId);
+                });
+            });
+
+            // Initialize on load
+            const activeRadio = Array.from(radios).find(r => r.checked);
+            if (activeRadio) {
+                switchTo(activeRadio.id);
+            } else {
+                switchTo('nav-overview');
+            }
+
+            // Brute-force backup for any dynamic state resets
+            setInterval(() => {
+                const checkedRadio = Array.from(radios).find(r => r.checked);
+                if (checkedRadio) {
+                    const targetSection = document.getElementById('section-' + checkedRadio.id.replace('nav-', ''));
+                    if (targetSection && !targetSection.classList.contains('active')) {
+                        switchTo(checkedRadio.id);
+                    }
+                }
+            }, 1000);
         })();
     </script>
 </body>
