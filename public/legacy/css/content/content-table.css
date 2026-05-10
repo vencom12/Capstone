@@ -177,6 +177,17 @@ tbody tr:hover {
         word-break: break-word;
         overflow-wrap: break-word;
     }
+
+    .table-container tr {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .table-container tr:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--primary) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
 }
 
 .table-controls input, .table-controls select {
@@ -215,6 +226,24 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 .table-empty-msg { text-align: center !important; padding: 40px !important; color: var(--text-dim) !important; font-style: italic; }
 
 /* Stacked Data Hierarchy */
+.product-price {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Stat Cards & Grid Blocks Highlight */
+.stat-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.stat-card:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: var(--primary) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
 .order-id-main {
     color: var(--primary);
     font-weight: 600;
