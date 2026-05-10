@@ -18,9 +18,35 @@
     transition: all 0.3s ease;
 }
 
+/* Tablet & Mobile Header (2 Rows) */
+@media (max-width: 1100px) {
+    .storefront-header {
+        flex-wrap: wrap;
+        height: auto !important;
+        padding: 12px 20px !important;
+        gap: 12px !important;
+    }
+    .header-brand {
+        order: 1;
+    }
+    .header-actions {
+        order: 2;
+    }
+    .header-search {
+        order: 3;
+        width: 100% !important;
+        margin: 0 !important;
+        max-width: none !important;
+        flex: none !important;
+    }
+    .header-search input {
+        padding: 10px 16px !important;
+        padding-right: 40px !important;
+        font-size: 0.9rem !important;
+    }
+}
 
 .storefront-header.scrolled {
     background: var(--bg-sidebar);
     height: 70px;
 }
-
