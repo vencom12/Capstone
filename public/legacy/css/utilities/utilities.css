@@ -670,6 +670,7 @@
         padding: 12px 15px;
         background: var(--bg-sidebar);
         border-bottom: 1px solid var(--border-glass);
+        margin-top: 100px; /* Added requested margin */
         position: sticky;
         top: 105px; /* Offset from fixed header */
         z-index: 1000;
