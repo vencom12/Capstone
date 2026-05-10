@@ -1,0 +1,68 @@
+/* 
+   layout.css
+   Level 2: Page skeleton and structural layout systems.
+   Manages the primary dashboard containers, sidebars, and responsive grid layouts.
+*/
+
+/* --- Page Skeleton --- */
+.dashboard-body {
+    margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
+}
+
+.dashboard-container,
+.storefront-container {
+    display: flex; min-height: 100vh; width: 100%;
+}
+
+.sidebar {
+    width: var(--sidebar-width); flex-shrink: 0; height: 100vh; position: sticky; top: 0;
+    background: var(--bg-sidebar); border-right: 1px solid var(--border-glass); z-index: 100;
+    display: flex; flex-direction: column; padding: 20px 16px;
+}
+
+main, .storefront-main, #admin-main-content {
+    flex: 1; min-width: 0; height: 100vh; overflow-y: auto;
+    background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent);
+}
+
+.module-section { display: none; padding: 40px; min-height: 100%; }
+.module-section.active { display: block !important; animation: fadeIn 0.4s ease-out; }
+
+.right-panel {
+    width: 340px; flex-shrink: 0; height: 100vh; overflow-y: auto; position: sticky; top: 0;
+    background: var(--bg-sidebar); border-left: 1px solid var(--border-glass);
+}
+
+/* --- Sectioning --- */
+.section-header-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px;
+}
+
+.hero-section {
+    padding-top: calc(var(--header-height) + 5px); padding-bottom: 60px; text-align: center;
+    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05), transparent);
+}
+
+/* --- Grid Systems --- */
+.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; }
+.responsive-split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.checkout-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 30px; }
+
+/* --- Responsive Structural Adjustments --- */
+
+@media (max-width: 1024px) {
+    .sidebar { width: var(--sidebar-collapsed-width); padding: 20px 8px; align-items: center; }
+    .sidebar .nav-logo span, .sidebar-profile { display: none; }
+    .right-panel { position: fixed !important; right: 0; transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .product-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container, .storefront-container { flex-direction: column; padding-top: 75px; }
+    .sidebar { position: fixed; top: 0; width: 100%; height: 70px; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border-glass); background: var(--bg-dark); }
+    .sidebar .nav-logo { display: none; }
+    .product-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .responsive-split-grid, .checkout-grid { grid-template-columns: 1fr; }
+}
