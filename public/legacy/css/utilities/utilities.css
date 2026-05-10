@@ -161,6 +161,167 @@
 }
 
 
+[data-theme="light"] {
+    --bg-dark: #f1f5f9;
+    --bg-gradient: radial-gradient(circle at top left, #e2e8f0, #f1f5f9);
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --bg-sidebar: rgba(255, 255, 255, 0.6);
+    --bg-header: rgba(255, 255, 255, 0.4);
+    --bg-surface: rgba(0, 0, 0, 0.03);
+    --text-main: #0f172a;
+    --text-dim: #475569;
+    --border-glass: rgba(0, 0, 0, 0.1);
+    --glass-blur: blur(12px);
+}
+
+
+.animate-fade {
+    animation: fadeIn var(--transition-slow) forwards;
+}
+
+/* Navigation / Sidebar Layout */
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all var(--transition-fast);
+}
+
+
+.logout-btn:hover,
+
+.theme-toggle-nav:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    transform: translateX(5px);
+}
+
+
+.profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: white;
+}
+
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.profile-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+
+.logout-container {
+    margin-top: 20px;
+}
+
+/* View Switching Logic */
+
+#nav-drawer-toggle {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+/* Buttons */
+
+.btn {
+    padding: 10px 22px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    font-weight: 600;
+    transition: var(--transition-fast);
+    text-decoration: none;
+    display: inline-block;
+}
+
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+
+.btn-primary:hover {
+    background: #4f46e5;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+
+
+.btn-secondary {
+    color: var(--text-main);
+}
+
+
+#basket-count,
+
+#header-basket-count,
+
+#mobile-basket-count {
+    color: var(--text-main) !important;
+}
+
+
+.add-to-basket {
+    margin-top: auto;
+    width: 100%;
+}
+
+/* Product Grid Styles - Always 4 columns on Desktop */
+
+.product-image {
+    height: 180px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+
+.product-image::after {
+    content: 'STITCH PREVIEW';
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+
+.product-details {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+
 .product-details h3 {
     font-size: 1.25rem;
     margin-bottom: 4px;
@@ -168,18 +329,21 @@
 
 
 .stat-value {
-    font-size: 2.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: var(--primary);
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     line-height: 1.2;
 }
 
-
 .stat-label {
     color: var(--text-dim);
-    font-size: 0.85rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-weight: 600;
 }
 
 
@@ -680,11 +844,7 @@
 
 .staff-actions button { background: none; border: none; color: var(--primary); cursor: pointer; font-weight: 600; margin-left: 10px; }
 
-/* Stats Grid & Cards */
-
-.stat-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-
-.stat-value { font-size: 1.25rem; font-weight: 700; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+/* Stats Grid & Cards handled above */
 
 /* Section Headers & Analytics */
 
