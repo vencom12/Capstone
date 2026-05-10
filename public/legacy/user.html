@@ -137,24 +137,6 @@
                         <span>Cart</span>
                     </label>
                 </li>
-                <li>
-                    <label onclick="toggleTheme()" class="theme-toggle-nav"
-                        style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
-                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                        <span>Theme Mode</span>
-                    </label>
-                </li>
             </ul>
 
             <script>
@@ -352,6 +334,20 @@
                     <div style="margin-bottom: 20px;">
                         <textarea id="settings-address" placeholder="Shipping Address" rows="3"
                             style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; font-size: 0.95rem; resize: none;"></textarea>
+                    </div>
+                    <div class="glass" style="margin-bottom: 24px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                            </svg>
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.95rem;">Interface Theme</h4>
+                                <p style="margin: 0; font-size: 0.8rem; color: var(--text-dim);">Toggle light and dark mode</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleTheme()" class="btn glass" style="padding: 8px 16px; font-size: 0.85rem; border: 1px solid var(--border-glass);">Switch Theme</button>
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 12px;">
                         <button id="settings-save-btn" class="btn btn-primary" style="padding: 12px 32px;">Update

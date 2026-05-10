@@ -118,6 +118,7 @@
     <input type="radio" name="nav-radio" id="nav-staffing">
     <input type="radio" name="nav-radio" id="nav-analytics">
     <input type="radio" name="nav-radio" id="nav-history">
+    <input type="radio" name="nav-radio" id="nav-settings">
 
     <div class="dashboard-container">
         <aside class="sidebar">
@@ -204,6 +205,16 @@
                     </label>
                 </li>
                 <li>
+                    <label for="nav-settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                        <span>Settings</span>
+                    </label>
+                </li>
+                <li>
                     <a href="#"
                         onclick="event.preventDefault(); document.getElementById('ai-float-window').classList.toggle('ai-hidden');"
                         style="color: var(--text-dim);">
@@ -214,24 +225,6 @@
                         </svg>
                         <span>AI Assistant</span>
                     </a>
-                </li>
-                <li>
-                    <label onclick="toggleTheme()" class="theme-toggle-nav"
-                        style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 16px; color: var(--text-dim); cursor: pointer; transition: all var(--transition-fast);">
-                        <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                        <span>Theme Mode</span>
-                    </label>
                 </li>
             </ul>
 
@@ -279,7 +272,25 @@
             <!-- Section: Overview -->
             <section id="section-overview" class="module-section active">
                 <div style="margin-top: 40px;">
-                <div style="margin-top: 40px;">
+                    <!-- AI-Driven Production Optimizer -->
+                    <div id="ai-production-advice" class="glass"
+                        style="margin-bottom: 24px; padding: 24px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <div
+                                style="width:10px; height:10px; border-radius:50%; background:var(--primary); box-shadow:0 0 10px var(--primary);">
+                            </div>
+                            <p style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Stitch-Opt
+                                Intelligence Report</p>
+                        </div>
+                        <p id="ai-main-tip"
+                            style="font-size:0.85rem; color:var(--text-main); margin-top:4px; line-height:1.4; font-weight: 500;">
+                            Analyzing current production queue...</p>
+                        <div id="ai-insights-container"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                            <!-- Dynamically filled by JS -->
+                        </div>
+                    </div>
+
                     <header class="section-header-top">
                         <h1>Recent Embroidery Orders</h1>
                         <div class="table-controls">
@@ -340,25 +351,7 @@
                             <button id="next-orders-btn" class="btn glass" style="padding: 6px 12px;">→</button>
                         </div>
                     </div>
-
-                    <!-- AI-Driven Production Optimizer -->
-                    <div id="ai-production-advice" class="glass"
-                        style="margin-top: 24px; padding: 24px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display:flex; gap:12px; align-items:center;">
-                            <div
-                                style="width:10px; height:10px; border-radius:50%; background:var(--primary); box-shadow:0 0 10px var(--primary);">
-                            </div>
-                            <p style="font-size:0.9rem; color:var(--text-main); font-weight:600;">Stitch-Opt
-                                Intelligence Report</p>
-                        </div>
-                        <p id="ai-main-tip"
-                            style="font-size:0.85rem; color:var(--text-main); margin-top:4px; line-height:1.4; font-weight: 500;">
-                            Analyzing current production queue...</p>
-                        <div id="ai-insights-container"
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-                            <!-- Dynamically filled by JS -->
-                        </div>
-                    </div>
+                </div>
             </section>
 
             <section id="section-inventory" class="module-section">
@@ -537,6 +530,34 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Section: Settings -->
+            <section id="section-settings" class="module-section">
+                <header class="section-header-top">
+                    <h1>System Settings</h1>
+                    <p style="color: var(--text-dim);">Global configuration and interface preferences.</p>
+                </header>
+                
+                <div class="glass" style="padding: 32px; max-width: 600px;">
+                    <h3 style="margin-bottom: 20px; font-size: 1.1rem;">Interface Preferences</h3>
+                    <div class="glass" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-glass);">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                                <svg id="theme-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="5"></circle>
+                                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem;">Display Mode</h4>
+                                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-dim);">Switch between Light and Dark themes</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleTheme()" class="btn glass" style="padding: 10px 20px; font-size: 0.9rem; border: 1px solid var(--border-glass);">Toggle Theme</button>
+                    </div>
                 </div>
             </section>
         </main>

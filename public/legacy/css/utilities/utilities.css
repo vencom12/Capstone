@@ -619,7 +619,7 @@
 .storefront-dashboard-layout {
     display: flex;
     gap: 12px;
-    padding: 5px;
+    padding: 5px 15px;
     margin-top: var(--header-height);
     height: calc(100vh - var(--header-height));
     width: 100%;
@@ -632,7 +632,7 @@
     .storefront-dashboard-layout {
         margin-top: 100px !important;
         height: calc(100vh - 100px) !important;
-        padding: 5px !important;
+        padding: 5px 15px !important;
     }
 }
 
@@ -670,7 +670,7 @@
 @media (max-width: 650px) {
     .storefront-dashboard-layout {
         flex-direction: column !important;
-        padding: 5px !important;
+        padding: 5px 15px !important;
         margin-top: 105px !important; /* Shorter header with 2 rows */
     }
     

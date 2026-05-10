@@ -108,3 +108,58 @@
         display: none !important;
     }
 }
+
+/* MOBILE SQUEEZE OPTIMIZATION */
+@media (max-width: 650px) {
+    .nav-links {
+        gap: 2px !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+
+    .nav-links li {
+        width: auto !important;
+        padding: 0 2px !important;
+    }
+
+    .nav-links label,
+    .nav-links a {
+        padding: 8px !important;
+        gap: 0 !important;
+        justify-content: center !important;
+        min-width: 42px;
+        height: 42px;
+    }
+
+    .nav-links label svg,
+    .nav-links a svg {
+        margin: 0 !important;
+    }
+
+    /* Remove active indicators for cleaner mobile look */
+    .nav-links label::after,
+    .nav-links a::after {
+        display: none !important;
+    }
+    
+    .nav-links label:hover,
+    .nav-links a:hover {
+        transform: none !important;
+    }
+
+    .nav-links .active,
+    #nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
+    #nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
+    #nav-production:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
+    #nav-history:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
+    #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
+    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"],
+    #nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
+    #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
+    #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
+    #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"] {
+        transform: none !important;
+        border-radius: 10px;
+    }
+}
