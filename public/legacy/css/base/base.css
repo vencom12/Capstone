@@ -74,10 +74,10 @@ input[name="nav-radio"],
     overflow: hidden;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 650px) {
     .dashboard-container, 
     .storefront-container {
-        padding-top: 70px; /* Offset for fixed top bar */
+        padding-top: 70px; /* Offset for fixed top bar ONLY on phones */
     }
 }
 
@@ -89,9 +89,9 @@ main {
     background: transparent;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 650px) {
     main {
-        padding: 10px; /* Mobile Density */
+        padding: 0; 
     }
 }
 

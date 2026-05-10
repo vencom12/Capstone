@@ -37,6 +37,14 @@
     gap: 20px;
 }
 
+/* Force 2 Columns for Shop/Catalog on mobile/tablet */
+@media (max-width: 1024px) {
+    .product-grid:not(#product-list-container):not(:has(.stat-card)) {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px;
+    }
+}
+
 /* Stat Card Mobile Stacking */
 @media (max-width: 768px) {
     .stat-card {
