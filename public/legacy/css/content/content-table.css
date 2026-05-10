@@ -129,11 +129,16 @@ tbody tr:hover {
     }
 
     /* Card Transformation */
-    .table-container table,
+    .table-container table {
+        display: block;
+        width: 100%;
+    }
+
     .table-container tbody {
         display: grid;
         grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
         gap: 15px;
+        width: 100%;
     }
 
     /* Force 1-column on narrow phones */
