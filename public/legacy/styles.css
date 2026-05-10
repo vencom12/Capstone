@@ -1950,49 +1950,85 @@ body {
     0% {
         transform: scale(1);
     }
-
     50% {
         transform: scale(1.05);
     }
-
     100% {
         transform: scale(1);
     }
 }
-
-.status-badge.verified {
+.status-badge.verified-pulse {
     animation: verifiedPulse 0.5s ease-out;
 }
-
- / *   T o a s t   N o t i f i c a t i o n s   * /   . t o a s t    {
-               b a c k g r o u n d :    r g b a ( 3 0 ,    4 1 ,    5 9 ,    0 . 8 ) ;
-               b a c k d r o p - f i l t e r :    b l u r ( 1 2 p x ) ;
-               b o r d e r :    1 p x   s o l i d   r g b a ( 2 5 5 ,    2 5 5 ,    2 5 5 ,    0 . 1 ) ;
-               c o l o r :    w h i t e ;
-               p a d d i n g :    1 2 p x   2 4 p x ;
-               b o r d e r - r a d i u s :    1 2 p x ;
-               f o n t - s i z e :    0 . 9 r e m ;
-               b o x - s h a d o w :    0   1 0 p x   1 5 p x   - 3 p x   r g b a ( 0 ,    0 ,    0 ,    0 . 1 ) ;
-               t r a n s f o r m :    t r a n s l a t e Y ( 2 0 p x ) ;
-               o p a c i t y :    0 ;
-               t r a n s i t i o n :    a l l   0 . 3 s   c u b i c - b e z i e r ( 0 . 4 ,    0 ,    0 . 2 ,    1 ) ;
-       
+/* Toast Notifications */
+.toast {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-     . t o a s t . s h o w    {
-               t r a n s f o r m :    t r a n s l a t e Y ( 0 ) ;
-               o p a c i t y :    1 ;
-       
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
 }
-
-       
-
 /* Checkout Verification Badges */
 .status-badge {
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+}
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-badge.verified {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.wallet-balance-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.top-up-input-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.top-up-input-group input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-glass);
+    padding: 10px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+}
+
+/* Animations for status changes */
+@keyframes verifiedPulse {
+    0% {
+        transform: scale(1);
+    }
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border: 1px solid transparent;
