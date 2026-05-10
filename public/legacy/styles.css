@@ -1746,7 +1746,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     /* Tables scroll horizontally if needed */
     .table-container {
         overflow-x: auto;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .right-panel {
@@ -1775,7 +1776,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     #nav-drawer-toggle:checked~.storefront-container .right-panel {
         transform: translateX(0);
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .storefront-dashboard-layout {
@@ -1876,7 +1878,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     .product-details h3 {
         font-size: 1rem !important;
-    }
+    }
+
     /* Consolidated from legacy block */
 
 
@@ -2151,12 +2154,14 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
         border: 2px solid #0f172a;
         box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
     }
-
+
+
     /* Consolidated from legacy block */
 
     .storefront-drawer {
         width: 100% !important;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .storefront-header {
@@ -2272,7 +2277,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     .product-image {
         height: 150px !important;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     /* Storefront Mobile Responsive Scrolling Fixes */
@@ -2373,7 +2379,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     .storefront-main {
         width: 100%;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .checkout-modal-header {
@@ -2402,7 +2409,8 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     .checkout-left,
     .checkout-right {
         width: 100%;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .checkout-modal-footer {
@@ -2412,14 +2420,16 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     #place-order-btn {
         padding: 14px !important;
         font-size: 0.9rem !important;
-    }
+    }
+
     /* Consolidated from legacy block */
 
     .receipt-modal-content {
         padding: 20px 15px;
         max-height: 90vh;
         overflow-y: auto;
-    }
+    }
+
     /* Consolidated from legacy block */
 
 
