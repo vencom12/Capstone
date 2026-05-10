@@ -1,0 +1,125 @@
+/* Refactored from styles.css */
+
+.right-panel {
+    width: 340px;
+    flex-shrink: 0;
+    height: 100vh;
+    /* Fixed height for internal scroll */
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    border-radius: 0;
+}
+
+/* Responsive Adjustments — Tablet / Half-screen PC (769px – 1100px) */
+
+
+
+.product-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+/* Right Panel Styles (Order Queue & Basket Drawer) */
+/* Right Panel Drawer (Mobile/Tablet Only) */
+
+
+/* Global Stats & Metrics */
+
+.responsive-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Ensure inner th/td have enough room */
+th,
+td {
+    min-width: 120px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-glass);
+}
+
+tr {
+    transition: background 0.3s ease;
+}
+
+tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Core Mobile Breakpoint */
+
+
+
+.receipt-modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 30px 20px;
+    border-radius: 24px;
+    position: relative;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-card);
+}
+
+
+
+/* Responsive Tables */
+
+
+/* Middle Loader Cloud for Products */
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+}
+
+.table-header {
+    padding: 24px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-glass);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.table-header h3 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+
+.table-controls { display: flex; gap: 12px; align-items: center; }
+
+.table-controls input, .table-controls select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 10px 16px;
+    border-radius: 12px;
+    color: var(--text-main);
+    outline: none;
+    font-size: 0.85rem;
+}
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 18px 30px; border-bottom: 1px solid var(--border-glass); text-align: left; color: var(--text-main); }
+th { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; background: rgba(0,0,0,0.1); }
+tr:hover td { background: rgba(255, 255, 255, 0.02); }
+th:first-child, td:first-child { padding-left: 30px; }
+th:last-child, td:last-child { padding-right: 30px; text-align: right; }
+
+.table-empty-msg { text-align: center !important; padding: 40px !important; color: var(--text-dim) !important; font-style: italic; }
+
+/* Status Badges */
