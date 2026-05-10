@@ -272,24 +272,24 @@
     <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false;"></div>
     <aside class="storefront-drawer glass">
         <div class="drawer-header"
-            style="padding: 32px; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0;">Your Basket</h3>
-            <label for="nav-drawer-toggle" style="cursor: pointer; font-size: 1.5rem;">✕</label>
+            style="padding: 20px; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem;">Your Basket</h3>
+            <label for="nav-drawer-toggle" class="close-drawer" style="cursor: pointer; font-size: 1.2rem; opacity: 0.6;">✕</label>
         </div>
-        <div class="panel-section" style="padding: 32px;">
+        <div class="panel-section" style="padding: 20px;">
             <div id="basket-items-list" class="basket-items"
-                style="min-height: 150px; display: flex; flex-direction: column; gap: 15px; color: var(--text-dim); text-align: center;">
+                style="min-height: 120px; display: flex; flex-direction: column; gap: 12px; color: var(--text-dim); text-align: center; font-size: 0.85rem;">
                 <p>Basket is empty</p>
             </div>
-            <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border-glass);">
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-glass);">
                 <div
-                    style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.2rem; margin-bottom: 20px;">
+                    style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1rem; margin-bottom: 16px;">
                     <span>Total:</span>
                     <span id="basket-total">$0.00</span>
                 </div>
-                <button id="checkout-btn" class="btn btn-primary" style="width: 100%;">Checkout Now</button>
+                <button id="checkout-btn" class="btn btn-primary" style="width: 100%; font-size: 0.9rem; padding: 10px;">Checkout Now</button>
                 <p id="checkout-guest-msg"
-                    style="display: none; margin-top: 15px; font-size: 0.85rem; color: var(--accent); text-align: center;">
+                    style="display: none; margin-top: 15px; font-size: 0.75rem; color: var(--accent); text-align: center;">
                     Login required to place orders.</p>
             </div>
         </div>
