@@ -783,9 +783,17 @@
                 const sectionId = 'section-' + targetId.replace('nav-', '');
                 
                 // 1. Update Sections
-                sections.forEach(s => s.classList.remove('active'));
+                sections.forEach(s => {
+                    s.classList.remove('active');
+                    s.style.background = ""; // Reset debug
+                });
                 const targetSection = document.getElementById(sectionId);
-                if (targetSection) targetSection.classList.add('active');
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    targetSection.style.background = "rgba(255,0,0,0.1)"; // DEBUG TINT
+                    targetSection.scrollIntoView({ behavior: 'smooth' });
+                    console.log('Section activated:', sectionId);
+                }
 
                 // 2. Update Labels
                 labels.forEach(l => {
