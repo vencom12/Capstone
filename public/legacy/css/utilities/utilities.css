@@ -630,8 +630,8 @@
 /* Tablet Overlap Fix */
 @media (max-width: 1100px) and (min-width: 651px) {
     .storefront-dashboard-layout {
-        margin-top: 112px !important;
-        height: calc(100vh - 112px) !important;
+        margin-top: 132px !important;
+        height: calc(100vh - 132px) !important;
     }
 }
 
@@ -670,7 +670,7 @@
     .storefront-dashboard-layout {
         flex-direction: column !important;
         padding: 0 !important;
-        margin-top: 155px !important; /* Total header height with 3 rows */
+        margin-top: 175px !important; /* Total header height with 3 rows */
     }
     
     .storefront-sidebar {
