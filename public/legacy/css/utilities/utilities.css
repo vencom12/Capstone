@@ -670,7 +670,7 @@
     .storefront-dashboard-layout {
         flex-direction: column !important;
         padding: 0 !important;
-        margin-top: 105px !important; /* Total header height */
+        margin-top: 108px !important; /* Total header height */
     }
     
     .storefront-sidebar {
@@ -680,14 +680,49 @@
     .mobile-category-dropdown {
         display: block !important;
         width: 100%;
-        padding: 12px 15px;
-        background: var(--bg-sidebar);
+        padding: 8px 12px;
+        background: var(--bg-header);
         border-bottom: 1px solid var(--border-glass);
-        margin-top: 0; /* Reset margin that caused invisibility */
+        margin-top: 0;
         position: sticky;
-        top: 105px; /* Stay below search bar */
+        top: 108px;
         z-index: 1000;
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    .glass-select-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .glass-select {
+        width: 100%;
+        padding: 10px 16px;
+        padding-right: 40px;
+        appearance: none;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        color: var(--text-main);
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        outline: none;
+    }
+
+    .glass-select:focus {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .select-icon {
+        position: absolute;
+        right: 15px;
+        pointer-events: none;
+        color: var(--text-dim);
     }
     
     .storefront-main {
