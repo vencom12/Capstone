@@ -244,17 +244,19 @@
     .basket-items { padding: 15px; }
 
     .storefront-header {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 100%;
         display: grid !important;
         grid-template-areas: "brand actions" "search search";
-        padding: 10px 15px !important;
-        position: sticky !important;
-        top: 0;
+        padding: 12px 15px !important;
         height: auto !important;
         z-index: 1000;
         background: var(--bg-header) !important;
         backdrop-filter: blur(20px);
         border-bottom: 1px solid var(--border-glass);
-        gap: 8px !important;
+        gap: 10px !important;
     }
 
     .header-brand h1 { font-size: 1.1rem; }
@@ -266,7 +268,7 @@
 
     .storefront-dashboard-layout {
         flex-direction: column !important;
-        padding-top: 0 !important;
+        padding-top: 102px !important; /* Precisely calculated for new header height */
         height: auto !important;
         overflow-y: visible !important;
     }
@@ -274,7 +276,7 @@
     .storefront-sidebar {
         width: 100% !important;
         position: relative !important;
-        padding: 10px 15px !important;
+        padding: 8px 15px !important;
         margin: 0 !important;
         background: var(--bg-header) !important;
         backdrop-filter: blur(20px);
@@ -282,26 +284,27 @@
         border-bottom: 1px solid var(--border-glass);
     }
 
-    .sidebar-hero-content, .sidebar-categories h3 { display: none !important; }
-    .category-links span { display: inline-block !important; }
-    
     .category-links { 
         display: flex !important; 
-        flex-direction: column !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
         gap: 8px !important;
-        padding: 0 !important;
+        padding: 4px 0 !important;
+        scrollbar-width: none;
     }
 
+    .category-links::-webkit-scrollbar { display: none; }
+    
+    .category-links li { flex-shrink: 0; }
+    
     .category-links label {
-        padding: 12px 20px !important;
-        font-size: 0.95rem !important;
+        padding: 8px 16px !important;
+        font-size: 0.85rem !important;
         font-weight: 600 !important;
-        width: 100% !important;
-        justify-content: center !important;
+        white-space: nowrap !important;
         background: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid var(--border-glass) !important;
-        border-radius: 12px !important;
-        text-align: center !important;
+        border-radius: 10px !important;
     }
 
     .category-links .active {
