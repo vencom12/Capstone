@@ -2566,3 +2566,31 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     opacity: 1 !important;
     visibility: visible !important;
 }
+
+/* --- DEFINITIVE ADMIN ISOLATION --- */
+.admin-portal-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    background: var(--bg-gradient);
+    overflow: hidden !important;
+}
+
+.admin-portal-wrapper > aside.sidebar {
+    width: 280px !important;
+    flex-shrink: 0 !important;
+    height: 100vh !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+.admin-portal-wrapper > main {
+    flex: 1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    position: relative !important;
+    padding: 0 !important;
+}
+
