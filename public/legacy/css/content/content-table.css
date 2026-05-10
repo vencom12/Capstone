@@ -87,8 +87,18 @@ tbody tr:hover {
 }
 
 th, td { padding: 18px 30px; border-bottom: 1px solid var(--border-glass); text-align: left; color: var(--text-main); }
+
+@media (max-width: 768px) {
+    th, td { padding: 12px 15px; }
+}
+
 th { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; background: rgba(0,0,0,0.1); }
-tr:hover td { background: rgba(255, 255, 255, 0.02); }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Column Control */
+td:first-child, th:first-child { min-width: 140px; } /* ID Column */
+td:nth-child(2), th:nth-child(2) { min-width: 180px; } /* Name Column */
+
 th:first-child, td:first-child { padding-left: 30px; }
 th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 

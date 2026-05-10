@@ -102,6 +102,12 @@ main {
     margin-bottom: 40px;
 }
 
+@media (max-width: 768px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .analytics-grid>div h3 {
     margin-bottom: 20px;
     font-size: 1.1rem;
