@@ -245,7 +245,7 @@ body {
 }
 
 /* Navigation / Sidebar Layout */
-.dashboard-container {
+.storefront-container {
     display: flex;
     height: 100vh;
     width: 100%;
@@ -254,7 +254,7 @@ body {
     overflow: hidden;
 }
 
-.dashboard-container>main {
+.storefront-container>main {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
@@ -321,18 +321,18 @@ body {
 }
 
 .nav-links .active,
-#nav-shop:checked~.dashboard-container .sidebar label[for="nav-shop"],
-#nav-tracking:checked~.dashboard-container .sidebar label[for="nav-tracking"],
-#nav-favs:checked~.dashboard-container .sidebar label[for="nav-favs"],
-#nav-settings:checked~.dashboard-container .sidebar label[for="nav-settings"],
-#nav-overview:checked~.dashboard-container .sidebar label[for="nav-overview"],
-#nav-inventory:checked~.dashboard-container .sidebar label[for="nav-inventory"],
-#nav-production:checked~.dashboard-container .sidebar label[for="nav-production"],
-#nav-staffing:checked~.dashboard-container .sidebar label[for="nav-staffing"],
-#nav-analytics:checked~.dashboard-container .sidebar label[for="nav-analytics"],
-#nav-products:checked~.dashboard-container .sidebar label[for="nav-products"],
-#nav-history:checked~.dashboard-container .sidebar label[for="nav-history"],
-#nav-support:checked~.dashboard-container .sidebar label[for="nav-support"],
+#nav-shop:checked~.storefront-container .sidebar label[for="nav-shop"],
+#nav-tracking:checked~.storefront-container .sidebar label[for="nav-tracking"],
+#nav-favs:checked~.storefront-container .sidebar label[for="nav-favs"],
+#nav-settings:checked~.storefront-container .sidebar label[for="nav-settings"],
+#nav-overview:checked~.storefront-container .sidebar label[for="nav-overview"],
+#nav-inventory:checked~.storefront-container .sidebar label[for="nav-inventory"],
+#nav-production:checked~.storefront-container .sidebar label[for="nav-production"],
+#nav-staffing:checked~.storefront-container .sidebar label[for="nav-staffing"],
+#nav-analytics:checked~.storefront-container .sidebar label[for="nav-analytics"],
+#nav-products:checked~.storefront-container .sidebar label[for="nav-products"],
+#nav-history:checked~.storefront-container .sidebar label[for="nav-history"],
+#nav-support:checked~.storefront-container .sidebar label[for="nav-support"],
 .nav-links label.active {
     background: var(--primary) !important;
     color: white !important;
@@ -503,21 +503,21 @@ main {
 
 /* Radio logic handled in section above with .active */
 /* Radio logic + JS .active class: show the correct section */
-#nav-overview:checked~.dashboard-container #section-overview,
-#nav-shop:checked~.dashboard-container #section-shop,
-#nav-tracking:checked~.dashboard-container #section-tracking,
-#nav-favs:checked~.dashboard-container #section-favs,
-#nav-settings:checked~.dashboard-container #section-settings,
-#nav-inventory:checked~.dashboard-container #section-inventory,
-#nav-production:checked~.dashboard-container #section-production,
-#nav-staffing:checked~.dashboard-container #section-staffing,
-#nav-analytics:checked~.dashboard-container #section-analytics,
-#nav-workbench:checked~.dashboard-container #section-workbench,
-#nav-orders:checked~.dashboard-container #section-orders,
-#nav-products:checked~.dashboard-container #section-products,
-#nav-history:checked~.dashboard-container #section-history,
-#nav-receipts:checked~.dashboard-container #section-receipts,
-#nav-support:checked~.dashboard-container #section-support,
+#nav-overview:checked~.storefront-container #section-overview,
+#nav-shop:checked~.storefront-container #section-shop,
+#nav-tracking:checked~.storefront-container #section-tracking,
+#nav-favs:checked~.storefront-container #section-favs,
+#nav-settings:checked~.storefront-container #section-settings,
+#nav-inventory:checked~.storefront-container #section-inventory,
+#nav-production:checked~.storefront-container #section-production,
+#nav-staffing:checked~.storefront-container #section-staffing,
+#nav-analytics:checked~.storefront-container #section-analytics,
+#nav-workbench:checked~.storefront-container #section-workbench,
+#nav-orders:checked~.storefront-container #section-orders,
+#nav-products:checked~.storefront-container #section-products,
+#nav-history:checked~.storefront-container #section-history,
+#nav-receipts:checked~.storefront-container #section-receipts,
+#nav-support:checked~.storefront-container #section-support,
 .module-section.active {
     display: block !important;
     animation: fadeIn 0.4s ease-out;
@@ -673,7 +673,7 @@ input[name="nav-radio"],
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    #nav-drawer-toggle:checked~.dashboard-container .right-panel {
+    #nav-drawer-toggle:checked~.storefront-container .right-panel {
         transform: translateX(0);
     }
 }
@@ -950,8 +950,8 @@ tbody tr:hover {
         position: relative;
     }
 
-    /* Transform Sidebar into Fixed Top Navbar */
-    .dashboard-container {
+    /* Only Storefront stays responsive */
+    .storefront-container {
         padding-top: 90px; /* More room for the navbar */
         display: block !important;
         min-height: 100vh;
@@ -1035,18 +1035,18 @@ tbody tr:hover {
     }
 
     .nav-links .active,
-    #nav-shop:checked~.dashboard-container .sidebar label[for="nav-shop"],
-    #nav-tracking:checked~.dashboard-container .sidebar label[for="nav-tracking"],
-    #nav-favs:checked~.dashboard-container .sidebar label[for="nav-favs"],
-    #nav-settings:checked~.dashboard-container .sidebar label[for="nav-settings"],
-    #nav-overview:checked~.dashboard-container .sidebar label[for="nav-overview"],
-    #nav-inventory:checked~.dashboard-container .sidebar label[for="nav-inventory"],
-    #nav-production:checked~.dashboard-container .sidebar label[for="nav-production"],
-    #nav-staffing:checked~.dashboard-container .sidebar label[for="nav-staffing"],
-    #nav-analytics:checked~.dashboard-container .sidebar label[for="nav-analytics"],
-    #nav-products:checked~.dashboard-container .sidebar label[for="nav-products"],
-    #nav-history:checked~.dashboard-container .sidebar label[for="nav-history"],
-    #nav-support:checked~.dashboard-container .sidebar label[for="nav-support"] {
+    #nav-shop:checked~.storefront-container .sidebar label[for="nav-shop"],
+    #nav-tracking:checked~.storefront-container .sidebar label[for="nav-tracking"],
+    #nav-favs:checked~.storefront-container .sidebar label[for="nav-favs"],
+    #nav-settings:checked~.storefront-container .sidebar label[for="nav-settings"],
+    #nav-overview:checked~.storefront-container .sidebar label[for="nav-overview"],
+    #nav-inventory:checked~.storefront-container .sidebar label[for="nav-inventory"],
+    #nav-production:checked~.storefront-container .sidebar label[for="nav-production"],
+    #nav-staffing:checked~.storefront-container .sidebar label[for="nav-staffing"],
+    #nav-analytics:checked~.storefront-container .sidebar label[for="nav-analytics"],
+    #nav-products:checked~.storefront-container .sidebar label[for="nav-products"],
+    #nav-history:checked~.storefront-container .sidebar label[for="nav-history"],
+    #nav-support:checked~.storefront-container .sidebar label[for="nav-support"] {
         background: transparent !important;
         box-shadow: none;
         color: var(--primary) !important;
@@ -1054,18 +1054,18 @@ tbody tr:hover {
 
     /* Highlight the active icon with a glowing dot */
     .nav-links .active::after,
-    #nav-shop:checked~.dashboard-container .sidebar label[for="nav-shop"]::after,
-    #nav-tracking:checked~.dashboard-container .sidebar label[for="nav-tracking"]::after,
-    #nav-favs:checked~.dashboard-container .sidebar label[for="nav-favs"]::after,
-    #nav-settings:checked~.dashboard-container .sidebar label[for="nav-settings"]::after,
-    #nav-overview:checked~.dashboard-container .sidebar label[for="nav-overview"]::after,
-    #nav-inventory:checked~.dashboard-container .sidebar label[for="nav-inventory"]::after,
-    #nav-production:checked~.dashboard-container .sidebar label[for="nav-production"]::after,
-    #nav-staffing:checked~.dashboard-container .sidebar label[for="nav-staffing"]::after,
-    #nav-analytics:checked~.dashboard-container .sidebar label[for="nav-analytics"]::after,
-    #nav-products:checked~.dashboard-container .sidebar label[for="nav-products"]::after,
-    #nav-history:checked~.dashboard-container .sidebar label[for="nav-history"]::after,
-    #nav-support:checked~.dashboard-container .sidebar label[for="nav-support"]::after {
+    #nav-shop:checked~.storefront-container .sidebar label[for="nav-shop"]::after,
+    #nav-tracking:checked~.storefront-container .sidebar label[for="nav-tracking"]::after,
+    #nav-favs:checked~.storefront-container .sidebar label[for="nav-favs"]::after,
+    #nav-settings:checked~.storefront-container .sidebar label[for="nav-settings"]::after,
+    #nav-overview:checked~.storefront-container .sidebar label[for="nav-overview"]::after,
+    #nav-inventory:checked~.storefront-container .sidebar label[for="nav-inventory"]::after,
+    #nav-production:checked~.storefront-container .sidebar label[for="nav-production"]::after,
+    #nav-staffing:checked~.storefront-container .sidebar label[for="nav-staffing"]::after,
+    #nav-analytics:checked~.storefront-container .sidebar label[for="nav-analytics"]::after,
+    #nav-products:checked~.storefront-container .sidebar label[for="nav-products"]::after,
+    #nav-history:checked~.storefront-container .sidebar label[for="nav-history"]::after,
+    #nav-support:checked~.storefront-container .sidebar label[for="nav-support"]::after {
         content: '';
         display: block;
         width: 6px;
@@ -1122,12 +1122,12 @@ tbody tr:hover {
         box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5) !important;
     }
 
-    #nav-drawer-toggle:checked~.dashboard-container .right-panel {
+    #nav-drawer-toggle:checked~.storefront-container .right-panel {
         transform: translateX(0) !important;
     }
 
     /* Dim the background when drawer is open */
-    #nav-drawer-toggle:checked~.dashboard-container .storefront-overlay {
+    #nav-drawer-toggle:checked~.storefront-container .storefront-overlay {
         opacity: 1;
         visibility: visible;
         z-index: 100000 !important;
@@ -1136,7 +1136,7 @@ tbody tr:hover {
 
     /* Prevent overlay from blurring desktop dashboard */
     @media (min-width: 769px) {
-        .dashboard-container .storefront-overlay {
+        .storefront-container .storefront-overlay {
             display: none !important;
         }
     }
@@ -2538,184 +2538,3 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 40px; }
 .analytics-grid > div h3 { margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main); }
 .analytics-grid > div > div { height: 350px; position: relative; width: 100%; }
-
-/* --- TABLET RESPONSIVE: COLLAPSED SIDEBAR --- */
-@media (max-width: 1024px) and (min-width: 769px) {
-    .sidebar {
-        width: 80px !important;
-        padding: 20px 10px !important;
-        align-items: center !important;
-    }
-
-    .sidebar .nav-logo span,
-    .sidebar .nav-links span,
-    .sidebar .profile-info,
-    .sidebar .logout-btn span {
-        display: none !important;
-    }
-
-    .sidebar .nav-logo {
-        justify-content: center !important;
-        margin-bottom: 30px !important;
-    }
-
-    .sidebar .nav-links label,
-    .sidebar .nav-links a,
-    .sidebar .logout-btn {
-        justify-content: center !important;
-        padding: 12px !important;
-        width: 50px !important;
-        height: 50px !important;
-        border-radius: 12px !important;
-    }
-
-    .sidebar .nav-links svg,
-    .sidebar .logout-btn svg {
-        margin: 0 !important;
-        width: 24px !important;
-        height: 24px !important;
-    }
-    
-    .sidebar-profile {
-        justify-content: center !important;
-    }
-    
-    .profile-avatar {
-        margin: 0 !important;
-    }
-}
-
-/* --- MOBILE REFINEMENT: TOP NAVIGATION --- */
-@media (max-width: 768px) {
-    .dashboard-container {
-        padding-top: 80px !important; /* Space for fixed top nav */
-        display: block !important;
-    }
-
-    .sidebar {
-        height: 70px !important;
-        width: 100% !important;
-        flex-direction: row !important;
-        padding: 0 15px !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        border-right: none !important;
-        border-bottom: 1px solid var(--border-glass) !important;
-    }
-
-    .nav-links {
-        flex-direction: row !important;
-        gap: 10px !important;
-        margin: 0 !important;
-        height: 100% !important;
-        align-items: center !important;
-    }
-
-    .nav-links li {
-        width: auto !important;
-    }
-
-    .nav-links label, .nav-links a {
-        padding: 8px !important;
-        gap: 0 !important;
-    }
-
-    .nav-links span, .sidebar-profile, .nav-logo span {
-        display: none !important;
-    }
-    
-    .logout-container {
-        margin: 0 !important;
-    }
-    
-    .module-section {
-        padding: 20px 15px !important;
-    }
-}
-
-
-/* --- DASHBOARD STABILITY SYSTEM --- */
-@media (min-width: 769px) {
-    .dashboard-container {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: stretch !important;
-        overflow: hidden !important;
-        height: 100vh !important;
-    }
-
-    .dashboard-container > main {
-        flex: 1 !important;
-        overflow-y: auto !important;
-        display: block !important;
-        min-width: 0 !important;
-    }
-    
-    .module-section {
-        width: 100% !important;
-        display: none;
-    }
-    
-    .module-section.active {
-        display: block !important;
-    }
-}
-
-
-/* --- DEFINITIVE GRID LAYOUT SYSTEM --- */
-@media (min-width: 769px) {
-    .dashboard-container {
-        display: grid !important;
-        grid-template-columns: 280px 1fr !important; /* Sidebar | Content ratio */
-        grid-template-rows: 100vh !important;
-        width: 100% !important;
-        height: 100vh !important;
-        overflow: hidden !important;
-    }
-
-    .sidebar {
-        grid-column: 1 !important;
-        height: 100% !important;
-        overflow-y: auto !important;
-    }
-
-    main {
-        grid-column: 2 !important;
-        height: 100% !important;
-        overflow-y: auto !important;
-        display: block !important;
-    }
-}
-
-/* Tablet Grid Adjustment */
-@media (max-width: 1024px) and (min-width: 769px) {
-    .dashboard-container {
-        grid-template-columns: 80px 1fr !important; /* Icons only ratio */
-    }
-}
-
-/* Mobile Grid Adjustment */
-@media (max-width: 768px) {
-    .dashboard-container {
-        display: grid !important;
-        grid-template-columns: 1fr !important;
-        grid-template-rows: 70px 1fr !important; /* Top nav | Content */
-        height: 100vh !important;
-    }
-    
-    .sidebar {
-        grid-row: 1 !important;
-        grid-column: 1 !important;
-        position: fixed !important;
-        z-index: 1000 !important;
-    }
-    
-    main {
-        grid-row: 2 !important;
-        grid-column: 1 !important;
-        padding-top: 20px !important;
-    }
-}
