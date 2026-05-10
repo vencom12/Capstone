@@ -25,8 +25,8 @@
     }
 }
 
-/* --- TABLET / HALF-SCREEN (Icon Rail - 769px to 1100px) --- */
-@media (max-width: 1100px) and (min-width: 769px) {
+/* --- TABLET / HALF-SCREEN (Icon Rail - 651px to 1100px) --- */
+@media (max-width: 1100px) and (min-width: 651px) {
     .sidebar {
         width: 80px;
         align-items: center;
@@ -55,8 +55,8 @@
     }
 }
 
-/* --- PHONE (Top Navigation Bar - Below 768px) --- */
-@media (max-width: 768px) {
+/* --- PHONE (Top Navigation Bar - Below 650px) --- */
+@media (max-width: 650px) {
     .sidebar {
         position: fixed;
         top: 0;

@@ -14,25 +14,27 @@
     }
 }
 
-/* --- TABLET (2 Columns - 769px to 1100px) --- */
-@media (min-width: 769px) and (max-width: 1100px) {
+/* --- TABLET (2 Columns - 651px to 1100px) --- */
+@media (min-width: 651px) and (max-width: 1100px) {
     .product-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 15px;
     }
 }
 
-/* --- MOBILE PHONE (2 Columns - Below 768px) --- */
-@media (max-width: 768px) {
+/* --- MOBILE PHONE (2 Columns - Below 650px) --- */
+@media (max-width: 650px) {
     .product-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
-    /* Force 1-column for inventory/stat grids on mobile */
-    .product-grid#product-list-container,
-    .product-grid:has(.stat-card) {
-        grid-template-columns: 1fr !important;
-    }
+}
+
+/* Intelligent Grid for Inventory/Stats (Adapts 1-2 columns based on available space) */
+.product-grid#product-list-container,
+.product-grid:has(.stat-card) {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+    gap: 20px;
 }
 
 /* Stat Card Mobile Stacking */

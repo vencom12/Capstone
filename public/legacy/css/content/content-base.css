@@ -19,7 +19,49 @@
 
 .section-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
 
-@media (max-width: 768px) {
+/* --- PHONE (Top Navigation Bar - Below 650px) --- */
+@media (max-width: 650px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 70px;
+        flex-direction: row;
+        padding: 0 10px;
+        align-items: center;
+        justify-content: space-around;
+        border-right: none;
+        border-bottom: 1px solid var(--border-glass);
+        border-radius: 0;
+    }
+    
+    .sidebar .nav-links {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-around;
+    }
+    
+    .sidebar .nav-logo,
+    .sidebar-profile,
+    .logout-container span,
+    .sidebar .nav-links label span,
+    .sidebar .nav-links a span {
+        display: none;
+    }
+
+    .logout-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .logout-btn {
+        padding: 10px !important;
+    }
+
     .section-header-top {
         flex-direction: column;
         align-items: flex-start;
@@ -59,7 +101,7 @@ main {
     overflow-x: hidden;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 650px) {
     .module-section {
         padding: 10px; /* 10px border on both sides */
     }
@@ -117,17 +159,37 @@ main {
     margin-bottom: 30px;
 }
 
-@media (max-width: 768px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+/* --- MOBILE PHONE (2 Columns - Below 650px) --- */
+@media (max-width: 650px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
 }
 
-.responsive-split-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+/* Intelligent Grid for Inventory/Stats (Adapts 1-2 columns) */
+.product-grid#product-list-container,
+.product-grid:has(.stat-card) {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+    gap: 15px;
+}
+
+/* Stat Card Mobile Stacking (Only when constrained) */
+@media (max-width: 850px) {
+    .stat-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 20px !important;
+    }
+    .stat-card > div:last-child {
+        width: 100%;
+        display: flex;
+        gap: 10px;
+    }
+    .stat-card > div:last-child button {
+        flex: 1;
+    }
 }
 
 .analytics-grid {
