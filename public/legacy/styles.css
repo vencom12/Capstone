@@ -500,13 +500,25 @@ main {
     min-height: 100%;
 }
 
-.module-section {
+#nav-shop:checked~.dashboard-container #section-shop,
+#nav-tracking:checked~.dashboard-container #section-tracking,
+#nav-favs:checked~.dashboard-container #section-favs,
+#nav-settings:checked~.dashboard-container #section-settings,
+#nav-overview:checked~.dashboard-container #section-overview,
+#nav-inventory:checked~.dashboard-container #section-inventory,
+#nav-production:checked~.dashboard-container #section-production,
+#nav-staffing:checked~.dashboard-container #section-staffing,
+#nav-analytics:checked~.dashboard-container #section-analytics,
+#nav-workbench:checked~.dashboard-container #section-workbench,
+#nav-status:checked~.dashboard-container #section-status,
+#nav-threads:checked~.dashboard-container #section-threads,
+#nav-products:checked~.dashboard-container #section-products,
+#nav-history:checked~.dashboard-container #section-history,
+#nav-receipts:checked~.dashboard-container #section-receipts,
+#nav-support:checked~.dashboard-container #section-support,
+.module-section.active {
     display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    background: white !important; /* MAKE IT OBVIOUS */
-    color: black !important;
-    min-height: 200px;
+    animation: fadeIn 0.4s ease-out;
 }
 
 /* Radio logic handled in section above with .active */
