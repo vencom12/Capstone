@@ -32,59 +32,6 @@
         .unauthorized-hide .dashboard-container {
             display: none !important;
         }
-    </style>
-        .content-area {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .content-area {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        td {
-            padding: 16px 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .status-pill {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
-            border: 1px solid var(--primary);
-        }
-
-        .ai-chat-preview {
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .chat-bubble {
-            padding: 12px 16px;
-            border-radius: 16px;
-            font-size: 0.9rem;
-            max-width: 85%;
-        }
-
-        .chat-ai {
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid var(--border-glass);
-            align-self: flex-start;
-        }
-
-        .chat-user {
-            background: var(--primary);
-            color: white;
-            align-self: flex-end;
-        }
-
         .nav-logo {
             font-size: 1.5rem;
             font-weight: 700;
@@ -92,9 +39,6 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 40px;
-            display: block;
-            text-decoration: none;
         }
     </style>
 </head>
@@ -319,8 +263,7 @@
         <main>
             <!-- Section: Overview -->
             <section id="section-overview" class="module-section">
-                <header
-                    style="margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
+                <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Admin Console</h1>
                         <p style="color: var(--text-dim);">System health is optimal today.</p>
@@ -456,15 +399,15 @@
 
             <!-- Section: Inventory -->
             <section id="section-inventory" class="module-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <header class="section-header-top">
                     <h1 style="font-size: 2rem;">Product Management</h1>
-                    <div style="display: flex; gap: 15px; align-items: center;">
+                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="admin-products-search" class="glass" placeholder="Search designs..."
                             style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 200px;">
                         <button class="btn btn-primary" onclick="openCreateProduct()">+ Create New
                             Design</button>
                     </div>
-                </div>
+                </header>
 
                 <div id="product-list-container" class="task-grid"
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
@@ -485,8 +428,7 @@
 
             <!-- Section: Staff Management -->
             <section id="section-staffing" class="module-section">
-                <header
-                    style="margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center;">
+                <header class="section-header-top">
                     <div>
                         <h1 style="font-size: 2rem;">Staff Management</h1>
                         <p style="color: var(--text-dim);">Manage administrative and production personnel access.</p>
