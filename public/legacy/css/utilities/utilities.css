@@ -609,7 +609,12 @@
 }
 
 
-#nav-drawer-toggle:checked~.storefront-overlay,
+@media (max-width: 1100px) {
+    #nav-drawer-toggle:checked ~ .storefront-overlay {
+        opacity: 1;
+        visibility: visible;
+    }
+}
 
 .storefront-dashboard-layout {
     display: flex;
