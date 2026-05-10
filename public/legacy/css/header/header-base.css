@@ -23,19 +23,23 @@
     .storefront-header {
         flex-wrap: wrap;
         height: auto !important;
-        padding: 12px 20px !important;
-        gap: 12px !important;
+        padding: 10px 15px !important;
+        gap: 8px !important;
+        justify-content: space-between;
     }
     .header-brand {
         order: 1;
+        flex: 0 1 auto !important;
     }
     .header-actions {
         order: 2;
+        flex: 0 1 auto !important;
+        gap: 8px !important;
     }
     .header-search {
         order: 3;
         width: 100% !important;
-        margin: 0 !important;
+        margin: 5px 0 0 0 !important;
         max-width: none !important;
         flex: none !important;
     }
@@ -43,6 +47,14 @@
         padding: 10px 16px !important;
         padding-right: 40px !important;
         font-size: 0.9rem !important;
+        height: 40px !important;
+    }
+    
+    /* Shrink buttons to fit inline */
+    .header-actions .header-btn {
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+        min-width: auto !important;
     }
 }
 

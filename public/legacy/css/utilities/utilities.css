@@ -649,22 +649,27 @@
     .storefront-dashboard-layout {
         flex-direction: column !important;
         padding: 0 !important;
-        margin-top: 130px !important; /* Account for 2-row header */
+        margin-top: 105px !important; /* Total header height */
     }
     
     .storefront-sidebar {
-        display: none !important; /* Hide vertical sidebar */
+        display: none !important;
     }
     
     .mobile-category-dropdown {
         display: block !important;
         width: 100%;
-        padding: 15px 20px;
+        padding: 12px 15px;
         background: var(--bg-sidebar);
         border-bottom: 1px solid var(--border-glass);
         position: sticky;
-        top: 0;
-        z-index: 100;
+        top: 105px; /* Offset from fixed header */
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    }
+    
+    .storefront-main {
+        padding-top: 0 !important;
     }
 }
 
