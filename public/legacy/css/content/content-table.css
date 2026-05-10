@@ -113,22 +113,28 @@ tbody tr:hover {
 
     /* Card Transformation */
     .table-container table,
-    .table-container tbody,
-    .table-container tr,
-    .table-container td {
-        display: block;
-        width: 100%;
+    .table-container tbody {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 15px;
+    }
+
+    /* Force 1-column on narrow phones */
+    @media (max-width: 650px) {
+        .table-container tbody {
+            grid-template-columns: 1fr;
+        }
     }
 
     .table-container tr {
         background: var(--bg-card);
         border: 1px solid var(--border-glass);
         border-radius: 20px;
-        margin-bottom: 12px;
         padding: 18px;
         display: flex;
         flex-wrap: wrap;
         gap: 0;
+        height: 100%;
     }
 
     .table-container td {
