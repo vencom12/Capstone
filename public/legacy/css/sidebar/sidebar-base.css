@@ -4,15 +4,16 @@
     width: 280px;
     flex-shrink: 0;
     padding: 20px;
-    margin: 15px; /* Added floating margin */
+    margin: 15px 15px 15px 0; /* Left margin removed as per user request */
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 30px); /* Adjust height for margins */
+    height: calc(100vh - 30px);
     position: sticky;
     top: 15px;
-    border-radius: 24px; /* Restored curved corners */
+    border-radius: 0 24px 24px 0; /* Curved only on the right side */
     background: var(--bg-sidebar);
     border: 1px solid var(--border-glass);
+    border-left: none; /* No border on the flush edge */
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     z-index: 100;
@@ -71,7 +72,7 @@
         position: sticky;
         top: 15px;
         overflow-y: auto;
-        margin: 15px;
-        border-radius: 24px;
+        margin: 15px 15px 15px 0;
+        border-radius: 0 24px 24px 0;
     }
 }
