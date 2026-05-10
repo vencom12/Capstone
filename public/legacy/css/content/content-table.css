@@ -81,7 +81,23 @@ tbody tr:hover {
 
 .table-header h3 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
 
-.table-controls { display: flex; gap: 12px; align-items: center; }
+.table-controls { 
+    display: flex; 
+    gap: 12px; 
+    align-items: center; 
+    flex-wrap: wrap; 
+}
+
+@media (max-width: 768px) {
+    .table-controls {
+        gap: 8px;
+    }
+    .table-controls input, 
+    .table-controls select {
+        flex: 1;
+        min-width: 140px;
+    }
+}
 
 .table-controls input, .table-controls select {
     background: rgba(255, 255, 255, 0.05);
