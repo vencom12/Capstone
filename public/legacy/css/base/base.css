@@ -98,7 +98,7 @@ main {
 /* --- RIGHT PANEL (Basket) RESPONSIVE LOGIC --- */
 /* Redundant right-panel styles removed - handled by base.css */
 .right-panel {
-    width: 245px;
+    width: 215px;
     flex-shrink: 0;
     height: 100vh;
     background: var(--bg-sidebar);

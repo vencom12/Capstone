@@ -57,6 +57,9 @@
 #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
 #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"],
 #nav-store:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-store"],
+#nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
+#nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
+#nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
 #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"],
 #nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"] {
     background: var(--primary) !important;
@@ -76,6 +79,9 @@
 #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"]::after,
 #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"]::after,
 #nav-store:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-store"]::after,
+#nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"]::after,
+#nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"]::after,
+#nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"]::after,
 #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"]::after,
 #nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"]::after {
     content: '';
