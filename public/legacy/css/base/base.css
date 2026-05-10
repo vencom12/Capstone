@@ -522,7 +522,7 @@ body {
         color: var(--primary);
     }
 
-    /* Highlight the active icon with a glowing dot */
+    /* Highlight the active icon - Removed dots as per user request */
     .nav-links .active::after,
     #nav-shop:checked~.storefront-container .sidebar label[for="nav-shop"]::after,
     #nav-tracking:checked~.storefront-container .sidebar label[for="nav-tracking"]::after,
@@ -536,15 +536,7 @@ body {
     #nav-products:checked~.storefront-container .sidebar label[for="nav-products"]::after,
     #nav-history:checked~.storefront-container .sidebar label[for="nav-history"]::after,
     #nav-support:checked~.storefront-container .sidebar label[for="nav-support"]::after {
-        content: '';
-        display: block;
-        width: 6px;
-        height: 6px;
-        background: var(--primary);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--primary);
-        position: absolute;
-        bottom: 5px;
+        display: none !important;
     }
 
     /* Modals should fit screen */
