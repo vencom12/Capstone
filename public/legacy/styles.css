@@ -500,45 +500,8 @@ main {
     min-height: 100%;
 }
 
-/* --- Robust Dashboard Layout System --- */
-.dashboard-container {
-    display: flex !important; /* Force side-by-side */
-    flex-direction: row !important;
-    min-height: 100vh;
-    background: var(--bg-gradient);
-    overflow: hidden;
-}
 
-.dashboard-container > aside.sidebar {
-    width: 280px !important;
-    flex-shrink: 0;
-    height: 100vh;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.dashboard-container > main {
-    flex: 1 !important;
-    height: 100vh;
-    overflow-y: auto;
-    position: relative;
-    padding: 0; /* Padding handled by sections */
-}
-
-/* --- Clean Section Visibility --- */
-.module-section {
-    display: none; /* Hidden by default */
-    padding: 40px;
-    width: 100%;
-    animation: fadeIn 0.4s ease-out;
-}
-
-.module-section.active {
-    display: block !important; /* Visible when active class present */
-}
-
-/* --- Legacy Radio Sync (Optional for Label Styling) --- */
+/* Radio logic handled in section above with .active */
 #nav-shop:checked~.dashboard-container #section-shop,
 #nav-inventory:checked~.dashboard-container #section-inventory,
 #nav-production:checked~.dashboard-container #section-production,
@@ -2561,6 +2524,45 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 .section-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
 .section-header-top h1 { font-size: 2rem; color: var(--text-main); margin: 0; }
 .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 40px; }
-.analytics-grid > div { padding: 24px; border-radius: 20px; background: var(--bg-card); border: 1px solid var(--border-glass); display: flex; flex-direction: column; }
 .analytics-grid > div h3 { margin-bottom: 20px; font-size: 1.1rem; color: var(--text-main); }
 .analytics-grid > div > div { height: 350px; position: relative; width: 100%; }
+
+/* --- FINAL OVERRIDE: Robust Dashboard Layout System --- */
+.dashboard-container {
+    display: flex !important; /* Force side-by-side */
+    flex-direction: row !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    background: var(--bg-gradient);
+    overflow: hidden !important;
+}
+
+.dashboard-container > aside.sidebar {
+    width: 280px !important;
+    flex-shrink: 0 !important;
+    height: 100vh !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+.dashboard-container > main {
+    flex: 1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    position: relative !important;
+    padding: 0 !important;
+}
+
+.module-section {
+    display: none;
+    padding: 40px;
+    width: 100%;
+    min-height: 100%;
+}
+
+.module-section.active {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
