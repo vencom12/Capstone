@@ -627,6 +627,14 @@
     align-items: stretch;
 }
 
+/* Tablet Overlap Fix */
+@media (max-width: 1100px) and (min-width: 651px) {
+    .storefront-dashboard-layout {
+        margin-top: 130px !important;
+        height: calc(100vh - 130px) !important;
+    }
+}
+
 
 .storefront-sidebar {
     width: 215px;
@@ -675,9 +683,9 @@
         padding: 12px 15px;
         background: var(--bg-sidebar);
         border-bottom: 1px solid var(--border-glass);
-        margin-top: 100px; /* Added requested margin */
+        margin-top: 0; /* Reset margin that caused invisibility */
         position: sticky;
-        top: 105px; /* Offset from fixed header */
+        top: 105px; /* Stay below search bar */
         z-index: 1000;
         backdrop-filter: blur(10px);
     }
