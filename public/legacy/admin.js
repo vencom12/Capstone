@@ -282,6 +282,7 @@ const _updateUIInternal = debounce(() => {
         if (goldEl) goldEl.innerText = `${gold} Cones`;
     }
 
+    const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
         orderTable.innerHTML = orders.length === 0
             ? '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>'

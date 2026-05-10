@@ -161,6 +161,7 @@ function updateUI() {
     if (progressEl) progressEl.style.width = `${machine.progress}%`;
 
     // 2. Active Orders Table
+    const tableBody = document.getElementById('employee-order-table-body');
     if (tableBody) {
         const activeOrders = orders.filter(o => !['Order Delivered', 'Order Canceled'].includes(o.status));
         tableBody.innerHTML = activeOrders.length === 0
