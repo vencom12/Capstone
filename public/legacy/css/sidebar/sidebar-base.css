@@ -52,6 +52,7 @@
     .sidebar-profile {
         padding: 10px;
         justify-content: center;
+        flex-shrink: 0;
     }
 }
 
@@ -92,9 +93,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
     
     .logout-btn {
         padding: 10px !important;
+        flex-shrink: 0;
     }
 }
