@@ -17,8 +17,56 @@
     border-bottom: 1px solid var(--border-glass);
 }
 
+.header-brand { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    text-decoration: none; 
+    color: var(--primary);
+}
+.header-brand h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+
 .header-search { flex: 1; max-width: 600px; margin: 0 40px; position: relative; display: flex; align-items: center; }
-.header-search input { width: 100%; padding: 12px 20px; border-radius: 12px; height: 44px; }
+.header-search input { 
+    width: 100%; 
+    padding: 12px 40px 12px 20px; 
+    border-radius: 12px; 
+    height: 44px; 
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: white;
+    outline: none;
+}
+
+.header-actions { display: flex; align-items: center; gap: 20px; }
+
+.header-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: var(--transition-fast);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+}
+
+.header-btn:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.05); }
+.header-btn.primary { background: var(--primary); color: white; border: none; }
+.header-btn.primary:hover { background: #4f46e5; box-shadow: 0 0 15px var(--primary-glow); }
+
+.badge {
+    background: var(--primary);
+    color: white;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+}
 
 /* Hero Section */
 .hero-section {
@@ -59,7 +107,33 @@
     padding: 0 10px 40px 10px;
 }
 
+/* Sidebar Hero Content */
+.sidebar-hero-content h2 { 
+    font-size: 2rem; 
+    font-weight: 800; 
+    margin-bottom: 15px; 
+    line-height: 1.1; 
+    letter-spacing: -1px; 
+}
+
+.sidebar-hero-content p { 
+    color: var(--text-dim); 
+    font-size: 0.95rem; 
+    margin-bottom: 30px; 
+    line-height: 1.5; 
+}
+
 /* Categories */
+.sidebar-categories h3 {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+    padding-left: 10px;
+}
+
+.category-links { list-style: none; padding: 0; }
 .category-links label {
     display: flex;
     align-items: center;
@@ -67,7 +141,13 @@
     border-radius: 12px;
     cursor: pointer;
     transition: var(--transition-fast);
+    color: var(--text-dim);
 }
+
+.category-links label:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-main); }
+.category-links .active { background: var(--primary); color: white; }
+
+.mobile-category-container { display: none; }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
@@ -75,29 +155,40 @@
         display: grid !important;
         grid-template-areas: "brand actions" "search search";
         padding: 15px !important;
-        min-height: 110px !important;
+        min-height: 120px !important;
         gap: 10px !important;
     }
 
+    .header-brand h1 { font-size: 1.2rem; }
+    .header-search { margin: 0; max-width: 100%; grid-area: search; }
+    .header-actions { grid-area: actions; justify-self: end; gap: 10px; }
+
     .storefront-dashboard-layout {
         flex-direction: column !important;
-        padding-top: 120px !important;
+        padding-top: 130px !important;
+        height: auto !important;
+        overflow-y: visible !important;
     }
 
     .storefront-sidebar {
         width: 100% !important;
         position: static !important;
-        padding: 15px !important;
+        padding: 20px !important;
         margin-bottom: 20px !important;
         border-bottom: 1px solid var(--border-glass);
     }
+
+    .sidebar-hero-content { display: none; }
+    .sidebar-categories h3 { display: none; }
+    .category-links { display: none; }
+    .mobile-category-container { display: block; margin-top: 10px; }
 
     .storefront-main {
         padding: 0 !important;
     }
 
     .hero-section { padding-top: 120px; }
-    .product-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .product-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
     
     .product-details h3 { font-size: 0.9rem !important; }
     .product-details p { display: none !important; }
