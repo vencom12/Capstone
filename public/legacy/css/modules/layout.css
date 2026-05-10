@@ -213,6 +213,10 @@ input[name="nav-radio"], #nav-drawer-toggle { display: none; }
     }
 
     .nav-logo, .sidebar-profile { display: none !important; }
+    
+    .theme-toggle-mobile {
+        display: flex !important;
+    }
 
     .nav-links {
         flex-direction: row;
@@ -279,6 +283,14 @@ input[name="nav-radio"], #nav-drawer-toggle { display: none; }
 @media (max-width: 1200px) and (min-width: 769px) {
     .sidebar { width: 80px; padding: 20px 8px; align-items: center; }
     .sidebar .nav-logo span, .nav-links span, .logout-btn span, .sidebar-profile { display: none !important; }
+    
+    .theme-toggle-mobile {
+        display: flex !important;
+        position: relative !important;
+        right: 0 !important;
+        top: 0 !important;
+        margin-top: 15px;
+    }
     .nav-links label, .nav-links a, .logout-btn { justify-content: center; padding: 12px; gap: 0; }
     
     .dashboard-container>main { padding: 40px 20px; }
