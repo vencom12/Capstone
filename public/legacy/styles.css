@@ -904,7 +904,7 @@ tbody tr:hover {
 }
 
 .hero-section {
-    padding-top: calc(var(--header-height) + 40px);
+    padding-top: calc(var(--header-height) + 5px);
     padding-bottom: 60px;
     text-align: center;
     background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05), transparent);
@@ -1026,7 +1026,7 @@ tbody tr:hover {
 .storefront-dashboard-layout {
     display: flex;
     gap: 10px; /* Tightened gap between sidebar and main */
-    padding: 24px 15px; /* Reduced horizontal padding */
+    padding: 5px 15px; /* Reduced vertical gap to 5px */
     margin-top: var(--header-height);
     height: calc(100vh - var(--header-height));
     width: 100%;
@@ -1036,7 +1036,7 @@ tbody tr:hover {
 
 .storefront-sidebar {
     position: sticky;
-    top: calc(var(--header-height) + 20px);
+    top: calc(var(--header-height) + 5px); /* Sticky position 5px below header */
     width: 320px;
     max-height: calc(100vh - var(--header-height) - 40px);
     overflow-y: auto;
@@ -1786,7 +1786,7 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
         flex-direction: row;
         /* Keep sidebar on the side */
         padding: 20px;
-        padding-top: calc(var(--header-height) + 20px);
+        padding-top: calc(var(--header-height) + 5px);
         gap: 16px;
     }
 
@@ -1902,7 +1902,7 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
 
     /* Only Storefront stays responsive */
     .storefront-container {
-        padding-top: 90px; /* More room for the navbar */
+        padding-top: 115px; /* 110px header + 5px gap */
         display: block;
         min-height: 100vh;
         overflow: visible;
@@ -2225,7 +2225,7 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
     }
 
     .hero-section {
-        padding-top: 120px;
+        padding-top: 115px;
         /* Space for the taller mobile header */
         padding-bottom: 30px;
     }
@@ -2289,7 +2289,7 @@ th:last-child, td:last-child { padding-right: 30px; text-align: right; }
         flex-direction: column;
         /* Sidebar stacks above grid */
         padding: 15px;
-        padding-top: 110px; /* Adjusted to fit the 110px header */
+        padding-top: 115px; /* 110px header + 5px gap */
         margin-top: 0 !important; /* REMOVE REDUNDANT MARGIN */
         gap: 5px;
         height: auto !important;
