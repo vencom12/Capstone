@@ -76,14 +76,36 @@
     margin-top: 20px;
 }
 
+
 /* View Switching Logic */
 
+.nav-radio,
 #nav-drawer-toggle {
     position: absolute;
     opacity: 0;
     pointer-events: none;
     width: 0;
     height: 0;
+}
+
+
+/* Master Layout Fix */
+.dashboard-container,
+.storefront-container {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+main, 
+.storefront-main, 
+#admin-main-content {
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    overflow-y: auto;
+    position: relative;
 }
 
 /* Buttons */
