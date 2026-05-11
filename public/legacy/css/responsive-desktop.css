@@ -1,0 +1,31 @@
+/* 
+   responsive-desktop.css
+   Breakpoints: 1101px and above
+   Handles large screen optimizations and the full-width Sidebar mode.
+*/
+
+@media (min-width: 1101px) {
+    /* --- Sidebar: Full Expanded Mode --- */
+    .sidebar:not(.storefront-sidebar) {
+        width: 215px;
+    }
+
+    /* --- Content Grid Optimizations --- */
+    .analytics-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 30px;
+    }
+
+    /* --- Header Desktop Layout --- */
+    .storefront-header {
+        padding: 0 40px;
+        height: var(--header-height);
+    }
+}
+
+/* Wide Desktop Optimizations (> 1400px) */
+@media (min-width: 1400px) {
+    .analytics-grid {
+        gap: 40px;
+    }
+}

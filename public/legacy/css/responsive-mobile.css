@@ -119,8 +119,33 @@
         align-items: center !important;
         gap: 12px !important;
         width: 100% !important;
-        background: transparent !important;
         color: var(--text-dim) !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    /* Active Highlight Override for Mobile */
+    #nav-overview:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-overview"],
+    #nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-inventory"],
+    #nav-production:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-production"],
+    #nav-orders:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-orders"],
+    #nav-customers:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-customers"],
+    #nav-history:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-history"],
+    #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-analytics"],
+    #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-settings"],
+    #nav-store:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-store"],
+    #nav-shop:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-shop"],
+    #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-tracking"],
+    #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-favs"],
+    #nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-wallet"],
+    #nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-wishlist"],
+    #nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-workbench"],
+    #nav-products:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-products"],
+    #nav-support:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-support"],
+    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-staffing"] {
+        background: var(--primary) !important;
+        color: white !important;
+        box-shadow: 0 4px 15px var(--primary-glow) !important;
+        transform: translateX(5px) !important;
     }
 
     .sidebar .nav-links label span,
@@ -142,11 +167,6 @@
     }
 
     /* --- 5. Grid & Content Scaling --- */
-    .product-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px !important;
-    }
-
     .analytics-grid {
         grid-template-columns: 1fr !important;
     }

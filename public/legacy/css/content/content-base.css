@@ -69,7 +69,23 @@ main {
 
 .product-grid {
     display: grid;
-    gap: 15px;
+    /* Fluid Responsive Grid: Automatically fits as many cards as possible with a minimum width of 280px */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    padding: 20px 0;
+    width: 100%;
+}
+
+.responsive-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 30px;
 }
 
 .storefront-dashboard-layout {
@@ -102,12 +118,6 @@ main {
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
     gap: 24px;
     margin-bottom: 40px;
-}
-
-@media (min-width: 1400px) {
-    .analytics-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 

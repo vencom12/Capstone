@@ -102,51 +102,38 @@ main {
     }
 }
 
-/* --- RIGHT PANEL (Basket) RESPONSIVE LOGIC --- */
-/* Redundant right-panel styles removed - handled by base.css */
+/* --- RIGHT PANEL (Basket) DRAWER LOGIC --- */
 .right-panel {
-    width: 215px;
-    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 280px;
     height: 100vh;
     background: var(--bg-sidebar);
     backdrop-filter: var(--glass-blur);
     border-left: 1px solid var(--border-glass);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1000;
+    transform: translateX(100%);
+    box-shadow: -20px 0 50px rgba(0,0,0,0.3);
+    border-radius: 24px 0 0 24px;
 }
 
-/* Desktop & Large Tablet: Always Open (Above 1100px) */
-@media (min-width: 1101px) {
-    .right-panel {
-        transform: translateX(0);
-        position: relative;
-    }
-    label[for="nav-drawer-toggle"].header-btn,
-    .open-basket-btn {
-        display: none !important;
-    }
+#nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .right-panel {
+    transform: translateX(0);
 }
 
-/* Tablet & Mobile: Slide-in Drawer (Below 1100px) */
-@media (max-width: 1100px) {
-    .right-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        transform: translateX(100%);
-        box-shadow: -20px 0 50px rgba(0,0,0,0.3);
-        border-radius: 24px 0 0 24px;
-    }
-    
-    #nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .right-panel {
-        transform: translateX(0);
-    }
-
-    .storefront-overlay {
-        display: none;
-    }
+.storefront-overlay {
+    display: none;
 }
 
+#nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .storefront-overlay {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Tablet & Mobile Overrides */
 @media (max-width: 768px) {
     .right-panel {
         width: 100%;

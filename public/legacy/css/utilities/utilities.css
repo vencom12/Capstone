@@ -49,13 +49,26 @@
     width: 40px;
     height: 40px;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
     font-size: 1.1rem;
     color: white;
+    box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.brand-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 15px var(--primary-glow);
 }
 
 

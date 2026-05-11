@@ -105,4 +105,31 @@
     border-radius: 0 4px 4px 0;
 }
 
+/* Basket Nav Item Styles */
+.basket-nav-item {
+    margin-top: 10px;
+    border-top: 1px solid var(--border-glass);
+    padding-top: 10px !important;
+}
+
+.basket-nav-item .cart-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.basket-nav-item .badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
 

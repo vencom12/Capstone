@@ -1,20 +1,6 @@
 /* PRODUCT GRID RESPONSIVE SYSTEM */
 
-.product-grid {
-    display: grid;
-    gap: 20px;
-    padding: 10px 0;
-    width: 100%;
-}
 
-
-
-
-/* Intelligent Grid for Inventory/Stats */
-.product-grid#product-list-container,
-.product-grid:has(.stat-card) {
-    /* Respect the column rules above */
-}
 
 
 

@@ -1,7 +1,6 @@
 /* SIDEBAR TRANSFORMATION ENGINE */
 
 .sidebar {
-    width: 215px;
     height: 100vh;
     flex-shrink: 0; /* Prevent squashing */
     position: sticky;

@@ -94,17 +94,11 @@
     #nav-staffing:checked~.dashboard-container label[for="nav-staffing"] {
         width: 48px !important;
         height: 48px !important;
-        background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+        background: var(--primary) !important;
+        box-shadow: 0 4px 15px var(--primary-glow) !important;
         border-color: rgba(255, 255, 255, 0.2) !important;
         transform: none !important;
         margin: 0 !important;
-    }
-
-    /* Remove indicators for this style */
-    .sidebar:not(.storefront-sidebar) .nav-links label::after,
-    .sidebar:not(.storefront-sidebar) .nav-links a::after {
-        display: none !important;
     }
 
     /* --- Tablet Grid Layouts --- */
@@ -113,8 +107,4 @@
         gap: 20px;
     }
 
-    .product-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 15px;
-    }
 }
