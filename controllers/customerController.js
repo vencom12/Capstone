@@ -93,28 +93,20 @@ exports.validatePayment = async (req, res) => {
 };
 
 exports.submitOrder = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
         const { items, totalAmount, paymentMethod, address, deliveryTime, notes } = req.body;
         
         if (!items || items.length === 0) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ message: 'Cart is empty' });
         }
 
-        const user = await User.findById(req.user.id).session(session);
+        const user = await User.findById(req.user.id);
         if (!user) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(404).json({ message: 'User not found' });
         }
 
         const numTotal = parseFloat(totalAmount);
         if (paymentMethod === 'wallet' && (user.walletBalance || 0) < numTotal) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
 
@@ -124,7 +116,7 @@ exports.submitOrder = async (req, res) => {
 
         // Phase 1: Deduct wallet balance
         if (paymentMethod === 'wallet') {
-            await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -numTotal } }, { session });
+            await User.findByIdAndUpdate(req.user.id, { $inc: { walletBalance: -numTotal } });
         }
 
         // Phase 2: Create Order, Transaction, and Receipt
@@ -143,7 +135,7 @@ exports.submitOrder = async (req, res) => {
             notes,
             progress: (paymentMethod === 'wallet') ? 5 : 0
         });
-        await newOrder.save({ session });
+        await newOrder.save();
 
         const transaction = new Transaction({
             transactionID: secureTransactionId,
@@ -155,7 +147,7 @@ exports.submitOrder = async (req, res) => {
             receiptLink: `/api/customer/receipt/${secureReceiptId}/download`,
             receiptId: secureReceiptId
         });
-        await transaction.save({ session });
+        await transaction.save();
 
         const receipt = new Receipt({
             receiptID: secureReceiptId,
@@ -167,16 +159,13 @@ exports.submitOrder = async (req, res) => {
             status: (paymentMethod === 'wallet') ? 'Paid' : 'Pending',
             timestamp: new Date()
         });
-        await receipt.save({ session });
+        await receipt.save();
 
         newOrder.transactionId = transaction._id;
         newOrder.receiptRef = receipt._id;
-        await newOrder.save({ session });
+        await newOrder.save();
 
-        await session.commitTransaction();
-        session.endSession();
-
-        // Success Phase: Emit events (outside transaction for reliability)
+        // Success Phase: Emit events
         const updatedUser = await User.findById(req.user.id);
         const io = req.app.get('io');
         socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, newOrder, [`user:${user._id}`, 'staff']);
@@ -186,8 +175,6 @@ exports.submitOrder = async (req, res) => {
         res.json({ message: 'Order placed successfully.', order: newOrder, receiptID: secureReceiptId });
 
     } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
         console.error('submitOrder error:', err);
         res.status(400).json({ message: err.message || 'Failed to place order' });
     }

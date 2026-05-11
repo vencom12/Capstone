@@ -171,6 +171,11 @@
         grid-template-columns: 1fr !important;
     }
 
+    .product-grid {
+        gap: 12px !important;
+        padding: 10px 0 !important;
+    }
+
     /* Hide elements that don't belong on mobile */
     .desktop-only {
         display: none !important;

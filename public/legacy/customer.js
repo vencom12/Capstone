@@ -407,9 +407,9 @@ const _updateUIInternal = debounce(() => {
                 const idStr = (p._id || p.id).toString();
                 const isFav = favIds.includes(idStr);
                 return `
-                <div class="product-card glass animate-fade">
+                <div class="product-card glass animate-fade" data-id="${idStr}" style="cursor: pointer;">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
-                        <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}" 
+                        <button class="fav-toggle-btn" data-id="${idStr}" data-fav="${isFav}"
                             style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: ${isFav ? '#ef4444' : 'var(--text-dim)'}; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                         </button>
@@ -1099,7 +1099,7 @@ async function saveSettings() {
 
 // --- Event Delegation ---
 document.addEventListener('click', (e) => {
-    // Basket additions
+    // 1. Action Buttons (Highest Priority)
     const basketBtn = e.target.closest('.add-to-basket');
     if (basketBtn) {
         e.preventDefault(); e.stopPropagation();
@@ -1126,12 +1126,18 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // Favorite toggles
     const favBtn = e.target.closest('.fav-toggle-btn');
     if (favBtn) {
         e.preventDefault(); e.stopPropagation();
-        const id = favBtn.dataset.id;
-        Actions.toggleFavorite(id);
+        Actions.toggleFavorite(favBtn.dataset.id);
+        return;
+    }
+
+    // 2. Card Interaction (Quick View)
+    const productCard = e.target.closest('.product-card');
+    if (productCard && !e.target.closest('button')) {
+        // Only open modal if we didn't click an internal button
+        openProductModal(productCard.dataset.id);
         return;
     }
 
@@ -1186,6 +1192,53 @@ window.refreshDashboardState = refreshDashboardState;
 window.updateUI = updateUI;
 window.downloadReceipt = downloadReceipt;
 window.viewReceipt = viewReceipt;
+
+// --- Product Quick View Modal Logic ---
+
+function openProductModal(productId) {
+    const product = State._cache.products.find(p => (p._id || p.id).toString() === productId);
+    if (!product) return;
+
+    const modal = document.getElementById('product-quickview-modal');
+    const body = document.getElementById('product-modal-body');
+
+    body.innerHTML = `
+        <div class="modal-image-side">
+            <img src="${product.imageUrl}" alt="${product.name}">
+            <div class="product-image-overlay" style="position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.6));"></div>
+        </div>
+        <div class="modal-info-side">
+            <span class="modal-tag">${product.tag || 'Embroidery Design'}</span>
+            <h2 class="modal-title">${product.name}</h2>
+            <div class="modal-price">$${product.price.toFixed(2)}</div>
+            <div class="modal-description">
+                ${product.description || 'Our high-performance embroidery designs are optimized for industrial-grade production, ensuring precision in every stitch.'}
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary add-to-basket" 
+                    data-id="${productId}" 
+                    data-name="${product.name}" 
+                    data-price="${product.price}" 
+                    data-image="${product.imageUrl || ''}"
+                    onclick="closeProductModal()">
+                    Add to Basket
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('active');
+}
+
+function closeProductModal(event) {
+    const modal = document.getElementById('product-quickview-modal');
+    // If event is provided, only close if clicking the overlay itself
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+}
+
+window.openProductModal = openProductModal;
+window.closeProductModal = closeProductModal;
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {

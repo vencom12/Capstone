@@ -119,3 +119,51 @@ input[name="nav-radio"],
     border-radius: var(--radius-sm);
     display: inline-block;
 }
+
+/* --- RIGHT PANEL (Basket Drawer) --- */
+.right-panel {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: 320px !important;
+    height: 100vh !important;
+    background: var(--bg-sidebar) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border-left: 1px solid var(--border-glass) !important;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 5000 !important; /* High z-index to stay on top */
+    transform: translateX(100%) !important;
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.3) !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .right-panel {
+    transform: translateX(0) !important;
+}
+
+/* --- STOREFRONT OVERLAY --- */
+.storefront-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important; /* Slightly darker for better contrast */
+    z-index: 4500 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    cursor: pointer !important;
+    backdrop-filter: none !important; /* Removed blur to fix the "blurry screen" issue */
+}
+
+#nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .storefront-overlay {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Responsive Overrides */
+@media (max-width: 768px) {
+    .right-panel {
+        width: 100% !important;
+        max-width: 400px !important;
+    }
+}

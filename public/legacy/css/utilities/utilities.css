@@ -196,15 +196,22 @@ main,
 
 .product-image::after {
     content: 'STITCH PREVIEW';
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    letter-spacing: 2px;
-    font-weight: 600;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    font-weight: 700;
+    pointer-events: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
 
 .product-details {
-    padding: 24px;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -828,30 +835,6 @@ main,
     /* Hide branding text beside logo on mobile */
     .nav-logo-text {
         display: none !important;
-    }
-
-    /* Force hide basket/right-panel on mobile unless drawer is open */
-    .right-panel, 
-    #admin-right-panel {
-        position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        height: 100vh !important;
-        width: 340px !important;
-        max-width: 85vw !important;
-        z-index: 5000 !important;
-        transform: translateX(101%) !important;
-        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        background: var(--bg-dark) !important;
-        backdrop-filter: var(--glass-blur) !important;
-        box-shadow: -10px 0 30px rgba(0,0,0,0.5) !important;
-        border-left: 1px solid var(--border-glass) !important;
-    }
-
-    /* Show right panel when toggle is checked */
-    #nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) .right-panel,
-    #nav-drawer-toggle:checked ~ :is(.dashboard-container, .storefront-container) #admin-right-panel {
-        transform: translateX(0) !important;
     }
 
     .module-section {

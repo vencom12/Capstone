@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/sidebar/sidebar-submenu.css">
     <link rel="stylesheet" href="css/content/content-base.css">
     <link rel="stylesheet" href="css/content/content-cards.css">
+    <link rel="stylesheet" href="css/content/content-modals.css">
     <link rel="stylesheet" href="css/content/content-table.css">
     <link rel="stylesheet" href="css/content/content-forms.css">
     <link rel="stylesheet" href="css/utilities/utilities.css">
@@ -614,6 +615,16 @@
             </div>
             <button class="btn btn-primary" onclick="UI.toggleModal('receipt-modal')"
                 style="width: 100%; margin-top: 30px;">Close Receipt</button>
+        </div>
+    </div>
+
+    <!-- Product Quick View Modal -->
+    <div id="product-quickview-modal" class="product-modal-overlay" onclick="closeProductModal(event)">
+        <div class="product-modal-content glass" onclick="event.stopPropagation()">
+            <button class="modal-close-btn" onclick="closeProductModal()">✕</button>
+            <div class="product-modal-body" id="product-modal-body">
+                <!-- Content injected by JS -->
+            </div>
         </div>
     </div>
 

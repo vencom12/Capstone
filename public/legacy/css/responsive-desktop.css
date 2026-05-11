@@ -10,6 +10,11 @@
         width: 215px;
     }
 
+    /* Hide Basket Button on Desktop */
+    .basket-nav-item {
+        display: none !important;
+    }
+
     /* --- Content Grid Optimizations --- */
     .analytics-grid {
         grid-template-columns: repeat(3, 1fr);

@@ -69,8 +69,8 @@ main {
 
 .product-grid {
     display: grid;
-    /* Fluid Responsive Grid: Automatically fits as many cards as possible with a minimum width of 280px */
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    /* Fluid Responsive Grid: Automatically fits as many cards as possible with a minimum width of 140px (2-cols on mobile) */
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 25px;
     padding: 20px 0;
     width: 100%;
@@ -138,14 +138,4 @@ main {
     width: 100%;
     min-height: 300px;
     aspect-ratio: 16 / 9; /* Default landscape ratio for trends */
-}
-
-
-#nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .right-panel {
-    transform: translateX(0);
-}
-
-#nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .storefront-overlay {
-    opacity: 1;
-    visibility: visible;
 }
