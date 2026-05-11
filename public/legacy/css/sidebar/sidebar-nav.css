@@ -8,7 +8,8 @@
     gap: 2px;
     flex: 1;
     overflow-y: auto;
-    scrollbar-width: none; /* Hide scrollbar for clean look */
+    scrollbar-width: none;
+    /* Hide scrollbar for clean look */
 }
 
 .nav-links::-webkit-scrollbar {
@@ -34,7 +35,8 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     position: relative;
-    background: rgba(255, 255, 255, 0.02); /* Subtle container */
+    background: rgba(255, 255, 255, 0.02);
+    /* Subtle container */
     border: 1px solid transparent;
 }
 
@@ -48,24 +50,24 @@
 
 .nav-links .active,
 .nav-links label.active,
-#nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
-#nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
-#nav-production:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
-#nav-orders:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-orders"],
-#nav-customers:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-customers"],
-#nav-history:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
-#nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
-#nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"],
-#nav-store:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-store"],
-#nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
-#nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
-#nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
-#nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"],
-#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"],
-#nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"],
-#nav-products:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-products"],
-#nav-support:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-support"],
-#nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"] {
+#nav-overview:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
+#nav-inventory:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
+#nav-production:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
+#nav-orders:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-orders"],
+#nav-customers:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-customers"],
+#nav-history:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
+#nav-analytics:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
+#nav-settings:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"],
+#nav-store:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-store"],
+#nav-shop:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
+#nav-tracking:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
+#nav-favs:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
+#nav-wallet:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"],
+#nav-wishlist:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"],
+#nav-workbench:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"],
+#nav-products:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-products"],
+#nav-support:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-support"],
+#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"] {
     background: var(--primary) !important;
     color: white !important;
     box-shadow: 0 4px 15px var(--primary-glow);
@@ -75,31 +77,33 @@
 
 /* Tablet / Rail Mode: Square highlights */
 @media (max-width: 1100px) and (min-width: 651px) {
+
     .sidebar:not(.storefront-sidebar) .nav-links label,
     .sidebar:not(.storefront-sidebar) .nav-links a {
-        border-radius: 0 !important; /* Square look */
+        border-radius: 0 !important;
+        /* Square look */
     }
 }
 
 /* Active indicator line */
-#nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"]::after,
-#nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"]::after,
-#nav-production:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-production"]::after,
-#nav-orders:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-orders"]::after,
-#nav-customers:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-customers"]::after,
-#nav-history:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-history"]::after,
-#nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"]::after,
-#nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"]::after,
-#nav-store:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-store"]::after,
-#nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"]::after,
-#nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"]::after,
-#nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"]::after,
-#nav-wallet:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"]::after,
-#nav-wishlist:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"]::after,
-#nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"]::after,
-#nav-products:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-products"]::after,
-#nav-support:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-support"]::after,
-#nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"]::after {
+#nav-overview:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"]::after,
+#nav-inventory:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"]::after,
+#nav-production:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-production"]::after,
+#nav-orders:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-orders"]::after,
+#nav-customers:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-customers"]::after,
+#nav-history:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-history"]::after,
+#nav-analytics:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"]::after,
+#nav-settings:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"]::after,
+#nav-store:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-store"]::after,
+#nav-shop:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"]::after,
+#nav-tracking:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"]::after,
+#nav-favs:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"]::after,
+#nav-wallet:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-wallet"]::after,
+#nav-wishlist:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-wishlist"]::after,
+#nav-workbench:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"]::after,
+#nav-products:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-products"]::after,
+#nav-support:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-support"]::after,
+#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"]::after {
     content: '';
     position: absolute;
     left: 0;
@@ -122,7 +126,7 @@
         justify-content: center;
         padding: 0 !important;
     }
-    
+
     .sidebar:not(.storefront-sidebar) .nav-links label,
     .sidebar:not(.storefront-sidebar) .nav-links a {
         width: 48px !important;
@@ -133,7 +137,8 @@
         background: rgba(255, 255, 255, 0.04) !important;
         border: 1px solid var(--border-glass) !important;
         transition: background 0.2s ease !important;
-        transform: none !important; /* No movement like mobile */
+        transform: none !important;
+        /* No movement like mobile */
     }
 
     .sidebar:not(.storefront-sidebar) .nav-links label:hover,
@@ -144,24 +149,24 @@
 
     /* Active Highlight: Same size as others, no animation */
     .sidebar:not(.storefront-sidebar) .nav-links .active,
-    #nav-overview:checked ~ .dashboard-container label[for="nav-overview"],
-    #nav-inventory:checked ~ .dashboard-container label[for="nav-inventory"],
-    #nav-production:checked ~ .dashboard-container label[for="nav-production"],
-    #nav-orders:checked ~ .dashboard-container label[for="nav-orders"],
-    #nav-customers:checked ~ .dashboard-container label[for="nav-customers"],
-    #nav-history:checked ~ .dashboard-container label[for="nav-history"],
-    #nav-analytics:checked ~ .dashboard-container label[for="nav-analytics"],
-    #nav-settings:checked ~ .dashboard-container label[for="nav-settings"],
-    #nav-store:checked ~ .dashboard-container label[for="nav-store"],
-    #nav-shop:checked ~ .dashboard-container label[for="nav-shop"],
-    #nav-tracking:checked ~ .dashboard-container label[for="nav-tracking"],
-    #nav-favs:checked ~ .dashboard-container label[for="nav-favs"],
-    #nav-wallet:checked ~ .dashboard-container label[for="nav-wallet"],
-    #nav-wishlist:checked ~ .dashboard-container label[for="nav-wishlist"],
-    #nav-workbench:checked ~ .dashboard-container label[for="nav-workbench"],
-    #nav-products:checked ~ .dashboard-container label[for="nav-products"],
-    #nav-support:checked ~ .dashboard-container label[for="nav-support"],
-    #nav-staffing:checked ~ .dashboard-container label[for="nav-staffing"] {
+    #nav-overview:checked~.dashboard-container label[for="nav-overview"],
+    #nav-inventory:checked~.dashboard-container label[for="nav-inventory"],
+    #nav-production:checked~.dashboard-container label[for="nav-production"],
+    #nav-orders:checked~.dashboard-container label[for="nav-orders"],
+    #nav-customers:checked~.dashboard-container label[for="nav-customers"],
+    #nav-history:checked~.dashboard-container label[for="nav-history"],
+    #nav-analytics:checked~.dashboard-container label[for="nav-analytics"],
+    #nav-settings:checked~.dashboard-container label[for="nav-settings"],
+    #nav-store:checked~.dashboard-container label[for="nav-store"],
+    #nav-shop:checked~.dashboard-container label[for="nav-shop"],
+    #nav-tracking:checked~.dashboard-container label[for="nav-tracking"],
+    #nav-favs:checked~.dashboard-container label[for="nav-favs"],
+    #nav-wallet:checked~.dashboard-container label[for="nav-wallet"],
+    #nav-wishlist:checked~.dashboard-container label[for="nav-wishlist"],
+    #nav-workbench:checked~.dashboard-container label[for="nav-workbench"],
+    #nav-products:checked~.dashboard-container label[for="nav-products"],
+    #nav-support:checked~.dashboard-container label[for="nav-support"],
+    #nav-staffing:checked~.dashboard-container label[for="nav-staffing"] {
         width: 48px !important;
         height: 48px !important;
         background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
@@ -218,23 +223,23 @@
     .nav-links a::after {
         display: none !important;
     }
-    
+
     .nav-links label:hover,
     .nav-links a:hover {
         transform: none !important;
     }
 
     .nav-links .active,
-    #nav-overview:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
-    #nav-inventory:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
-    #nav-production:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
-    #nav-history:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
-    #nav-analytics:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
-    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"],
-    #nav-shop:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
-    #nav-tracking:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
-    #nav-favs:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
-    #nav-settings:checked ~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"] {
+    #nav-overview:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-overview"],
+    #nav-inventory:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-inventory"],
+    #nav-production:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-production"],
+    #nav-history:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-history"],
+    #nav-analytics:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-analytics"],
+    #nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"],
+    #nav-shop:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-shop"],
+    #nav-tracking:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-tracking"],
+    #nav-favs:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-favs"],
+    #nav-settings:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-settings"] {
         transform: none !important;
         background: var(--primary) !important;
         border-radius: 10px;

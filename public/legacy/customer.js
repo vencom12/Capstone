@@ -3,7 +3,7 @@ const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
 // Global Error Handler for remote debugging
-window.onerror = function(msg, url, line, col, error) {
+window.onerror = function (msg, url, line, col, error) {
     console.error('GLOBAL ERROR:', msg, 'at', line, ':', col);
     if (typeof showToast === 'function') showToast(`Runtime Error: ${msg} (Line ${line})`);
     return false;
@@ -12,7 +12,7 @@ window.onerror = function(msg, url, line, col, error) {
 // Utility: Debounce function
 function debounce(func, wait) {
     let timeout;
-    return function(...args) {
+    return function (...args) {
         const context = this;
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), wait);
@@ -134,7 +134,7 @@ const AuthManager = {
         } catch (err) { return { success: false, message: 'Connection error' }; }
     },
     async logout() {
-        try { await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' }); } catch (e) {}
+        try { await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' }); } catch (e) { }
         // Clear user-specific basket before wiping session
         const session = this.getSession();
         if (session && session.user && session.user.id) {
@@ -215,7 +215,7 @@ const State = {
         const session = AuthManager.getSession();
         const userId = session ? (session.user.id || session.user._id) : 'guest';
         const key = 'stitch_basket_' + userId;
-        
+
         // Minimize data before storing to avoid QuotaExceededError
         const minimizedBasket = basket.map(item => ({
             id: item.id,
@@ -350,7 +350,7 @@ const _updateUIInternal = debounce(() => {
     // 1. Update Profile Info & Settings Fields
     if (session) {
         const { username, email, phoneNumber, address } = session.user;
-        
+
         document.querySelectorAll('.profile-name').forEach(el => {
             if (el.innerText !== username) el.innerText = username;
         });
@@ -358,7 +358,7 @@ const _updateUIInternal = debounce(() => {
         // Populate settings fields if they are empty (to allow initial edit)
         const nameInput = document.getElementById('settings-username');
         if (nameInput && !nameInput.value) nameInput.value = username || '';
-        
+
         const emailInput = document.getElementById('settings-email');
         if (emailInput && !emailInput.value) emailInput.value = email || '';
 
@@ -367,7 +367,7 @@ const _updateUIInternal = debounce(() => {
 
         const addrInput = document.getElementById('settings-address');
         if (addrInput && !addrInput.value) addrInput.value = address || '';
-        
+
         const walletEl = document.getElementById('profile-wallet');
         if (walletEl) {
             const formattedBalance = `$${walletBalance.toFixed(2)}`;
@@ -378,7 +378,7 @@ const _updateUIInternal = debounce(() => {
     // 2. Simple Catalog Rendering
     const searchQuery = (State._cache.searchQuery || '').toLowerCase();
     const selectedCategory = State._cache.selectedCategory || 'All';
-    
+
     const filteredProducts = products.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchQuery) || (p.description && p.description.toLowerCase().includes(searchQuery));
         const matchesCategory = selectedCategory === 'All' || p.tag === selectedCategory;
@@ -387,7 +387,7 @@ const _updateUIInternal = debounce(() => {
 
     const favIds = favorites.map(f => (f._id || f.id)?.toString());
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
-    
+
     productGrids.forEach(grid => {
         if (products.length === 0 && _syncCount > 0) {
             grid.innerHTML = `
@@ -452,7 +452,7 @@ const _updateUIInternal = debounce(() => {
             productPaginationContainer.innerHTML = '';
         }
     }
-    
+
     // Global helper if not already defined
     if (!window.changeProductPage) {
         window.changeProductPage = async (page) => {
@@ -509,7 +509,7 @@ const _updateUIInternal = debounce(() => {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
                 const order = (orders || []).find(o => o.orderId === tx.orderID || o._id === tx.orderID);
                 let description = tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A';
-                
+
                 if (order) {
                     description = formatOrderDesign(order);
                 }
@@ -555,16 +555,16 @@ function downloadReceipt(receiptId) {
 
 async function viewReceipt(transactionID) {
     if (!transactionID) return showToast('No transaction found');
-    
+
     UI.toggleModal('receipt-modal');
     const content = document.getElementById('receipt-content');
     content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
-    
+
     try {
         const res = await apiFetch(`/api/payments/receipt/${transactionID}`);
         if (!res.ok) throw new Error('Failed to fetch receipt');
         const data = await res.json();
-        
+
         content.innerHTML = `
             <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; border: 1px solid var(--border-glass);">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
@@ -651,7 +651,7 @@ const CheckoutManager = {
         document.getElementById('checkout-address').value = AuthManager.getSession()?.user.address || '';
         document.getElementById('checkout-total-price').innerText = `$${this.total.toFixed(2)}`;
         document.getElementById('checkout-wallet-balance').innerText = `$${(State._cache.walletBalance || 0).toFixed(2)}`;
-        
+
         const summaryList = document.getElementById('checkout-summary-list');
         summaryList.innerHTML = basket.map(item => `
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;">
@@ -667,7 +667,7 @@ const CheckoutManager = {
     close() {
         const modal = document.getElementById('checkout-modal');
         if (modal) modal.style.display = 'none';
-        
+
         // Restore previous panel: Re-open the basket drawer when checkout is closed
         const toggle = document.getElementById('nav-drawer-toggle');
         if (toggle) toggle.checked = true;
@@ -712,7 +712,7 @@ const CheckoutManager = {
     async topup() {
         const amountInput = document.getElementById('topup-amount').value;
         if (!/^\d+(\.\d+)?$/.test(amountInput) || parseFloat(amountInput) <= 0) return showToast('Invalid amount');
-        
+
         updateSyncIndicator(true);
         try {
             const response = await apiFetch(`${API_URL}/wallet/topup`, {
@@ -722,19 +722,19 @@ const CheckoutManager = {
             if (response.ok) {
                 const data = await response.json();
                 State._cache.walletBalance = data.walletBalance;
-                
+
                 // Refresh all UI elements including sidebar balance
                 updateUI();
-                
+
                 // Specific checkout elements
                 const checkoutBalance = document.getElementById('checkout-wallet-balance');
                 if (checkoutBalance) checkoutBalance.innerText = `$${data.walletBalance.toFixed(2)}`;
-                
+
                 // Clear input
                 document.getElementById('topup-amount').value = '';
-                
+
                 showToast('Wallet topped up successfully');
-                
+
                 // CRITICAL: Re-verify payment if wallet is selected
                 if (this.selectedMethod === 'wallet') {
                     await this.selectMethod('wallet');
@@ -746,13 +746,13 @@ const CheckoutManager = {
         } catch (err) {
             console.error('Top-up error:', err);
             showToast('Connection error during top-up');
-        } finally { 
-            updateSyncIndicator(false); 
+        } finally {
+            updateSyncIndicator(false);
         }
-    },    async placeOrder() {
+    }, async placeOrder() {
         const placeBtn = document.getElementById('place-order-btn');
         const originalText = placeBtn ? placeBtn.innerText : 'Place Order';
-        
+
         const address = document.getElementById('checkout-address').value;
         const deliveryTime = document.getElementById('checkout-time').value;
         const notes = document.getElementById('checkout-notes').value;
@@ -779,16 +779,16 @@ const CheckoutManager = {
 
             const res = await apiFetch(`${API_URL}/order/submit`, {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    items: cleanedItems, 
-                    totalAmount: this.total, 
-                    paymentMethod: this.selectedMethod, 
-                    address, 
-                    deliveryTime, 
-                    notes 
+                body: JSON.stringify({
+                    items: cleanedItems,
+                    totalAmount: this.total,
+                    paymentMethod: this.selectedMethod,
+                    address,
+                    deliveryTime,
+                    notes
                 })
             });
-            
+
             let data;
             try {
                 data = await res.json();
@@ -801,14 +801,14 @@ const CheckoutManager = {
                 this.close();
                 State.setBasket([]);
                 showToast(data.message || 'Order placed successfully!');
-                
+
                 // Refresh data in background - Debounced sync will handle multiple events
                 silentCacheSync();
 
                 // Navigate to receipts section
                 const rcpNav = document.getElementById('nav-receipts');
                 if (rcpNav) rcpNav.checked = true;
-                
+
                 return; // Exit early to avoid finally block resetting indicator too soon
             } else {
                 showToast(data.message || 'Order failed. Please try again.');
@@ -816,13 +816,13 @@ const CheckoutManager = {
         } catch (err) {
             console.error('placeOrder error:', err);
             showToast(err.message || 'Connection error. Please try again.');
-        } finally { 
+        } finally {
             if (placeBtn) {
                 placeBtn.disabled = false;
                 placeBtn.innerText = originalText;
                 placeBtn.style.opacity = '1';
             }
-            updateSyncIndicator(false); 
+            updateSyncIndicator(false);
         }
     }
 };
@@ -830,7 +830,7 @@ const CheckoutManager = {
 // --- Initialization & UI Helpers ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    
+
     // Pattern: Stale While Revalidate
     // 1. Immediately update UI with whatever is in the current cache
     updateUI();
@@ -866,7 +866,7 @@ function initSocket() {
 }
 
 function setupSocketListeners() {
-    const socket = io(SOCKET_URL, { 
+    const socket = io(SOCKET_URL, {
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: Infinity,
@@ -906,7 +906,7 @@ function setupSocketListeners() {
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
-    
+
     // Pagination Listeners
     const prevBtn = document.getElementById('prev-cust-orders-btn');
     const nextBtn = document.getElementById('next-cust-orders-btn');
@@ -955,22 +955,22 @@ const Actions = {
         if (!itemId) return showToast('Error: Product ID missing');
 
         // Check for existing item using a more robust comparison
-        const existing = basket.find(b => 
-            (b._id && b._id.toString() === itemId) || 
+        const existing = basket.find(b =>
+            (b._id && b._id.toString() === itemId) ||
             (b.id && b.id.toString() === itemId) ||
             (b.productId && b.productId.toString() === itemId)
         );
-        
+
         if (existing) {
             existing.quantity = (parseInt(existing.quantity) || 0) + parseInt(quantity);
         } else {
-            basket.push({ 
+            basket.push({
                 _id: itemId,
                 productId: itemId, // Redundancy for different lookup methods
-                name: item.name || 'Unknown Product', 
+                name: item.name || 'Unknown Product',
                 price: parseFloat(item.price || 0),
                 imageUrl: item.imageUrl || '',
-                quantity: parseInt(quantity), 
+                quantity: parseInt(quantity),
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 5)
             });
         }
@@ -999,12 +999,12 @@ const Actions = {
             AuthManager.promptLogin();
             return;
         }
-        
+
         const favorites = State._cache.favorites || [];
         const products = State._cache.products || [];
         const pIdStr = productId.toString();
         const isFav = favorites.some(f => (f._id || f.id)?.toString() === pIdStr);
-        
+
         // Optimistic Update
         if (isFav) {
             State._cache.favorites = favorites.filter(f => (f._id || f.id)?.toString() !== pIdStr);
@@ -1048,7 +1048,7 @@ const Actions = {
                 updateFavoritesGrid();
                 showToast('Failed to sync favorites');
             }
-        } catch (e) { 
+        } catch (e) {
             State._cache.favorites = favorites;
             btns.forEach(btn => {
                 const svg = btn.querySelector('svg');
@@ -1056,17 +1056,17 @@ const Actions = {
                 else { btn.style.color = 'var(--text-dim)'; btn.dataset.fav = 'false'; if (svg) svg.setAttribute('fill', 'none'); }
             });
             updateFavoritesGrid();
-            showToast('Connection error'); 
+            showToast('Connection error');
         }
     },
     checkout: () => {
         const basket = State.getBasket();
         if (basket.length === 0) return showToast('Basket is empty');
-        
+
         // Restore previous panel: Close the basket drawer when checkout starts
         const toggle = document.getElementById('nav-drawer-toggle');
         if (toggle) toggle.checked = false;
-        
+
         CheckoutManager.open(basket);
     }
 };
@@ -1106,10 +1106,10 @@ document.addEventListener('click', (e) => {
         console.log('Add to basket clicked', basketBtn.dataset.id);
         const id = basketBtn.dataset.id;
         if (!id) return showToast('Error: Product ID missing from button');
-        
+
         const products = State._cache.products || [];
         const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
-        
+
         if (product) {
             Actions.addToBasket(product);
         } else {
@@ -1190,7 +1190,7 @@ window.viewReceipt = viewReceipt;
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
-    
+
     // Initial fetch to populate grid
     refreshDashboardState();
 

@@ -290,7 +290,7 @@ const _updateUIInternal = debounce(() => {
                 const dateObj = new Date(order.date || order.createdAt);
                 const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
+
                 return `
                 <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
                     <td data-label="Order ID">
@@ -312,12 +312,13 @@ const _updateUIInternal = debounce(() => {
                 </tr>`;
             }).join('');
     }
+}
 
     const staffTable = document.getElementById('staff-table-body');
-    if (staffTable) {
-        staffTable.innerHTML = users.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No personnel found.</td></tr>'
-            : users.map(user => `
+if (staffTable) {
+    staffTable.innerHTML = users.length === 0
+        ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No personnel found.</td></tr>'
+        : users.map(user => `
                 <tr>
                     <td data-label="Username">${user.username}</td>
                     <td data-label="Email">${user.email}</td>
@@ -330,13 +331,13 @@ const _updateUIInternal = debounce(() => {
                         </div>
                     </td>
                 </tr>`).join('');
+}
     }
-
-    const historyTable = document.getElementById('admin-history-table-body');
-    if (historyTable) {
-        historyTable.innerHTML = historyOrders.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
-            : historyOrders.map(o => `
+const historyTable = document.getElementById('admin-history-table-body');
+if (historyTable) {
+    historyTable.innerHTML = historyOrders.length === 0
+        ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
+        : historyOrders.map(o => `
                 <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
                     <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
                     <td data-label="Client">${o.client}</td>
@@ -349,13 +350,13 @@ const _updateUIInternal = debounce(() => {
                         </div>
                     </td>
                 </tr>`).join('');
-    }
+}
 
-    // 4. Update Product Grid
-    const productGrid = document.getElementById('product-list-container');
-    if (productGrid) {
-        if (products.length === 0 && _syncCount > 0) {
-            productGrid.innerHTML = `
+// 4. Update Product Grid
+const productGrid = document.getElementById('product-list-container');
+if (productGrid) {
+    if (products.length === 0 && _syncCount > 0) {
+        productGrid.innerHTML = `
                 <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px;">
                     <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
@@ -379,8 +380,8 @@ const _updateUIInternal = debounce(() => {
                     </div>
                 </div>
             `;
-        } else {
-            productGrid.innerHTML = products.map(p => `
+    } else {
+        productGrid.innerHTML = products.map(p => `
                 <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">
                     <div style="width: 100%; height: 120px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
                     <div style="flex: 1; text-align: center;">
@@ -392,12 +393,12 @@ const _updateUIInternal = debounce(() => {
                         <button class="btn" onclick="deleteProduct('${p._id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
                     </div>
                 </div>`).join('');
-        }
     }
+}
 
-    updateAITip();
-    updatePaginationUI();
-    updateCharts();
+updateAITip();
+updatePaginationUI();
+updateCharts();
 }, 250);
 
 function updatePaginationUI() {
@@ -698,10 +699,10 @@ function updateAITip() {
 
     const orders = State._cache.orders || [];
     const products = State._cache.products || [];
-    
+
     const pendingOrders = orders.filter(o => o.status === 'In Queue' || o.status === 'In Production');
     const completedOrders = orders.filter(o => o.status === 'Completed' || o.status === 'Picked Up');
-    
+
     // 1. Determine Main Tip
     if (pendingOrders.length > 10) {
         tipEl.innerText = `Revenue Alert: High volume detected. ${pendingOrders.length} orders are currently generating value in the queue.`;

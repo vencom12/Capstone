@@ -18,7 +18,7 @@ async function apiFetch(url, options = {}) {
     };
 
     let response = await performFetch();
-    
+
     if (response.status === 401) {
         if (!url.includes('/logout')) {
             console.warn('Unauthorized access detected, redirecting to login...');
@@ -74,7 +74,7 @@ const AuthManager = {
         localStorage.removeItem(this.SESSION_KEY);
         sessionStorage.removeItem(this.SESSION_KEY);
         // Clear server session without waiting/looping
-        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
         window.location.href = 'index.html';
     },
     getSession() {
@@ -115,8 +115,8 @@ function updateUI() {
     // Apply Search Filtering/Sorting
     const orderSearch = document.getElementById('employee-orders-search')?.value.toLowerCase();
     if (orderSearch) {
-        orders = orders.filter(o => 
-            o.orderId.toLowerCase().includes(orderSearch) || 
+        orders = orders.filter(o =>
+            o.orderId.toLowerCase().includes(orderSearch) ||
             (o.client && o.client.toLowerCase().includes(orderSearch)) ||
             (o.status && o.status.toLowerCase().includes(orderSearch))
         ).sort((a, b) => {
@@ -128,8 +128,8 @@ function updateUI() {
 
     const productSearch = document.getElementById('employee-products-search')?.value.toLowerCase();
     if (productSearch) {
-        products = products.filter(p => 
-            p.name.toLowerCase().includes(productSearch) || 
+        products = products.filter(p =>
+            p.name.toLowerCase().includes(productSearch) ||
             p.tag.toLowerCase().includes(productSearch)
         ).sort((a, b) => {
             const aMatch = a.name.toLowerCase().startsWith(productSearch);
@@ -141,8 +141,8 @@ function updateUI() {
     const historySearch = document.getElementById('employee-history-search')?.value.toLowerCase();
     let historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
     if (historySearch) {
-        historyOrders = historyOrders.filter(o => 
-            o.orderId.toLowerCase().includes(historySearch) || 
+        historyOrders = historyOrders.filter(o =>
+            o.orderId.toLowerCase().includes(historySearch) ||
             (o.client && o.client.toLowerCase().includes(historySearch))
         ).sort((a, b) => {
             const aMatch = a.orderId.toLowerCase().startsWith(historySearch) || (a.client && a.client.toLowerCase().startsWith(historySearch));
@@ -285,7 +285,7 @@ function initSocket() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
-    
+
     // Search listeners
     ['employee-orders-search', 'employee-products-search', 'employee-history-search'].forEach(id => {
         const el = document.getElementById(id);
@@ -312,18 +312,18 @@ window.openCreateProduct = () => {
 window.openEditProduct = (id) => {
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
-    
+
     document.getElementById('product-name').value = p.name;
     document.getElementById('product-price').value = p.price;
     document.getElementById('product-tag').value = p.tag;
     document.getElementById('product-desc').value = p.description || '';
-    
+
     const form = document.getElementById('create-product-form');
     if (form) form.dataset.editId = id;
-    
+
     const titleEl = document.querySelector('#create-product-modal h2');
     if (titleEl) titleEl.innerText = 'Customize Design';
-    
+
     UI.toggleModal('create-product-modal');
 };
 
@@ -341,13 +341,13 @@ window.deleteProduct = async (id) => {
 window.openEditOrder = (id) => {
     const order = State._cache.orders.find(o => o._id === id);
     if (!order) return;
-    
+
     document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
     document.getElementById('edit-order-client').value = order.client || '';
     document.getElementById('edit-order-design').value = formatOrderDesign(order);
     document.getElementById('edit-order-status').value = order.status;
     document.getElementById('edit-order-progress').value = order.progress;
-    
+
     // Highlight active status button
     document.querySelectorAll('.status-btn').forEach(btn => {
         if (btn.dataset.value === order.status) btn.classList.add('btn-primary');
@@ -387,9 +387,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const progress = document.getElementById('edit-order-progress').value;
 
             updateSyncIndicator(true);
-            const res = await apiFetch(`${API_URL}/order-status/${id}`, { 
-                method: 'PATCH', 
-                body: JSON.stringify({ status, progress }) 
+            const res = await apiFetch(`${API_URL}/order-status/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status, progress })
             });
             updateSyncIndicator(false);
             if (res.ok) {
@@ -412,14 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('price', document.getElementById('product-price').value);
             formData.append('tag', document.getElementById('product-tag').value);
             formData.append('description', document.getElementById('product-desc').value);
-            
+
             const imgFile = document.getElementById('product-image-file').files[0];
             if (imgFile) formData.append('image', imgFile);
 
             updateSyncIndicator(true);
             const url = id ? `${API_URL}/products/${id}` : `${API_URL}/products`;
             const method = id ? 'PATCH' : 'POST';
-            
+
             const res = await apiFetch(url, {
                 method,
                 body: formData
