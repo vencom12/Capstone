@@ -31,10 +31,19 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 
-<body>
+    <!-- Mobile Sidebar Toggle -->
+    <input type="checkbox" id="sidebar-mobile-toggle" style="display: none;">
+    <label for="sidebar-mobile-toggle" class="sidebar-overlay"></label>
 
     <!-- Storefront Header -->
     <header class="storefront-header">
+        <label for="sidebar-mobile-toggle" class="hamburger-btn" style="margin-right: 15px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </label>
         <a href="index.html" class="header-brand"
             style="text-decoration: none; display: flex; align-items: center; gap: 12px;">
             <div
@@ -587,6 +596,15 @@
                     });
                 }
             </script>
+    <script>
+        // Auto-close sidebar drawer on mobile after clicking a link
+        document.querySelectorAll('.sidebar .nav-links label, .sidebar .nav-links a, .category-btn').forEach(item => {
+            item.addEventListener('click', () => {
+                const toggle = document.getElementById('sidebar-mobile-toggle');
+                if (toggle) toggle.checked = false;
+            });
+        });
+    </script>
 </body>
 
 </html>

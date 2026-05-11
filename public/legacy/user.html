@@ -50,6 +50,30 @@
     <input type="radio" name="nav-radio" id="nav-history">
     <input type="radio" name="nav-radio" id="nav-settings">
     <input type="checkbox" id="nav-drawer-toggle">
+    <!-- Mobile Sidebar Toggle -->
+    <input type="checkbox" id="sidebar-mobile-toggle" style="display: none;">
+    <label for="sidebar-mobile-toggle" class="sidebar-overlay"></label>
+
+    <!-- Mobile Top Header -->
+    <div class="mobile-top-bar">
+        <label for="sidebar-mobile-toggle" class="hamburger-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </label>
+        <div class="nav-logo" style="display: flex; align-items: center; gap: 10px;">
+            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+            </div>
+            <span style="font-weight: 800; font-size: 1.1rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Stitch-Opt</span>
+        </div>
+        <div style="width: 44px;"></div>
+    </div>
+
     <div class="dashboard-container">
         <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false"></div>
         <!-- Left Sidebar -->
@@ -608,6 +632,15 @@
             }
         }
         document.addEventListener('DOMContentLoaded', updateDiagnostics);
+    </script>
+    <script>
+        // Auto-close sidebar drawer on mobile after clicking a link
+        document.querySelectorAll('.sidebar .nav-links label, .sidebar .nav-links a, .category-btn').forEach(item => {
+            item.addEventListener('click', () => {
+                const toggle = document.getElementById('sidebar-mobile-toggle');
+                if (toggle) toggle.checked = false;
+            });
+        });
     </script>
 </body>
 
