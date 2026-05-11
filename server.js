@@ -262,6 +262,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/ai', aiRoutes);
 
+// --- Development Tools (Only in Dev) ---
+if (process.env.NODE_ENV === 'development') {
+    app.use('/api/dev', require('./development/dev_routes'));
+}
+
 // Versioned API v1
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/customer', customerRoutes);

@@ -69,6 +69,7 @@ exports.login = async (req, res) => {
         };
         
         // Multi-Token Strategy: Set both names to prevent session loss
+
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions); 
 

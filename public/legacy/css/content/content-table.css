@@ -29,7 +29,7 @@ table {
 th,
 td {
     min-width: 120px;
-    padding: 16px 24px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--border-glass);
 }
 
@@ -70,7 +70,7 @@ tbody tr:hover {
 }
 
 .table-header {
-    padding: 24px 30px;
+    padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -250,7 +250,7 @@ tbody tr:hover {
 
 th,
 td {
-    padding: 18px 30px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--border-glass);
     text-align: left;
     color: var(--text-main);
@@ -289,12 +289,12 @@ th:nth-child(2) {
 
 th:first-child,
 td:first-child {
-    padding-left: 30px;
+    padding-left: 24px;
 }
 
 th:last-child,
 td:last-child {
-    padding-right: 30px;
+    padding-right: 24px;
     text-align: right;
 }
 

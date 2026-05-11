@@ -39,7 +39,7 @@ main, .storefront-main, #admin-main-content {
 }
 
 .hero-section {
-    padding-top: calc(var(--header-height) + 5px); padding-bottom: 60px; text-align: center;
+    padding-top: calc(var(--header-height) + 15px); padding-bottom: 60px; text-align: center;
     background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05), transparent);
 }
 

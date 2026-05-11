@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const auth = (roles = []) => {
     return (req, res, next) => {
-        const token = req.cookies.token;
+        const token = req.cookies.admin_token || req.cookies.employee_token || req.cookies.customer_token || req.cookies.token;
         
         if (!token) {
             return res.status(401).json({ message: 'No token, authorization denied' });

@@ -48,7 +48,7 @@ main {
 
 @media (max-width: 650px) {
     .module-section {
-        padding: 10px; /* 10px border on both sides */
+        padding: 90px 20px 30px 20px; /* 90px top padding to clear fixed nav bar */
     }
 }
 

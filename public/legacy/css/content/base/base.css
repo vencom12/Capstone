@@ -84,7 +84,7 @@ input[name="nav-radio"],
 @media (max-width: 650px) {
     .dashboard-container, 
     .storefront-container {
-        padding-top: 70px; /* Offset for fixed top bar ONLY on phones */
+        padding-top: 0; /* Handled by module-sections */
     }
 }
 

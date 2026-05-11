@@ -718,18 +718,18 @@ function updateAITip() {
     // Revenue Projection
     const projectedRev = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
     insights.push(`
-        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
-            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Queued Revenue</p>
-            <p style="font-size: 0.85rem; color: #10b981; font-weight: 600;">$${projectedRev.toFixed(2)}</p>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Queued Revenue</p>
+            <p style="font-size: 0.85rem; color: #10b981; font-weight: 600; margin: 0;">$${projectedRev.toFixed(2)}</p>
         </div>
     `);
 
     // Total Completed Sales
     const totalSales = completedOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
     insights.push(`
-        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
-            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Realized Revenue</p>
-            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">$${totalSales.toFixed(2)}</p>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Realized Revenue</p>
+            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin: 0;">$${totalSales.toFixed(2)}</p>
         </div>
     `);
 
@@ -737,18 +737,18 @@ function updateAITip() {
     if (products.length > 0) {
         const topProduct = products[0];
         insights.push(`
-            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Top Catalog Design</p>
-                <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">${topProduct.name}</p>
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Top Catalog Design</p>
+                <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; margin: 0;">${topProduct.name}</p>
             </div>
         `);
     }
 
     // Active Velocity
     insights.push(`
-        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
-            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Order Velocity</p>
-            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">${pendingOrders.length} Active</p>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Order Velocity</p>
+            <p style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin: 0;">${pendingOrders.length} Active</p>
         </div>
     `);
 
