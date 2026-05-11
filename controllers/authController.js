@@ -64,12 +64,15 @@ exports.login = async (req, res) => {
         const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production', 
-            sameSite: 'Lax',
-            maxAge: (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000
+            sameSite: 'Lax'
         };
+
+        // Only set maxAge if rememberMe is checked, otherwise it's a session cookie
+        if (rememberMe) {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        }
         
         // Multi-Token Strategy: Set both names to prevent session loss
-
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions); 
 
@@ -83,13 +86,14 @@ exports.logout = (req, res) => {
     const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax'
+        sameSite: 'Lax',
+        path: '/' // Ensure path matches for reliable clearing
     };
     // Clear all possible portal tokens
     res.clearCookie('admin_token', cookieOptions);
     res.clearCookie('employee_token', cookieOptions);
     res.clearCookie('customer_token', cookieOptions);
-    res.clearCookie('token', cookieOptions); // Legacy cleanup
+    res.clearCookie('token', cookieOptions); 
     
     res.json({ message: 'Logged out successfully' });
 };
@@ -129,8 +133,8 @@ exports.updateProfile = async (req, res) => {
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
-            maxAge: 24 * 60 * 60 * 1000
+            sameSite: 'Lax',
+            path: '/'
         });
 
         res.json({ user: { id: user._id, username: user.username, role: user.role, email: user.email } });

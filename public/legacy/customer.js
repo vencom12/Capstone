@@ -239,13 +239,21 @@ const State = {
     },
     async getDashboardState() {
         if (this._syncPromise) return this._syncPromise;
-
         this._syncPromise = (async () => {
             console.log('[State] Fetching state...');
             try {
                 const response = await apiFetch(`${API_URL}/dashboard-state`);
                 if (response && response.ok) {
                     const data = await response.json();
+                    
+                    // --- SELF-HEALING: Detect Zombie Sessions ---
+                    // If server returns personalized data but client thinks it's a guest, clear cookies
+                    if (data.favorites && data.favorites.length > 0 && !AuthManager.isAuthenticated()) {
+                        console.warn('[SECURITY] Mismatched session detected. Clearing zombie cookies...');
+                        await AuthManager.logout(); // This clears cookies and redirects
+                        return;
+                    }
+
                     this._cache = { ...this._cache, ...data };
                     return data;
                 }
