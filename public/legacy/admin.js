@@ -515,13 +515,63 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- Analytics & Charts ---
 let charts = {};
+function getChartOptions(type = 'line') {
+    const isMobile = window.innerWidth < 600;
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: isMobile ? 'bottom' : 'top',
+                labels: {
+                    color: '#94a3b8',
+                    font: {
+                        size: isMobile ? 10 : 12,
+                        family: "'Outfit', sans-serif"
+                    },
+                    padding: isMobile ? 10 : 20,
+                    usePointStyle: true
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 13 },
+                padding: 12,
+                cornerRadius: 10,
+                displayColors: true
+            }
+        },
+        scales: type === 'doughnut' ? {} : {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    color: '#94a3b8',
+                    font: { size: isMobile ? 9 : 11 },
+                    maxRotation: isMobile ? 45 : 0,
+                    autoSkip: true,
+                    maxTicksLimit: isMobile ? 6 : 12
+                }
+            },
+            y: {
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: {
+                    color: '#94a3b8',
+                    font: { size: isMobile ? 9 : 11 },
+                    beginAtZero: true
+                }
+            }
+        }
+    };
+}
+
 function initCharts() {
     if (typeof Chart === 'undefined') {
         console.warn('Chart.js not loaded yet. Skipping chart initialization.');
         return;
     }
 
-    // Destroy existing charts to prevent "Canvas already in use" error
     Object.values(charts).forEach(chart => {
         if (chart && typeof chart.destroy === 'function') chart.destroy();
     });
@@ -531,42 +581,51 @@ function initCharts() {
     if (ctxTrends) {
         charts.trends = new Chart(ctxTrends, {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: '#6366f1', tension: 0.4 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: '#6366f1', borderWidth: 3, tension: 0.4, fill: true, backgroundColor: 'rgba(99, 102, 241, 0.1)' }] },
+            options: getChartOptions('line')
         });
     }
+
     const ctxDist = document.getElementById('statusDistChart')?.getContext('2d');
     if (ctxDist) {
         charts.dist = new Chart(ctxDist, {
             type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'], borderWidth: 0 }] },
+            options: getChartOptions('doughnut')
         });
     }
+
     const ctxTopOrdered = document.getElementById('topOrderedChart')?.getContext('2d');
     if (ctxTopOrdered) {
         charts.topOrdered = new Chart(ctxTopOrdered, {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Orders', data: [], backgroundColor: '#10b981' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: [], datasets: [{ label: 'Orders', data: [], backgroundColor: '#10b981', borderRadius: 6 }] },
+            options: getChartOptions('bar')
         });
     }
+
     const ctxTopLiked = document.getElementById('topLikedChart')?.getContext('2d');
     if (ctxTopLiked) {
         charts.topLiked = new Chart(ctxTopLiked, {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Likes', data: [], backgroundColor: '#f59e0b' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: [], datasets: [{ label: 'Likes', data: [], backgroundColor: '#f59e0b', borderRadius: 6 }] },
+            options: getChartOptions('bar')
         });
     }
+
     const ctxTraffic = document.getElementById('trafficChart')?.getContext('2d');
     if (ctxTraffic) {
         charts.traffic = new Chart(ctxTraffic, {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'Visits', data: [], borderColor: '#8b5cf6', tension: 0.4, fill: true, backgroundColor: 'rgba(139, 92, 246, 0.1)' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: [], datasets: [{ label: 'Visits', data: [], borderColor: '#8b5cf6', borderWidth: 3, tension: 0.4, fill: true, backgroundColor: 'rgba(139, 92, 246, 0.1)' }] },
+            options: getChartOptions('line')
         });
     }
+
+    // Handle Resize
+    window.addEventListener('resize', debounce(() => {
+        initCharts(); // Re-init with new options on resize
+    }, 500));
 }
 
 async function updateCharts() {

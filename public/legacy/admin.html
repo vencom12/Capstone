@@ -240,6 +240,7 @@
 
                 function updateThemeIcon(theme) {
                     const icon = document.getElementById('theme-icon');
+                    if (!icon) return;
                     if (theme === 'light') {
                         icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
                     } else {
@@ -252,10 +253,15 @@
                 document.documentElement.setAttribute('data-theme', savedTheme);
                 updateThemeIcon(savedTheme);
             </script>
+            <div class="sidebar-profile">
+                <div class="profile-avatar">AD</div>
+                <div class="profile-info">
+                    <span class="profile-name">Administrator</span>
+                    <span class="profile-role">System Admin</span>
+                </div>
+            </div>
 
-
-
-            <div class="logout-container" style="margin-top: 10px; padding-bottom: 15px;">
+            <div class="logout-container">
                 <a href="#" class="logout-btn" style="color: var(--accent);" onclick="AuthManager.logout()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
@@ -271,7 +277,7 @@
         <main id="admin-main-content">
             <!-- Section: Overview -->
             <section id="section-overview" class="module-section active">
-                <div style="margin-top: 40px;">
+                <div>
                     <!-- AI-Driven Production Optimizer -->
                     <div id="ai-production-advice" class="glass"
                         style="margin-bottom: 24px; padding: 24px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 8px;">
@@ -418,7 +424,8 @@
                 <div class="table-container glass">
                     <div class="table-header">
                         <h3>Active Personnel</h3>
-                        <input type="text" id="admin-staff-search" class="glass" placeholder="Search staff...">
+                        <input type="text" id="admin-staff-search" class="glass" placeholder="Search staff..."
+                            style="padding: 10px 20px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none;">
                     </div>
                     <table>
                         <thead>
@@ -536,8 +543,10 @@
             <!-- Section: Settings -->
             <section id="section-settings" class="module-section">
                 <header class="section-header-top">
-                    <h1>System Settings</h1>
-                    <p style="color: var(--text-dim);">Global configuration and interface preferences.</p>
+                    <div>
+                        <h1>System Settings</h1>
+                        <p style="color: var(--text-dim);">Global configuration and interface preferences.</p>
+                    </div>
                 </header>
                 
                 <div class="glass" style="padding: 32px; max-width: 600px;">

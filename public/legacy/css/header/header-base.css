@@ -40,12 +40,13 @@
     }
     .header-search {
         order: 3;
-        width: calc(50% - 4px) !important;
+        width: 100% !important;
         flex: none !important;
         margin: 5px 0 0 0 !important;
         max-width: none !important;
         position: relative;
     }
+
     .header-search input {
         padding: 10px 16px !important;
         padding-right: 40px !important;
@@ -67,6 +68,12 @@
     .header-actions .header-btn svg {
         width: 14px !important;
         height: 14px !important;
+    }
+}
+
+@media (max-width: 850px) {
+    .header-search {
+        width: calc(50% - 4px) !important;
     }
 }
 

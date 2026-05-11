@@ -79,7 +79,7 @@ tbody tr:hover {
     gap: 20px;
 }
 
-.analytics-grid > div {
+.analytics-grid>div {
     max-width: 300px;
     width: 100%;
 }
@@ -123,6 +123,7 @@ tbody tr:hover {
 }
 
 @media (max-width: 1100px) {
+
     /* Hide headers */
     .table-container thead {
         display: none;
@@ -136,7 +137,8 @@ tbody tr:hover {
 
     .table-container tbody {
         display: grid;
-        grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
+        grid-template-columns: repeat(2, 1fr);
+        /* 2 columns on tablet */
         gap: 15px;
         width: 100%;
     }

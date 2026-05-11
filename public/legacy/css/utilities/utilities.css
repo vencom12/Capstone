@@ -143,6 +143,18 @@
     position: relative;
 }
 
+.storefront-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 100000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
 
 .product-image::after {
     content: 'STITCH PREVIEW';
@@ -444,9 +456,8 @@
 }
 
 
-.mobile-category-container {
+.mobile-category-dropdown {
     display: none;
-    margin-bottom: 20px;
 }
 
 
@@ -610,7 +621,7 @@
 
 
 @media (max-width: 1100px) {
-    #nav-drawer-toggle:checked ~ .storefront-overlay {
+    #nav-drawer-toggle:checked~.storefront-overlay {
         opacity: 1;
         visibility: visible;
     }
@@ -658,26 +669,22 @@
     background: transparent;
 }
 
-/* Tablet Storefront Sidebar */
-@media (max-width: 1100px) and (min-width: 651px) {
-    .storefront-sidebar {
-        width: 190px !important;
-        padding: 15px 10px !important;
-    }
-}
-
-/* Mobile Sidebar -> Dropbar Conversion */
-@media (max-width: 650px) {
-    .storefront-dashboard-layout {
-        flex-direction: column !important;
-        padding: 5px 15px !important;
-        margin-top: 105px !important; /* Shorter header with 2 rows */
-    }
-    
+/* Tablet Storefront Sidebar - Maintain as Icon Rail until 850px */
+@media (max-width: 850px) {
     .storefront-sidebar {
         display: none !important;
     }
-    
+}
+
+/* Mobile Sidebar -> Dropbar Conversion - Activates below 850px */
+@media (max-width: 850px) {
+    .storefront-dashboard-layout {
+        flex-direction: column !important;
+        padding: 5px 15px !important;
+        margin-top: 105px !important;
+    }
+
+
     .mobile-category-dropdown {
         display: block !important;
         width: calc(50% - 4px) !important;
@@ -688,7 +695,7 @@
         box-shadow: none !important;
         margin-top: 5px !important;
         z-index: 1000;
-        order: 3;
+        order: 4;
     }
 
     .glass-select-wrapper {
@@ -724,7 +731,7 @@
         pointer-events: none;
         color: var(--text-dim);
     }
-    
+
     .storefront-main {
         padding-top: 0 !important;
     }
@@ -838,6 +845,7 @@
 .status-badge.verified-pulse {
     animation: verifiedPulse 0.5s ease-out;
 }
+
 /* Toast Notifications */
 
 .toast {
@@ -858,6 +866,7 @@
     transform: translateY(0);
     opacity: 1;
 }
+
 /* Checkout Verification Badges */
 
 .status-badge {
@@ -981,20 +990,52 @@
 }
 
 
-.status-badge, .staff-role-badge {
-    display: inline-block; padding: 6px 14px; border-radius: 50px; font-size: 0.8rem; font-weight: 600;
-    background: rgba(255, 255, 255, 0.1); color: var(--text-main); border: 1px solid var(--border-glass); text-align: center;
+.status-badge,
+.staff-role-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    border: 1px solid var(--border-glass);
+    text-align: center;
 }
 
-.status-badge[data-status="Delivered"], .status-badge[data-status="Order Delivered"] { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+.status-badge[data-status="Delivered"],
+.status-badge[data-status="Order Delivered"] {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
 
-.status-badge[data-status="In Transit"] { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+.status-badge[data-status="In Transit"] {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
 
-.status-badge[data-status="Preparing Order"] { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+.status-badge[data-status="Preparing Order"] {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
 
-.status-badge[data-status="Ready For Pick Up"] { background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3); }
+.status-badge[data-status="Ready For Pick Up"] {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.3);
+}
 
-.staff-actions button { background: none; border: none; color: var(--primary); cursor: pointer; font-weight: 600; margin-left: 10px; }
+.staff-actions button {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-weight: 600;
+    margin-left: 10px;
+}
 
 /* Stats Grid & Cards handled above */
 
