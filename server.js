@@ -264,7 +264,11 @@ app.use('/api/ai', aiRoutes);
 
 // --- Development Tools (Only in Dev) ---
 if (process.env.NODE_ENV === 'development') {
-    app.use('/api/dev', require('./development/dev_routes'));
+    try {
+        app.use('/api/dev', require('./development/dev_routes'));
+    } catch (err) {
+        console.warn('[DEV] Development routes enabled but files missing. Skipping...');
+    }
 }
 
 // Versioned API v1
