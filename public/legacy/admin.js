@@ -312,7 +312,7 @@ const _updateUIInternal = debounce(() => {
                 </tr>`;
             }).join('');
     }
-}
+
 
     const staffTable = document.getElementById('staff-table-body');
 if (staffTable) {
@@ -332,7 +332,7 @@ if (staffTable) {
                     </td>
                 </tr>`).join('');
 }
-    }
+
 const historyTable = document.getElementById('admin-history-table-body');
 if (historyTable) {
     historyTable.innerHTML = historyOrders.length === 0
