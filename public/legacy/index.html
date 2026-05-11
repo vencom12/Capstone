@@ -280,6 +280,17 @@
                     </div>
                 </form>
             </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Quick View Modal -->
+    <div id="product-quickview-modal" class="modal-overlay" onclick="closeProductModal(event)">
+        <div class="modal glass product-modal-content">
+            <span class="close-modal" onclick="closeProductModal()">✕</span>
+            <div id="product-modal-body" class="product-modal-body">
+                <!-- Populated by JS -->
+            </div>
         </div>
     </div>
 
@@ -488,32 +499,45 @@
                     // STEP 1: Check Auth State for Header
                     const session = AuthManager.getSession();
                     if (session) {
-                        document.getElementById('guest-actions').style.display = 'none';
-                        document.getElementById('user-actions').style.display = 'flex';
-                        document.getElementById('header-user-name').innerText = session.user.username;
-                        const avatar = document.getElementById('header-user-avatar');
-                        if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
+                        const guestActions = document.getElementById('guest-actions');
+                        const userActions = document.getElementById('user-actions');
+                        if (guestActions) guestActions.style.display = 'none';
+                        if (userActions) {
+                            userActions.style.display = 'flex';
+                            document.getElementById('header-user-name').innerText = session.user.username;
+                            const avatar = document.getElementById('header-user-avatar');
+                            if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
+                        }
                     }
 
                     // STEP 2: LOAD PRODUCTS (TOP PRIORITY)
-                    document.getElementById('diag-api').innerText = 'Syncing...';
+                    const apiDiag = document.getElementById('diag-api');
+                    const atlasDiag = document.getElementById('diag-atlas');
+                    if (apiDiag) apiDiag.innerText = 'Syncing...';
+                    
                     try {
                         if (window.refreshDashboardState) {
                             const state = await window.refreshDashboardState();
-                            document.getElementById('diag-api').innerText = 'Connected';
-                            document.getElementById('diag-api').style.color = '#10b981';
+                            if (apiDiag) {
+                                apiDiag.innerText = 'Connected';
+                                apiDiag.style.color = '#10b981';
+                            }
 
                             if (state && state.products) {
-                                document.getElementById('diag-atlas').innerText = 'Live';
-                                document.getElementById('diag-atlas').style.color = '#10b981';
-                            } else {
-                                document.getElementById('diag-atlas').innerText = 'Empty';
+                                if (atlasDiag) {
+                                    atlasDiag.innerText = 'Live';
+                                    atlasDiag.style.color = '#10b981';
+                                }
+                            } else if (atlasDiag) {
+                                atlasDiag.innerText = 'Empty';
                             }
                             if (window.updateUI) window.updateUI();
                         }
                     } catch (e) {
-                        document.getElementById('diag-api').innerText = 'Offline';
-                        document.getElementById('diag-api').style.color = '#ef4444';
+                        if (apiDiag) {
+                            apiDiag.innerText = 'Offline';
+                            apiDiag.style.color = '#ef4444';
+                        }
                         console.error('[Storefront] Initialization error:', e);
                     }
 
@@ -533,10 +557,10 @@
                         State._cache.selectedCategory = category;
                         categoryLabels.forEach(l => {
                             const span = l.querySelector('span');
-                            if (span.innerText === category) {
+                            if (span && span.innerText === category) {
                                 span.style.color = 'var(--primary)';
                                 span.style.fontWeight = '600';
-                            } else {
+                            } else if (span) {
                                 span.style.color = 'var(--text-dim)';
                                 span.style.fontWeight = '400';
                             }
@@ -547,7 +571,8 @@
 
                     categoryLabels.forEach(label => {
                         label.addEventListener('click', () => {
-                            setCategory(label.querySelector('span').innerText);
+                            const span = label.querySelector('span');
+                            if (span) setCategory(span.innerText);
                         });
                     });
 
@@ -558,7 +583,7 @@
                     }
                 });
 
-                // Login Handler (Direct logic)
+                // Login Handler
                 const loginForm = document.getElementById('main-login-form');
                 if (loginForm) {
                     loginForm.addEventListener('submit', async function (e) {
@@ -569,7 +594,7 @@
                         const errorEl = document.getElementById('login-error');
                         const submitBtn = this.querySelector('button[type="submit"]');
 
-                        errorEl.style.display = 'none';
+                        if (errorEl) errorEl.style.display = 'none';
                         const originalBtnText = submitBtn.innerText;
                         submitBtn.innerText = 'Verifying...';
                         submitBtn.disabled = true;
@@ -579,17 +604,16 @@
                                 const result = await AuthManager.login(email, password, rememberMe, 'customer');
                                 if (result.success) {
                                     window.location.href = 'user.html';
-                                } else {
+                                } else if (errorEl) {
                                     errorEl.innerText = result.message || "Invalid credentials.";
                                     errorEl.style.display = 'block';
                                 }
-                            } else {
-                                errorEl.innerText = "System still initializing. Please wait 2 seconds and try again.";
-                                errorEl.style.display = 'block';
                             }
                         } catch (err) {
-                            errorEl.innerText = "Connection timeout. Please refresh.";
-                            errorEl.style.display = 'block';
+                            if (errorEl) {
+                                errorEl.innerText = "Connection error.";
+                                errorEl.style.display = 'block';
+                            }
                         } finally {
                             submitBtn.innerText = originalBtnText;
                             submitBtn.disabled = false;
@@ -606,6 +630,9 @@
             });
         });
     </script>
+</body>
+</html>
+t>
 </body>
 
 </html>

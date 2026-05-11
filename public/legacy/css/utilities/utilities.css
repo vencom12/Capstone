@@ -325,10 +325,14 @@ main,
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
-    display: flex;
+    display: none; /* Hidden by default */
     align-items: center;
     justify-content: center;
     z-index: 99999;
+}
+
+.modal-overlay.active {
+    display: flex; /* Visible when active */
 }
 
 
