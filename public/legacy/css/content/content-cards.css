@@ -7,28 +7,8 @@
     width: 100%;
 }
 
-/* --- DESKTOP (4 Columns - Above 1151px) --- */
-@media (min-width: 1151px) {
-    .product-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
-    }
-}
 
-/* --- WIDE TABLET (3 Columns - 901px to 1150px) --- */
-@media (min-width: 901px) and (max-width: 1150px) {
-    .product-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 15px;
-    }
-}
 
-/* --- NARROW TABLET / MOBILE (2 Columns - Below 900px) --- */
-@media (max-width: 900px) {
-    .product-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px;
-    }
-}
 
 /* Intelligent Grid for Inventory/Stats */
 .product-grid#product-list-container,
@@ -38,23 +18,6 @@
 
 
 
-/* Stat Card Mobile Stacking */
-@media (max-width: 768px) {
-    .stat-card {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 12px !important;
-        padding: 20px !important;
-    }
-    .stat-card > div:last-child {
-        width: 100%;
-        display: flex;
-        gap: 10px;
-    }
-    .stat-card > div:last-child button {
-        flex: 1;
-    }
-}
 
 .product-card {
     background: var(--bg-card);
@@ -93,4 +56,12 @@
 .product-price {
     color: var(--primary);
     font-weight: 700;
+}
+
+/* Order Tracking Cards */
+.tracking-card {
+    padding: 16px 24px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
 }

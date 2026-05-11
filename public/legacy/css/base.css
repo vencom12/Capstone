@@ -105,6 +105,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-main); font-weight: 700; margin-botto
 p { margin-bottom: 1em; }
 a { color: inherit; text-decoration: none; transition: var(--transition-fast); }
 
+/* Navigation & Drawer Logic (Hidden State) */
+input[name="nav-radio"],
+#nav-drawer-toggle {
+    display: none !important;
+}
+
 /* Skeleton System */
 .skeleton {
     background: linear-gradient(90deg, var(--bg-surface) 25%, rgba(255,255,255,0.08) 50%, var(--bg-surface) 75%);

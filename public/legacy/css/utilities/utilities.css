@@ -1,4 +1,4 @@
-﻿/* Refactored from styles.css */
+/* Refactored from styles.css */
 
 [data-theme="light"] {
     --bg-dark: #f1f5f9;
@@ -79,13 +79,16 @@
 
 /* View Switching Logic */
 
-.nav-radio,
+input[name="nav-radio"],
 #nav-drawer-toggle {
     position: absolute;
     opacity: 0;
     pointer-events: none;
     width: 0;
     height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 

@@ -1,0 +1,122 @@
+/* 
+   responsive-mobile.css
+   Breakpoints: Below 650px
+   Handles the Top Navigation Bar transformation and compact layouts.
+*/
+
+@media (max-width: 650px) {
+    /* --- CRITICAL: Content Overlap Fix --- */
+    .module-section {
+        padding: 90px 20px 40px 20px !important; /* Forces content below the 70px top bar */
+    }
+
+    .dashboard-container,
+    .storefront-container {
+        padding-top: 0 !important; /* Move padding to module-section for better scrolling */
+    }
+
+    /* --- Sidebar to Top Bar Transformation --- */
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 70px !important;
+        flex-direction: row !important;
+        padding: 0 15px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: var(--bg-dark) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border-glass) !important;
+        border-radius: 0 !important;
+        z-index: 2000 !important;
+    }
+    
+    .sidebar .nav-links {
+        flex-direction: row !important;
+        width: auto !important;
+        flex: 1 !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .sidebar .nav-links li {
+        width: auto !important;
+        padding: 0 2px !important;
+    }
+
+    /* Compact Navigation Links */
+    .sidebar .nav-links label,
+    .sidebar .nav-links a {
+        padding: 8px !important;
+        gap: 0 !important;
+        justify-content: center !important;
+        min-width: 42px !important;
+        height: 42px !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px !important;
+    }
+
+    /* Hide Excess Elements on Mobile */
+    .sidebar-profile,
+    .sidebar-header .nav-logo-text,
+    .logout-container span,
+    .sidebar .nav-links label span,
+    .sidebar .nav-links a span,
+    .desktop-only {
+        display: none !important;
+    }
+
+    .sidebar-header {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .sidebar-header .nav-logo div {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 10px !important;
+    }
+
+    .logout-container {
+        margin: 0 !important;
+        padding: 0 0 0 10px !important;
+        width: auto !important;
+    }
+    
+    .logout-btn {
+        padding: 10px !important;
+    }
+
+    /* --- Mobile Grid Layouts --- */
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .analytics-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .analytics-grid > div > div {
+        aspect-ratio: 4 / 3 !important;
+        min-height: 250px !important;
+    }
+
+    /* --- High Density Elements --- */
+    .stat-card {
+        padding: 15px !important;
+        gap: 10px !important;
+    }
+
+    .tracking-card {
+        padding: 12px 16px !important;
+        margin-bottom: 12px !important;
+    }
+}

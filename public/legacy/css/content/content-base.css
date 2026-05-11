@@ -46,11 +46,6 @@ main {
     overflow-x: hidden;
 }
 
-@media (max-width: 650px) {
-    .module-section {
-        padding: 90px 20px 30px 20px; /* 90px top padding to clear fixed nav bar */
-    }
-}
 
 #nav-overview:checked~:is(.storefront-container, .dashboard-container) #section-overview,
 #nav-shop:checked~:is(.storefront-container, .dashboard-container) #section-shop,
@@ -100,30 +95,7 @@ main {
     margin-bottom: 30px;
 }
 
-/* --- MOBILE PHONE (Grid settings handled by content-cards.css) --- */
-@media (max-width: 650px) {
-    .module-section {
-        padding: 10px;
-    }
-}
 
-/* Stat Card Mobile Stacking (Only when constrained) */
-@media (max-width: 850px) {
-    .stat-card {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 12px !important;
-        padding: 20px !important;
-    }
-    .stat-card > div:last-child {
-        width: 100%;
-        display: flex;
-        gap: 10px;
-    }
-    .stat-card > div:last-child button {
-        flex: 1;
-    }
-}
 
 .analytics-grid {
     display: grid;
@@ -138,18 +110,6 @@ main {
     }
 }
 
-@media (max-width: 1100px) {
-    .analytics-grid {
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    }
-}
-
-@media (max-width: 768px) {
-    .analytics-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-}
 
 .analytics-grid > div {
     width: 100%;
@@ -170,12 +130,6 @@ main {
     aspect-ratio: 16 / 9; /* Default landscape ratio for trends */
 }
 
-@media (max-width: 600px) {
-    .analytics-grid > div > div {
-        aspect-ratio: 4 / 3; /* More vertical space for mobile labels */
-        min-height: 250px;
-    }
-}
 
 #nav-drawer-toggle:checked~:is(.storefront-container, .dashboard-container) .right-panel {
     transform: translateX(0);

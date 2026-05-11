@@ -469,7 +469,7 @@ const _updateUIInternal = debounce(() => {
             trackingList.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-dim);"><p>No active orders.</p></div>';
         } else {
             trackingList.innerHTML = orders.map(order => `
-                <div class="glass animate-fade" style="padding: 32px; margin-bottom: 24px;">
+                <div class="glass tracking-card animate-fade">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                         <div>
                             <h3 style="margin-bottom: 4px;">Order #${order.orderId}</h3>
