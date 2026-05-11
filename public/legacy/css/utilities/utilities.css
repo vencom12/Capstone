@@ -173,166 +173,6 @@
 }
 
 
-[data-theme="light"] {
-    --bg-dark: #f1f5f9;
-    --bg-gradient: radial-gradient(circle at top left, #e2e8f0, #f1f5f9);
-    --bg-card: rgba(255, 255, 255, 0.8);
-    --bg-sidebar: rgba(255, 255, 255, 0.6);
-    --bg-header: rgba(255, 255, 255, 0.4);
-    --bg-surface: rgba(0, 0, 0, 0.03);
-    --text-main: #0f172a;
-    --text-dim: #475569;
-    --border-glass: rgba(0, 0, 0, 0.1);
-    --glass-blur: blur(12px);
-}
-
-
-.animate-fade {
-    animation: fadeIn var(--transition-slow) forwards;
-}
-
-/* Navigation / Sidebar Layout */
-
-.logout-btn {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 8px 16px;
-    border-radius: 12px;
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-    transition: all var(--transition-fast);
-}
-
-
-.logout-btn:hover,
-
-.theme-toggle-nav:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
-    transform: translateX(5px);
-}
-
-
-.profile-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: white;
-}
-
-
-.profile-info {
-    display: flex;
-    flex-direction: column;
-}
-
-
-.profile-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-main);
-}
-
-
-.logout-container {
-    margin-top: 20px;
-}
-
-/* View Switching Logic */
-
-#nav-drawer-toggle {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-    width: 0;
-    height: 0;
-}
-
-/* Buttons */
-
-.btn {
-    padding: 10px 22px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-    font-weight: 600;
-    transition: var(--transition-fast);
-    text-decoration: none;
-    display: inline-block;
-}
-
-
-.btn-primary {
-    background: var(--primary);
-    color: white;
-}
-
-
-.btn-primary:hover {
-    background: #4f46e5;
-    box-shadow: 0 0 20px var(--primary-glow);
-}
-
-
-.btn-secondary {
-    color: var(--text-main);
-}
-
-
-#basket-count,
-
-#header-basket-count,
-
-#mobile-basket-count {
-    color: var(--text-main) !important;
-}
-
-
-.add-to-basket {
-    margin-top: auto;
-    width: 100%;
-}
-
-/* Product Grid Styles - Always 4 columns on Desktop */
-
-.product-image {
-    height: 180px;
-    background: rgba(255, 255, 255, 0.05);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-
-.product-image::after {
-    content: 'STITCH PREVIEW';
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    letter-spacing: 2px;
-    font-weight: 600;
-}
-
-
-.product-details {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
 
 .product-details h3 {
     font-size: 1.25rem;
@@ -788,31 +628,57 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-
-
-
 .status-badge {
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
-    font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    display: inline-block;
+    text-align: center;
 }
-
 
 .status-badge.pending {
-    background: rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.1);
     color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.3);
 }
-
 
 .status-badge.verified {
-    background: rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.1);
     color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
 }
 
+.status-badge[data-status="Delivered"],
+.status-badge[data-status="Order Delivered"] {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-badge[data-status="In Transit"] {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.status-badge[data-status="Preparing Order"] {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.status-badge[data-status="Ready For Pick Up"] {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.3);
+}
 
 .wallet-balance-card {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
@@ -822,25 +688,21 @@
     margin-bottom: 16px;
 }
 
-
 .top-up-input-group {
     display: flex;
     gap: 8px;
     margin-top: 10px;
 }
 
-
 .top-up-input-group input {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border-glass);
-    padding: 10px;
-    border-radius: 8px;
-    color: white;
-    font-weight: 600;
+    flex: 1 !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    color: white !important;
+    outline: none !important;
 }
-
-/* Animations for status changes */
 
 .status-badge.verified-pulse {
     animation: verifiedPulse 0.5s ease-out;
@@ -865,101 +727,6 @@
 .toast.show {
     transform: translateY(0);
     opacity: 1;
-}
-
-/* Checkout Verification Badges */
-
-.status-badge {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid transparent;
-}
-
-.status-badge.pending {
-    background: rgba(245, 158, 11, 0.2);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-
-.status-badge.verified {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-
-.wallet-balance-card {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-    border: 1px solid var(--border-glass);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
-
-.top-up-input-group {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-
-.top-up-input-group input {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border-glass);
-    padding: 10px;
-    border-radius: 8px;
-    color: white;
-    font-weight: 600;
-}
-
-
-
-
-.status-badge.pending {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-
-.status-badge.verified {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-}
-
-
-.wallet-balance-card {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-    border: 1px solid var(--border-glass);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
-
-.top-up-input-group {
-    display: flex;
-    gap: 8px;
-}
-
-
-.top-up-input-group input {
-    flex: 1 !important;
-    background: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid var(--border-glass) !important;
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
-    color: white !important;
-    outline: none !important;
 }
 
 /* Category Sidebar Styles */
@@ -989,8 +756,6 @@
     margin-bottom: 20px;
 }
 
-
-.status-badge,
 .staff-role-badge {
     display: inline-block;
     padding: 6px 14px;
@@ -1003,31 +768,6 @@
     text-align: center;
 }
 
-.status-badge[data-status="Delivered"],
-.status-badge[data-status="Order Delivered"] {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.status-badge[data-status="In Transit"] {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border-color: rgba(59, 130, 246, 0.3);
-}
-
-.status-badge[data-status="Preparing Order"] {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-.status-badge[data-status="Ready For Pick Up"] {
-    background: rgba(168, 85, 247, 0.15);
-    color: #c084fc;
-    border-color: rgba(168, 85, 247, 0.3);
-}
-
 .staff-actions button {
     background: none;
     border: none;
@@ -1036,9 +776,3 @@
     font-weight: 600;
     margin-left: 10px;
 }
-
-/* Stats Grid & Cards handled above */
-
-/* Section Headers & Analytics */
-
-/* Section Headers handled by content-base.css */
