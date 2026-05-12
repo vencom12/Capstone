@@ -294,6 +294,8 @@ function updateBasketUI() {
 
     if (headerBasketCount) headerBasketCount.innerText = count;
     if (mobileBasketCount) mobileBasketCount.innerText = count;
+    const sidebarBasketCount = document.getElementById('mobile-sidebar-basket-count');
+    if (sidebarBasketCount) sidebarBasketCount.innerText = count;
     const drawerBasketCount = document.getElementById('basket-count');
     if (drawerBasketCount) drawerBasketCount.innerText = `${count} Items`;
     if (basketTotal) basketTotal.innerText = `$${total.toFixed(2)}`;

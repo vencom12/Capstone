@@ -70,7 +70,7 @@
         </div>
 
         <div class="header-actions">
-            <button onclick="toggleTheme()" class="header-btn"
+            <button onclick="toggleTheme()" class="header-btn desktop-only"
                 style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                 <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -99,7 +99,7 @@
                 <a href="#" class="header-btn" onclick="AuthManager.logout()">Logout</a>
             </div>
 
-            <label for="nav-drawer-toggle" class="header-btn" style="position: relative; padding: 10px;">
+            <label for="nav-drawer-toggle" class="header-btn desktop-only" style="position: relative; padding: 10px;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="9" cy="21" r="1"></circle>
                     <circle cx="20" cy="21" r="1"></circle>
@@ -121,13 +121,15 @@
             }
 
             function updateThemeIcon(theme) {
-                const icon = document.getElementById('theme-icon');
-                if (!icon) return;
-                if (theme === 'light') {
-                    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-                } else {
-                    icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-                }
+                const icons = [document.getElementById('theme-icon'), document.getElementById('theme-icon-mobile')];
+                icons.forEach(icon => {
+                    if (!icon) return;
+                    if (theme === 'light') {
+                        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+                    } else {
+                        icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+                    }
+                });
             }
 
             // Initialize theme on load
@@ -158,6 +160,28 @@
 
         <!-- Left Sidebar (Hero & Categories) -->
         <aside class="sidebar storefront-sidebar glass">
+            <div class="mobile-only sidebar-actions" style="padding: 15px; border-bottom: 1px solid var(--border-glass); margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-dim);">Quick Actions</span>
+                    <button onclick="toggleTheme()" class="header-btn" style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass);">
+                        <svg id="theme-icon-mobile" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Icon will be cloned by script -->
+                        </svg>
+                    </button>
+                </div>
+                <label for="nav-drawer-toggle" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); color: var(--primary);">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span id="mobile-sidebar-basket-count" class="badge" style="position: absolute; top: -8px; right: -8px; background: var(--primary); font-size: 0.65rem; padding: 2px 5px; border-radius: 8px; color: white !important;">0</span>
+                    </div>
+                    <span>View Basket</span>
+                </label>
+            </div>
+
             <div class="sidebar-hero-content">
                 <h2
                     style="font-size: 2rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1; letter-spacing: -1px;">
