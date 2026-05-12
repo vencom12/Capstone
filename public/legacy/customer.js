@@ -946,40 +946,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const Actions = {
-    _loadedModals: new Set(),
-    async loadModal(modalId, templatePath) {
-        if (this._loadedModals.has(modalId)) return true;
-        try {
-            const response = await fetch(templatePath);
-            if (!response.ok) throw new Error(`Failed to load modal template: ${templatePath}`);
-            const html = await response.json().then(data => data.html).catch(() => response.text());
-            
-            // Create container if it doesn't exist
-            let container = document.getElementById('dynamic-modals-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'dynamic-modals-container';
-                document.body.appendChild(container);
-            }
-            
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = typeof html === 'string' ? html : html.html;
-            container.appendChild(tempDiv.firstElementChild);
-            
-            this._loadedModals.add(modalId);
-            return true;
-        } catch (error) {
-            console.error('Modal loading error:', error);
-            showToast('Error loading design details.');
-            return false;
-        }
-    },
     async openProductModal(productId) {
         const products = State._cache.products || [];
         const product = products.find(p => (p._id || p.id)?.toString() === productId.toString());
         if (!product) return showToast('Design not found.');
 
-        const success = await this.loadModal('product-detail-modal', 'modals/product-modal.html');
+        const success = await ModalManager.loadModal('product-detail-modal', 'modals/product-modal.html');
         if (!success) return;
 
         // Populate Modal
