@@ -128,7 +128,7 @@ main,
 
 .btn {
     padding: 10px 22px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: none;
     cursor: pointer;
     backdrop-filter: blur(4px);
@@ -230,7 +230,7 @@ main,
     flex-direction: column;
     gap: 2px;
     padding: 12px 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     background: var(--bg-card);
     border: 1px solid var(--border-glass);
     width: fit-content;
@@ -840,8 +840,8 @@ main,
     .nav-logo-text {
         display: none !important;
     }
-
     .module-section {
         padding-top: 30px !important;
     }
 }
+/* Dead AI code removed */

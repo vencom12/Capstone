@@ -111,8 +111,8 @@
         margin-top: 20px !important;
     }
 
-    .sidebar .nav-links label,
-    .sidebar .nav-links a {
+    .sidebar .nav-links label:not(.desktop-only),
+    .sidebar .nav-links a:not(.desktop-only) {
         padding: 12px 15px !important;
         border-radius: 12px !important;
         display: flex !important;
@@ -141,7 +141,8 @@
     #nav-workbench:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-workbench"],
     #nav-products:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-products"],
     #nav-support:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-support"],
-    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-staffing"] {
+    #nav-staffing:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-staffing"],
+    #nav-assistant:checked ~ :is(.dashboard-container, .storefront-container) .sidebar label[for="nav-assistant"] {
         background: var(--primary) !important;
         color: white !important;
         box-shadow: 0 4px 15px var(--primary-glow) !important;
@@ -176,8 +177,21 @@
         padding: 10px 0 !important;
     }
 
+    /* AI Mobile Optimization */
+    #ai-assistant-persistent {
+        width: calc(100% - 48px) !important;
+        right: 24px !important;
+        left: 24px !important;
+        height: 60vh !important;
+        bottom: 100px !important;
+    }
+
     /* Hide elements that don't belong on mobile */
     .desktop-only {
         display: none !important;
+    }
+
+    .mobile-only {
+        display: flex !important;
     }
 }

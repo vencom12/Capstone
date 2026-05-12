@@ -217,7 +217,7 @@ function updateUI() {
                 <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">
                     <div style="width: 100%; height: 120px; border-radius: 12px; background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
                     <div style="flex: 1; text-align: center;">
-                        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: white;">${p.name}</h4>
+                        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: var(--text-main);">${p.name}</h4>
                         <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                     </div>
                     <div style="display: flex; gap: 8px; width: 100%;">
