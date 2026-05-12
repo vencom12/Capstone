@@ -1,12 +1,27 @@
 <!-- auth-modal.html -->
+<style>
+    .auth-dialog.square {
+        border-radius: 4px !important;
+    }
+    .auth-dialog.square .input-group input,
+    .auth-dialog.square .input-group textarea,
+    .auth-dialog.square .btn {
+        border-radius: 4px !important;
+    }
+    .form-linear {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+</style>
 <div id="auth-overlay" class="auth-overlay">
-    <div class="auth-dialog glass">
+    <div class="auth-dialog glass square">
         <span class="close-auth" onclick="closeAuth()">✕</span>
         
         <!-- Login Section -->
         <div id="login-form-container">
             <h2 id="login-heading" style="margin-bottom: 24px; font-size: 1.8rem; font-weight: 700;">Secure Access</h2>
-            <form id="main-login-form">
+            <form id="main-login-form" class="form-linear">
                 <div class="input-group">
                     <label>Username / Email</label>
                     <input type="text" id="login-email" placeholder="e.g. user@stitchopt.com" required>
@@ -38,30 +53,26 @@
         <!-- Register Section -->
         <div id="register-form-container" style="display: none;">
             <h2 style="margin-bottom: 24px; font-size: 1.8rem; font-weight: 700;">Join Stitch-Opt</h2>
-            <form id="main-register-form">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="input-group">
-                        <label>Username</label>
-                        <input type="text" id="reg-username" placeholder="johndoe" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Email Address</label>
-                        <input type="email" id="reg-email" placeholder="john@example.com" required>
-                    </div>
+            <form id="main-register-form" class="form-linear">
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="reg-username" placeholder="johndoe" required>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="input-group">
-                        <label>Phone Number</label>
-                        <input type="tel" id="reg-phone" placeholder="+63..." required>
-                    </div>
-                    <div class="input-group">
-                        <label>Password</label>
-                        <input type="password" id="reg-password" placeholder="Min. 8 chars" required minlength="8">
-                    </div>
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="reg-email" placeholder="john@example.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="reg-phone" placeholder="+63..." required>
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" placeholder="Min. 8 chars" required minlength="8">
                 </div>
                 <div class="input-group">
                     <label>Full Address</label>
-                    <textarea id="reg-address" placeholder="123 Street, City, ZIP" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 12px; color: white; outline: none; min-height: 80px; resize: none;"></textarea>
+                    <textarea id="reg-address" placeholder="123 Street, City, ZIP" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 4px; color: white; outline: none; min-height: 80px; resize: none;"></textarea>
                 </div>
                 <div id="register-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
                 
