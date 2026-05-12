@@ -100,6 +100,19 @@ html, body {
 
 .animate-fade { animation: fadeIn var(--transition-slow) forwards; }
 
+/* --- Glassmorphism Utility --- */
+.glass {
+    background: var(--bg-card) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--border-glass) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="light"] .glass {
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1) !important;
+}
+
 /* --- Base Elements --- */
 h1, h2, h3, h4, h5, h6 { color: var(--text-main); font-weight: 700; margin-bottom: 0.5em; }
 p { margin-bottom: 1em; }

@@ -133,9 +133,11 @@
             }
 
             // Initialize theme on load
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeIcon(savedTheme);
+            document.addEventListener('DOMContentLoaded', () => {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                updateThemeIcon(savedTheme);
+            });
         </script>
         <!-- Mobile Category Dropdown (Moved into header) -->
         <div class="mobile-category-dropdown">
