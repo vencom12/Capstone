@@ -318,9 +318,24 @@
             <script src="customer.js"></script>
             <script>
                 // --- Storefront Specific Logic ---
-                async function openAuth(mode) {
+                async function openAuth(mode = 'login') {
                     await ModalManager.loadModal('auth-overlay', 'modals/auth-modal.html');
                     document.getElementById('auth-overlay').classList.add('active');
+                    toggleAuthMode(mode);
+                }
+
+                function toggleAuthMode(mode) {
+                    const loginContainer = document.getElementById('login-form-container');
+                    const registerContainer = document.getElementById('register-form-container');
+                    if (loginContainer && registerContainer) {
+                        if (mode === 'register') {
+                            loginContainer.style.display = 'none';
+                            registerContainer.style.display = 'block';
+                        } else {
+                            loginContainer.style.display = 'block';
+                            registerContainer.style.display = 'none';
+                        }
+                    }
                 }
 
                 function closeAuth() {
@@ -426,16 +441,16 @@
                     }
                 });
 
-                // Login Handler
-                const loginForm = document.getElementById('main-login-form');
-                if (loginForm) {
-                    loginForm.addEventListener('submit', async function (e) {
+                // Global Auth Form Handler (Event Delegation for Dynamic Modals)
+                document.addEventListener('submit', async function (e) {
+                    // Login Handler
+                    if (e.target.id === 'main-login-form') {
                         e.preventDefault();
                         const email = document.getElementById('login-email').value;
                         const password = document.getElementById('login-pass').value;
                         const rememberMe = document.getElementById('login-remember').checked;
                         const errorEl = document.getElementById('login-error');
-                        const submitBtn = this.querySelector('button[type="submit"]');
+                        const submitBtn = e.target.querySelector('button[type="submit"]');
 
                         if (errorEl) errorEl.style.display = 'none';
                         const originalBtnText = submitBtn.innerText;
@@ -461,8 +476,45 @@
                             submitBtn.innerText = originalBtnText;
                             submitBtn.disabled = false;
                         }
-                    });
-                }
+                    }
+
+                    // Registration Handler
+                    if (e.target.id === 'main-register-form') {
+                        e.preventDefault();
+                        const username = document.getElementById('reg-username').value;
+                        const email = document.getElementById('reg-email').value;
+                        const phone = document.getElementById('reg-phone').value;
+                        const password = document.getElementById('reg-password').value;
+                        const address = document.getElementById('reg-address').value;
+                        const errorEl = document.getElementById('register-error');
+                        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+                        if (errorEl) errorEl.style.display = 'none';
+                        const originalBtnText = submitBtn.innerText;
+                        submitBtn.innerText = 'Registering...';
+                        submitBtn.disabled = true;
+
+                        try {
+                            if (typeof AuthManager !== 'undefined') {
+                                const result = await AuthManager.register(username, email, password, 'customer', phone, address);
+                                if (result.success) {
+                                    window.location.href = 'user.html';
+                                } else if (errorEl) {
+                                    errorEl.innerText = result.message || "Registration failed.";
+                                    errorEl.style.display = 'block';
+                                }
+                            }
+                        } catch (err) {
+                            if (errorEl) {
+                                errorEl.innerText = "Connection error.";
+                                errorEl.style.display = 'block';
+                            }
+                        } finally {
+                            submitBtn.innerText = originalBtnText;
+                            submitBtn.disabled = false;
+                        }
+                    }
+                });
             </script>
     <script>
         // Auto-close sidebar drawer on mobile after clicking a link

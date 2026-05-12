@@ -32,19 +32,13 @@
     <style>
         :root {
             --primary: #6366f1;
-            --primary-light: #818cf8;
-            --accent: #a855f7;
-            --bg-deep: #0f1423;
-            --card-bg: #191f33;
-            --input-bg: #252d43;
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --border: rgba(255, 255, 255, 0.08);
-            --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --bg-deep: #0f172a;
+            --bg-gradient: radial-gradient(circle at top left, #1e1b4b, #0f172a);
         }
 
         body {
-            background: var(--bg-deep);
+            background: var(--bg-gradient);
             color: var(--text-main);
             margin: 0;
             display: flex;
@@ -52,37 +46,29 @@
             justify-content: center;
             min-height: 100vh;
             padding: 40px 20px;
-            /* Add padding for mobile/small screens */
         }
 
         .auth-card {
             width: 100%;
             max-width: 500px;
-            padding: 60px 40px;
-            text-align: center;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 40px;
+            padding: 40px;
+            background: var(--bg-card);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
             box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
             animation: fadeIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .brand-logo {
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             font-weight: 800;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             background: linear-gradient(to right, #818cf8, #c084fc);
             -webkit-background-clip: text;
             background-clip: text;
@@ -92,62 +78,50 @@
 
         .auth-subtitle {
             color: var(--text-dim);
-            font-size: 1rem;
-            margin-bottom: 40px;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
         }
 
         .input-group {
             text-align: left;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .input-group label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: var(--text-dim);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
         }
 
         .input-group input,
-        .input-group select {
+        .input-group textarea {
             width: 100%;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            padding: 18px 24px;
-            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            padding: 14px 18px;
+            border-radius: 12px;
             color: white;
             outline: none;
             font-size: 1rem;
-            transition: var(--transition);
+            transition: var(--transition-fast);
         }
 
+
+
         .input-group input:focus,
-        .input-group select:focus {
+        .input-group textarea:focus {
             border-color: var(--primary);
-            background: #2a3451;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .auth-btn {
             width: 100%;
-            padding: 18px;
+            padding: 14px;
             font-weight: 700;
-            font-size: 1.1rem;
-            background: var(--primary);
-            border-radius: 18px;
-            border: none;
-            color: white;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+            font-size: 1rem;
             margin-top: 12px;
-        }
-
-        .auth-btn:hover {
-            background: #4f46e5;
-            transform: translateY(-2px);
-            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
         }
 
         .error-message {
@@ -155,11 +129,7 @@
             font-size: 0.9rem;
             margin-bottom: 20px;
             display: none;
-        }
-
-        select option {
-            background: var(--card-bg);
-            color: white;
+            text-align: center;
         }
     </style>
 </head>
