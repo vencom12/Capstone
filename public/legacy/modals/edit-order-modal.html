@@ -1,0 +1,36 @@
+<!-- edit-order-modal.html -->
+<div id="edit-order-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="modal-content glass" style="width: 450px; padding: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h3 id="edit-order-modal-title">Edit Order</h3>
+            <span style="cursor: pointer; color: var(--text-dim);" onclick="UI.toggleModal('edit-order-modal')">✕</span>
+        </div>
+        <form id="edit-order-form" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="input-group" style="display: none;">
+                <label>Client</label>
+                <input type="text" id="edit-order-client" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+            </div>
+            <div class="input-group" style="display: none;">
+                <label>Design</label>
+                <input type="text" id="edit-order-design" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+            </div>
+            <div class="input-group">
+                <label>Status Requirement</label>
+                <input type="hidden" id="edit-order-status">
+                <div id="status-button-group" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                    <button type="button" class="status-btn btn" data-value="In Queue" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">In Queue</button>
+                    <button type="button" class="status-btn btn" data-value="Preparing Order" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Preparing Order</button>
+                    <button type="button" class="status-btn btn" data-value="In Transit" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">In Transit</button>
+                    <button type="button" class="status-btn btn" data-value="Ready For Pick Up" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Ready For Pick Up</button>
+                    <button type="button" class="status-btn btn" data-value="Order Delivered" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Order Delivered</button>
+                    <button type="button" class="status-btn btn" data-value="Order Canceled" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Order Canceled</button>
+                </div>
+            </div>
+            <div class="input-group" style="display: none;">
+                <label>Progress (%)</label>
+                <input type="number" id="edit-order-progress" min="0" max="100" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Save Process Updates</button>
+        </form>
+    </div>
+</div>

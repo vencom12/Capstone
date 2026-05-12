@@ -1,0 +1,38 @@
+<div id="product-detail-modal" class="modal-overlay" style="display: none;">
+    <div class="modal glass product-detail-modal-content animate-fade">
+        <button class="modal-close-btn" onclick="UI.toggleModal('product-detail-modal')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        
+        <div class="modal-body-grid">
+            <!-- Left: Image -->
+            <div class="modal-image-section">
+                <div class="modal-image-container">
+                    <img id="modal-product-image" src="" alt="Product Image">
+                </div>
+            </div>
+            
+            <!-- Right: Info -->
+            <div class="modal-info-section">
+                <span id="modal-product-tag" class="modal-product-tag">Category</span>
+                <h2 id="modal-product-name" class="modal-product-name">Product Name</h2>
+                <div id="modal-product-price" class="modal-product-price">$0.00</div>
+                <p id="modal-product-description" class="modal-product-description">
+                    Detailed product description goes here. This professional embroidery design is optimized for high-speed production.
+                </p>
+                
+                <div class="modal-actions">
+                    <button id="modal-add-btn" class="btn btn-primary" style="flex: 1; padding: 16px;">
+                        Add to Basket
+                    </button>
+                    <button class="btn btn-secondary" onclick="UI.toggleModal('product-detail-modal')" style="padding: 16px;">
+                        Keep Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

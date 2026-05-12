@@ -161,7 +161,8 @@ const AuthManager = {
         }
         return true;
     },
-    promptLogin() {
+    async promptLogin() {
+        await ModalManager.loadModal('auth-overlay', 'modals/auth-modal.html');
         const overlay = document.getElementById('auth-overlay');
         if (overlay) {
             overlay.classList.add('active');
@@ -564,6 +565,7 @@ function downloadReceipt(receiptId) {
 async function viewReceipt(transactionID) {
     if (!transactionID) return showToast('No transaction found');
 
+    await ModalManager.loadModal('receipt-modal', 'modals/receipt-modal.html');
     UI.toggleModal('receipt-modal');
     const content = document.getElementById('receipt-content');
     content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
@@ -648,6 +650,7 @@ const CheckoutManager = {
     isVerified: false,
 
     async open(basket) {
+        await ModalManager.loadModal('checkout-modal', 'modals/checkout-modal.html');
         this.currentBasket = basket;
         this.total = basket.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         this.selectedMethod = null;
@@ -943,6 +946,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const Actions = {
+    _loadedModals: new Set(),
+    async loadModal(modalId, templatePath) {
+        if (this._loadedModals.has(modalId)) return true;
+        try {
+            const response = await fetch(templatePath);
+            if (!response.ok) throw new Error(`Failed to load modal template: ${templatePath}`);
+            const html = await response.json().then(data => data.html).catch(() => response.text());
+            
+            // Create container if it doesn't exist
+            let container = document.getElementById('dynamic-modals-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'dynamic-modals-container';
+                document.body.appendChild(container);
+            }
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = typeof html === 'string' ? html : html.html;
+            container.appendChild(tempDiv.firstElementChild);
+            
+            this._loadedModals.add(modalId);
+            return true;
+        } catch (error) {
+            console.error('Modal loading error:', error);
+            showToast('Error loading design details.');
+            return false;
+        }
+    },
+    async openProductModal(productId) {
+        const products = State._cache.products || [];
+        const product = products.find(p => (p._id || p.id)?.toString() === productId.toString());
+        if (!product) return showToast('Design not found.');
+
+        const success = await this.loadModal('product-detail-modal', 'modals/product-modal.html');
+        if (!success) return;
+
+        // Populate Modal
+        document.getElementById('modal-product-image').src = product.imageUrl || '';
+        document.getElementById('modal-product-name').innerText = product.name || 'Unknown Design';
+        document.getElementById('modal-product-tag').innerText = product.tag || 'Design';
+        document.getElementById('modal-product-price').innerText = `$${parseFloat(product.price || 0).toFixed(2)}`;
+        document.getElementById('modal-product-description').innerText = product.description || 'Professional embroidery design optimized for high-speed production.';
+        
+        const addBtn = document.getElementById('modal-add-btn');
+        if (addBtn) {
+            addBtn.onclick = () => {
+                this.addToBasket(product);
+                UI.toggleModal('product-detail-modal');
+            };
+        }
+
+        UI.toggleModal('product-detail-modal');
+    },
+
     addToBasketById: (id) => {
         const products = State._cache.products || [];
         const product = products.find(p => (p._id || p.id)?.toString() === id.toString());
@@ -1142,6 +1199,14 @@ document.addEventListener('click', (e) => {
     }
 
 
+
+    // 2. Product Card (Modal Trigger)
+    const productCard = e.target.closest('.product-card');
+    if (productCard && !e.target.closest('.btn, .fav-toggle-btn')) {
+        e.preventDefault();
+        Actions.openProductModal(productCard.dataset.id);
+        return;
+    }
 
     // Receipt views
     const receiptBtn = e.target.closest('.view-receipt-btn');

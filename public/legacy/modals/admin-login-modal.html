@@ -1,0 +1,19 @@
+<!-- admin-login-modal.html -->
+<div id="module-login-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 9999; justify-content: center; align-items: center;">
+    <div class="glass" style="padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 20px;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+        </svg>
+        <h2 style="margin-bottom: 8px; font-size: 1.8rem;">Admin Console</h2>
+        <p style="color: var(--text-dim); margin-bottom: 30px;">Administrator credentials required</p>
+        <form id="admin-login-form">
+            <input type="text" id="admin-login-email" placeholder="Admin Email / Username" required style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
+            <input type="password" id="admin-login-pass" placeholder="Admin Password" required style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
+            <p id="admin-login-error" style="color: #ef4444; font-size: 0.9rem; display: none; margin-bottom: 20px; text-align: left;"></p>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem;">Authenticate</button>
+        </form>
+        <a href="index.html" style="display: block; margin-top: 25px; color: var(--text-dim); text-decoration: none; font-size: 0.85rem;">← Return to Storefront</a>
+    </div>
+</div>

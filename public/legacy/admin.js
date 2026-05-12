@@ -757,7 +757,8 @@ function updateAITip() {
 
 
 // --- Product & Staff Actions ---
-window.openCreateProduct = () => {
+window.openCreateProduct = async () => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
     const form = document.getElementById('create-product-form');
     if (form) {
         form.reset();
@@ -810,7 +811,8 @@ window.createProduct = async () => {
     }
 };
 
-window.editProduct = (id) => {
+window.editProduct = async (id) => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
 
@@ -897,7 +899,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- Order Actions ---
-window.openEditOrder = (id) => {
+window.openEditOrder = async (id) => {
+    await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
     const order = State._cache.orders.find(o => o._id === id);
     if (!order) return;
 
@@ -1042,6 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.viewReceipt = async (transactionID) => {
     if (!transactionID || transactionID === 'undefined') return showToast('No transaction found for this order');
 
+    await ModalManager.loadModal('receipt-modal', 'modals/receipt-modal.html');
     UI.toggleModal('receipt-modal');
     const content = document.getElementById('receipt-content');
     content.innerHTML = '<p style="text-align: center; padding: 20px;">Fetching receipt details...</p>';
@@ -1094,7 +1098,8 @@ window.viewReceipt = async (transactionID) => {
     }
 };
 
-window.openCreateStaff = () => {
+window.openCreateStaff = async () => {
+    await ModalManager.loadModal('staff-modal', 'modals/staff-modal.html');
     const form = document.getElementById('create-staff-form');
     if (form) {
         form.reset();
@@ -1107,7 +1112,8 @@ window.openCreateStaff = () => {
     UI.toggleModal('staff-modal');
 };
 
-window.openEditStaff = (id) => {
+window.openEditStaff = async (id) => {
+    await ModalManager.loadModal('staff-modal', 'modals/staff-modal.html');
     const user = State._cache.users.find(u => u._id === id);
     if (!user) return showToast('User not found');
 

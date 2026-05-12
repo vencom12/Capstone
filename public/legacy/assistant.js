@@ -10,7 +10,12 @@ const Assistant = {
     init() {
         const input = document.getElementById(this.EL.input);
         if (!input) return;
-        input.addEventListener('keypress', e => {
+        
+        // Remove existing listener if any to avoid duplicates
+        const newInput = input.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+        
+        newInput.addEventListener('keypress', e => {
             if (e.key === 'Enter' && input.value.trim()) {
                 const text = input.value.trim();
                 this.addMsg(text, 'user');
@@ -130,6 +135,21 @@ const Assistant = {
 };
 
 window.Assistant = Assistant;
+
+window.toggleAIAssistant = async (event) => {
+    if (event) event.preventDefault();
+    await ModalManager.loadModal('ai-float-window', 'modals/ai-assistant-modal.html');
+    const aiWindow = document.getElementById('ai-float-window');
+    if (aiWindow) {
+        const isHidden = aiWindow.classList.contains('ai-hidden');
+        if (isHidden) {
+            aiWindow.classList.remove('ai-hidden');
+            Assistant.init();
+        } else {
+            aiWindow.classList.add('ai-hidden');
+        }
+    }
+};
 if (!document.getElementById('ai-styles')) {
     const s = document.createElement('style');
     s.id = 'ai-styles';

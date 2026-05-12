@@ -30,14 +30,46 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icons/icon.ico">
+    <script src="js/modal-manager.js"></script>
     <script src="employee.js"></script>
     <script src="assistant.js"></script>
     <script>
         // Security Guard: Check access before page render
-        if (!window.AuthManager || !window.AuthManager.checkAccess('employee', false)) {
-            document.documentElement.classList.add('unauthorized-hide');
-            window.isUnauthorized = true;
-        }
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!window.AuthManager || !window.AuthManager.checkAccess('employee', false)) {
+                document.documentElement.classList.add('unauthorized-hide');
+                window.isUnauthorized = true;
+                
+                await ModalManager.loadModal('module-login-screen', 'modals/employee-login-modal.html');
+                const loginScreen = document.getElementById('module-login-screen');
+                if (loginScreen) {
+                    loginScreen.style.display = 'flex';
+                    
+                    const loginForm = document.getElementById('employee-login-form');
+                    if (loginForm) {
+                        loginForm.addEventListener('submit', async (e) => {
+                            e.preventDefault();
+                            const email = document.getElementById('employee-login-email').value;
+                            const pass = document.getElementById('employee-login-pass').value;
+                            const errEl = document.getElementById('employee-login-error');
+                            if (errEl) errEl.style.display = 'none';
+
+                            const res = await window.AuthManager.login(email, pass, false, 'employee');
+                            if (res.success && window.AuthManager.getUserRole() === 'employee') {
+                                window.location.reload();
+                            } else if (errEl) {
+                                errEl.innerText = res.success ? "Unauthorized: Employee privileges required." : res.message;
+                                errEl.style.display = 'block';
+                                if (res.success) {
+                                    localStorage.removeItem(window.AuthManager.SESSION_KEY);
+                                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => { });
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
     </script>
     <style>
         .unauthorized-hide .dashboard-container {
@@ -106,61 +138,6 @@
 </head>
 
 <body>
-    <!-- Standalone Employee Login Gateway -->
-    <div id="module-login-screen"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 9999; justify-content: center; align-items: center;">
-        <div class="glass"
-            style="padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 20px;">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-            <h2 style="margin-bottom: 8px; font-size: 1.8rem;">Staff Terminal</h2>
-            <p style="color: var(--text-dim); margin-bottom: 30px;">Employee identification required</p>
-            <form id="employee-login-form">
-                <input type="text" id="employee-login-email" placeholder="Staff ID / Email" required
-                    style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
-                <input type="password" id="employee-login-pass" placeholder="Passcode" required
-                    style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none;">
-                <p id="employee-login-error"
-                    style="color: #ef4444; font-size: 0.9rem; display: none; margin-bottom: 20px; text-align: left;">
-                </p>
-                <button type="submit" class="btn btn-primary"
-                    style="width: 100%; padding: 14px; font-size: 1rem;">Authenticate</button>
-            </form>
-            <a href="index.html"
-                style="display: block; margin-top: 25px; color: var(--text-dim); text-decoration: none; font-size: 0.85rem;">←
-                Return to Public Storefront</a>
-        </div>
-    </div>
-    <script>
-        if (window.isUnauthorized) {
-            document.getElementById('module-login-screen').style.display = 'flex';
-        }
-        document.getElementById('employee-login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('employee-login-email').value;
-            const pass = document.getElementById('employee-login-pass').value;
-            const errEl = document.getElementById('employee-login-error');
-            errEl.style.display = 'none';
-            const res = await window.AuthManager.login(email, pass, false, 'employee');
-            if (res.success && window.AuthManager.getUserRole() === 'employee') {
-                window.location.reload();
-            } else {
-                errEl.innerText = res.success ? "Unauthorized: Employee privileges required." : res.message;
-                errEl.style.display = 'block';
-                if (res.success) {
-                    // Manually clear session locally without redirecting immediately
-                    localStorage.removeItem(window.AuthManager.SESSION_KEY);
-                    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(e => { });
-                }
-            }
-        });
-    </script>
-
     <!-- View Navigation Radios -->
     <input type="radio" name="nav-radio" id="nav-workbench" checked>
     <input type="radio" name="nav-radio" id="nav-orders">
@@ -273,9 +250,7 @@
                     </label>
                 </li>
                 <li>
-                    <a href="#"
-                        onclick="event.preventDefault(); document.getElementById('ai-float-window').classList.toggle('ai-hidden');"
-                        style="color: var(--text-dim);">
+                    <a href="#" onclick="ModalManager.openModal('ai-assistant-modal')" style="color: var(--text-dim);">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" />
@@ -439,7 +414,7 @@
                     <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="employee-products-search" class="glass" placeholder="Search designs..."
                             style="padding: 8px 16px; border-radius: 20px; color: white; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.05); outline: none; font-size: 0.85rem; width: 200px;">
-                        <button class="btn btn-primary" onclick="openCreateProduct()">+ Create New Design</button>
+                        <button class="btn btn-primary" onclick="ModalManager.loadModal('create-product-modal', 'modals/create-product.html')">+ Create New Design</button>
                     </div>
                 </header>
 
@@ -537,15 +512,6 @@
         </main>
     </div>
 
-    <!-- Floating AI Chat Window -->
-    <div id="ai-float-window" class="ai-hidden"
-        style="position: fixed; bottom: 24px; left: 300px; width: 420px; height: 520px; background: rgba(15, 23, 42, 0.15); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(99,102,241,0.1); z-index: 9999; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-        <div
-            style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border-glass); background: rgba(99,102,241,0.05);">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
-                    <path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" />
-                    <circle cx="17" cy="7" r="5" />
                 </svg>
                 <span style="font-weight: 700; font-size: 1rem; color: white;">StitchMaster AI</span>
             </div>

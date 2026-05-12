@@ -298,7 +298,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- Actions ---
-window.openCreateProduct = () => {
+window.openCreateProduct = async () => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
     const form = document.getElementById('create-product-form');
     if (form) {
         form.reset();
@@ -309,7 +310,8 @@ window.openCreateProduct = () => {
     UI.toggleModal('create-product-modal');
 };
 
-window.openEditProduct = (id) => {
+window.openEditProduct = async (id) => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
     const p = State._cache.products.find(prod => prod._id === id);
     if (!p) return;
 
@@ -338,15 +340,25 @@ window.deleteProduct = async (id) => {
     }
 };
 
-window.openEditOrder = (id) => {
+window.openEditOrder = async (id) => {
+    await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
     const order = State._cache.orders.find(o => o._id === id);
     if (!order) return;
 
-    document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
-    document.getElementById('edit-order-client').value = order.client || '';
-    document.getElementById('edit-order-design').value = formatOrderDesign(order);
-    document.getElementById('edit-order-status').value = order.status;
-    document.getElementById('edit-order-progress').value = order.progress;
+    const titleEl = document.getElementById('edit-order-modal-title');
+    if (titleEl) titleEl.innerText = `Process Order #${order.orderId}`;
+    
+    const clientInput = document.getElementById('edit-order-client');
+    if (clientInput) clientInput.value = order.client || '';
+    
+    const designInput = document.getElementById('edit-order-design');
+    if (designInput) designInput.value = formatOrderDesign(order);
+    
+    const statusInput = document.getElementById('edit-order-status');
+    if (statusInput) statusInput.value = order.status;
+    
+    const progressInput = document.getElementById('edit-order-progress');
+    if (progressInput) progressInput.value = order.progress;
 
     // Highlight active status button
     document.querySelectorAll('.status-btn').forEach(btn => {
@@ -355,7 +367,7 @@ window.openEditOrder = (id) => {
     });
 
     const form = document.getElementById('edit-order-form');
-    form.dataset.orderId = id;
+    if (form) form.dataset.orderId = id;
     UI.toggleModal('edit-order-modal');
 };
 

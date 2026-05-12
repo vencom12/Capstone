@@ -1,0 +1,143 @@
+/* content-modals.css */
+
+.product-detail-modal-content {
+    max-width: 900px !important;
+    width: 95% !important;
+    padding: 0 !important;
+    overflow: hidden;
+    border-radius: var(--radius-xl) !important;
+    background: var(--bg-card) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--border-glass) !important;
+}
+
+.modal-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    min-height: 500px;
+}
+
+@media (max-width: 768px) {
+    .modal-body-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.modal-image-section {
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    position: relative;
+    border-right: 1px solid var(--border-glass);
+}
+
+@media (max-width: 768px) {
+    .modal-image-section {
+        border-right: none;
+        border-bottom: 1px solid var(--border-glass);
+        padding: 20px;
+    }
+}
+
+.modal-image-container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-glass);
+}
+
+.modal-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Uniform constraint */
+    transition: transform var(--transition-slow);
+}
+
+.modal-image-container:hover img {
+    transform: scale(1.05);
+}
+
+.modal-info-section {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+@media (max-width: 768px) {
+    .modal-info-section {
+        padding: 30px;
+    }
+}
+
+.modal-product-tag {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: fit-content;
+}
+
+.modal-product-name {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0;
+    background: linear-gradient(135deg, var(--text-main), var(--text-dim));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.modal-product-price {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.modal-product-description {
+    color: var(--text-dim);
+    line-height: 1.6;
+    font-size: 1rem;
+    flex-grow: 1;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-glass);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    z-index: 10;
+}
+
+.modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    transform: rotate(90deg);
+}

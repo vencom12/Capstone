@@ -1,0 +1,13 @@
+<!-- receipt-modal.html -->
+<div id="receipt-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200000; align-items: center; justify-content: center;">
+    <div class="modal-content glass receipt-modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h2 style="font-size: 1.5rem; color: white;">Transaction Receipt</h2>
+            <span style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem;" onclick="UI.toggleModal('receipt-modal')">✕</span>
+        </div>
+        <div id="receipt-content" style="color: var(--text-main);">
+            <p>Loading receipt details...</p>
+        </div>
+        <button class="btn btn-primary" onclick="UI.toggleModal('receipt-modal')" style="width: 100%; margin-top: 30px;">Close Receipt</button>
+    </div>
+</div>
