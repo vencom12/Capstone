@@ -259,7 +259,7 @@ const _updateUIInternal = debounce(() => {
 
     productGrids.forEach(grid => {
         // Only show skeletons if we have ZERO data AND we are currently syncing
-        if (products.length === 0 && _syncCount > 0) {
+        if (products.length === 0 && isSyncing()) {
             grid.innerHTML = `
                 <div class="skeleton-card animate-fade"><div class="skeleton-img skeleton"></div><div class="skeleton-tag skeleton"></div><div style="display:flex;justify-content:space-between;"><div class="skeleton-title skeleton"></div><div class="skeleton-price skeleton"></div></div><div class="skeleton-text skeleton"></div><div class="skeleton-button skeleton"></div></div>
                 <div class="skeleton-card animate-fade"><div class="skeleton-img skeleton"></div><div class="skeleton-tag skeleton"></div><div style="display:flex;justify-content:space-between;"><div class="skeleton-title skeleton"></div><div class="skeleton-price skeleton"></div></div><div class="skeleton-text skeleton"></div><div class="skeleton-button skeleton"></div></div>
@@ -345,7 +345,7 @@ const _updateUIInternal = debounce(() => {
     const trackingList = document.querySelector('#tracking-list-container');
     if (trackingList) {
         if (filteredOrders.length === 0) {
-            if (_syncCount > 0) {
+            if (isSyncing()) {
                 trackingList.innerHTML = Array(3).fill(0).map(() => `
                     <div class="glass tracking-card animate-fade" style="opacity: 0.6;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
@@ -413,7 +413,7 @@ const _updateUIInternal = debounce(() => {
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
         if (displayTransactions.length === 0) {
-            if (_syncCount > 0) {
+            if (isSyncing()) {
                 historyTable.innerHTML = Array(5).fill(0).map(() => `
                     <tr>
                         <td><div class="skeleton-row-cell skeleton"></div></td>

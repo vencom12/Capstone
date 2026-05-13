@@ -185,9 +185,13 @@ function debounce(func, wait) {
     };
 }
 
+const isSyncing = () => _syncCount > 0;
+
 // Export to window
 window.AuthManager = AuthManager;
 window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.updateSyncIndicator = updateSyncIndicator;
+window.isSyncing = isSyncing;
 window.debounce = debounce;
+

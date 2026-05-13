@@ -122,7 +122,7 @@ function updateUI() {
     if (tableBody) {
         const activeOrders = orders.filter(o => !['Order Delivered', 'Order Canceled'].includes(o.status));
         if (activeOrders.length === 0) {
-            if (_syncCount > 0) {
+            if (isSyncing()) {
                 tableBody.innerHTML = Array(5).fill(0).map(() => `
                     <tr>
                         <td><div class="skeleton-row-cell skeleton"></div></td>
@@ -180,7 +180,7 @@ function updateUI() {
     // 3. Inventory/Catalog
     const productList = document.getElementById('product-list-container');
     if (productList) {
-        if (products.length === 0 && _syncCount > 0) {
+        if (products.length === 0 && isSyncing()) {
             productList.innerHTML = Array(6).fill(0).map(() => `
                 <div class="skeleton-card">
                     <div class="skeleton-img skeleton"></div>

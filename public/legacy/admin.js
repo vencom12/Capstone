@@ -173,7 +173,7 @@ const _updateUIInternal = debounce(() => {
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
         if (orders.length === 0) {
-            if (_syncCount > 0) {
+            if (isSyncing()) {
                 // Render table skeletons
                 orderTable.innerHTML = Array(5).fill(0).map(() => `
                     <tr>
@@ -188,7 +188,7 @@ const _updateUIInternal = debounce(() => {
                 orderTable.innerHTML = `
                     <tr>
                         <td colspan="6">
-                            <div class="empty-state-container" style="padding: 60px 20px;">
+                            <div class="empty-state-container" style="padding: 40px 20px;">
                                 <div class="empty-state-visual">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
                                 </div>
@@ -253,7 +253,7 @@ if (historyTable) {
         historyTable.innerHTML = `
             <tr>
                 <td colspan="5">
-                    <div class="empty-state-container" style="padding: 60px 20px;">
+                    <div class="empty-state-container" style="padding: 40px 20px;">
                         <div class="empty-state-visual">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         </div>
@@ -282,7 +282,7 @@ if (historyTable) {
 // 4. Update Product Grid
 const productGrid = document.getElementById('product-list-container');
 if (productGrid) {
-    if (products.length === 0 && _syncCount > 0) {
+    if (products.length === 0 && isSyncing()) {
         productGrid.innerHTML = Array(6).fill(0).map(() => `
             <div class="skeleton-card">
                 <div class="skeleton-img skeleton"></div>
