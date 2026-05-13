@@ -474,12 +474,23 @@ const _updateUIInternal = debounce(() => {
     }
 
     // 3. Update Tracking
+    const trackingDateFilter = State._cache.trackingDateFilter;
+    let filteredOrders = orders;
+    if (trackingDateFilter) {
+        filteredOrders = orders.filter(order => {
+            const d = new Date(order.date || order.createdAt).toISOString().split('T')[0];
+            return d === trackingDateFilter;
+        });
+    }
+
     const trackingList = document.querySelector('#tracking-list-container');
     if (trackingList) {
-        if (orders.length === 0) {
-            trackingList.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-dim);"><p>No active orders.</p></div>';
+        if (filteredOrders.length === 0) {
+            trackingList.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--text-dim);">
+                <p>${trackingDateFilter ? 'No orders found on this date.' : 'No active orders.'}</p>
+            </div>`;
         } else {
-            trackingList.innerHTML = orders.map(order => `
+            trackingList.innerHTML = filteredOrders.map(order => `
                 <div class="glass tracking-card animate-fade">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                         <div>
@@ -557,6 +568,11 @@ const _updateUIInternal = debounce(() => {
 // Add date filter listener
 document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
     State._cache.historyDateFilter = e.target.value;
+    updateUI();
+});
+
+document.getElementById('tracking-date-filter')?.addEventListener('change', (e) => {
+    State._cache.trackingDateFilter = e.target.value;
     updateUI();
 });
 

@@ -824,24 +824,34 @@ main,
     border: 1px solid var(--border-glass);
     text-align: center;
 }
+}
 
-.staff-actions button {
-    background: none;
-    border: none;
-    color: var(--primary);
+/* Glass Date Picker Styles */
+.glass-date-picker {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 8px 12px;
+    border-radius: 12px;
+    color: var(--text-main);
+    outline: none;
+    font-size: 0.85rem;
     cursor: pointer;
-    font-weight: 600;
-    margin-left: 10px;
+    transition: all 0.3s ease;
 }
 
-/* --- Mobile UI Refinements --- */
-@media (max-width: 650px) {
-    /* Hide branding text beside logo on mobile */
-    .nav-logo-text {
-        display: none !important;
-    }
-    .module-section {
-        padding-top: 30px !important;
-    }
+.glass-date-picker:focus {
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 15px var(--primary-glow);
 }
+
+.glass-date-picker::-webkit-calendar-picker-indicator {
+    filter: invert(var(--theme-invert, 1));
+    cursor: pointer;
+}
+
+[data-theme="light"] .glass-date-picker::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+}
+
 /* Dead AI code removed */

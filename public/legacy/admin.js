@@ -218,12 +218,23 @@ const _updateUIInternal = debounce(() => {
 
     // Apply Search Filtering/Sorting
     const orderSearch = document.getElementById('admin-orders-search')?.value.toLowerCase();
-    if (orderSearch) {
-        orders = orders.filter(o =>
-            o.orderId.toLowerCase().includes(orderSearch) ||
-            (o.client && o.client.toLowerCase().includes(orderSearch)) ||
-            (o.status && o.status.toLowerCase().includes(orderSearch))
-        ).sort((a, b) => {
+    const orderDate = document.getElementById('admin-orders-date')?.value;
+    
+    if (orderSearch || orderDate) {
+        orders = orders.filter(o => {
+            const matchesSearch = !orderSearch || (
+                o.orderId.toLowerCase().includes(orderSearch) ||
+                (o.client && o.client.toLowerCase().includes(orderSearch)) ||
+                (o.status && o.status.toLowerCase().includes(orderSearch))
+            );
+            
+            const matchesDate = !orderDate || (
+                new Date(o.date || o.createdAt).toISOString().split('T')[0] === orderDate
+            );
+            
+            return matchesSearch && matchesDate;
+        }).sort((a, b) => {
+            if (!orderSearch) return 0;
             const aMatch = a.orderId.toLowerCase().startsWith(orderSearch) || (a.client && a.client.toLowerCase().startsWith(orderSearch));
             const bMatch = b.orderId.toLowerCase().startsWith(orderSearch) || (b.client && b.client.toLowerCase().startsWith(orderSearch));
             return bMatch - aMatch;
@@ -256,12 +267,24 @@ const _updateUIInternal = debounce(() => {
     }
 
     const historySearch = document.getElementById('admin-history-search')?.value.toLowerCase();
+    const historyDate = document.getElementById('admin-history-date')?.value;
+    
     let historyOrders = orders.filter(o => ['Order Delivered', 'Order Canceled', 'Completed'].includes(o.status));
-    if (historySearch) {
-        historyOrders = historyOrders.filter(o =>
-            o.orderId.toLowerCase().includes(historySearch) ||
-            (o.client && o.client.toLowerCase().includes(historySearch))
-        ).sort((a, b) => {
+    
+    if (historySearch || historyDate) {
+        historyOrders = historyOrders.filter(o => {
+            const matchesSearch = !historySearch || (
+                o.orderId.toLowerCase().includes(historySearch) ||
+                (o.client && o.client.toLowerCase().includes(historySearch))
+            );
+            
+            const matchesDate = !historyDate || (
+                new Date(o.date || o.createdAt).toISOString().split('T')[0] === historyDate
+            );
+            
+            return matchesSearch && matchesDate;
+        }).sort((a, b) => {
+            if (!historySearch) return 0;
             const aMatch = a.orderId.toLowerCase().startsWith(historySearch) || (a.client && a.client.toLowerCase().startsWith(historySearch));
             const bMatch = b.orderId.toLowerCase().startsWith(historySearch) || (b.client && b.client.toLowerCase().startsWith(historySearch));
             return bMatch - aMatch;
@@ -1141,6 +1164,13 @@ window.State = State;
 window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.refreshDashboardState = refreshDashboardState;
+
+// Date Picker Listeners
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'admin-orders-date' || e.target.id === 'admin-history-date') {
+        updateUI();
+    }
+});
 
 
 
