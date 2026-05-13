@@ -486,9 +486,25 @@ const _updateUIInternal = debounce(() => {
     const trackingList = document.querySelector('#tracking-list-container');
     if (trackingList) {
         if (filteredOrders.length === 0) {
-            trackingList.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--text-dim);">
-                <p>${trackingDateFilter ? 'No orders found on this date.' : 'No active orders.'}</p>
-            </div>`;
+            if (_syncCount > 0) {
+                trackingList.innerHTML = Array(3).fill(0).map(() => `
+                    <div class="glass tracking-card animate-fade" style="opacity: 0.6;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                            <div style="width: 100%;">
+                                <div class="skeleton-title skeleton" style="width: 40%;"></div>
+                                <div class="skeleton-text skeleton" style="width: 60%;"></div>
+                            </div>
+                            <div class="skeleton" style="width: 80px; height: 24px; border-radius: 20px;"></div>
+                        </div>
+                        <div class="skeleton" style="width: 100%; height: 8px; border-radius: 4px; margin-bottom: 12px;"></div>
+                        <div class="skeleton" style="width: 40px; height: 14px; float: right;"></div>
+                    </div>
+                `).join('');
+            } else {
+                trackingList.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--text-dim);">
+                    <p>${trackingDateFilter ? 'No orders found on this date.' : 'No active orders.'}</p>
+                </div>`;
+            }
         } else {
             trackingList.innerHTML = filteredOrders.map(order => `
                 <div class="glass tracking-card animate-fade">
@@ -523,11 +539,23 @@ const _updateUIInternal = debounce(() => {
 
     const historyTable = document.querySelector('#transaction-table-body');
     if (historyTable) {
-        historyTable.innerHTML = displayTransactions.length === 0
-            ? `<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">
-                ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
-               </td></tr>`
-            : displayTransactions.map(tx => {
+        if (displayTransactions.length === 0) {
+            if (_syncCount > 0) {
+                historyTable.innerHTML = Array(5).fill(0).map(() => `
+                    <tr>
+                        <td><div class="skeleton-row-cell skeleton"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 150px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 60px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 100px;"></div></td>
+                    </tr>
+                `).join('');
+            } else {
+                historyTable.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">
+                    ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
+                </td></tr>`;
+            }
+        } else {
+            historyTable.innerHTML = displayTransactions.map(tx => {
                 const receipt = (State._cache.receipts || []).find(r => r.transactionID === tx.transactionID || r.orderID === tx.orderID);
                 const order = (orders || []).find(o => o.orderId === tx.orderID || o._id === tx.orderID);
                 let description = tx.orderID ? (tx.orderID.startsWith('ORD-') ? 'Order Purchase' : 'Wallet Top-up') : 'N/A';

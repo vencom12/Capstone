@@ -187,9 +187,22 @@ function updateUI() {
     const tableBody = document.getElementById('employee-order-table-body');
     if (tableBody) {
         const activeOrders = orders.filter(o => !['Order Delivered', 'Order Canceled'].includes(o.status));
-        tableBody.innerHTML = activeOrders.length === 0
-            ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>'
-            : activeOrders.map(order => {
+        if (activeOrders.length === 0) {
+            if (_syncCount > 0) {
+                tableBody.innerHTML = Array(5).fill(0).map(() => `
+                    <tr>
+                        <td><div class="skeleton-row-cell skeleton"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 120px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 150px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 60px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 100px;"></div></td>
+                    </tr>
+                `).join('');
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>';
+            }
+        } else {
+            tableBody.innerHTML = activeOrders.map(order => {
                 const dateObj = new Date(order.date || order.createdAt);
                 const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -222,19 +235,16 @@ function updateUI() {
     const productList = document.getElementById('product-list-container');
     if (productList) {
         if (products.length === 0 && _syncCount > 0) {
-            productList.innerHTML = `
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px;">
-                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                        <div class="skeleton" style="width: 120px; height: 18px;"></div>
-                        <div class="skeleton" style="width: 90px; height: 14px;"></div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                    </div>
+            productList.innerHTML = Array(6).fill(0).map(() => `
+                <div class="skeleton-card">
+                    <div class="skeleton-img skeleton"></div>
+                    <div class="skeleton-title skeleton"></div>
+                    <div class="skeleton-text skeleton"></div>
+                    <div class="skeleton-button skeleton"></div>
                 </div>
-            `;
+            `).join('');
+        } else if (products.length === 0) {
+            productList.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim);">No designs found.</div>';
         } else {
             productList.innerHTML = products.map(p => `
                 <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">

@@ -307,9 +307,23 @@ const _updateUIInternal = debounce(() => {
 
     const orderTable = document.getElementById('admin-order-table-body');
     if (orderTable) {
-        orderTable.innerHTML = orders.length === 0
-            ? '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>'
-            : orders.map(order => {
+        if (orders.length === 0) {
+            if (_syncCount > 0) {
+                // Render table skeletons
+                orderTable.innerHTML = Array(5).fill(0).map(() => `
+                    <tr>
+                        <td><div class="skeleton-row-cell skeleton"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 120px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 150px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 60px;"></div></td>
+                        <td><div class="skeleton-row-cell skeleton" style="width: 100px;"></div></td>
+                    </tr>
+                `).join('');
+            } else {
+                orderTable.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>';
+            }
+        } else {
+            orderTable.innerHTML = orders.map(order => {
                 const dateObj = new Date(order.date || order.createdAt);
                 const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -334,6 +348,7 @@ const _updateUIInternal = debounce(() => {
                     </td>
                 </tr>`;
             }).join('');
+        }
     }
 
 
@@ -379,30 +394,14 @@ if (historyTable) {
 const productGrid = document.getElementById('product-list-container');
 if (productGrid) {
     if (products.length === 0 && _syncCount > 0) {
-        productGrid.innerHTML = `
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px;">
-                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                        <div class="skeleton" style="width: 140px; height: 18px;"></div>
-                        <div class="skeleton" style="width: 80px; height: 14px;"></div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                    </div>
-                </div>
-                <div class="stat-card glass animate-fade" style="display: flex; align-items: center; gap: 15px; padding: 12px; height: 86px; opacity: 0.6;">
-                    <div class="skeleton" style="width: 60px; height: 60px; border-radius: 10px;"></div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                        <div class="skeleton" style="width: 140px; height: 18px;"></div>
-                        <div class="skeleton" style="width: 80px; height: 14px;"></div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                        <div class="skeleton" style="width: 70px; height: 35px; border-radius: 8px;"></div>
-                    </div>
-                </div>
-            `;
+        productGrid.innerHTML = Array(6).fill(0).map(() => `
+            <div class="skeleton-card">
+                <div class="skeleton-img skeleton"></div>
+                <div class="skeleton-title skeleton"></div>
+                <div class="skeleton-text skeleton"></div>
+                <div class="skeleton-button skeleton"></div>
+            </div>
+        `).join('');
     } else {
         productGrid.innerHTML = products.map(p => `
                 <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">
