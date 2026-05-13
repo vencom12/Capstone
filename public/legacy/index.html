@@ -327,6 +327,10 @@
                     });
                 }
 
+                function closeAuth() {
+                    ModalManager.close('AUTH');
+                }
+
                 function toggleAuthMode(mode) {
                     const loginContainer = document.getElementById('login-form-container');
                     const registerContainer = document.getElementById('register-form-container');

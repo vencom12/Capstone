@@ -88,6 +88,19 @@ const ModalManager = {
             if (window.showToast) window.showToast('Failed to load interface component.');
             return false;
         }
+    },
+
+    /**
+     * Closes a modal by its key
+     */
+    close(key) {
+        const entry = this.REGISTRY[key];
+        if (!entry) return;
+        const el = document.getElementById(entry.id);
+        if (el) {
+            el.style.display = 'none';
+            el.classList.remove('active');
+        }
     }
 };
 

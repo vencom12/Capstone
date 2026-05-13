@@ -490,6 +490,10 @@
             }
         }
         document.addEventListener('DOMContentLoaded', updateDiagnostics);
+
+        function closeAuth() {
+            ModalManager.close('AUTH');
+        }
     </script>
     <script>
         // Auto-close sidebar drawer on mobile after clicking a link
