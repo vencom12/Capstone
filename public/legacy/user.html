@@ -316,13 +316,11 @@
                         <h1 style="font-size: 2rem;">My Transactions</h1>
                         <p style="color: var(--text-dim);">Your payment history and digital receipts</p>
                     </div>
+                    <div class="table-controls">
+                        <input type="date" id="history-date-filter" class="glass-date-picker">
+                    </div>
                 </header>
                 <div class="table-container glass" style="border-radius: 20px;">
-                    <header class="table-header" style="display: flex; padding: 15px 24px; border-bottom: 1px solid var(--border-glass);">
-                        <div class="table-controls" style="display: flex; gap: 12px; align-items: center;">
-                            <input type="date" id="history-date-filter" class="glass-date-picker">
-                        </div>
-                    </header>
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
                         <thead>
                             <tr
@@ -459,11 +457,36 @@
     </div>
 
     <script>
-        function updateDiagnostics() {
+        async function updateDiagnostics() {
             const session = AuthManager.getSession();
-            if (document.getElementById('diag-session')) {
-                document.getElementById('diag-session').innerText = session ? session.user.username : 'Guest';
-                document.getElementById('diag-session').style.color = session ? '#10b981' : '#6366f1';
+            const apiDiag = document.getElementById('diag-api');
+            const atlasDiag = document.getElementById('diag-atlas');
+            const sessionDiag = document.getElementById('diag-session');
+
+            if (sessionDiag) {
+                sessionDiag.innerText = session ? session.user.username : 'Guest';
+                sessionDiag.style.color = session ? '#10b981' : '#6366f1';
+            }
+
+            // Actual Connection Check
+            if (apiDiag) {
+                try {
+                    const response = await fetch('/api/health'); // Check if API is responsive
+                    if (response.ok) {
+                        apiDiag.innerText = 'Connected';
+                        apiDiag.style.color = '#10b981';
+                        if (atlasDiag) {
+                            atlasDiag.innerText = 'Live';
+                            atlasDiag.style.color = '#10b981';
+                        }
+                    } else {
+                        apiDiag.innerText = 'Error';
+                        apiDiag.style.color = '#ef4444';
+                    }
+                } catch (e) {
+                    apiDiag.innerText = 'Offline';
+                    apiDiag.style.color = '#ef4444';
+                }
             }
         }
         document.addEventListener('DOMContentLoaded', updateDiagnostics);
