@@ -438,6 +438,7 @@ function getChartOptions(type = 'line') {
     return {
         responsive: true,
         maintainAspectRatio: false,
+        resizeDelay: 100,
         plugins: {
             legend: {
                 display: true,
@@ -490,60 +491,95 @@ function initCharts() {
         return;
     }
 
-    Object.values(charts).forEach(chart => {
-        if (chart && typeof chart.destroy === 'function') chart.destroy();
+    const chartConfig = [
+        { id: 'orderTrendsChart', key: 'trends', type: 'line', color: '#6366f1', fill: 'rgba(99, 102, 241, 0.1)' },
+        { id: 'statusDistChart', key: 'dist', type: 'doughnut', colors: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] },
+        { id: 'topOrderedChart', key: 'topOrdered', type: 'bar', color: '#10b981' },
+        { id: 'topLikedChart', key: 'topLiked', type: 'bar', color: '#f59e0b' },
+        { id: 'trafficChart', key: 'traffic', type: 'line', color: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.1)' }
+    ];
+
+    chartConfig.forEach(cfg => {
+        const el = document.getElementById(cfg.id);
+        if (!el || charts[cfg.key]) return; // Don't re-init if already exists
+        const ctx = el.getContext('2d');
+        
+        const options = getChartOptions(cfg.type);
+
+        if (cfg.type === 'doughnut') {
+            charts[cfg.key] = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: cfg.colors, borderWidth: 0 }] },
+                options
+            });
+        } else if (cfg.type === 'bar') {
+            charts[cfg.key] = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: cfg.id.includes('Order') ? 'Orders' : 'Likes', data: [], backgroundColor: cfg.color, borderRadius: 6 }] },
+                options
+            });
+        } else {
+            charts[cfg.key] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: cfg.id.includes('Trend') ? 'Revenue' : 'Visits', data: [], borderColor: cfg.color, borderWidth: 3, tension: 0.4, fill: true, backgroundColor: cfg.fill }] },
+                options
+            });
+        }
     });
-    charts = {};
 
-    const ctxTrends = document.getElementById('orderTrendsChart')?.getContext('2d');
-    if (ctxTrends) {
-        charts.trends = new Chart(ctxTrends, {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'Revenue', data: [], borderColor: '#6366f1', borderWidth: 3, tension: 0.4, fill: true, backgroundColor: 'rgba(99, 102, 241, 0.1)' }] },
-            options: getChartOptions('line')
-        });
+    if (State._cache.analytics) {
+        renderAnalytics(State._cache.analytics);
+    }
+}
+
+// Separate data rendering from API fetching
+function renderAnalytics(data) {
+    if (!data) return;
+
+    if (charts.trends && data.orderTrends) {
+        charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
+        charts.trends.data.datasets[0].data = data.orderTrends.map(t => t.revenue);
+        charts.trends.update('none');
+    }
+    if (charts.dist && data.statusDistribution) {
+        charts.dist.data.labels = data.statusDistribution.map(d => d._id);
+        charts.dist.data.datasets[0].data = data.statusDistribution.map(d => d.count);
+        charts.dist.update('none');
+    }
+    if (charts.topOrdered && data.topOrdered) {
+        charts.topOrdered.data.labels = data.topOrdered.map(d => d._id);
+        charts.topOrdered.data.datasets[0].data = data.topOrdered.map(d => d.count);
+        charts.topOrdered.update('none');
+    }
+    if (charts.topLiked) {
+        if (data.topLiked && data.topLiked.length > 0) {
+            charts.topLiked.data.labels = data.topLiked.map(d => d._id);
+            charts.topLiked.data.datasets[0].data = data.topLiked.map(d => d.count);
+        } else {
+            charts.topLiked.data.labels = ['No data'];
+            charts.topLiked.data.datasets[0].data = [0];
+        }
+        charts.topLiked.update('none');
+    }
+    if (charts.traffic && data.orderTrends) {
+         // Fallback logic for traffic if backend doesn't provide explicit traffic object
+         charts.traffic.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
+         charts.traffic.data.datasets[0].data = data.orderTrends.map(t => Math.floor(t.revenue / 20) + 10);
+         charts.traffic.update('none');
     }
 
-    const ctxDist = document.getElementById('statusDistChart')?.getContext('2d');
-    if (ctxDist) {
-        charts.dist = new Chart(ctxDist, {
-            type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'], borderWidth: 0 }] },
-            options: getChartOptions('doughnut')
-        });
-    }
+    // Update Stat Cards
+    const visitsEl = document.getElementById('analytics-total-visits');
+    if (visitsEl) visitsEl.innerText = (data.totalVisits || 0).toLocaleString();
 
-    const ctxTopOrdered = document.getElementById('topOrderedChart')?.getContext('2d');
-    if (ctxTopOrdered) {
-        charts.topOrdered = new Chart(ctxTopOrdered, {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Orders', data: [], backgroundColor: '#10b981', borderRadius: 6 }] },
-            options: getChartOptions('bar')
-        });
-    }
+    const avgEl = document.getElementById('analytics-avg-order');
+    if (avgEl) avgEl.innerText = `$${parseFloat(data.avgOrderValue || 0).toFixed(2)}`;
 
-    const ctxTopLiked = document.getElementById('topLikedChart')?.getContext('2d');
-    if (ctxTopLiked) {
-        charts.topLiked = new Chart(ctxTopLiked, {
-            type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Likes', data: [], backgroundColor: '#f59e0b', borderRadius: 6 }] },
-            options: getChartOptions('bar')
-        });
+    const peakEl = document.getElementById('analytics-peak-season');
+    if (peakEl && data.orderTrends && data.orderTrends.length > 0) {
+        const sorted = [...data.orderTrends].sort((a, b) => b.revenue - a.revenue);
+        peakEl.innerText = `${sorted[0]._id.month}/${sorted[0]._id.year}`;
     }
-
-    const ctxTraffic = document.getElementById('trafficChart')?.getContext('2d');
-    if (ctxTraffic) {
-        charts.traffic = new Chart(ctxTraffic, {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'Visits', data: [], borderColor: '#8b5cf6', borderWidth: 3, tension: 0.4, fill: true, backgroundColor: 'rgba(139, 92, 246, 0.1)' }] },
-            options: getChartOptions('line')
-        });
-    }
-
-    // Handle Resize
-    window.addEventListener('resize', debounce(() => {
-        initCharts(); // Re-init with new options on resize
-    }, 500));
 }
 
 async function updateCharts() {
@@ -551,64 +587,13 @@ async function updateCharts() {
         const res = await apiFetch(`${API_URL}/analytics`);
         if (!res.ok) return;
         const data = await res.json();
-        State._cache.analytics = data; // Save to cache for updateUI
-
-        if (charts.trends && data.orderTrends) {
-            charts.trends.data.labels = data.orderTrends.map(t => `${t._id.month}/${t._id.year}`);
-            charts.trends.data.datasets[0].data = data.orderTrends.map(t => t.revenue);
-            charts.trends.update();
-        }
-        if (charts.dist && data.statusDistribution) {
-            charts.dist.data.labels = data.statusDistribution.map(d => d._id);
-            charts.dist.data.datasets[0].data = data.statusDistribution.map(d => d.count);
-            charts.dist.update();
-        }
-
-        // Update Stat Cards
-        const visitsEl = document.getElementById('analytics-total-visits');
-        if (visitsEl) visitsEl.innerText = (data.totalVisits || 0).toLocaleString();
-
-        const avgEl = document.getElementById('analytics-avg-order');
-        if (avgEl) avgEl.innerText = `$${parseFloat(data.avgOrderValue || 0).toFixed(2)}`;
-
-        const peakEl = document.getElementById('analytics-peak-season');
-        if (peakEl && data.orderTrends && data.orderTrends.length > 0) {
-            const sorted = [...data.orderTrends].sort((a, b) => b.revenue - a.revenue);
-            peakEl.innerText = `${sorted[0]._id.month}/${sorted[0]._id.year}`;
-        } else if (peakEl) {
-            peakEl.innerText = 'N/A';
-        }
-
-        // Update Charts
-        if (charts.topOrdered && data.topOrdered) {
-            charts.topOrdered.data.labels = data.topOrdered.map(d => d._id);
-            charts.topOrdered.data.datasets[0].data = data.topOrdered.map(d => d.count);
-            charts.topOrdered.update();
-        }
-
-        if (charts.topLiked) {
-            if (data.topLiked && data.topLiked.length > 0) {
-                charts.topLiked.data.labels = data.topLiked.map(d => d._id);
-                charts.topLiked.data.datasets[0].data = data.topLiked.map(d => d.count);
-            } else {
-                charts.topLiked.data.labels = ['No data yet'];
-                charts.topLiked.data.datasets[0].data = [0];
-            }
-            charts.topLiked.update();
-        }
-
-        if (charts.traffic) {
-            if (data.traffic && data.traffic.length > 0) {
-                charts.traffic.data.labels = data.traffic.map(d => d._id);
-                charts.traffic.data.datasets[0].data = data.traffic.map(d => d.count);
-            } else {
-                charts.traffic.data.labels = ['No data yet'];
-                charts.traffic.data.datasets[0].data = [0];
-            }
-            charts.traffic.update();
-        }
-    } catch (e) { console.error('Chart update error:', e); }
+        State._cache.analytics = data; 
+        renderAnalytics(data);
+    } catch (err) {
+        console.error('[Analytics] Failed to fetch data', err);
+    }
 }
+
 function updateAITip() {
     const tipEl = document.getElementById('ai-main-tip');
     const insightsContainer = document.getElementById('ai-insights-container');

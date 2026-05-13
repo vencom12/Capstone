@@ -101,10 +101,5 @@
         margin: 0 !important;
     }
 
-    /* --- Tablet Grid Layouts --- */
-    .analytics-grid {
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 20px;
-    }
 
 }

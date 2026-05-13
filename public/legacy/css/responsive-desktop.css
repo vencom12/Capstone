@@ -15,11 +15,7 @@
         display: none !important;
     }
 
-    /* --- Content Grid Optimizations --- */
-    .analytics-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 30px;
-    }
+
 
     /* --- Header Desktop Layout --- */
     .storefront-header {
