@@ -439,11 +439,17 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    const data = await State.getDashboardState();
-    if (data) {
-        updateUI(); // Render tables immediately
+    try {
+        const data = await State.getDashboardState();
+        if (data) {
+            updateUI(); // Render tables immediately
+        }
+    } catch (e) {
+        console.error('[Admin] Refresh failed', e);
+    } finally {
+        updateSyncIndicator(false);
+        updateUI(); // Always clear skeletons
     }
-    updateSyncIndicator(false);
 
     // Background tasks: Only run if we actually have a session
     if (AuthManager.isAuthenticated()) {

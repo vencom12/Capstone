@@ -686,6 +686,7 @@ main,
 }
 
 .status-badge {
+    
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 0.85rem;
@@ -824,7 +825,6 @@ main,
     border: 1px solid var(--border-glass);
     text-align: center;
 }
-}
 
 /* Glass Date Picker Styles */
 .glass-date-picker {

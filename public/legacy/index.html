@@ -344,9 +344,16 @@
 
                 // Diagnostic Updater
                 function updateDiagnostics() {
-                    const session = AuthManager.getSession();
-                    document.getElementById('diag-session').innerText = session ? session.user.username : 'Guest';
-                    document.getElementById('diag-session').style.color = session ? '#10b981' : '#6366f1';
+                    try {
+                        if (typeof AuthManager !== 'undefined') {
+                            const session = AuthManager.getSession();
+                            const diagSession = document.getElementById('diag-session');
+                            if (diagSession) {
+                                diagSession.innerText = session ? session.user.username : 'Guest';
+                                diagSession.style.color = session ? '#10b981' : '#6366f1';
+                            }
+                        }
+                    } catch (e) { console.warn('Diag failed', e); }
                 }
 
                 // Initialize Storefront
@@ -355,7 +362,11 @@
                     updateDiagnostics();
 
                     // STEP 1: Check Auth State for Header
-                    const session = AuthManager.getSession();
+                    let session = null;
+                    if (typeof AuthManager !== 'undefined') {
+                        session = AuthManager.getSession();
+                    }
+                    
                     if (session) {
                         const guestActions = document.getElementById('guest-actions');
                         const userActions = document.getElementById('user-actions');
@@ -388,15 +399,18 @@
                                 }
                             } else if (atlasDiag) {
                                 atlasDiag.innerText = 'Empty';
+                                atlasDiag.style.color = '#f59e0b';
                             }
-                            if (window.updateUI) window.updateUI();
                         }
-                    } catch (e) {
-                        if (apiDiag) {
-                            apiDiag.innerText = 'Offline';
-                            apiDiag.style.color = '#ef4444';
+                    } catch (err) {
+                        console.error('[Storefront] Initialization failed:', err);
+                        if (atlasDiag) {
+                            atlasDiag.innerText = 'Error';
+                            atlasDiag.style.color = '#ef4444';
                         }
-                        console.error('[Storefront] Initialization error:', e);
+                    } finally {
+                        // Always try to clear skeletons at the end of init
+                        if (window.updateUI) window.updateUI();
                     }
 
                     // STEP 3: Setup Listeners

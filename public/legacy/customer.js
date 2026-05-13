@@ -71,8 +71,9 @@ async function refreshCSRFToken() {
 // --- Global Sync Indicator ---
 let _syncCount = 0;
 const updateSyncIndicator = (isStarting) => {
-    _syncCount += isStarting ? 1 : -1;
-    if (_syncCount < 0) _syncCount = 0;
+    if (isStarting) _syncCount++;
+    else _syncCount = Math.max(0, _syncCount - 1);
+    
     const el = document.getElementById('global-sync-indicator');
     if (el) {
         if (_syncCount > 0) el.classList.add('is-syncing');
@@ -390,7 +391,8 @@ const _updateUIInternal = debounce(() => {
     const searchQuery = (State._cache.searchQuery || '').toLowerCase();
     const selectedCategory = State._cache.selectedCategory || 'All';
 
-    const filteredProducts = products.filter(p => {
+    const filteredProducts = (Array.isArray(products) ? products : []).filter(p => {
+        if (!p || !p.name) return false;
         const matchesSearch = p.name.toLowerCase().includes(searchQuery) || (p.description && p.description.toLowerCase().includes(searchQuery));
         const matchesCategory = selectedCategory === 'All' || p.tag === selectedCategory;
         return matchesSearch && matchesCategory;
@@ -400,6 +402,7 @@ const _updateUIInternal = debounce(() => {
     const productGrids = document.querySelectorAll('.product-grid, #storefront-grid');
 
     productGrids.forEach(grid => {
+        // Only show skeletons if we have ZERO data AND we are currently syncing
         if (products.length === 0 && _syncCount > 0) {
             grid.innerHTML = `
                 <div class="skeleton-card animate-fade"><div class="skeleton-img skeleton"></div><div class="skeleton-tag skeleton"></div><div style="display:flex;justify-content:space-between;"><div class="skeleton-title skeleton"></div><div class="skeleton-price skeleton"></div></div><div class="skeleton-text skeleton"></div><div class="skeleton-button skeleton"></div></div>
@@ -587,10 +590,14 @@ const _updateUIInternal = debounce(() => {
                     </td>
                 </tr>`;
             }).join('');
+        }
     }
 
     updateBasketUI();
 }, 200);
+
+
+// --- Global Actions & Event Handlers ---
 
 
 // Add date filter listener
@@ -846,40 +853,29 @@ const CheckoutManager = {
                 })
             });
 
-            let data;
-            try {
-                data = await res.json();
-            } catch (e) {
-                data = { message: 'Server returned invalid format.' };
-            }
-
             if (res.ok) {
-                // Success: Close modal and clear basket IMMEDIATELY
-                this.close();
+                showToast('Order placed successfully!');
+                this.currentBasket = [];
                 State.setBasket([]);
-                showToast(data.message || 'Order placed successfully!');
-
-                // Refresh data in background - Debounced sync will handle multiple events
-                silentCacheSync();
-
-                // Navigate to receipts section
-                const rcpNav = document.getElementById('nav-receipts');
-                if (rcpNav) rcpNav.checked = true;
-
-                return; // Exit early to avoid finally block resetting indicator too soon
+                updateUI();
+                const navShop = document.getElementById('nav-shop');
+                if (navShop) navShop.checked = true;
+                this.close();
             } else {
-                showToast(data.message || 'Order failed. Please try again.');
+                const err = await res.json().catch(() => ({ message: 'Order failed' }));
+                showToast(err.message || 'Error placing order');
             }
         } catch (err) {
-            console.error('placeOrder error:', err);
-            showToast(err.message || 'Connection error. Please try again.');
+            console.error('Order error:', err);
+            showToast('Connection error during checkout');
         } finally {
+            updateSyncIndicator(false);
             if (placeBtn) {
                 placeBtn.disabled = false;
                 placeBtn.innerText = originalText;
                 placeBtn.style.opacity = '1';
             }
-            updateSyncIndicator(false);
+            updateUI();
         }
     }
 };
@@ -896,14 +892,17 @@ async function refreshDashboardState() {
     try {
         const data = await State.getDashboardState();
         if (data) {
-            // 3. Update UI again once fresh data arrives
             updateUI();
+            if (typeof refreshReceipts === 'function') await refreshReceipts();
+            return data;
         }
     } catch (e) {
         console.error('Refresh failed', e);
     } finally {
         updateSyncIndicator(false);
+        updateUI();
     }
+    return null;
 }
 
 const silentCacheSync = debounce(() => {
@@ -989,6 +988,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('Capstone/')) {
         State.getDashboardState().then(() => updateUI());
     }
+
+    // Unified Date Filter Listeners
+    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
+        State._cache.historyDateFilter = e.target.value;
+        updateUI();
+    });
+
+    document.getElementById('tracking-date-filter')?.addEventListener('change', (e) => {
+        State._cache.trackingDateFilter = e.target.value;
+        updateUI();
+    });
 });
 
 const Actions = {
@@ -1281,17 +1291,3 @@ window.viewReceipt = viewReceipt;
 
 
 
-
-// --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
-    initSocket();
-
-    // Initial fetch to populate grid
-    refreshDashboardState();
-
-    // Unified Date Filter Listener
-    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
-        State._cache.historyDateFilter = e.target.value;
-        updateUI();
-    });
-});

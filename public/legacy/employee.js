@@ -229,6 +229,7 @@ function updateUI() {
                     </td>
                 </tr>`;
             }).join('');
+        }
     }
 
     // 3. Inventory/Catalog
@@ -285,9 +286,17 @@ function formatOrderDesign(order) {
 // --- Initialization & Socket ---
 async function refreshDashboardState() {
     updateSyncIndicator(true);
-    await State.getDashboardState();
-    updateUI();
-    updateSyncIndicator(false);
+    try {
+        const data = await State.getDashboardState();
+        if (data) {
+            updateUI();
+        }
+    } catch (e) {
+        console.error('[Employee] Refresh failed', e);
+    } finally {
+        updateSyncIndicator(false);
+        updateUI(); // Always clear skeletons
+    }
 }
 
 function initSocket() {
@@ -328,9 +337,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (AuthManager.isAuthenticated()) {
         refreshDashboardState();
     }
-});
 
-// --- Actions ---
+    // Unified Date Filter Listeners
+    document.addEventListener('change', (e) => {
+        if (e.target.id === 'employee-orders-date' || e.target.id === 'employee-history-date') {
+            updateUI();
+        }
+    });
+});
 window.openCreateProduct = async () => {
     await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
     const form = document.getElementById('create-product-form');
@@ -497,10 +511,3 @@ window.State = State;
 window.apiFetch = apiFetch;
 window.showToast = showToast;
 window.refreshDashboardState = refreshDashboardState;
-
-// Date Picker Listeners
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'employee-orders-date' || e.target.id === 'employee-history-date') {
-        updateUI();
-    }
-});
