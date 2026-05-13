@@ -454,14 +454,19 @@ main,
     top: 24px;
     right: 24px;
     cursor: pointer;
-    backdrop-filter: blur(4px);
+    background: transparent !important;
+    border: none !important;
     color: var(--text-dim);
-    transition: color 0.2s;
+    transition: all 0.2s;
+    font-size: 1.4rem;
+    line-height: 1;
+    z-index: 10;
 }
 
 
 .close-auth:hover {
-    color: white;
+    color: var(--primary);
+    transform: scale(1.2) rotate(90deg);
 }
 
 /* --- Storefront Drawer Fix --- */
