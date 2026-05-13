@@ -181,7 +181,7 @@ function updateUI() {
                         <div class="timestamp-sub">${dateStr}, ${timeStr}</div>
                         <div class="client-name">${order.client || 'Guest'}</div>
                     </td>
-                    <td data-label="Design" class="design-cell" title="${formatOrderDesign(order)}">
+                    <td data-label="Design" class="design-cell">
                         ${formatOrderDesign(order)}
                     </td>
                     <td data-label="Total" class="price-cell">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
