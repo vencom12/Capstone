@@ -510,18 +510,27 @@ const _updateUIInternal = debounce(() => {
             }
         } else {
             trackingList.innerHTML = filteredOrders.map(order => `
-                <div class="glass tracking-card animate-fade">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="margin-bottom: 4px;">Order #${order.orderId}</h3>
-                            <p style="color: var(--text-dim); font-size: 0.9rem;">${formatOrderDesign(order)}</p>
+                <div class="glass tracking-block animate-fade">
+                    <div class="tracking-block-header">
+                        <div class="tracking-block-field" data-label="Order ID">
+                            <span class="order-id-main">#${order.orderId}</span>
                         </div>
-                        <span class="status-pill">${order.status}</span>
+                        <span class="status-badge" data-status="${order.status}">${order.status}</span>
                     </div>
-                    <div style="height: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
-                        <div style="width: ${order.progress}%; height: 100%; background: var(--primary); box-shadow: 0 0 10px var(--primary-glow);"></div>
+                    
+                    <div class="tracking-block-field" data-label="Embroidery Design">
+                        <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-main); margin-top: 4px;">${formatOrderDesign(order)}</div>
                     </div>
-                    <p style="text-align: right; color: var(--text-dim); font-size: 0.85rem;">${order.progress}% Processed</p>
+
+                    <div class="tracking-block-progress-section" data-label="Current Progress">
+                        <div class="progress-bar-wrapper" style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-top: 8px;">
+                            <div class="progress-bar-fill" style="width: ${order.progress}%; height: 100%; background: var(--primary); box-shadow: 0 0 10px var(--primary-glow);"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">
+                            <span>${order.progress}% Processed</span>
+                            <span>Live Status</span>
+                        </div>
+                    </div>
                 </div>
             `).join('');
         }
