@@ -195,3 +195,21 @@ window.updateSyncIndicator = updateSyncIndicator;
 window.isSyncing = isSyncing;
 window.debounce = debounce;
 
+/**
+ * Global Password Visibility Toggle
+ */
+function togglePasswordVisibility(inputId, toggleEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    
+    // Support both passing the element and finding it via class if not passed
+    const icon = toggleEl || input.parentElement.querySelector('.password-toggle');
+    if (icon) {
+        icon.innerText = isPassword ? '🙈' : '👁️';
+    }
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+

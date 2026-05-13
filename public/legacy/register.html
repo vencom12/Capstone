@@ -161,7 +161,10 @@
             </div>
             <div class="input-group">
                 <label>Password</label>
-                <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
+                <div class="password-wrapper">
+                    <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8" style="padding-right: 45px;">
+                    <span class="password-toggle" onclick="togglePasswordVisibility('password', this)">👁️</span>
+                </div>
             </div>
             <div id="register-error" class="error-message">Registration failed. Try again.</div>
 

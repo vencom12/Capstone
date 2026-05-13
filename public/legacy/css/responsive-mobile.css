@@ -192,4 +192,51 @@
     .mobile-only {
         display: flex !important;
     }
+
+    /* --- 6. Checkout Modal Responsiveness --- */
+    .checkout-modal-content {
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+
+    .checkout-modal-header {
+        padding: 16px 20px !important;
+    }
+
+    .checkout-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+        padding: 10px 20px 30px !important;
+        overflow-x: hidden !important;
+    }
+
+    .payment-methods-grid {
+        grid-template-columns: 1fr 1fr !important; /* Keep 2 cols unless too narrow */
+        gap: 8px !important;
+    }
+
+    @media (max-width: 400px) {
+        .payment-methods-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    .checkout-modal-footer {
+        padding: 16px 20px 30px !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        background: var(--bg-dark) !important;
+        border-top: 1px solid var(--border-glass) !important;
+    }
+
+    /* --- 7. General Modal Responsiveness --- */
+    .modal {
+        padding: 24px 20px !important;
+        width: 94% !important;
+        max-width: 100% !important;
+        border-radius: 20px !important;
+    }
 }
