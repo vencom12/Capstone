@@ -161,6 +161,12 @@ main,
     width: 100%;
 }
 
+/* Hide browser default password reveal button (Edge/IE) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
 .password-toggle {
     position: absolute;
     right: 14px;
