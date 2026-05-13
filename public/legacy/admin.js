@@ -190,7 +190,7 @@ const _updateUIInternal = debounce(() => {
                         <td colspan="6">
                             <div class="empty-state-container" style="padding: 40px 20px;">
                                 <div class="empty-state-visual">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
                                 </div>
                                 <h3 class="empty-state-title">No Orders Found</h3>
                                 <p class="empty-state-text">There are currently no orders that match your criteria.</p>
@@ -255,7 +255,7 @@ if (historyTable) {
                 <td colspan="5">
                     <div class="empty-state-container" style="padding: 40px 20px;">
                         <div class="empty-state-visual">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         </div>
                         <h3 class="empty-state-title">History is Empty</h3>
                         <p class="empty-state-text">Completed orders and past transactions will appear here.</p>
@@ -1052,12 +1052,133 @@ window.openEditStaff = async (id) => {
     UI.toggleModal('staff-modal');
 };
 
-window.UI = UI;
-window.AuthManager = AuthManager;
-window.State = State;
-window.apiFetch = apiFetch;
-window.showToast = showToast;
-window.refreshDashboardState = refreshDashboardState;
+window.openCreateProduct = async () => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
+    const form = document.getElementById('create-product-form');
+    if (form) {
+        form.reset();
+        delete form.dataset.editId;
+        document.querySelector('#create-product-modal h2').innerText = 'Publish New Design';
+    }
+    UI.toggleModal('create-product-modal');
+};
+
+window.openEditProduct = async (id) => {
+    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
+    const product = State._cache.products.find(p => p._id === id);
+    if (!product) return showToast('Design not found');
+
+    const form = document.getElementById('create-product-form');
+    if (form) {
+        form.dataset.editId = id;
+        document.getElementById('product-name').value = product.name || '';
+        document.getElementById('product-price').value = product.price || '';
+        document.getElementById('product-tag').value = product.tag || '';
+        document.getElementById('product-desc').value = product.description || '';
+        document.querySelector('#create-product-modal h2').innerText = 'Edit Design Details';
+    }
+    UI.toggleModal('create-product-modal');
+};
+
+window.deleteUser = async (id) => {
+    if (!confirm('Are you sure you want to remove this personnel account?')) return;
+    const response = await apiFetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
+    if (response.ok) {
+        showToast('Account removed successfully');
+        const data = await State.getDashboardState();
+        if (data) updateUI();
+    } else {
+        const err = await response.text();
+        showToast(`Failed to remove: ${err}`);
+    }
+};
+
+window.deleteProduct = async (id) => {
+    if (!confirm('Are you sure you want to delete this design?')) return;
+    const response = await apiFetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
+    if (response.ok) {
+        showToast('Design deleted successfully');
+        const data = await State.getDashboardState();
+        if (data) updateUI();
+    } else {
+        const err = await response.text();
+        showToast(`Deletion failed: ${err}`);
+    }
+};
+
+// --- Delegated Form Handlers ---
+document.addEventListener('submit', async (e) => {
+    // 1. Staff Form
+    if (e.target.id === 'create-staff-form') {
+        e.preventDefault();
+        const form = e.target;
+        const editId = form.dataset.editId;
+        const password = document.getElementById('staff-password').value;
+        
+        const payload = {
+            username: document.getElementById('staff-username').value,
+            email: document.getElementById('staff-email').value,
+            role: document.getElementById('staff-role').value,
+            phoneNumber: document.getElementById('staff-phone').value,
+            address: document.getElementById('staff-address').value
+        };
+
+        if (password) payload.password = password;
+
+        const method = editId ? 'PUT' : 'POST';
+        const url = editId ? `${API_URL}/users/${editId}` : `${API_URL}/users`;
+
+        const response = await apiFetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            showToast(editId ? 'Account updated' : 'Account established');
+            UI.toggleModal('staff-modal');
+            const data = await State.getDashboardState();
+            if (data) updateUI();
+        } else {
+            const err = await response.text();
+            showToast(`Operation failed: ${err}`);
+        }
+    }
+
+    // 2. Product Form (Multi-part for images)
+    if (e.target.id === 'create-product-form') {
+        e.preventDefault();
+        const form = e.target;
+        const editId = form.dataset.editId;
+        const formData = new FormData();
+
+        formData.append('name', document.getElementById('product-name').value);
+        formData.append('price', document.getElementById('product-price').value);
+        formData.append('tag', document.getElementById('product-tag').value);
+        formData.append('description', document.getElementById('product-desc').value);
+
+        const imageFile = document.getElementById('product-image-file').files[0];
+        if (imageFile) formData.append('image', imageFile);
+
+        const method = editId ? 'PATCH' : 'POST'; // Note: routes/admin.js uses PATCH for edit
+        const url = editId ? `${API_URL}/products/${editId}` : `${API_URL}/products`;
+
+        const response = await apiFetch(url, {
+            method,
+            body: formData // apiFetch handles headers for FormData
+        });
+
+        if (response.ok) {
+            showToast(editId ? 'Design updated' : 'Design published');
+            UI.toggleModal('create-product-modal');
+            const data = await State.getDashboardState();
+            if (data) updateUI();
+        } else {
+            const err = await response.text();
+            showToast(`Catalog update failed: ${err}`);
+        }
+    }
+});
 
 // Date Picker Listeners
 document.addEventListener('change', (e) => {
@@ -1065,6 +1186,7 @@ document.addEventListener('change', (e) => {
         updateUI();
     }
 });
+
 
 
 

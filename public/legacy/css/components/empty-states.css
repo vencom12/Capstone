@@ -6,9 +6,12 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
+    width: 100%;
+    margin: 0 auto;
     animation: fadeIn 0.8s ease-out;
 }
+
 
 .empty-state-visual {
     width: 120px;

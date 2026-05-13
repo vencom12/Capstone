@@ -155,7 +155,7 @@ function updateBasketUI() {
             list.innerHTML = `
                 <div class="empty-state-container" style="padding: 40px 10px;">
                     <div class="empty-state-visual" style="width: 80px; height: 80px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                     </div>
                     <h3 class="empty-state-title" style="font-size: 1rem;">Your Basket is Empty</h3>
                     <p class="empty-state-text" style="font-size: 0.8rem;">Looks like you haven't added anything yet.</p>
@@ -363,7 +363,7 @@ const _updateUIInternal = debounce(() => {
                 trackingList.innerHTML = `
                     <div class="empty-state-container">
                         <div class="empty-state-visual">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
                         </div>
                         <h3 class="empty-state-title">${trackingDateFilter ? 'No Orders Found' : 'No Active Orders'}</h3>
                         <p class="empty-state-text">${trackingDateFilter ? 'We couldn\'t find any orders on this specific date.' : 'You don\'t have any active embroidery jobs in progress right now.'}</p>
@@ -428,7 +428,7 @@ const _updateUIInternal = debounce(() => {
                         <td colspan="4">
                             <div class="empty-state-container" style="padding: 40px 20px;">
                                 <div class="empty-state-visual" style="width: 80px; height: 80px;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 </div>
                                 <h3 class="empty-state-title" style="font-size: 1rem;">No Transactions</h3>
                                 <p class="empty-state-text" style="font-size: 0.8rem;">${historyDateFilter ? 'No activity found for the selected date.' : 'Your payment history is currently empty.'}</p>

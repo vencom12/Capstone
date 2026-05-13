@@ -138,7 +138,7 @@ function updateUI() {
                         <td colspan="5">
                             <div class="empty-state-container">
                                 <div class="empty-state-visual">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
                                 </div>
                                 <h3 class="empty-state-title">Queue is Clear</h3>
                                 <p class="empty-state-text">No active orders assigned to your station right now.</p>
@@ -194,7 +194,7 @@ function updateUI() {
                 <div style="grid-column: 1/-1;">
                     <div class="empty-state-container">
                         <div class="empty-state-visual">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         </div>
                         <h3 class="empty-state-title">No Designs Found</h3>
                         <p class="empty-state-text">Your digital catalog is currently empty. Start by creating a new design.</p>
