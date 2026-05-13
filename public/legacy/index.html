@@ -480,8 +480,8 @@
 
                         try {
                             if (typeof AuthManager !== 'undefined') {
-                                // Try login without forcing a portal constraint
-                                const result = await AuthManager.login(email, password, rememberMe, '');
+                                // Enforce customer portal role validation
+                                const result = await AuthManager.login(email, password, rememberMe, 'customer');
                                 if (result.success) {
                                     const role = AuthManager.getUserRole();
                                     if (role === 'employee') {

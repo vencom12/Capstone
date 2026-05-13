@@ -256,6 +256,16 @@ const employeeRoutes = require('./routes/employee');
 const aiRoutes = require('./routes/aiRoutes');
 
 // Legacy Routes (for compatibility)
+// Health check for diagnostics
+app.get('/api/health', (req, res) => {
+    const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+    res.json({ 
+        status: 'ok', 
+        database: dbStatus,
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
