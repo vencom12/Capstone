@@ -48,16 +48,48 @@
             padding: 40px 20px;
         }
 
-        .auth-card {
+        .register-container {
             width: 100%;
-            max-width: 500px;
-            padding: 40px;
+            max-width: 1000px;
+            min-height: 650px;
+            display: flex;
             background: var(--bg-card);
             backdrop-filter: var(--glass-blur);
             border: 1px solid var(--border-glass);
-            border-radius: 4px;
+            border-radius: var(--radius-xl);
             box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
             animation: fadeIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .register-hero {
+            flex: 1;
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.8)), url('../icons/auth-hero.png');
+            background-size: cover;
+            background-position: center;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            position: relative;
+            border-right: 1px solid var(--border-glass);
+        }
+
+        .register-hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.15), transparent);
+            pointer-events: none;
+        }
+
+        .register-form-section {
+            flex: 1.2;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.2);
         }
 
         @keyframes fadeIn {
@@ -80,19 +112,37 @@
             color: var(--text-dim);
             font-size: 0.95rem;
             margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .hero-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 15px;
+            line-height: 1.1;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .hero-desc {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            line-height: 1.6;
         }
 
         .input-group {
             text-align: left;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .input-group label {
             display: block;
             margin-bottom: 8px;
             color: var(--text-dim);
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .input-group input,
@@ -100,20 +150,19 @@
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border-glass);
-            padding: 14px 18px;
-            border-radius: 4px;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
             color: white;
             outline: none;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: var(--transition-fast);
         }
-
-
 
         .input-group input:focus,
         .input-group textarea:focus {
             border-color: var(--primary);
             background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px var(--primary-glow);
         }
 
         .auth-btn {
@@ -121,60 +170,93 @@
             padding: 14px;
             font-weight: 700;
             font-size: 1rem;
-            margin-top: 12px;
-            border-radius: 4px;
+            margin-top: 10px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
         }
 
         .error-message {
             color: #ef4444;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
             display: none;
-            text-align: center;
+            padding: 10px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 900px) {
+            .register-hero { display: none; }
+            .register-container { max-width: 500px; }
+        }
+
+        @media (max-width: 500px) {
+            .register-form-section { padding: 30px; }
+            .form-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 
 <body class="register-body">
 
-    <div class="auth-card">
-        <h1 class="brand-logo">Stitch-Opt</h1>
-        <p class="auth-subtitle">Join the Intelligent Embroidery Network</p>
+    <div class="register-container">
+        <div class="register-hero">
+            <h2 class="hero-title">Intelligence in Every Stitch.</h2>
+            <p class="hero-desc">Experience the future of embroidery with our high-speed, AI-optimized production network.</p>
+        </div>
 
-        <form id="register-form">
-            <div class="input-group">
-                <label>Username</label>
-                <input type="text" id="username" placeholder="Choose a username" required>
-            </div>
-            <div class="input-group">
-                <label>Email Address</label>
-                <input type="email" id="email" placeholder="name@company.com" required>
-            </div>
-            <div class="input-group">
-                <label>Phone Number</label>
-                <input type="tel" id="phoneNumber" placeholder="+63 (915) 865-2296" required>
-            </div>
-            <div class="input-group">
-                <label>Full Address</label>
-                <textarea id="address" placeholder="123 Main St, City, State, ZIP" required
-                    style="width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-glass); padding: 14px; border-radius: 12px; color: white; outline: none; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
-            </div>
-            <div class="input-group">
-                <label>Password</label>
-                <div class="password-wrapper">
-                    <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8" style="padding-right: 45px;">
-                    <span class="password-toggle" onclick="togglePasswordVisibility('password', this)">👁️</span>
+        <div class="register-form-section">
+            <h1 class="brand-logo">Stitch-Opt</h1>
+            <p class="auth-subtitle">Join the Intelligent Embroidery Network</p>
+
+            <form id="register-form">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Username</label>
+                        <input type="text" id="username" placeholder="Choose a username" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="email" placeholder="name@company.com" required>
+                    </div>
                 </div>
-            </div>
-            <div id="register-error" class="error-message">Registration failed. Try again.</div>
+                
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="phoneNumber" placeholder="+63 (9XX) XXX-XXXX" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" placeholder="Min. 8 chars" required minlength="8" style="padding-right: 45px;">
+                            <span class="password-toggle" onclick="togglePasswordVisibility('password', this)">👁️</span>
+                        </div>
+                    </div>
+                </div>
 
-            <button type="submit" class="btn btn-primary auth-btn">Secure Registration</button>
-        </form>
+                <div class="input-group">
+                    <label>Full Delivery Address</label>
+                    <textarea id="address" placeholder="123 Main St, City, State, ZIP" required
+                        style="width: 100%; min-height: 80px; resize: none;"></textarea>
+                </div>
 
-        <p style="margin-top: 24px; font-size: 0.9rem; color: var(--text-dim);">
-            Already have an account? <a href="index.html" style="color: var(--primary); text-decoration: none;">Sign
-                In</a>
-        </p>
+                <div id="register-error" class="error-message">Registration failed. Try again.</div>
+
+                <button type="submit" class="btn btn-primary auth-btn">Secure Registration</button>
+            </form>
+
+            <p style="margin-top: 24px; font-size: 0.9rem; color: var(--text-dim);">
+                Already have an account? <a href="index.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">Sign In</a>
+            </p>
+        </div>
     </div>
 
     <script src="customer.js"></script>
