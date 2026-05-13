@@ -21,6 +21,10 @@
     <link rel="stylesheet" href="css/content/content-table.css">
     <link rel="stylesheet" href="css/content/content-forms.css">
     <link rel="stylesheet" href="css/utilities/utilities.css">
+    <link rel="stylesheet" href="css/components/status-badges.css">
+    <link rel="stylesheet" href="css/components/loaders.css">
+    <link rel="stylesheet" href="css/features/workbench.css">
+    <link rel="stylesheet" href="css/features/support.css">
     <link rel="stylesheet" href="css/responsive-tablet.css">
     <link rel="stylesheet" href="css/responsive-mobile.css">
     <link rel="stylesheet" href="css/responsive-desktop.css">
@@ -30,6 +34,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icons/icon.ico">
+    <link rel="stylesheet" href="css/components/empty-states.css">
+    <script src="js/core.js"></script>
     <script src="js/modal-manager.js"></script>
     <script src="employee.js"></script>
     <script src="assistant.js"></script>
@@ -319,52 +325,66 @@
                     </div>
                 </header>
 
-                <h2 style="margin-bottom: 20px; font-size: 1.2rem;">Current Active Job</h2>
-                <div class="task-card glass" style="margin-bottom: 40px;">
-                    <div style="display: flex; justify-content: space-between;">
-                        <div>
-                            <h3>Corporate Polos - Nike Team</h3>
-                            <p style="color: var(--text-dim); font-size: 0.9rem;">Design: Swoosh_Gold_v2.dst</p>
+                <div class="workbench-grid glass">
+                    <!-- Left: Job Info -->
+                    <div class="workbench-info">
+                        <div class="field-label">Current Active Job</div>
+                        <h3 class="job-title">Corporate Polos - Nike Team</h3>
+                        <div class="design-label">Design: <span style="color: var(--text-main);">Swoosh_Gold_v2.dst</span></div>
+                        
+                        <div class="workbench-actions">
+                            <button id="emergency-stop-btn" class="btn btn-emergency">Emergency Stop</button>
+                            <button class="btn btn-secondary" style="border: 1px solid var(--border-glass);">Log Maintenance</button>
                         </div>
-                        <div style="text-align: right;">
-                            <span id="workbench-status" class="status-pill">Running: Head 1-4</span>
+                    </div>
+
+                    <!-- Middle: Thread Config -->
+                    <div class="workbench-threads">
+                        <div class="field-label">Thread Configuration</div>
+                        <div class="thread-list">
+                            <div class="thread-row">
+                                <span class="thread-needle">N1</span>
+                                <span class="thread-color">Gold Metallic</span>
+                                <span class="thread-code">Madeira 1024</span>
+                            </div>
+                            <div class="thread-row">
+                                <span class="thread-needle">N2</span>
+                                <span class="thread-color">Deep Navy</span>
+                                <span class="thread-code">Madeira 1103</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="progress-bar">
-                        <div id="workbench-progress" class="progress-inner" style="width: 65%;"></div>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--text-dim); text-align: right;">6,500 / 10,000 stitches
-                    </p>
-
-                    <div class="thread-guide">
-                        <p style="font-weight: 600; margin-bottom: 8px;">Thread Configuration:</p>
-                        <div class="thread-item"><span>Needle 1: Gold Metallic</span> <span> Madeira 1024</span></div>
-                        <div class="thread-item"><span>Needle 2: Deep Navy</span> <span> Madeira 1103</span></div>
-                    </div>
-
-                    <div style="margin-top: 20px; display: flex; gap: 12px;">
-                        <div id="emergency-stop-btn" class="btn btn-primary" style="background: var(--accent);">
-                            Emergency Stop</div>
-                        <div class="btn btn-primary">Log Maintenance</div>
+                    <!-- Right: Live Progress -->
+                    <div class="workbench-progress-panel">
+                        <div class="field-label">Live Progress</div>
+                        <div class="progress-circle-container">
+                             <div id="workbench-status" class="status-badge" data-status="Running">Running</div>
+                             <div class="stitch-count">
+                                 <span class="current-stitch">6,500</span>
+                                 <span class="total-stitch">/ 10,000</span>
+                             </div>
+                             <div class="progress-bar-container">
+                                 <div id="workbench-progress" class="progress-fill" style="width: 65%;"></div>
+                             </div>
+                        </div>
                     </div>
                 </div>
 
-                <h2 style="margin-bottom: 20px; font-size: 1.2rem;">Machine Overview</h2>
-                <div class="task-grid">
-                    <div class="stat-card glass">
-                        <div class="machine-status">
-                            <div class="status-dot dot-running"></div>
-                            <span>Machine #1 (Happy 12-Head)</span>
+                <div class="machine-strip">
+                    <div class="machine-mini-card">
+                        <div class="status-dot dot-running"></div>
+                        <div class="machine-info">
+                            <div class="machine-name">M#1 Happy 12-Head</div>
+                            <div class="machine-meta">Batch #42A</div>
                         </div>
-                        <p style="font-size: 0.85rem; color: var(--text-dim);">Running: Batch #42A</p>
                     </div>
-                    <div class="stat-card glass">
-                        <div class="machine-status">
-                            <div class="status-dot dot-idle"></div>
-                            <span>Machine #2 (Brother Single)</span>
+                    <div class="machine-mini-card">
+                        <div class="status-dot dot-idle"></div>
+                        <div class="machine-info">
+                            <div class="machine-name">M#2 Brother Single</div>
+                            <div class="machine-meta">Idle / Ready</div>
                         </div>
-                        <p style="font-size: 0.85rem; color: var(--text-dim);">Status: Idle / Ready</p>
                     </div>
                 </div>
             </section>
@@ -447,8 +467,33 @@
                         <p style="color: var(--text-dim);">Contact tech support or view machine manuals.</p>
                     </div>
                 </header>
-                <div class="glass" style="padding: 40px; text-align: center; color: var(--text-dim);">
-                    <p>Machine documentation and technical assistance.</p>
+                <div class="support-grid">
+                    <div class="glass support-card">
+                        <div class="support-icon-box" style="color: var(--primary);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        </div>
+                        <h3>Machine Manuals</h3>
+                        <p>Access PDF documentation for Happy and Brother embroidery machines.</p>
+                        <button class="btn btn-secondary" style="margin-top: 15px; border: 1px solid var(--border-glass);">View Library</button>
+                    </div>
+
+                    <div class="glass support-card">
+                        <div class="support-icon-box" style="color: #10b981;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        </div>
+                        <h3>Technical Support</h3>
+                        <p>Direct line to the maintenance department and lead technician.</p>
+                        <button class="btn btn-secondary" style="margin-top: 15px; border: 1px solid var(--border-glass);">Open Ticket</button>
+                    </div>
+
+                    <div class="glass support-card">
+                        <div class="support-icon-box" style="color: #ef4444;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </div>
+                        <h3>Emergency Protocols</h3>
+                        <p>Standard operating procedures for power failure or needle breaks.</p>
+                        <button class="btn btn-secondary" style="margin-top: 15px; border: 1px solid var(--border-glass);">Read Protocols</button>
+                    </div>
                 </div>
             </section>
 

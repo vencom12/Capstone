@@ -350,40 +350,6 @@ main,
 }
 
 
-.sync-indicator {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%) scale(0.8);
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-glass);
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary);
-    z-index: 2000;
-    opacity: 0;
-    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    pointer-events: none;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-}
-
-
-.sync-indicator.is-syncing {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-    animation: pulse-sync 2s infinite ease-in-out;
-}
-
-
-.sync-indicator svg {
-    width: 22px;
-    height: 22px;
-}
 
 /* --- Mobile Device UI Overhaul (Phase 5) --- */
 
@@ -685,58 +651,6 @@ main,
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-.status-badge {
-    
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid transparent;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-main);
-    display: inline-block;
-    text-align: center;
-}
-
-.status-badge.pending {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-.status-badge.verified {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
-}
-
-.status-badge[data-status="Delivered"],
-.status-badge[data-status="Order Delivered"] {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.status-badge[data-status="In Transit"] {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border-color: rgba(59, 130, 246, 0.3);
-}
-
-.status-badge[data-status="Preparing Order"] {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-.status-badge[data-status="Ready For Pick Up"] {
-    background: rgba(168, 85, 247, 0.15);
-    color: #c084fc;
-    border-color: rgba(168, 85, 247, 0.3);
-}
 
 .wallet-balance-card {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
@@ -795,36 +709,6 @@ main,
 }
 
 
-.loader-cloud-container {
-    grid-column: 1/-1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 100px 0;
-    color: var(--text-dim);
-}
-
-
-.loader-cloud-container svg {
-    width: 48px;
-    height: 48px;
-    color: var(--primary);
-    animation: cloud-float 2s ease-in-out infinite;
-    margin-bottom: 20px;
-}
-
-.staff-role-badge {
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: 50px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-main);
-    border: 1px solid var(--border-glass);
-    text-align: center;
-}
 
 /* Glass Date Picker Styles */
 .glass-date-picker {
@@ -856,63 +740,3 @@ main,
 
 /* Dead AI code removed */
 
-/* --- Tracking Grid & Block Styles --- */
-.tracking-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 20px;
-    width: 100%;
-}
-
-.tracking-block {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    border-radius: 20px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: default;
-}
-
-.tracking-block:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-}
-
-.tracking-block-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.tracking-block-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.tracking-block-field::before,
-.tracking-block-progress-section::before {
-    content: attr(data-label);
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--primary);
-    opacity: 0.8;
-}
-
-.tracking-block-progress-section {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-glass);
-}
-
-@media (max-width: 650px) {
-    .tracking-grid {
-        grid-template-columns: 1fr;
-    }
-}

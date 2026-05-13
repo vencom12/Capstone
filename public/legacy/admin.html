@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="css/content/content-table.css">
     <link rel="stylesheet" href="css/content/content-forms.css">
     <link rel="stylesheet" href="css/utilities/utilities.css">
+    <link rel="stylesheet" href="css/components/status-badges.css">
+    <link rel="stylesheet" href="css/components/loaders.css">
     <link rel="stylesheet" href="css/responsive-tablet.css">
     <link rel="stylesheet" href="css/responsive-mobile.css">
     <link rel="stylesheet" href="css/responsive-desktop.css">
@@ -33,13 +35,14 @@
     <script>
         // Immediate Security Guard: Prevents dashboard flicker before full JS loads
         (function() {
-            const session = localStorage.getItem('stitch_admin_session') || sessionStorage.getItem('stitch_admin_session');
+            const session = localStorage.getItem('stitch_session') || sessionStorage.getItem('stitch_session');
             if (!session) {
                 document.documentElement.classList.add('unauthorized-hide');
             }
         })();
     </script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="js/core.js"></script>
     <script src="js/modal-manager.js"></script>
     <script src="admin.js"></script>
     <script src="assistant.js"></script>

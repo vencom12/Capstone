@@ -6,20 +6,7 @@ const SOCKET_URL = window.location.origin;
 window.API_URL = API_URL;
 window.AUTH_API_URL = AUTH_API_URL;
 
-// --- Toast Notifications (Moved to top for error handler) ---
-function showToast(message) {
-    const container = document.getElementById('toast-container') || document.body;
-    const toast = document.createElement('div');
-    toast.className = 'toast show';
-    toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 24px; border-radius: 8px; z-index: 10000;';
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
-window.showToast = showToast;
+// --- Toast, Auth, API, debounce, sync all provided by js/core.js ---
 
 // Global Error Handler for remote debugging
 window.onerror = function (msg, url, line, col, error) {
@@ -29,17 +16,7 @@ window.onerror = function (msg, url, line, col, error) {
     return false;
 };
 
-// Utility: Debounce function
-function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
 
-let _csrfToken = null;
 
 // --- Key Objects (Hoisted or defined early for window export) ---
 const UI = {
@@ -49,51 +26,7 @@ const UI = {
     }
 };
 
-const AuthManager = {
-    SESSION_KEY: 'stitch_admin_session',
-    async login(email, password, rememberMe = false, portal = 'admin') {
-        try {
-            const response = await apiFetch(`${AUTH_API_URL}/login`, {
-                method: 'POST',
-                body: JSON.stringify({ email, password, rememberMe, portal })
-            });
-            const data = await response.json();
-            if (response.ok) {
-                const storage = rememberMe ? localStorage : sessionStorage;
-                storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-                return { success: true };
-            } else {
-                return { success: false, message: data.message || 'Login failed' };
-            }
-        } catch (err) {
-            return { success: false, message: 'Connection error' };
-        }
-    },
-    async logout() {
-        localStorage.removeItem(this.SESSION_KEY);
-        sessionStorage.removeItem(this.SESSION_KEY);
-        // Clear server session without waiting/looping
-        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
-        window.location.href = 'index.html';
-    },
-    getSession() {
-        const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
-        return session ? JSON.parse(session) : null;
-    },
-    getUserRole() {
-        const session = this.getSession();
-        return session ? session.user.role : null;
-    },
-    isAuthenticated() { return !!this.getSession(); },
-    checkAccess(role, redirect = true) {
-        const session = this.getSession();
-        if (!session || session.user.role !== role) {
-            if (redirect) window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    }
-};
+// --- Core functionality provided by js/core.js ---
 
 const State = {
     _cache: {
@@ -135,78 +68,10 @@ window.downloadReceipt = (receiptId) => {
     window.location.href = `/api/customer/receipt/${receiptId}/download`;
 };
 
-// Helper: Secure API fetch wrapper
-async function apiFetch(url, options = {}) {
-    // Refresh token if missing
-    if (!_csrfToken && url.includes('/api/')) {
-        await refreshCSRFToken();
-    }
 
-    const performFetch = async () => {
-        const defaultHeaders = {
-            'X-Requested-With': 'XMLHttpRequest'
-        };
-        if (_csrfToken) {
-            defaultHeaders['X-CSRF-Token'] = _csrfToken;
-        }
-        if (options.body && !(options.body instanceof FormData)) {
-            defaultHeaders['Content-Type'] = 'application/json';
-        }
-        const fetchOptions = {
-            ...options,
-            headers: { ...defaultHeaders, ...(options.headers || {}) },
-            credentials: 'include'
-        };
-        return fetch(url, fetchOptions);
-    };
 
-    let response = await performFetch();
 
-    if (response.status === 401) {
-        if (!url.includes('/logout')) {
-            console.warn('Unauthorized access detected, redirecting to login...');
-            AuthManager.logout();
-        }
-        return response;
-    }
-
-    // If CSRF mismatch, refresh and retry once
-    if (response.status === 403) {
-        try {
-            const clone = response.clone();
-            const data = await clone.json();
-            if (data.message && data.message.includes('CSRF')) {
-                console.log('CSRF mismatch detected, refreshing token and retrying...');
-                await refreshCSRFToken();
-                response = await performFetch();
-            }
-        } catch (e) { /* Not JSON or other error */ }
-    }
-
-    return response;
-}
-
-async function refreshCSRFToken() {
-    try {
-        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            _csrfToken = data.csrfToken;
-        }
-    } catch (e) { console.error('CSRF Refresh failed', e); }
-}
-
-// --- Global Sync Indicator ---
-let _syncCount = 0;
-const updateSyncIndicator = (isStarting) => {
-    _syncCount += isStarting ? 1 : -1;
-    if (_syncCount < 0) _syncCount = 0;
-    const el = document.getElementById('global-sync-indicator');
-    if (el) {
-        if (_syncCount > 0) el.classList.add('is-syncing');
-        else el.classList.remove('is-syncing');
-    }
-};
+// refreshCSRFToken, _syncCount, updateSyncIndicator all provided by js/core.js
 
 // --- UI Rendering ---
 function updateUI() {
@@ -320,7 +185,18 @@ const _updateUIInternal = debounce(() => {
                     </tr>
                 `).join('');
             } else {
-                orderTable.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">No orders found.</td></tr>';
+                orderTable.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state-container" style="padding: 60px 20px;">
+                                <div class="empty-state-visual">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
+                                </div>
+                                <h3 class="empty-state-title">No Orders Found</h3>
+                                <p class="empty-state-text">There are currently no orders that match your criteria.</p>
+                            </div>
+                        </td>
+                    </tr>`;
             }
         } else {
             orderTable.innerHTML = orders.map(order => {
@@ -373,9 +249,21 @@ if (staffTable) {
 
 const historyTable = document.getElementById('admin-history-table-body');
 if (historyTable) {
-    historyTable.innerHTML = historyOrders.length === 0
-        ? '<tr><td colspan="5" style="text-align:center; padding:40px;">No historical records.</td></tr>'
-        : historyOrders.map(o => `
+    if (historyOrders.length === 0) {
+        historyTable.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state-container" style="padding: 60px 20px;">
+                        <div class="empty-state-visual">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <h3 class="empty-state-title">History is Empty</h3>
+                        <p class="empty-state-text">Completed orders and past transactions will appear here.</p>
+                    </div>
+                </td>
+            </tr>`;
+    } else {
+        historyTable.innerHTML = historyOrders.map(o => `
                 <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
                     <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
                     <td data-label="Client">${o.client}</td>
@@ -388,6 +276,7 @@ if (historyTable) {
                         </div>
                     </td>
                 </tr>`).join('');
+}
 }
 
 // 4. Update Product Grid

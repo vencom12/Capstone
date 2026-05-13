@@ -2,99 +2,17 @@ const API_URL = '/api/employee';
 const AUTH_API_URL = '/api/auth';
 const SOCKET_URL = window.location.origin;
 
-// Helper: Secure API fetch wrapper
-async function apiFetch(url, options = {}) {
-    const performFetch = async () => {
-        const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
-        if (options.body && !(options.body instanceof FormData)) {
-            defaultHeaders['Content-Type'] = 'application/json';
-        }
-        const fetchOptions = {
-            ...options,
-            headers: { ...defaultHeaders, ...(options.headers || {}) },
-            credentials: 'include'
-        };
-        return fetch(url, fetchOptions);
-    };
+// --- Core functionality provided by js/core.js ---
 
-    let response = await performFetch();
 
-    if (response.status === 401) {
-        if (!url.includes('/logout')) {
-            console.warn('Unauthorized access detected, redirecting to login...');
-            AuthManager.logout();
-        }
-    }
-    return response;
-}
-
-// --- Global Sync Indicator ---
-let _syncCount = 0;
-const updateSyncIndicator = (isStarting) => {
-    _syncCount += isStarting ? 1 : -1;
-    if (_syncCount < 0) _syncCount = 0;
-    const el = document.getElementById('global-sync-indicator');
-    if (el) {
-        if (_syncCount > 0) el.classList.add('is-syncing');
-        else el.classList.remove('is-syncing');
-    }
-};
-
-// --- Toast Notifications ---
-function showToast(message) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast show';
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
-
-// --- Auth Manager ---
-const AuthManager = {
-    SESSION_KEY: 'stitch_employee_session',
-    async login(email, password, rememberMe = false, portal = 'employee') {
-        try {
-            const response = await apiFetch(`${AUTH_API_URL}/login`, {
-                method: 'POST',
-                body: JSON.stringify({ email, password, rememberMe, portal })
-            });
-            if (!response.ok) return { success: false, message: (await response.json()).message || 'Login failed' };
-            const data = await response.json();
-            const storage = rememberMe ? localStorage : sessionStorage;
-            storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-            return { success: true };
-        } catch (err) { return { success: false, message: 'Connection error' }; }
-    },
-    async logout() {
-        localStorage.removeItem(this.SESSION_KEY);
-        sessionStorage.removeItem(this.SESSION_KEY);
-        // Clear server session without waiting/looping
-        fetch(`${AUTH_API_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => { });
-        window.location.href = 'index.html';
-    },
-    getSession() {
-        const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
-        return session ? JSON.parse(session) : null;
-    },
-    isAuthenticated() { return !!this.getSession(); },
-    checkAccess(role, redirect = true) {
-        const session = this.getSession();
-        if (!session || session.user.role !== role) {
-            if (redirect) window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    }
-};
+// --- AuthManager logic moved to core.js ---
 
 // --- State Management ---
 const State = {
-    _cache: { orders: [], inventory: [], products: [], machine: { status: 'STOPPED', progress: 0 } },
+    _cache: { orders: [], inventory: [], products: [], machine: { status: 'STOPPED', progress: 0 }, machines: [
+        { id: 1, name: 'M#1 Happy 12-Head', meta: 'Batch #42A', status: 'RUNNING' },
+        { id: 2, name: 'M#2 Brother Single', meta: 'Idle / Ready', status: 'IDLE' }
+    ] },
     async getDashboardState() {
         try {
             const response = await apiFetch(`${API_URL}/dashboard-state`);
@@ -183,6 +101,22 @@ function updateUI() {
     }
     if (progressEl) progressEl.style.width = `${machine.progress}%`;
 
+    // 1.1 Machine Strip
+    const machineStrip = document.querySelector('.machine-strip');
+    if (machineStrip) {
+        const machines = State._cache.machines;
+        machineStrip.innerHTML = machines.map(m => `
+            <div class="machine-mini-card ${m.status === 'RUNNING' ? 'is-running' : ''}">
+                <div class="status-dot ${m.status === 'RUNNING' ? 'dot-running' : 'dot-idle'}" 
+                     style="width: 10px; height: 10px; border-radius: 50%; background: ${m.status === 'RUNNING' ? '#10b981' : '#64748b'};"></div>
+                <div class="machine-info">
+                    <div class="machine-name">${m.name}</div>
+                    <div class="machine-meta">${m.meta}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
     // 2. Active Orders Table
     const tableBody = document.getElementById('employee-order-table-body');
     if (tableBody) {
@@ -199,7 +133,18 @@ function updateUI() {
                     </tr>
                 `).join('');
             } else {
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">No active orders in queue.</td></tr>';
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state-container">
+                                <div class="empty-state-visual">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                                </div>
+                                <h3 class="empty-state-title">Queue is Clear</h3>
+                                <p class="empty-state-text">No active orders assigned to your station right now.</p>
+                            </div>
+                        </td>
+                    </tr>`;
             }
         } else {
             tableBody.innerHTML = activeOrders.map(order => {
@@ -245,7 +190,17 @@ function updateUI() {
                 </div>
             `).join('');
         } else if (products.length === 0) {
-            productList.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim);">No designs found.</div>';
+            productList.innerHTML = `
+                <div style="grid-column: 1/-1;">
+                    <div class="empty-state-container">
+                        <div class="empty-state-visual">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3 class="empty-state-title">No Designs Found</h3>
+                        <p class="empty-state-text">Your digital catalog is currently empty. Start by creating a new design.</p>
+                        <button class="btn btn-primary" onclick="openCreateProduct()">Create New Design</button>
+                    </div>
+                </div>`;
         } else {
             productList.innerHTML = products.map(p => `
                 <div class="stat-card glass animate-fade" style="display: flex; flex-direction: column; gap: 12px; padding: 15px; position: relative; width: 100%;">

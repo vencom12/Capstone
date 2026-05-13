@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="css/content/content-table.css">
     <link rel="stylesheet" href="css/content/content-forms.css">
     <link rel="stylesheet" href="css/utilities/utilities.css">
+    <link rel="stylesheet" href="css/components/status-badges.css">
+    <link rel="stylesheet" href="css/components/loaders.css">
     <link rel="stylesheet" href="css/responsive-tablet.css">
     <link rel="stylesheet" href="css/content/content-modals.css">
     <link rel="stylesheet" href="css/responsive-mobile.css">
@@ -31,6 +33,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <script src="js/core.js"></script>
     <script src="js/modal-manager.js"></script>
 </head>
 
@@ -319,9 +322,9 @@
             <script>
                 // --- Storefront Specific Logic ---
                 async function openAuth(mode = 'login') {
-                    await ModalManager.loadModal('auth-overlay', 'modals/auth-modal.html');
-                    document.getElementById('auth-overlay').classList.add('active');
-                    toggleAuthMode(mode);
+                    await ModalManager.open('AUTH', {
+                        onOpen: () => toggleAuthMode(mode)
+                    });
                 }
 
                 function toggleAuthMode(mode) {
@@ -473,9 +476,17 @@
 
                         try {
                             if (typeof AuthManager !== 'undefined') {
-                                const result = await AuthManager.login(email, password, rememberMe, 'customer');
+                                // Try login without forcing a portal constraint
+                                const result = await AuthManager.login(email, password, rememberMe, '');
                                 if (result.success) {
-                                    window.location.href = 'user.html';
+                                    const role = AuthManager.getUserRole();
+                                    if (role === 'employee') {
+                                        window.location.href = 'employee.html';
+                                    } else if (role === 'admin') {
+                                        window.location.href = 'admin.html';
+                                    } else {
+                                        window.location.href = 'user.html';
+                                    }
                                 } else if (errorEl) {
                                     errorEl.innerText = result.message || "Invalid credentials.";
                                     errorEl.style.display = 'block';

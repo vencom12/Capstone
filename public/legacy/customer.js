@@ -9,172 +9,21 @@ window.onerror = function (msg, url, line, col, error) {
     return false;
 };
 
-// Utility: Debounce function
-function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
+// debounce, _csrfToken, refreshCSRFToken, apiFetch, AuthManager,
+// showToast, updateSyncIndicator — all provided by js/core.js
 
-let _csrfToken = null;
 
-// Helper: Secure API fetch wrapper
-async function apiFetch(url, options = {}) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
-    const performFetch = async () => {
-        const defaultHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
-        if (_csrfToken) defaultHeaders['X-CSRF-Token'] = _csrfToken;
-        if (options.body && !(options.body instanceof FormData)) {
-            defaultHeaders['Content-Type'] = 'application/json';
-        }
-        return fetch(url, {
-            ...options,
-            headers: { ...defaultHeaders, ...(options.headers || {}) },
-            credentials: 'include',
-            signal: controller.signal
-        });
-    };
-
-    try {
-        let response = await performFetch();
-        clearTimeout(id);
-
-        if (response.status === 403) {
-            // CSRF mismatch? Refresh and retry ONCE
-            await refreshCSRFToken();
-            return await performFetch();
-        }
-        return response;
-    } catch (e) {
-        clearTimeout(id);
-        throw e;
-    }
-}
-
-async function refreshCSRFToken() {
-    try {
-        const res = await fetch(`${AUTH_API_URL}/csrf-token`, { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            _csrfToken = data.csrfToken;
-            return _csrfToken;
-        }
-    } catch (e) { console.error('CSRF Refresh failed', e); }
-    return null;
-}
-
-// --- Global Sync Indicator ---
-let _syncCount = 0;
-const updateSyncIndicator = (isStarting) => {
-    if (isStarting) _syncCount++;
-    else _syncCount = Math.max(0, _syncCount - 1);
-    
-    const el = document.getElementById('global-sync-indicator');
-    if (el) {
-        if (_syncCount > 0) el.classList.add('is-syncing');
-        else el.classList.remove('is-syncing');
-    }
-};
-
-// --- Toast Notifications ---
-function showToast(message) {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.style.position = 'fixed';
-        container.style.bottom = '20px';
-        container.style.right = '20px';
-        container.style.zIndex = '9999';
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.gap = '10px';
-        document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = 'toast show';
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
-}
-
-// --- Auth Manager ---
-const AuthManager = {
-    SESSION_KEY: 'stitch_customer_session',
-    async login(email, password, rememberMe = false, portal = 'customer', phoneNumber, address) {
-        try {
-            const response = await apiFetch(`${AUTH_API_URL}/login`, {
-                method: 'POST',
-                body: JSON.stringify({ email, password, rememberMe, portal })
-            });
-            if (!response.ok) return { success: false, message: (await response.json()).message || 'Login failed' };
-            const data = await response.json();
-            const storage = rememberMe ? localStorage : sessionStorage;
-            storage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-            return { success: true };
-        } catch (err) { return { success: false, message: 'Connection error' }; }
-    },
-    async register(username, email, password, role = 'customer', phoneNumber, address) {
-        try {
-            const response = await apiFetch(`${AUTH_API_URL}/register`, {
-                method: 'POST',
-                body: JSON.stringify({ username, email, password, role, phoneNumber, address })
-            });
-            if (!response.ok) return { success: false, message: (await response.json()).message || 'Registration failed' };
-            const data = await response.json();
-            localStorage.setItem(this.SESSION_KEY, JSON.stringify({ user: data.user }));
-            return { success: true };
-        } catch (err) { return { success: false, message: 'Connection error' }; }
-    },
-    async logout() {
-        try { await apiFetch(`${AUTH_API_URL}/logout`, { method: 'POST' }); } catch (e) { }
-        // Clear user-specific basket before wiping session
-        const session = this.getSession();
-        if (session && session.user && session.user.id) {
-            localStorage.removeItem('stitch_basket_' + session.user.id);
-        }
-        localStorage.removeItem(this.SESSION_KEY);
-        sessionStorage.removeItem(this.SESSION_KEY);
-        window.location.href = 'index.html';
-    },
-    getSession() {
-        const session = localStorage.getItem(this.SESSION_KEY) || sessionStorage.getItem(this.SESSION_KEY);
-        return session ? JSON.parse(session) : null;
-    },
-    getUserRole() {
-        const session = this.getSession();
-        return session ? session.user.role : null;
-    },
-    isAuthenticated() { return !!this.getSession(); },
-    checkAccess(role, redirect = true) {
-        const session = this.getSession();
-        if (!session || session.user.role !== role) {
-            if (redirect) window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    },
-    async promptLogin() {
-        await ModalManager.loadModal('auth-overlay', 'modals/auth-modal.html');
-        const overlay = document.getElementById('auth-overlay');
-        if (overlay) {
-            overlay.classList.add('active');
-            // If there's an error message from a previous attempt, hide it
+// --- promptLogin: Restored from pruning damage ---
+// This was the AuthManager.promptLogin() method body that got orphaned.
+// Now a standalone function that the core AuthManager delegates to.
+AuthManager.promptLogin = async function() {
+    await ModalManager.open('AUTH', {
+        onOpen: () => {
             const errorEl = document.getElementById('login-error');
             if (errorEl) errorEl.style.display = 'none';
-        } else {
-            // Fallback if modal isn't on current page (e.g. user.html might not have index.html's modal)
-            window.location.href = 'index.html?action=login';
         }
-    }
+    });
 };
 
 const UI = {
@@ -303,7 +152,14 @@ function updateBasketUI() {
 
     if (basket.length === 0) {
         basketItemLists.forEach(list => {
-            list.innerHTML = '<div style="text-align:center; padding: 20px; opacity: 0.5;"><p>Basket is empty</p></div>';
+            list.innerHTML = `
+                <div class="empty-state-container" style="padding: 40px 10px;">
+                    <div class="empty-state-visual" style="width: 80px; height: 80px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    </div>
+                    <h3 class="empty-state-title" style="font-size: 1rem;">Your Basket is Empty</h3>
+                    <p class="empty-state-text" style="font-size: 0.8rem;">Looks like you haven't added anything yet.</p>
+                </div>`;
         });
         if (checkoutBtn) {
             checkoutBtn.style.opacity = '0.5';
@@ -504,9 +360,14 @@ const _updateUIInternal = debounce(() => {
                     </div>
                 `).join('');
             } else {
-                trackingList.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--text-dim);">
-                    <p>${trackingDateFilter ? 'No orders found on this date.' : 'No active orders.'}</p>
-                </div>`;
+                trackingList.innerHTML = `
+                    <div class="empty-state-container">
+                        <div class="empty-state-visual">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3M21 6H3M21 14H3M21 18H3"/></svg>
+                        </div>
+                        <h3 class="empty-state-title">${trackingDateFilter ? 'No Orders Found' : 'No Active Orders'}</h3>
+                        <p class="empty-state-text">${trackingDateFilter ? 'We couldn\'t find any orders on this specific date.' : 'You don\'t have any active embroidery jobs in progress right now.'}</p>
+                    </div>`;
             }
         } else {
             trackingList.innerHTML = filteredOrders.map(order => `
@@ -562,9 +423,18 @@ const _updateUIInternal = debounce(() => {
                     </tr>
                 `).join('');
             } else {
-                historyTable.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--text-dim);">
-                    ${historyDateFilter ? 'No transactions found on this date.' : 'No transactions found.'}
-                </td></tr>`;
+                historyTable.innerHTML = `
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state-container" style="padding: 40px 20px;">
+                                <div class="empty-state-visual" style="width: 80px; height: 80px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <h3 class="empty-state-title" style="font-size: 1rem;">No Transactions</h3>
+                                <p class="empty-state-text" style="font-size: 0.8rem;">${historyDateFilter ? 'No activity found for the selected date.' : 'Your payment history is currently empty.'}</p>
+                            </div>
+                        </td>
+                    </tr>`;
             }
         } else {
             historyTable.innerHTML = displayTransactions.map(tx => {
