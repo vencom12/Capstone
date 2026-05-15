@@ -18,7 +18,7 @@ router.get('/users', adminAuth(), adminController.getAllUsers);
 router.post('/users', adminAuth(), adminController.createUser);
 router.put('/users/:id', adminAuth(), adminController.updateUser);
 router.delete('/users/:id', adminAuth(), adminController.deleteUser);
-// router.get('/analytics', adminAuth(), adminController.getAnalytics); // Analytics refactor pending
+router.get('/analytics', adminAuth(), adminController.getAnalytics);
 
 // --- Staff (Admin + Employee) Routes ---
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), adminController.updateOrdersStatus);

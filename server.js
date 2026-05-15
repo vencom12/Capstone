@@ -334,28 +334,49 @@ app.get('/api/products', async (req, res) => {
 
 app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
     try {
-        const tx = await Transaction.findOne({ transactionID: req.params.transactionID })
-            .populate('orderRef')
-            .populate('userID', 'username');
+        let tx;
+        if (process.env.DB_TYPE === 'postgres') {
+            const prisma = require('./utils/prisma');
+            tx = await prisma.transaction.findUnique({
+                where: { transactionID: req.params.transactionID },
+                include: { order: true, user: true }
+            });
+            if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+            
+            if (tx.userId !== req.user.id && req.user.role === 'customer') {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
 
-        if (!tx) return res.status(404).json({ message: 'Receipt not found' });
-        
-        if (tx.userID._id.toString() !== req.user.id && req.user.role === 'customer') {
-            return res.status(403).json({ message: 'Unauthorized' });
+            return res.json({
+                transactionID: tx.transactionID,
+                orderID: tx.orderID,
+                timestamp: tx.timestamp,
+                amount: tx.amount,
+                status: tx.status,
+                client: tx.order?.client || tx.user?.username || 'Guest',
+                items: tx.order?.items || []
+            });
+        } else {
+            tx = await Transaction.findOne({ transactionID: req.params.transactionID })
+                .populate('orderRef')
+                .populate('userID', 'username');
+
+            if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+            
+            if (tx.userID._id.toString() !== req.user.id && req.user.role === 'customer') {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
+
+            return res.json({
+                transactionID: tx.transactionID,
+                orderID: tx.orderID,
+                timestamp: tx.timestamp,
+                amount: tx.amount,
+                status: tx.status,
+                client: tx.orderRef?.client || tx.userID?.username || 'Guest',
+                items: tx.orderRef?.items || []
+            });
         }
-
-        // Transform data for frontend expectations
-        const receiptData = {
-            transactionID: tx.transactionID,
-            orderID: tx.orderID,
-            timestamp: tx.timestamp,
-            amount: tx.amount,
-            status: tx.status,
-            client: tx.orderRef?.client || tx.userID?.username || 'Guest',
-            items: tx.orderRef?.items || []
-        };
-
-        res.json(receiptData);
     } catch (err) {
         console.error('Receipt error:', err);
         res.status(500).json({ message: 'Server error' });

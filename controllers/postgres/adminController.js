@@ -30,6 +30,31 @@ exports.getDashboardState = async (req, res) => {
             where: { paymentStatus: 'paid' }
         });
 
+        // Real Order Trends (Last 6 months)
+        const allPaidOrders = await prisma.order.findMany({
+            where: { paymentStatus: 'paid' },
+            select: { totalAmount: true, date: true, createdAt: true }
+        });
+
+        const monthlyRevenue = {};
+        allPaidOrders.forEach(o => {
+            const d = new Date(o.date || o.createdAt);
+            const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
+            monthlyRevenue[key] = (monthlyRevenue[key] || 0) + (o.totalAmount || 0);
+        });
+
+        const orderTrends = Object.entries(monthlyRevenue).map(([key, revenue]) => {
+            const [month, year] = key.split('/');
+            return { _id: { month: parseInt(month), year: parseInt(year) }, revenue };
+        }).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month)).slice(-6);
+
+        // Status Distribution
+        const statusCounts = await prisma.order.groupBy({
+            by: ['status'],
+            _count: { id: true }
+        });
+        const statusDistribution = statusCounts.map(s => ({ _id: s.status, count: s._count.id }));
+
         // Simple Design Stats (Top 5 items in orders)
         // Since items is JSON, we'll process it in JS for now to match Mongo logic perfectly
         // In a full SQL design, we'd have an OrderItem table.
@@ -62,8 +87,10 @@ exports.getDashboardState = async (req, res) => {
                 activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
                 lowStock: inventory.filter(i => i.count < 10).length,
                 totalOrders: revenueAggregate._count.id || 0,
-                revenueTrend: [], // Placeholder for trend logic
-                designStats,
+                orderTrends,
+                statusDistribution,
+                topOrdered: designStats,
+                topLiked: [], 
                 traffic: trafficData
             }
         });
@@ -236,5 +263,64 @@ exports.updateOrdersStatus = async (req, res) => {
         res.json({ message: 'Orders updated successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Error updating order status' });
+    }
+};
+
+exports.getAnalytics = async (req, res) => {
+    try {
+        const [totalUsers, totalOrders, allPaidOrders, statusCounts, trafficData] = await Promise.all([
+            prisma.user.count(),
+            prisma.order.count(),
+            prisma.order.findMany({
+                where: { paymentStatus: 'paid' },
+                select: { totalAmount: true, date: true, createdAt: true }
+            }),
+            prisma.order.groupBy({
+                by: ['status'],
+                _count: { id: true }
+            }),
+            prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 })
+        ]);
+
+        // Revenue Trends
+        const monthlyRevenue = {};
+        allPaidOrders.forEach(o => {
+            const d = new Date(o.date || o.createdAt);
+            const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
+            monthlyRevenue[key] = (monthlyRevenue[key] || 0) + (o.totalAmount || 0);
+        });
+
+        const orderTrends = Object.entries(monthlyRevenue).map(([key, revenue]) => {
+            const [month, year] = key.split('/');
+            return { _id: { month: parseInt(month), year: parseInt(year) }, revenue };
+        }).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month)).slice(-6);
+
+        // Top Designs logic (already verified in dashboard state)
+        const allOrders = await prisma.order.findMany({ select: { items: true } });
+        const itemCounts = {};
+        allOrders.forEach(order => {
+            const items = order.items || [];
+            items.forEach(item => {
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + (item.quantity || 1);
+            });
+        });
+        const designStats = Object.entries(itemCounts)
+            .map(([name, count]) => ({ _id: name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        res.json({
+            userCount: totalUsers,
+            revenue: allPaidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+            totalOrders,
+            orderTrends,
+            statusDistribution: statusCounts.map(s => ({ _id: s.status, count: s._count.id })),
+            topOrdered: designStats,
+            topLiked: [], 
+            traffic: trafficData
+        });
+    } catch (err) {
+        console.error('getAnalytics error:', err);
+        res.status(500).json({ message: 'Error fetching analytics' });
     }
 };

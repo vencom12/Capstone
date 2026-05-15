@@ -3,7 +3,11 @@ const prisma = require('../../utils/prisma');
 exports.getDashboardState = async (req, res) => {
     try {
         const [orders, inventory, products] = await Promise.all([
-            prisma.order.findMany({ orderBy: { date: 'desc' }, take: 100 }),
+            prisma.order.findMany({ 
+                include: { transaction: true },
+                orderBy: { date: 'desc' }, 
+                take: 100 
+            }),
             prisma.inventory.findMany(),
             prisma.product.findMany({ orderBy: { createdAt: 'desc' }, take: 100 })
         ]);
