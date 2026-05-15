@@ -62,6 +62,7 @@ main {
 #nav-history:checked~:is(.storefront-container, .dashboard-container) #section-history,
 #nav-receipts:checked~:is(.storefront-container, .dashboard-container) #section-receipts,
 #nav-support:checked~:is(.storefront-container, .dashboard-container) #section-support,
+#nav-raw-materials:checked~:is(.storefront-container, .dashboard-container) #section-raw-materials,
 .module-section.active {
     display: block;
     animation: fadeIn 0.4s ease-out;

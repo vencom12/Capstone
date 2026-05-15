@@ -85,11 +85,25 @@ model Order {
 }
 
 model Inventory {
+  id           String         @id @default(uuid())
+  item         String         @unique
+  count        Int            @default(0)
+  unit         String         @default("Cones")
+  minThreshold Int            @default(10)
+  lastUpdated  DateTime       @default(now()) @updatedAt
+  
+  logs         InventoryLog[]
+}
+
+model InventoryLog {
   id          String   @id @default(uuid())
-  item        String   @unique
-  count       Int      @default(0)
-  unit        String   @default("Cones")
-  lastUpdated DateTime @default(now()) @updatedAt
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  action      String   // "Add", "Deduct", "Update"
+  amount      Int      // Quantity changed
+  newTotal    Int      // Total after change
+  userId      String   // Who made the change (username or ID)
+  timestamp   DateTime @default(now())
 }
 
 model Transaction {

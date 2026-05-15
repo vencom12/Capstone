@@ -25,6 +25,8 @@ router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate),
 router.post('/products', staffAuth(), upload.single('image'), adminController.createProduct);
 router.patch('/products/:id', staffAuth(), upload.single('image'), adminController.updateProduct);
 router.delete('/products/:id', staffAuth(), adminController.deleteProduct);
+router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
+router.patch('/inventory/global', staffAuth(), adminController.updateGlobalThreshold);
 router.patch('/inventory/:id', staffAuth(), adminController.updateInventoryItem);
 
 module.exports = router;

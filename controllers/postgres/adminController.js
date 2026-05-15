@@ -258,16 +258,73 @@ exports.deleteProduct = async (req, res) => {
 
 exports.updateInventoryItem = async (req, res) => {
     try {
-        const { count } = req.body;
+        const { count, minThreshold, action, amount, userId } = req.body;
+        
+        // Find existing to know what changed
+        const existing = await prisma.inventory.findUnique({ where: { id: req.params.id } });
+        if (!existing) return res.status(404).json({ message: 'Item not found' });
+
+        const updateData = {};
+        if (count !== undefined) updateData.count = count;
+        if (minThreshold !== undefined) updateData.minThreshold = minThreshold;
+
         const inventory = await prisma.inventory.update({
             where: { id: req.params.id },
-            data: { count }
+            data: updateData
         });
+
+        // Create audit log if an action was provided
+        if (action && amount !== undefined) {
+            await prisma.inventoryLog.create({
+                data: {
+                    inventoryId: inventory.id,
+                    action: action,
+                    amount: parseInt(amount),
+                    newTotal: inventory.count,
+                    userId: userId || req.user?.username || 'Admin'
+                }
+            });
+            // Emit log update to clients
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, 'INVENTORY_LOG', {});
+        }
 
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, inventory);
         res.json(inventory);
     } catch (err) {
+        console.error("Error updating inventory:", err);
         res.status(500).json({ message: 'Error updating inventory' });
+    }
+};
+
+exports.updateGlobalThreshold = async (req, res) => {
+    try {
+        const { minThreshold } = req.body;
+        if (minThreshold === undefined) return res.status(400).json({ message: 'Missing minThreshold' });
+
+        await prisma.inventory.updateMany({
+            data: { minThreshold: parseInt(minThreshold) }
+        });
+
+        const updatedInventory = await prisma.inventory.findMany();
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', updatedInventory);
+        res.json(updatedInventory);
+    } catch (err) {
+        console.error("Error updating global threshold:", err);
+        res.status(500).json({ message: 'Error updating global threshold' });
+    }
+};
+
+exports.getInventoryLogs = async (req, res) => {
+    try {
+        const logs = await prisma.inventoryLog.findMany({
+            orderBy: { timestamp: 'desc' },
+            take: 50,
+            include: { inventory: { select: { item: true, unit: true } } }
+        });
+        res.json(logs);
+    } catch (err) {
+        console.error("Error fetching logs:", err);
+        res.status(500).json({ message: 'Error fetching inventory logs' });
     }
 };
 

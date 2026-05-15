@@ -67,7 +67,8 @@
 #nav-workbench:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"],
 #nav-products:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-products"],
 #nav-support:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-support"],
-#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"] {
+#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"],
+#nav-raw-materials:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-raw-materials"] {
     background: var(--primary) !important;
     color: white !important;
     box-shadow: 0 4px 15px var(--primary-glow);
@@ -94,7 +95,8 @@
 #nav-workbench:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-workbench"]::after,
 #nav-products:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-products"]::after,
 #nav-support:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-support"]::after,
-#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"]::after {
+#nav-staffing:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-staffing"]::after,
+#nav-raw-materials:checked~ :is(.dashboard-container, .storefront-container) label[for="nav-raw-materials"]::after {
     content: '';
     position: absolute;
     left: 0;

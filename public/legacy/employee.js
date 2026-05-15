@@ -231,6 +231,96 @@ function updateUI() {
                     <td data-label="Date">${new Date(o.date || o.createdAt).toLocaleDateString()}</td>
                 </tr>`).join('');
     }
+
+    // 5. Raw Materials Inventory
+    const rawMaterialsTable = document.getElementById('raw-materials-table-body');
+    if (rawMaterialsTable) {
+        if (!inventory || inventory.length === 0) {
+            rawMaterialsTable.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 40px;">No inventory items found.</td></tr>';
+        } else {
+            rawMaterialsTable.innerHTML = inventory.map(item => {
+                const isLowStock = item.count <= (item.minThreshold || 10);
+                const statusBadge = isLowStock ? 
+                    `<span class="status-pill" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);">Low Stock</span>` : 
+                    `<span class="status-pill" style="background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2);">Healthy</span>`;
+
+                return `
+                    <tr>
+                        <td data-label="Material" style="font-weight: 600; color: white;">${item.item}</td>
+                        <td data-label="Current Stock" style="font-size: 1.1rem; font-weight: 700; ${isLowStock ? 'color: #ef4444;' : 'color: var(--primary);'}">${item.count}</td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td data-label="Action">
+                            <button class="btn btn-secondary" onclick="openUpdateStockModal('${item.id}', '${item.item}', ${item.count})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 6px 12px; font-size: 0.8rem;">Deduct Stock</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+}
+
+async function openUpdateStockModal(id, name, currentCount) {
+    await ModalManager.loadModal('update-stock-modal', 'modals/update-stock-modal.html');
+    
+    document.getElementById('update-stock-id').value = id;
+    document.getElementById('update-stock-title').innerText = `Update: ${name}`;
+    document.getElementById('update-stock-current').innerText = currentCount;
+    
+    // Hide threshold field for employees
+    const thresholdContainer = document.getElementById('threshold-field-container');
+    if (thresholdContainer) thresholdContainer.style.display = 'none';
+
+    // Set action default to Deduct for employees
+    const actionSelect = document.getElementById('update-stock-action');
+    if (actionSelect) actionSelect.value = 'Deduct';
+
+    const form = document.getElementById('update-stock-form');
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+
+    newForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const action = document.getElementById('update-stock-action').value;
+        const amountStr = document.getElementById('update-stock-amount').value;
+        const amount = parseInt(amountStr);
+        let newCount = currentCount;
+
+        if (action === 'Deduct') {
+            newCount = Math.max(0, currentCount - amount);
+        } else {
+            newCount = currentCount + amount;
+        }
+
+        const payload = {
+            count: newCount,
+            action: action,
+            amount: amount,
+            userId: 'Employee' // Could be dynamic if employee profile is loaded
+        };
+
+        const submitBtn = newForm.querySelector('button[type="submit"]');
+        const oldText = submitBtn.innerText;
+        submitBtn.innerText = "Saving...";
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_URL}/admin/inventory/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Failed to update stock');
+            UI.toggleModal('update-stock-modal');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update stock.');
+            submitBtn.innerText = oldText;
+            submitBtn.disabled = false;
+        }
+    });
+
+    UI.toggleModal('update-stock-modal');
 }
 
 function formatOrderDesign(order) {

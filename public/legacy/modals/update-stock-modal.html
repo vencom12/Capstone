@@ -1,0 +1,38 @@
+<div id="update-stock-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="modal-content glass animate-fade" style="width: 450px; padding: 40px; border-radius: 12px; border: 1px solid var(--border-glass);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <h3 id="update-stock-title" style="margin: 0; font-size: 1.5rem; color: var(--text-main);">Update Stock</h3>
+            <span style="cursor: pointer; color: var(--text-dim); font-size: 1.2rem; transition: color 0.2s;" onclick="UI.toggleModal('update-stock-modal')" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-dim)'">✕</span>
+        </div>
+        
+        <form id="update-stock-form" style="display: flex; flex-direction: column; gap: 20px;">
+            <input type="hidden" id="update-stock-id">
+            
+            <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 15px; border: 1px solid var(--border-glass);">
+                <p style="margin: 0; color: var(--text-dim); font-size: 0.9rem;">Current Stock</p>
+                <h2 id="update-stock-current" style="margin: 5px 0 0 0; color: var(--primary); font-size: 2rem;">0</h2>
+            </div>
+
+            <div class="input-group">
+                <label style="color: var(--text-dim); font-size: 0.9rem;">Action</label>
+                <select id="update-stock-action" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                    <option value="Deduct">Deduct Stock (Used for orders/shrinkage)</option>
+                    <option value="Add">Add Stock (Restocked from supplier)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label style="color: var(--text-dim); font-size: 0.9rem;">Quantity</label>
+                <input type="number" id="update-stock-amount" min="1" required placeholder="e.g. 5" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+            </div>
+
+            <div class="input-group admin-only-field" id="threshold-field-container">
+                <label style="color: var(--text-dim); font-size: 0.9rem;">Low Stock Alert Threshold</label>
+                <input type="number" id="update-stock-threshold" min="0" placeholder="e.g. 10" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                <p style="margin: 5px 0 0 0; font-size: 0.8rem; color: var(--text-dim);">The system will alert you when stock falls below this number.</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; margin-top: 10px; font-size: 1rem; font-weight: 600;">Save Changes</button>
+        </form>
+    </div>
+</div>

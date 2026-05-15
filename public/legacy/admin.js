@@ -310,7 +310,175 @@ if (productGrid) {
 updateAITip();
 updatePaginationUI();
 updateCharts();
+renderRawMaterials(inventory);
+fetchInventoryLogs();
 }, 250);
+
+function renderRawMaterials(inventory) {
+    const tbody = document.getElementById('raw-materials-table-body');
+    if (!tbody) return;
+
+    if (!inventory || inventory.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 40px;">No inventory items found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = inventory.map(item => {
+        const isLowStock = item.count <= (item.minThreshold || 10);
+        const statusBadge = isLowStock ? 
+            `<span class="status-pill" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);">Low Stock</span>` : 
+            `<span class="status-pill" style="background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2);">Healthy</span>`;
+
+        return `
+            <tr>
+                <td data-label="Material" style="font-weight: 600; color: white;">${item.item}</td>
+                <td data-label="Current Stock" style="font-size: 1.1rem; font-weight: 700; ${isLowStock ? 'color: #ef4444;' : 'color: var(--primary);'}">${item.count}</td>
+                <td data-label="Alert Threshold" style="color: var(--text-dim);">${item.minThreshold || 10}</td>
+                <td data-label="Status">${statusBadge}</td>
+                <td data-label="Action">
+                    <button class="btn btn-secondary" onclick="openUpdateStockModal('${item.id}', '${item.item}', ${item.count}, ${item.minThreshold || 10})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 6px 12px; font-size: 0.8rem;">Update</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function openUpdateStockModal(id, name, currentCount, threshold) {
+    await ModalManager.loadModal('update-stock-modal', 'modals/update-stock-modal.html');
+    
+    document.getElementById('update-stock-id').value = id;
+    document.getElementById('update-stock-title').innerText = `Update: ${name}`;
+    document.getElementById('update-stock-current').innerText = currentCount;
+    
+    const thresholdInput = document.getElementById('update-stock-threshold');
+    if (thresholdInput) {
+        thresholdInput.value = threshold;
+    }
+
+    const form = document.getElementById('update-stock-form');
+    // Remove old listeners
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+
+    newForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const action = document.getElementById('update-stock-action').value;
+        const amountStr = document.getElementById('update-stock-amount').value;
+        const amount = parseInt(amountStr);
+        let newCount = currentCount;
+
+        if (action === 'Deduct') {
+            newCount = Math.max(0, currentCount - amount);
+        } else {
+            newCount = currentCount + amount;
+        }
+
+        const thresholdVal = document.getElementById('update-stock-threshold')?.value;
+
+        const payload = {
+            count: newCount,
+            action: action,
+            amount: amount
+        };
+
+        if (thresholdVal !== undefined && thresholdVal !== "") {
+            payload.minThreshold = parseInt(thresholdVal);
+        }
+
+        const submitBtn = newForm.querySelector('button[type="submit"]');
+        const oldText = submitBtn.innerText;
+        submitBtn.innerText = "Saving...";
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_URL}/admin/inventory/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Failed to update stock');
+            UI.toggleModal('update-stock-modal');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update stock.');
+            submitBtn.innerText = oldText;
+            submitBtn.disabled = false;
+        }
+    });
+
+    UI.toggleModal('update-stock-modal');
+}
+
+async function updateGlobalThreshold() {
+    const val = document.getElementById('global-threshold-input').value;
+    if (!val || isNaN(val)) return;
+
+    if (!confirm(`Are you sure you want to set the low-stock alert threshold to ${val} for ALL raw materials?`)) return;
+
+    try {
+        const res = await fetch(`${API_URL}/admin/inventory/global`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ minThreshold: parseInt(val) }),
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to update global threshold');
+        document.getElementById('global-threshold-input').value = '';
+    } catch (err) {
+        console.error(err);
+        alert('Failed to update global threshold.');
+    }
+}
+
+async function fetchInventoryLogs() {
+    try {
+        const res = await fetch(`${API_URL}/admin/inventory/logs`, { credentials: 'include' });
+        if (!res.ok) return;
+        const logs = await res.json();
+        renderInventoryLogs(logs);
+    } catch (err) {
+        console.error("Error fetching logs", err);
+    }
+}
+
+function renderInventoryLogs(logs) {
+    const container = document.getElementById('inventory-logs-container');
+    if (!container) return;
+
+    if (!logs || logs.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-dim); font-size: 0.85rem; text-align: center;">No recent audit logs.</p>';
+        return;
+    }
+
+    container.innerHTML = logs.map(log => {
+        const isAdd = log.action === 'Add';
+        const iconColor = isAdd ? '#10b981' : '#ef4444';
+        const iconSvg = isAdd ? 
+            `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>` : 
+            `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+
+        const time = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const date = new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+        return `
+            <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-glass);">
+                <div style="margin-top: 2px;">${iconSvg}</div>
+                <div style="flex: 1;">
+                    <p style="margin: 0; font-size: 0.9rem; color: white;">
+                        <span style="font-weight: 600;">${log.userId}</span> 
+                        ${log.action.toLowerCase()}ed 
+                        <span style="font-weight: 600; color: ${iconColor};">${log.amount}</span> 
+                        from <span style="font-weight: 600;">${log.inventory?.item || 'Unknown Item'}</span>
+                    </p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-dim);">
+                        New Total: ${log.newTotal} • ${date} at ${time}
+                    </p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
 function updatePaginationUI() {
     const { pagination } = State._cache;
