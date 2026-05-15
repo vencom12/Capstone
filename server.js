@@ -222,12 +222,41 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Root route serves the legacy storefront
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+    // Auto-log visit for root landing
+    try {
+        if (process.env.DB_TYPE === 'postgres') {
+            const prisma = require('./utils/prisma');
+            await prisma.siteTraffic.create({
+                data: { path: '/', userAgent: req.headers['user-agent'] || 'Unknown' }
+            });
+        } else {
+            const visit = new SiteTraffic({ path: '/', userAgent: req.headers['user-agent'] });
+            await visit.save();
+        }
+    } catch (e) { /* ignore tracking errors */ }
+    
     res.sendFile(path.join(__dirname, 'public', 'legacy', 'index.html'));
 });
 
 // Fallback for .html routes
-app.get('/:page.html', (req, res) => {
+app.get('/:page.html', async (req, res) => {
+    // Auto-log visit for specific pages
+    try {
+        const page = req.params.page;
+        if (!['login', 'register', 'admin', 'employee'].includes(page)) {
+            if (process.env.DB_TYPE === 'postgres') {
+                const prisma = require('./utils/prisma');
+                await prisma.siteTraffic.create({
+                    data: { path: `/${page}.html`, userAgent: req.headers['user-agent'] || 'Unknown' }
+                });
+            } else {
+                const visit = new SiteTraffic({ path: `/${page}.html`, userAgent: req.headers['user-agent'] });
+                await visit.save();
+            }
+        }
+    } catch (e) { /* ignore tracking errors */ }
+    
     res.sendFile(path.join(__dirname, 'public', 'legacy', `${req.params.page}.html`));
 });
 
@@ -385,8 +414,18 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
 
 app.post('/api/analytics/visit', async (req, res) => {
     try {
-        const visit = new SiteTraffic({ path: req.body.path || '/', userAgent: req.headers['user-agent'] });
-        await visit.save();
+        if (process.env.DB_TYPE === 'postgres') {
+            const prisma = require('./utils/prisma');
+            await prisma.siteTraffic.create({
+                data: { 
+                    path: req.body.path || '/', 
+                    userAgent: req.headers['user-agent'] || 'Unknown' 
+                }
+            });
+        } else {
+            const visit = new SiteTraffic({ path: req.body.path || '/', userAgent: req.headers['user-agent'] });
+            await visit.save();
+        }
         res.status(204).send();
     } catch (err) { res.status(500).send(); }
 });

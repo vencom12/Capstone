@@ -8,7 +8,7 @@ exports.getDashboardState = async (req, res) => {
         const limit = 20;
         const skip = (page - 1) * limit;
 
-        const [orders, inventory, products, totalUsers, totalOrders, adminUsers, trafficData] = await Promise.all([
+        const [orders, inventory, products, totalUsers, totalOrders, adminUsers, trafficData, totalVisits30D] = await Promise.all([
             prisma.order.findMany({
                 include: { transaction: true, receipt: true },
                 orderBy: { createdAt: 'desc' },
@@ -20,13 +20,28 @@ exports.getDashboardState = async (req, res) => {
             prisma.user.count(),
             prisma.order.count(),
             prisma.user.findMany({ orderBy: [{ role: 'asc' }, { createdAt: 'desc' }] }),
-            prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 })
+            prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 }),
+            prisma.siteTraffic.count({
+                where: {
+                    timestamp: {
+                        gte: new Date(new Date().setDate(new Date().getDate() - 30))
+                    }
+                }
+            })
         ]);
 
-        // Revenue Calculation
+        // Revenue Calculation (All non-cancelled orders)
         const revenueAggregate = await prisma.order.aggregate({
             _sum: { totalAmount: true },
             _count: { id: true },
+            where: { 
+                NOT: { status: 'Order Canceled' }
+            }
+        });
+
+        // Paid Revenue (For separate tracking if needed)
+        const paidAggregate = await prisma.order.aggregate({
+            _sum: { totalAmount: true },
             where: { paymentStatus: 'paid' }
         });
 
@@ -87,6 +102,10 @@ exports.getDashboardState = async (req, res) => {
                 activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
                 lowStock: inventory.filter(i => i.count < 10).length,
                 totalOrders: revenueAggregate._count.id || 0,
+                totalVisits: totalVisits30D || 0,
+                avgOrderValue: (revenueAggregate._count.id > 0) 
+                    ? (revenueAggregate._sum.totalAmount / revenueAggregate._count.id) 
+                    : 0,
                 orderTrends,
                 statusDistribution,
                 topOrdered: designStats,
