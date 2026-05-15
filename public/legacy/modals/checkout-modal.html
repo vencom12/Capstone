@@ -83,7 +83,7 @@
                             <span>Cash at Counter</span>
                         </button>
 
-                        <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                        <button onclick="CheckoutManager.selectMethod('gcash')" id="pay-btn-gcash" class="payment-method-btn">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007df2" stroke-width="2">
                                 <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
                                 <line x1="3" y1="10" x2="21" y2="10"></line>
@@ -92,13 +92,46 @@
                             <span>GCash</span>
                         </button>
 
-                        <button disabled class="payment-method-btn" style="opacity: 0.6; cursor: not-allowed; border-style: dashed;">
+                        <button onclick="CheckoutManager.selectMethod('paymaya')" id="pay-btn-paymaya" class="payment-method-btn">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
                                 <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
                                 <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
                             </svg>
                             <span>PayMaya</span>
                         </button>
+                    </div>
+
+                    <!-- AI Receipt Upload Section -->
+                    <div id="receipt-upload-section" class="checkout-section" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px;">
+                        <h3 class="checkout-section-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Upload Payment Receipt
+                        </h3>
+                        <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 12px;">Please upload a screenshot of your successful transaction.</p>
+                        
+                        <div class="upload-zone glass" onclick="document.getElementById('receipt-file').click()" style="cursor: pointer; padding: 20px; border: 2px dashed var(--border-glass); border-radius: 12px; text-align: center; transition: 0.3s;">
+                            <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="CheckoutManager.handleFileSelect(event)">
+                            <div id="upload-placeholder">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.5" style="margin-bottom: 8px;">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                </svg>
+                                <p style="font-size: 0.85rem; color: var(--text-dim);">Click to upload or drag & drop</p>
+                            </div>
+                            <img id="receipt-preview" style="display: none; width: 100%; border-radius: 8px; margin-top: 10px;">
+                        </div>
+
+                        <div id="ai-status-container" style="display: none; margin-top: 16px; padding: 12px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="ai-pulse" style="width: 12px; height: 12px; background: var(--primary); border-radius: 50%;"></div>
+                                <span id="ai-status-text" style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">StitchMaster AI is analyzing...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="verification-status">

@@ -116,6 +116,91 @@ exports.chat = async (req, res) => {
     }
 };
 
+
 exports.listModels = async (req, res) => {
     res.json({ message: "Automation Engine is active. Model: " + MODEL });
+};
+
+exports.verifyReceipt = async (req, res) => {
+    try {
+        const { receiptUrl, orderTotal, orderId } = req.body;
+        const apiKey = process.env.GROQ_API_KEY;
+
+        if (!apiKey) {
+            return res.status(400).json({ success: false, message: "AI Verification requires an API Key." });
+        }
+
+        if (!receiptUrl) {
+            return res.status(400).json({ success: false, message: "No receipt URL provided." });
+        }
+
+        console.log(`[AI Vision] Analyzing receipt for Order ${orderId}...`);
+
+        const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "llama-3.2-11b-vision-preview",
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                type: "text",
+                                text: `Extract payment details from this receipt image. 
+                                Compare the extracted "Total Amount" with the expected value: ${orderTotal}.
+                                Output ONLY a JSON object:
+                                {
+                                  "extractedAmount": number,
+                                  "transactionId": "string",
+                                  "date": "string",
+                                  "isMatch": boolean,
+                                  "confidence": number,
+                                  "reason": "string"
+                                }`
+                            },
+                            {
+                                type: "image_url",
+                                image_url: { url: receiptUrl }
+                            }
+                        ]
+                    }
+                ],
+                response_format: { type: "json_object" }
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0]) {
+            throw new Error("AI failed to provide a choice.");
+        }
+
+        const aiResult = JSON.parse(data.choices[0].message.content);
+
+        // Update Database with AI Findings
+        const updatedReceipt = await prisma.receipt.update({
+            where: { orderID: orderId },
+            data: {
+                ocrData: aiResult,
+                confidenceScore: aiResult.confidence || 0,
+                aiVerificationStatus: aiResult.isMatch ? 'verified' : 'flagged',
+                status: aiResult.isMatch ? 'Verified' : 'Manual Review'
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            message: aiResult.isMatch ? "Payment verified by AI!" : "AI flagged a discrepancy.",
+            aiResult,
+            updatedReceipt 
+        });
+
+    } catch (error) {
+        console.error('[AI Vision Error]:', error);
+        res.status(500).json({ success: false, message: "AI Analysis failed: " + error.message });
+    }
 };

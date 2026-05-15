@@ -116,6 +116,7 @@ model Receipt {
   metadata      Json?
   
   // AI Vision Fields
+  imageUrl             String?
   ocrData              Json?
   confidenceScore      Float     @default(0)
   aiVerificationStatus String    @default("pending")

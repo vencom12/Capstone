@@ -613,21 +613,108 @@ const CheckoutManager = {
     async selectMethod(method) {
         this.selectedMethod = method;
         document.querySelectorAll('.payment-method-btn').forEach(btn => btn.classList.remove('active'));
-        const btn = document.getElementById(`pay-btn-${method === 'wallet' ? 'wallet' : 'cash'}`);
+        const btn = document.getElementById(`pay-btn-${method}`);
         if (btn) btn.classList.add('active');
+
+        // Toggle Receipt Upload UI
+        const uploadSection = document.getElementById('receipt-upload-section');
+        if (uploadSection) {
+            uploadSection.style.display = (method === 'gcash' || method === 'paymaya') ? 'block' : 'none';
+        }
+
+        this.isVerified = false; // Reset verification on method change
+        
+        if (method === 'wallet' || method === 'cash_at_counter') {
+            updateSyncIndicator(true);
+            try {
+                const response = await apiFetch(`${API_URL}/payment/validate`, {
+                    method: 'POST',
+                    body: JSON.stringify({ method, total: this.total })
+                });
+                this.isVerified = response.ok;
+                if (!response.ok) showToast((await response.json()).message || 'Verification failed');
+                else showToast('Payment method verified.');
+            } catch (e) {
+                this.isVerified = false;
+                showToast('Validation unavailable');
+            } finally {
+                updateSyncIndicator(false);
+                this.updateVerificationUI();
+            }
+        } else {
+            // For GCash/PayMaya, verification happens after upload
+            this.updateVerificationUI();
+        }
+    },
+
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('receipt-preview');
+            const placeholder = document.getElementById('upload-placeholder');
+            if (preview) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            if (placeholder) placeholder.style.display = 'none';
+            
+            // Trigger AI Verification automatically after a brief delay
+            setTimeout(() => this.triggerAIVerification(file), 500);
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async triggerAIVerification(file) {
+        const statusContainer = document.getElementById('ai-status-container');
+        const statusText = document.getElementById('ai-status-text');
+        if (statusContainer) statusContainer.style.display = 'block';
+        if (statusText) statusText.innerText = 'Uploading to secure server...';
 
         updateSyncIndicator(true);
         try {
-            const response = await apiFetch(`${API_URL}/payment/validate`, {
+            // 1. Upload to Cloudinary via our new proxy route
+            const formData = new FormData();
+            formData.append('receipt', file);
+            
+            const uploadRes = await apiFetch(`${API_URL}/upload-receipt`, {
                 method: 'POST',
-                body: JSON.stringify({ method, total: this.total })
+                body: formData
             });
-            this.isVerified = response.ok;
-            if (!response.ok) showToast((await response.json()).message || 'Verification failed');
-            else showToast('Payment method verified.');
-        } catch (e) {
-            this.isVerified = false;
-            showToast('Validation unavailable');
+
+            if (!uploadRes.ok) throw new Error('Upload failed');
+            const uploadData = await uploadRes.json();
+            this.receiptUrl = uploadData.url;
+
+            if (statusText) statusText.innerText = 'StitchMaster AI is reading receipt...';
+
+            // 2. Trigger AI Vision Analysis
+            const aiRes = await apiFetch(`/api/ai/verify-receipt`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    receiptUrl: this.receiptUrl,
+                    orderTotal: this.total,
+                    orderId: 'PRE-ORDER' // Temporary ID for verification
+                })
+            });
+
+            const aiData = await aiRes.json();
+            if (aiData.success && aiData.aiResult.isMatch) {
+                this.isVerified = true;
+                if (statusText) statusText.innerText = '✅ Payment Verified by AI!';
+                showToast('AI successfully verified your payment!');
+            } else {
+                this.isVerified = false;
+                if (statusText) statusText.innerText = '❌ AI Discrepancy Found. Please check amount.';
+                showToast('AI flagged a discrepancy. Manual review may be needed.', 'warning');
+            }
+        } catch (err) {
+            console.error('AI Verification Error:', err);
+            if (statusText) statusText.innerText = '⚠️ AI Offline. Manual verification required.';
+            // Allow manual "Place Order" if AI fails, but marked as pending
+            this.isVerified = true; 
         } finally {
             updateSyncIndicator(false);
             this.updateVerificationUI();
@@ -722,7 +809,8 @@ const CheckoutManager = {
                     paymentMethod: this.selectedMethod,
                     address,
                     deliveryTime,
-                    notes
+                    notes,
+                    receiptUrl: this.receiptUrl || null
                 })
             });
 

@@ -61,7 +61,7 @@ exports.topupWallet = async (req, res) => {
 
 exports.submitOrder = async (req, res) => {
     try {
-        const { items, totalAmount, paymentMethod, address, deliveryTime, notes } = req.body;
+        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl } = req.body;
         const userId = req.user.id;
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
@@ -114,7 +114,7 @@ exports.submitOrder = async (req, res) => {
                     orderID: secureOrderId,
                     amount: numTotal,
                     status: (paymentMethod === 'wallet') ? 'completed' : 'pending',
-                    receiptLink: `/api/customer/receipt/${secureReceiptId}/download`,
+                    receiptLink: receiptUrl || `/api/customer/receipt/${secureReceiptId}/download`,
                     receiptId: secureReceiptId,
                     userId: user.id
                 }
@@ -128,6 +128,7 @@ exports.submitOrder = async (req, res) => {
                     paymentMethod,
                     amount: numTotal,
                     status: (paymentMethod === 'wallet') ? 'Paid' : 'Pending',
+                    imageUrl: receiptUrl || null,
                     userId: user.id
                 }
             });

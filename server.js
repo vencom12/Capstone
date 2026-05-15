@@ -272,13 +272,24 @@ if (DB_TYPE === 'postgres') {
     aiRoutes = require('./routes/aiRoutes');
 }
 
-// Legacy Routes (for compatibility)
 // Health check for diagnostics
-app.get('/api/health', (req, res) => {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+app.get('/api/health', async (req, res) => {
+    let dbStatus = 'Disconnected';
+    
+    if (DB_TYPE === 'postgres') {
+        try {
+            const prisma = require('./utils/prisma');
+            await prisma.$queryRaw`SELECT 1`;
+            dbStatus = 'Connected';
+        } catch (e) { dbStatus = 'Error'; }
+    } else {
+        dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+    }
+
     res.json({ 
         status: 'ok', 
         database: dbStatus,
+        dbType: DB_TYPE,
         timestamp: new Date().toISOString()
     });
 });
