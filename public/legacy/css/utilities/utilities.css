@@ -136,6 +136,7 @@ main,
     transition: var(--transition-fast);
     text-decoration: none;
     display: inline-block;
+    white-space: nowrap;
 }
 
 

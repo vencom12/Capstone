@@ -217,9 +217,9 @@ const _updateUIInternal = debounce(() => {
                     <td data-label="Design">${formatOrderDesign(order)}</td>
                     <td data-label="Total" style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td data-label="Actions">
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order.id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
-                            ${order.receipt ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receipt.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
+                        <div style="display: flex; gap: 6px; min-width: 140px; justify-content: flex-start;">
+                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order.id || order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 10px; font-size: 0.7rem;">Edit</button>
+                            ${order.receipt ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receipt.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 10px; font-size: 0.7rem;">Download</button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -1024,7 +1024,7 @@ window.openCreateStaff = async () => {
 
 window.openEditStaff = async (id) => {
     await ModalManager.loadModal('staff-modal', 'modals/staff-modal.html');
-    const user = State._cache.users.find(u => u._id === id);
+    const user = State._cache.users.find(u => (u.id || u._id) === id);
     if (!user) return showToast('User not found');
 
     const form = document.getElementById('create-staff-form');
@@ -1058,7 +1058,7 @@ window.openCreateProduct = async () => {
 
 window.openEditProduct = async (id) => {
     await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
-    const product = State._cache.products.find(p => p._id === id);
+    const product = State._cache.products.find(p => (p.id || p._id) === id);
     if (!product) return showToast('Design not found');
 
     const form = document.getElementById('create-product-form');
@@ -1071,6 +1071,11 @@ window.openEditProduct = async (id) => {
         document.querySelector('#create-product-modal h2').innerText = 'Edit Design Details';
     }
     UI.toggleModal('create-product-modal');
+};
+
+window.downloadReceipt = (receiptId) => {
+    if (!receiptId) return showToast('Receipt ID missing');
+    window.open(`/api/customer/receipt/${receiptId}/download`, '_blank');
 };
 
 window.deleteUser = async (id) => {
@@ -1097,6 +1102,93 @@ window.deleteProduct = async (id) => {
         const err = await response.text();
         showToast(`Deletion failed: ${err}`);
     }
+};
+
+window.viewReceipt = async (id) => {
+    if (!id || id === 'undefined') return showToast('Transaction ID not available');
+    await ModalManager.loadModal('receipt-modal', 'modals/receipt-modal.html');
+    UI.toggleModal('receipt-modal');
+    
+    const content = document.getElementById('receipt-content');
+    content.innerHTML = '<p>Retrieving secure transaction data...</p>';
+    
+    try {
+        // We use the customer API for receipts as it's a shared resource
+        const res = await apiFetch(`/api/customer/receipt/${id}`);
+        if (!res.ok) throw new Error('Receipt not found');
+        const data = await res.json();
+        
+        content.innerHTML = `
+            <div style="border-bottom: 1px dashed var(--border-glass); padding-bottom: 15px; margin-bottom: 15px;">
+                <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Transaction ID</p>
+                <p style="font-family: monospace; color: var(--primary);">${data.transactionID}</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Customer</p>
+                    <p>${data.client}</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Total Amount</p>
+                    <p style="font-weight: 700; color: #10b981;">$${parseFloat(data.amount).toFixed(2)}</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Date</p>
+                    <p>${new Date(data.timestamp).toLocaleDateString()}</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Status</p>
+                    <p>${data.status}</p>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <p style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;">Items</p>
+                ${(data.items || []).map(item => `
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span>${item.name}</span>
+                        <span>$${parseFloat(item.price).toFixed(2)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: #ef4444;">${err.message}</p>`;
+    }
+};
+
+window.openEditOrder = async (id) => {
+    await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
+    const order = State._cache.orders.find(o => (o.id || o._id) === id);
+    if (!order) return showToast('Order not found');
+
+    const form = document.getElementById('edit-order-form');
+    if (form) {
+        form.dataset.editId = id;
+        document.getElementById('edit-order-status').value = order.status;
+        
+        // Setup status button group
+        const statusBtns = document.querySelectorAll('.status-btn');
+        statusBtns.forEach(btn => {
+            if (btn.dataset.value === order.status) {
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+            } else {
+                btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.style.color = 'var(--text-dim)';
+            }
+            
+            btn.onclick = () => {
+                document.getElementById('edit-order-status').value = btn.dataset.value;
+                statusBtns.forEach(b => {
+                    b.style.background = 'rgba(255,255,255,0.05)';
+                    b.style.color = 'var(--text-dim)';
+                });
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+            };
+        });
+    }
+    UI.toggleModal('edit-order-modal');
 };
 
 // --- Delegated Form Handlers ---
@@ -1169,6 +1261,29 @@ document.addEventListener('submit', async (e) => {
         } else {
             const err = await response.text();
             showToast(`Catalog update failed: ${err}`);
+        }
+    }
+
+    // 3. Edit Order Form
+    if (e.target.id === 'edit-order-form') {
+        e.preventDefault();
+        const form = e.target;
+        const orderId = form.dataset.editId;
+        const status = document.getElementById('edit-order-status').value;
+
+        const response = await apiFetch(`${API_URL}/orders/batch-status`, {
+            method: 'POST',
+            body: JSON.stringify({ ids: [orderId], status })
+        });
+
+        if (response.ok) {
+            showToast('Order status updated');
+            UI.toggleModal('edit-order-modal');
+            const data = await State.getDashboardState();
+            if (data) updateUI();
+        } else {
+            const err = await response.json();
+            showToast(`Update failed: ${err.message}`);
         }
     }
 });

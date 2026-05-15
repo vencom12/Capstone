@@ -33,5 +33,6 @@ router.post('/upload-receipt', auth(), upload.single('receipt'), (req, res) => {
     res.json({ success: true, url: req.file.path });
 });
 router.get('/receipt/:id', auth(), customerController.getReceipt);
+router.get('/receipt/:id/download', auth(), customerController.downloadReceipt);
 
 module.exports = router;

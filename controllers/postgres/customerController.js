@@ -179,11 +179,32 @@ exports.removeFavorite = async (req, res) => {
 
 exports.getReceipt = async (req, res) => {
     try {
-        const tx = await prisma.transaction.findFirst({
-            where: { transactionID: req.params.id, userId: req.user.id },
+        const id = req.params.id;
+        // Try finding by transactionID first
+        let tx = await prisma.transaction.findFirst({
+            where: { transactionID: id },
             include: { order: true }
         });
+
+        // If not found, try finding by orderId (some logic uses orderId as receipt id)
+        if (!tx) {
+            const order = await prisma.order.findFirst({
+                where: { orderId: id },
+                include: { transaction: true }
+            });
+            if (order && order.transaction) {
+                tx = order.transaction;
+                tx.order = order;
+            }
+        }
+
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+        
+        // Check authorization if it's a customer
+        if (req.user.role === 'customer' && tx.userId !== req.user.id) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
         res.json({
             transactionID: tx.transactionID,
             orderID: tx.orderID,
@@ -191,10 +212,49 @@ exports.getReceipt = async (req, res) => {
             status: tx.status,
             timestamp: tx.timestamp,
             items: tx.order ? tx.order.items : [],
-            client: req.user.username
+            client: tx.user?.username || 'Customer'
         });
     } catch (err) {
+        console.error('getReceipt error:', err);
         res.status(500).json({ message: 'Error fetching receipt' });
+    }
+};
+
+exports.downloadReceipt = async (req, res) => {
+    try {
+        // For simplicity in this demo, we'll return the receipt data as a downloadable JSON file
+        // or redirect to a PDF generator if one existed.
+        // For now, we'll send a formatted text response that the browser treats as a file.
+        const id = req.params.id;
+        const tx = await prisma.transaction.findFirst({
+            where: { OR: [{ transactionID: id }, { orderID: id }] },
+            include: { order: true }
+        });
+
+        if (!tx) return res.status(404).send('Receipt not found');
+
+        const receiptText = `
+----------------------------------
+       STITCH-OPT RECEIPT
+----------------------------------
+Order ID: ${tx.orderID}
+Transaction: ${tx.transactionID}
+Date: ${new Date(tx.timestamp).toLocaleString()}
+Status: ${tx.status}
+----------------------------------
+Items:
+${(tx.order?.items || []).map(item => `- ${item.name}: $${item.price}`).join('\n')}
+----------------------------------
+TOTAL AMOUNT: $${parseFloat(tx.amount).toFixed(2)}
+----------------------------------
+Thank you for your business!
+        `;
+
+        res.setHeader('Content-disposition', `attachment; filename=receipt_${id}.txt`);
+        res.setHeader('Content-type', 'text/plain');
+        res.send(receiptText);
+    } catch (err) {
+        res.status(500).send('Error generating download');
     }
 };
 
