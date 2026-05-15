@@ -922,32 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Edit order form submit
-    const editOrderForm = document.getElementById('edit-order-form');
-    if (editOrderForm) {
-        editOrderForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const id = editOrderForm.dataset.orderId;
-            const status = document.getElementById('edit-order-status').value;
-
-            if (!status) return showToast('Please select a status');
-
-            updateSyncIndicator(true);
-            const res = await apiFetch(`${API_URL}/orders/batch-status`, {
-                method: 'POST',
-                body: JSON.stringify({ ids: [id], status })
-            });
-            updateSyncIndicator(false);
-            if (res.ok) {
-                showToast('Order updated successfully');
-                UI.toggleModal('edit-order-modal');
-                refreshDashboardState();
-            } else {
-                const data = await res.json();
-                showToast(data.message || 'Update failed');
-            }
-        };
-    }
+    // Edit order form submit logic moved to global delegated listener
 });
 
 // --- Receipt Viewer ---
@@ -1268,13 +1243,18 @@ document.addEventListener('submit', async (e) => {
     if (e.target.id === 'edit-order-form') {
         e.preventDefault();
         const form = e.target;
-        const orderId = form.dataset.editId;
+        const orderId = form.dataset.orderId;
         const status = document.getElementById('edit-order-status').value;
 
+        if (!status) return showToast('Please select a status');
+
+        updateSyncIndicator(true);
         const response = await apiFetch(`${API_URL}/orders/batch-status`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: [orderId], status })
         });
+        updateSyncIndicator(false);
 
         if (response.ok) {
             showToast('Order status updated');
@@ -1282,7 +1262,7 @@ document.addEventListener('submit', async (e) => {
             const data = await State.getDashboardState();
             if (data) updateUI();
         } else {
-            const err = await response.json();
+            const err = await response.json().catch(() => ({ message: 'Server error' }));
             showToast(`Update failed: ${err.message}`);
         }
     }

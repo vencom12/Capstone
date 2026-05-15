@@ -275,65 +275,80 @@ exports.downloadReceipt = async (req, res) => {
         doc.pipe(res);
 
         // Header
-        doc.fontSize(16).text('STITCH-OPT DESIGNS', { align: 'center', bold: true });
-        doc.fontSize(10).text('Premium Embroidery Services', { align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(16).text('STITCH-OPT DESIGNS', { align: 'center' });
+        doc.font('Helvetica').fontSize(9).text('Premium Embroidery Services', { align: 'center' });
         doc.text('123 Digital Thread Lane, Manila', { align: 'center' });
         doc.text('Contact: +63 (02) 888-THREAD', { align: 'center' });
-        doc.moveDown();
-        doc.text('----------------------------------------------', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.text('----------------------------------------------------', { align: 'center' });
         doc.moveDown(0.5);
 
         // Details
-        doc.fontSize(9);
-        doc.text(`RECEIPT: ${id}`);
-        doc.text(`DATE   : ${dateStr}`);
-        doc.text(`TIME   : ${timeStr}`);
-        doc.text(`CASHIER: StitchMaster AI`);
-        doc.text(`CUSTOMER: ${tx.user?.username || 'Valued Client'}`);
-        doc.moveDown();
-        doc.text('----------------------------------------------', { align: 'center' });
+        doc.fontSize(8);
+        const detailX = 30;
+        doc.text(`RECEIPT:`, detailX, doc.y, { continued: true });
+        doc.text(id, 100);
+        doc.text(`DATE   :`, detailX, doc.y, { continued: true });
+        doc.text(dateStr, 100);
+        doc.text(`TIME   :`, detailX, doc.y, { continued: true });
+        doc.text(timeStr, 100);
+        doc.text(`CASHIER:`, detailX, doc.y, { continued: true });
+        doc.text(`StitchMaster AI`, 100);
+        doc.text(`CUSTOMER:`, detailX, doc.y, { continued: true });
+        doc.text(tx.user?.username || 'Valued Client', 100);
+        
+        doc.moveDown(1);
+        doc.text('----------------------------------------------------', { align: 'center' });
+        doc.moveDown(0.5);
 
         // Table Header
-        doc.moveDown(0.5);
-        doc.font('Helvetica-Bold');
-        doc.text('ITEM', 20, doc.y, { continued: true });
-        doc.text('QTY', 180, doc.y, { continued: true });
-        doc.text('PRICE', 230, doc.y);
-        doc.font('Helvetica');
+        const col1 = 30;
+        const col2 = 180;
+        const col3 = 230;
+        
+        doc.font('Helvetica-Bold').fontSize(9);
+        doc.text('ITEM', col1, doc.y, { width: 140, continued: true });
+        doc.text('QTY', col2, doc.y, { width: 40, continued: true });
+        doc.text('PRICE', col3, doc.y);
+        doc.font('Helvetica').fontSize(8);
         doc.moveDown(0.5);
 
         // Items
         items.forEach(item => {
             const currentY = doc.y;
-            doc.text(item.name || 'Custom Design', 20, currentY, { width: 150 });
-            doc.text('1', 180, currentY);
-            doc.text(`$${parseFloat(item.price).toFixed(2)}`, 230, currentY);
+            doc.text(item.name || 'Custom Design', col1, currentY, { width: 140 });
+            doc.text('1', col2, currentY);
+            doc.text(`$${parseFloat(item.price).toFixed(2)}`, col3, currentY);
             doc.moveDown(0.5);
         });
 
-        doc.moveDown();
-        doc.text('----------------------------------------------', { align: 'center' });
-        
-        // Totals
         doc.moveDown(0.5);
-        const totalsY = doc.y;
-        doc.text('SUBTOTAL:', 140, totalsY);
-        doc.text(`$${subtotal.toFixed(2)}`, 230, totalsY);
+        doc.text('----------------------------------------------------', { align: 'center' });
         
-        doc.text('VAT (12%):', 140, totalsY + 15);
-        doc.text(`$${tax.toFixed(2)}`, 230, totalsY + 15);
+        // Totals Section
+        doc.moveDown(0.5);
+        const totalsX = 140;
+        const valueX = 230;
         
-        doc.font('Helvetica-Bold');
-        doc.text('TOTAL:', 140, totalsY + 35);
-        doc.text(`$${total.toFixed(2)}`, 230, totalsY + 35);
-        doc.font('Helvetica');
+        doc.text('SUBTOTAL:', totalsX, doc.y, { continued: true });
+        doc.text(`$${subtotal.toFixed(2)}`, valueX);
+        
+        doc.text('VAT (12%):', totalsX, doc.y, { continued: true });
+        doc.text(`$${tax.toFixed(2)}`, valueX);
+        
+        doc.moveDown(0.5);
+        doc.font('Helvetica-Bold').fontSize(10);
+        doc.text('TOTAL:', totalsX, doc.y, { continued: true });
+        doc.text(`$${total.toFixed(2)}`, valueX);
+        doc.font('Helvetica').fontSize(8);
 
         // Footer
-        doc.moveDown(4);
-        doc.text('----------------------------------------------', { align: 'center' });
+        doc.moveDown(3);
+        doc.text('----------------------------------------------------', { align: 'center' });
+        doc.moveDown(1);
         doc.fontSize(10).text('Thank you for choosing us!', { align: 'center' });
         doc.fontSize(8).text('Visit again for more designs!', { align: 'center' });
-        doc.text('www.stitch-opt.com', { align: 'center', color: 'blue' });
+        doc.fillColor('blue').text('www.stitch-opt.com', { align: 'center', link: 'https://www.stitch-opt.com' });
 
         doc.end();
 
