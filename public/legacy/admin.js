@@ -808,35 +808,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- Order Actions ---
-window.openEditOrder = async (id) => {
-    await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
-    const order = State._cache.orders.find(o => o._id === id);
-    if (!order) return;
-
-    document.getElementById('edit-order-modal-title').innerText = `Process Order #${order.orderId}`;
-    document.getElementById('edit-order-client').value = order.client || '';
-    document.getElementById('edit-order-design').value = formatOrderDesign(order);
-    document.getElementById('edit-order-status').value = order.status;
-    document.getElementById('edit-order-progress').value = order.progress;
-
-    // Highlight active status button
-    document.querySelectorAll('.status-btn').forEach(btn => {
-        if (btn.dataset.value === order.status) {
-            btn.classList.add('btn-primary');
-            btn.style.background = 'var(--primary)';
-            btn.style.color = 'white';
-        } else {
-            btn.classList.remove('btn-primary');
-            btn.style.background = 'rgba(255,255,255,0.05)';
-            btn.style.color = 'var(--text-dim)';
-        }
-    });
-
-    const form = document.getElementById('edit-order-form');
-    form.dataset.orderId = id;
-    UI.toggleModal('edit-order-modal');
-};
 
 window.deleteUser = async (id) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
@@ -1117,7 +1088,7 @@ window.openEditOrder = async (id) => {
 
     const form = document.getElementById('edit-order-form');
     if (form) {
-        form.dataset.editId = id;
+        form.dataset.orderId = id;
         document.getElementById('edit-order-status').value = order.status;
         
         // Setup status button group
