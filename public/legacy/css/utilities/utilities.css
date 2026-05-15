@@ -174,17 +174,62 @@ input[type="password"]::-ms-clear {
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-    color: var(--text-dim);
-    font-size: 1.1rem;
-    user-select: none;
-    transition: color 0.2s;
-    z-index: 5;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 5;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-dim);
+}
+
+.password-toggle svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    transition: fill 0.3s ease;
 }
 
 .password-toggle:hover {
+    color: var(--primary);
+}
+
+/* Monkey Animation Parts */
+.monkey-eye {
+    transition: all 0.3s ease;
+}
+
+.monkey-arm {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-origin: center 18px;
+}
+
+/* Default State: Arms Down */
+
+/* Hover State: Arms Open (Out), Eyes Close */
+.password-toggle:hover .monkey-arm-left {
+    transform: rotate(-60deg) translate(-3px, -2px);
+}
+
+.password-toggle:hover .monkey-arm-right {
+    transform: rotate(60deg) translate(3px, -2px);
+}
+
+.password-toggle:hover .monkey-eye-open {
+    opacity: 0;
+}
+
+.password-toggle .monkey-eye-closed {
+    opacity: 0;
+}
+
+.password-toggle:hover .monkey-eye-closed {
+    opacity: 1;
+}
+
+/* Password Visible State: Happy Eyes */
+.password-toggle.is-visible {
     color: var(--primary);
 }
 

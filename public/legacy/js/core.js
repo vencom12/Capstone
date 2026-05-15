@@ -208,10 +208,9 @@ function togglePasswordVisibility(inputId, toggleEl) {
     const isPassword = input.type === 'password';
     input.type = isPassword ? 'text' : 'password';
     
-    // Support both passing the element and finding it via class if not passed
     const icon = toggleEl || input.parentElement.querySelector('.password-toggle');
     if (icon) {
-        icon.innerText = isPassword ? '🙈' : '👁️';
+        icon.classList.toggle('is-visible', !isPassword);
     }
 }
 window.togglePasswordVisibility = togglePasswordVisibility;

@@ -30,7 +30,15 @@
                     <label>Password</label>
                     <div class="password-wrapper">
                         <input type="password" id="login-pass" placeholder="••••••••" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; padding-right: 45px;">
-                        <span class="password-toggle" onclick="togglePasswordVisibility('login-pass', this)">👁️</span>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('login-pass', this)">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.05)" stroke="currentColor" stroke-width="1.5"/>
+                                <path class="monkey-eye monkey-eye-open" d="M8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="currentColor"/>
+                                <path class="monkey-eye monkey-eye-closed" d="M7 10c1 0 1.5 1 1.5 1M14 10c1 0 1.5 1 1.5 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                <path class="monkey-arm monkey-arm-left" d="M4 14c0 0-1 1.5-1 3s1.5 2 3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                <path class="monkey-arm monkey-arm-right" d="M20 14c0 0 1 1.5 1 3s-1.5 2-3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            </svg>
+                        </span>
                     </div>
                 </div>
                 <div id="login-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
@@ -74,7 +82,15 @@
                         <label>Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="reg-password" placeholder="Min. 8 chars" required minlength="8" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; padding-right: 45px;">
-                            <span class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)">👁️</span>
+                            <span class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)">
+                                <svg viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.05)" stroke="currentColor" stroke-width="1.5"/>
+                                    <path class="monkey-eye monkey-eye-open" d="M8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="currentColor"/>
+                                    <path class="monkey-eye monkey-eye-closed" d="M7 10c1 0 1.5 1 1.5 1M14 10c1 0 1.5 1 1.5 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                    <path class="monkey-arm monkey-arm-left" d="M4 14c0 0-1 1.5-1 3s1.5 2 3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                    <path class="monkey-arm monkey-arm-right" d="M20 14c0 0 1 1.5 1 3s-1.5 2-3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                </svg>
+                            </span>
                         </div>
                     </div>
                 </div>
