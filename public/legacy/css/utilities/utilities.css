@@ -180,7 +180,7 @@ input[type="password"]::-ms-clear {
     align-items: center;
     justify-content: center;
     z-index: 5;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.3s ease, opacity 0.3s ease;
     color: var(--text-dim);
 }
 

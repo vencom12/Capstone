@@ -15,11 +15,17 @@
                 <input type="password" id="employee-login-pass" placeholder="Passcode" required style="width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-glass); outline: none; padding-right: 45px;">
                 <span class="password-toggle" onclick="togglePasswordVisibility('employee-login-pass', this)">
                     <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.05)" stroke="currentColor" stroke-width="1.5"/>
-                        <path class="monkey-eye monkey-eye-open" d="M8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="currentColor"/>
-                        <path class="monkey-eye monkey-eye-closed" d="M7 10c1 0 1.5 1 1.5 1M14 10c1 0 1.5 1 1.5 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-                        <path class="monkey-arm monkey-arm-left" d="M4 14c0 0-1 1.5-1 3s1.5 2 3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-                        <path class="monkey-arm monkey-arm-right" d="M20 14c0 0 1 1.5 1 3s-1.5 2-3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                        <circle cx="5" cy="11" r="3" fill="currentColor" opacity="0.4"/>
+                        <circle cx="19" cy="11" r="3" fill="currentColor" opacity="0.4"/>
+                        <circle cx="12" cy="12" r="8" fill="rgba(255,255,255,0.05)" stroke="currentColor" stroke-width="1.2"/>
+                        <ellipse cx="12" cy="14.5" rx="5" ry="3.5" fill="currentColor" opacity="0.15"/>
+                        <g class="monkey-eye-open">
+                            <circle cx="9" cy="10.5" r="1.2" fill="currentColor"/>
+                            <circle cx="15" cy="10.5" r="1.2" fill="currentColor"/>
+                        </g>
+                        <path class="monkey-eye-closed" d="M8 10.5c.5-.5 1.5-.5 2 0M14 10.5c.5-.5 1.5-.5 2 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0"/>
+                        <path class="monkey-arm monkey-arm-left" d="M2 16c1 0 2 1 2 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                        <path class="monkey-arm monkey-arm-right" d="M22 16c-1 0-2 1-2 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
                     </svg>
                 </span>
             </div>
