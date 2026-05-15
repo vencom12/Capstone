@@ -41,9 +41,12 @@ async function apiFetch(url, options = {}) {
             return await performFetch();
         }
         
-        if (response.status === 401 && !url.includes('/logout')) {
-            console.warn('[Core] Unauthorized access. Logging out...');
-            AuthManager.logout();
+        if (response.status === 401 && !url.includes('/logout') && !url.includes('/dashboard-state')) {
+            // Only auto-logout if user thinks they're logged in but server disagrees
+            if (AuthManager.isAuthenticated()) {
+                console.warn('[Core] Unauthorized access. Logging out...');
+                AuthManager.logout();
+            }
         }
 
         return response;

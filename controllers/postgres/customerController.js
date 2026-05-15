@@ -196,3 +196,18 @@ exports.getReceipt = async (req, res) => {
         res.status(500).json({ message: 'Error fetching receipt' });
     }
 };
+
+exports.validatePayment = async (req, res) => {
+    try {
+        const { method, total } = req.body;
+        if (method === 'wallet') {
+            const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+            if (!user || (user.walletBalance || 0) < total) {
+                return res.status(400).json({ message: 'Insufficient wallet balance' });
+            }
+        }
+        res.json({ valid: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Validation error' });
+    }
+};
