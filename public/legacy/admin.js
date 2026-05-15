@@ -264,14 +264,14 @@ if (historyTable) {
             </tr>`;
     } else {
         historyTable.innerHTML = historyOrders.map(o => `
-                <tr onclick="viewReceipt('${o.transactionId?.transactionID}')" style="cursor: pointer;">
+                <tr onclick="viewReceipt('${o.transaction?.transactionID || o.transactionId}')" style="cursor: pointer;">
                     <td data-label="Order ID" style="color: var(--primary); font-weight: 600;">${o.orderId}</td>
                     <td data-label="Client">${o.client}</td>
                     <td data-label="Total">$${parseFloat(o.totalAmount || 0).toFixed(2)}</td>
                     <td data-label="Status"><span class="status-pill">${o.status}</span></td>
                     <td data-label="View Details">
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${o.transactionId?.transactionID}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 8px; font-size: 0.75rem;">View</button>
+                            <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${o.transaction?.transactionID || o.transactionId}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 8px; font-size: 0.75rem;">View</button>
                             ${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}
                         </div>
                     </td>
