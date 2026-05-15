@@ -201,6 +201,29 @@
             .register-form-section { padding: 30px; }
             .form-grid { grid-template-columns: 1fr; }
         }
+
+        /* Password Toggle Styling */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            user-select: none;
+            transition: var(--transition-fast);
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary);
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -259,6 +282,8 @@
         </div>
     </div>
 
+    <script src="js/core.js"></script>
+    <script src="js/modal-manager.js"></script>
     <script src="customer.js"></script>
     <script>
         document.getElementById('register-form').addEventListener('submit', async function (e) {
