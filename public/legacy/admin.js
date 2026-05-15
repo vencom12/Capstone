@@ -272,7 +272,7 @@ if (historyTable) {
                     <td data-label="View Details">
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <button class="btn btn-secondary" onclick="event.stopPropagation(); viewReceipt('${o.transaction?.transactionID || o.transactionId}')" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 4px 8px; font-size: 0.75rem;">View</button>
-                            ${o.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : 'N/A'}
+                            ${o.receipt ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${o.receipt.receiptID}')" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; font-size: 0.75rem;">Download</button>` : '<span style="color: var(--text-dim); font-size: 0.75rem;">N/A</span>'}
                         </div>
                     </td>
                 </tr>`).join('');
