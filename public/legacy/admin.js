@@ -300,8 +300,8 @@ if (productGrid) {
                         <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                     </div>
                     <div style="display: flex; gap: 8px; width: 100%;">
-                        <button class="btn" onclick="editProduct('${p._id}')" style="flex: 1; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Edit</button>
-                        <button class="btn" onclick="deleteProduct('${p._id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
+                        <button class="btn" onclick="openEditProduct('${p.id}')" style="flex: 1; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Edit</button>
+                        <button class="btn" onclick="deleteProduct('${p.id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
                     </div>
                 </div>`).join('');
     }
@@ -386,7 +386,7 @@ function initSocket() {
         // Granular state update instead of full refresh when possible
         if (entity === 'ORDER' && action === 'UPDATE') {
             State._cache.orders = State._cache.orders.map(o => {
-                if (payload.ids && payload.ids.includes(o._id)) {
+                if (payload.ids && payload.ids.includes(o.id)) {
                     return { ...o, status: payload.status, progress: payload.progress };
                 }
                 return o;
@@ -667,90 +667,7 @@ function updateAITip() {
 
 
 // --- Product & Staff Actions ---
-window.openCreateProduct = async () => {
-    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
-    const form = document.getElementById('create-product-form');
-    if (form) {
-        form.reset();
-        delete form.dataset.editId;
-    }
-    const titleEl = document.querySelector('#create-product-modal h2');
-    if (titleEl) titleEl.innerText = 'Create New Design';
-    UI.toggleModal('create-product-modal');
-};
-
-window.createProduct = async () => {
-    const formEl = document.getElementById('create-product-form');
-    if (!formEl) return;
-
-    const productId = formEl.dataset.editId;
-    const method = productId ? 'PATCH' : 'POST';
-    const url = productId ? `${API_URL}/products/${productId}` : `${API_URL}/products`;
-
-    const formData = new FormData();
-    formData.append('name', document.getElementById('product-name').value);
-    formData.append('price', document.getElementById('product-price').value);
-    formData.append('tag', document.getElementById('product-tag').value);
-    formData.append('description', document.getElementById('product-desc').value);
-
-    const imgFile = document.getElementById('product-image-file').files[0];
-    if (imgFile) formData.append('image', imgFile);
-
-    updateSyncIndicator(true);
-    const res = await apiFetch(url, {
-        method,
-        body: formData
-    });
-    updateSyncIndicator(false);
-
-    if (res.ok) {
-        showToast(productId ? 'Product updated' : 'Product published');
-        UI.toggleModal('create-product-modal');
-        formEl.reset();
-        delete formEl.dataset.editId;
-        refreshDashboardState();
-    } else {
-        let errMsg = 'Unknown error';
-        try {
-            const errData = await res.json();
-            errMsg = errData.error || errData.message || 'Unknown error';
-        } catch (e) {
-            errMsg = await res.text().catch(() => 'Unknown error');
-        }
-        showToast(`Error ${res.status}: ${errMsg}`);
-    }
-};
-
-window.editProduct = async (id) => {
-    await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
-    const p = State._cache.products.find(prod => prod._id === id);
-    if (!p) return;
-
-    // Populate modal for editing
-    document.getElementById('product-name').value = p.name;
-    document.getElementById('product-price').value = p.price;
-    document.getElementById('product-tag').value = p.tag;
-    document.getElementById('product-desc').value = p.description || '';
-
-    const form = document.getElementById('create-product-form');
-    if (form) form.dataset.editId = id;
-
-    const titleEl = document.querySelector('#create-product-modal h2');
-    if (titleEl) titleEl.innerText = 'Edit Design';
-
-    UI.toggleModal('create-product-modal');
-};
-
-window.deleteProduct = async (id) => {
-    if (!confirm('Delete this design?')) return;
-    updateSyncIndicator(true);
-    const res = await apiFetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
-    updateSyncIndicator(false);
-    if (res.ok) {
-        showToast('Product deleted');
-        refreshDashboardState();
-    }
-};
+// --- Product & Staff Actions moved to consolidated handlers ---
 
 // --- Initialization ---
 // Initialize page forms and extra UI components
@@ -830,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Optimistic Update
             State._prevCache = JSON.parse(JSON.stringify(State._cache));
             State._cache.orders = State._cache.orders.map(o =>
-                selectedIds.includes(o._id) ? { ...o, status } : o
+                selectedIds.includes(o.id) ? { ...o, status } : o
             );
             updateUI();
 
@@ -1083,12 +1000,12 @@ window.viewReceipt = async (id) => {
 
 window.openEditOrder = async (id) => {
     await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
-    const order = State._cache.orders.find(o => (o.id || o._id) === id);
+    const order = State._cache.orders.find(o => (o.id || o.id) === id);
     if (!order) return showToast('Order not found');
 
     const form = document.getElementById('edit-order-form');
     if (form) {
-        form.dataset.orderId = id;
+        form.dataset.editId = id; // Standardizing on editId for all forms
         document.getElementById('edit-order-status').value = order.status;
         
         // Setup status button group
@@ -1193,27 +1110,31 @@ document.addEventListener('submit', async (e) => {
     if (e.target.id === 'edit-order-form') {
         e.preventDefault();
         const form = e.target;
-        const orderId = form.dataset.orderId;
+        const orderId = form.dataset.editId;
         const status = document.getElementById('edit-order-status').value;
 
         if (!status) return showToast('Please select a status');
 
         updateSyncIndicator(true);
-        const response = await apiFetch(`${API_URL}/orders/batch-status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: [orderId], status })
-        });
-        updateSyncIndicator(false);
+        try {
+            const response = await apiFetch(`${API_URL}/orders/batch-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [orderId], status })
+            });
 
-        if (response.ok) {
-            showToast('Order status updated');
-            UI.toggleModal('edit-order-modal');
-            const data = await State.getDashboardState();
-            if (data) updateUI();
-        } else {
-            const err = await response.json().catch(() => ({ message: 'Server error' }));
-            showToast(`Update failed: ${err.message}`);
+            if (response.ok) {
+                showToast('Order status updated');
+                UI.toggleModal('edit-order-modal');
+                refreshDashboardState();
+            } else {
+                const err = await response.json().catch(() => ({ message: 'Update failed' }));
+                showToast(`Error: ${err.message}`);
+            }
+        } catch (error) {
+            showToast('Network error during update');
+        } finally {
+            updateSyncIndicator(false);
         }
     }
 });
