@@ -334,80 +334,62 @@ function renderRawMaterials(inventory) {
                 <td data-label="Material" style="font-weight: 600; color: white;">${item.item}</td>
                 <td data-label="Current Stock" style="font-size: 1.1rem; font-weight: 700; ${isLowStock ? 'color: #ef4444;' : 'color: var(--primary);'}">${item.count}</td>
                 <td data-label="Alert Threshold" style="color: var(--text-dim);">${item.minThreshold || 10}</td>
-                <td data-label="Status">${statusBadge}</td>
-                <td data-label="Action">
-                    <button class="btn btn-secondary" onclick="openUpdateStockModal('${item.id}', '${item.item}', ${item.count}, ${item.minThreshold || 10})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 6px 12px; font-size: 0.8rem;">Update</button>
-                </td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td data-label="Action">
+                            <button class="btn btn-secondary" onclick="openUpdateStockModal('${item.id}', '${item.item}', ${item.count})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 6px 12px; font-size: 0.8rem;">Update</button>
+                        </td>
             </tr>
         `;
     }).join('');
 }
 
-async function openUpdateStockModal(id, name, currentCount, threshold) {
-    await ModalManager.loadModal('update-stock-modal', 'modals/update-stock-modal.html');
-    
-    document.getElementById('update-stock-id').value = id;
-    document.getElementById('update-stock-title').innerText = `Update: ${name}`;
-    document.getElementById('update-stock-current').innerText = currentCount;
-    
-    const thresholdInput = document.getElementById('update-stock-threshold');
-    if (thresholdInput) {
-        thresholdInput.value = threshold;
-    }
+async function openUpdateStockModal(id, name, currentCount) {
+    await ModalManager.open('UPDATE_STOCK', {
+        onOpen: (modal) => {
+            document.getElementById('update-stock-id').value = id;
+            document.getElementById('update-stock-title').innerText = `Update: ${name}`;
+            document.getElementById('update-stock-current').innerText = currentCount;
+            
+            const form = document.getElementById('update-stock-form');
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
 
-    const form = document.getElementById('update-stock-form');
-    // Remove old listeners
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
+            newForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const action = document.getElementById('update-stock-action').value;
+                const amount = parseInt(document.getElementById('update-stock-amount').value);
+                const threshold = parseInt(document.getElementById('update-stock-threshold').value);
+                
+                let newCount = currentCount;
+                if (action === 'Deduct') {
+                    newCount = Math.max(0, currentCount - amount);
+                } else {
+                    newCount = currentCount + amount;
+                }
 
-    newForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const action = document.getElementById('update-stock-action').value;
-        const amountStr = document.getElementById('update-stock-amount').value;
-        const amount = parseInt(amountStr);
-        let newCount = currentCount;
+                const payload = { count: newCount, action, amount, minThreshold: threshold };
+                const submitBtn = newForm.querySelector('button[type="submit"]');
+                submitBtn.innerText = "Saving...";
+                submitBtn.disabled = true;
 
-        if (action === 'Deduct') {
-            newCount = Math.max(0, currentCount - amount);
-        } else {
-            newCount = currentCount + amount;
-        }
-
-        const thresholdVal = document.getElementById('update-stock-threshold')?.value;
-
-        const payload = {
-            count: newCount,
-            action: action,
-            amount: amount
-        };
-
-        if (thresholdVal !== undefined && thresholdVal !== "") {
-            payload.minThreshold = parseInt(thresholdVal);
-        }
-
-        const submitBtn = newForm.querySelector('button[type="submit"]');
-        const oldText = submitBtn.innerText;
-        submitBtn.innerText = "Saving...";
-        submitBtn.disabled = true;
-
-        try {
-            const res = await fetch(`${API_URL}/admin/inventory/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                credentials: 'include'
+                try {
+                    const res = await fetch(`${API_URL}/inventory/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Failed to update stock');
+                    ModalManager.close('UPDATE_STOCK');
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to update stock.');
+                    submitBtn.innerText = "Save Changes";
+                    submitBtn.disabled = false;
+                }
             });
-            if (!res.ok) throw new Error('Failed to update stock');
-            UI.toggleModal('update-stock-modal');
-        } catch (err) {
-            console.error(err);
-            alert('Failed to update stock.');
-            submitBtn.innerText = oldText;
-            submitBtn.disabled = false;
         }
     });
-
-    UI.toggleModal('update-stock-modal');
 }
 
 async function updateGlobalThreshold() {
@@ -481,54 +463,47 @@ function renderInventoryLogs(logs) {
 }
 
 async function openCreateMaterialModal() {
-    await ModalManager.loadModal('create-material-modal', 'modals/create-material-modal.html');
-    
-    const form = document.getElementById('create-material-form');
-    // Remove old listeners
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
+    await ModalManager.open('CREATE_MATERIAL', {
+        onOpen: (modal) => {
+            const form = document.getElementById('create-material-form');
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
 
-    newForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const payload = {
-            item: document.getElementById('create-material-name').value,
-            count: parseInt(document.getElementById('create-material-stock').value),
-            unit: document.getElementById('create-material-unit').value,
-            minThreshold: parseInt(document.getElementById('create-material-threshold').value)
-        };
+            newForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    item: document.getElementById('create-material-name').value,
+                    count: parseInt(document.getElementById('create-material-stock').value),
+                    unit: document.getElementById('create-material-unit').value,
+                    minThreshold: parseInt(document.getElementById('create-material-threshold').value)
+                };
 
-        const submitBtn = newForm.querySelector('button[type="submit"]');
-        submitBtn.innerText = "Creating...";
-        submitBtn.disabled = true;
+                const submitBtn = newForm.querySelector('button[type="submit"]');
+                submitBtn.innerText = "Creating...";
+                submitBtn.disabled = true;
 
-        try {
-            const res = await fetch(`${API_URL}/inventory`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                credentials: 'include'
+                try {
+                    const res = await fetch(`${API_URL}/inventory`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || data.error || 'Failed to create material');
+                    
+                    ModalManager.close('CREATE_MATERIAL');
+                    if (window.refreshDashboardState) window.refreshDashboardState();
+                    if (typeof showToast === 'function') showToast('Material created successfully!', 'success');
+                } catch (err) {
+                    console.error(err);
+                    alert(`Error: ${err.message}`);
+                    submitBtn.innerText = "Create Material";
+                    submitBtn.disabled = false;
+                }
             });
-            
-            const data = await res.json();
-            
-            if (!res.ok) {
-                throw new Error(data.message || data.error || 'Failed to create material');
-            }
-            
-            UI.toggleModal('create-material-modal');
-            // Refresh to show new item
-            if (window.refreshDashboardState) window.refreshDashboardState();
-            if (typeof showToast === 'function') showToast('Material created successfully!', 'success');
-        } catch (err) {
-            console.error(err);
-            alert(`Error: ${err.message}`);
-            submitBtn.innerText = "Create Material";
-            submitBtn.disabled = false;
         }
     });
-
-    UI.toggleModal('create-material-modal');
 }
 
 function updatePaginationUI() {

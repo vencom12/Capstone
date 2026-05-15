@@ -13,6 +13,8 @@ const ModalManager = {
         'EMPLOYEE_LOGIN': { path: 'modals/employee-login-modal.html', id: 'module-login-screen' },
         'ADMIN_LOGIN':    { path: 'modals/admin-login-modal.html',    id: 'module-login-screen' },
         'CREATE_PRODUCT': { path: 'modals/create-product-modal.html', id: 'create-product-modal' },
+        'CREATE_MATERIAL': { path: 'modals/create-material-modal.html', id: 'create-material-modal' },
+        'UPDATE_STOCK':   { path: 'modals/update-stock-modal.html',   id: 'update-stock-modal' },
         'EDIT_ORDER':     { path: 'modals/edit-order-modal.html',     id: 'edit-order-modal' },
         'STAFF':          { path: 'modals/staff-modal.html',          id: 'staff-modal' }
     },
