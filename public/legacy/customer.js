@@ -963,25 +963,6 @@ document.addEventListener('DOMContentLoaded', () => {
         State._cache.trackingDateFilter = e.target.value;
         updateUI();
     });
-
-    // Global Click Listener for Delegation (Favorites & Basket)
-    document.addEventListener('click', (e) => {
-        const favBtn = e.target.closest('.fav-toggle-btn');
-        if (favBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            const id = favBtn.dataset.id;
-            Actions.toggleFavorite(id);
-        }
-
-        const basketBtn = e.target.closest('.add-to-basket');
-        if (basketBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            const id = basketBtn.dataset.id;
-            Actions.addToBasketById(id);
-        }
-    });
 });
 
 const Actions = {
