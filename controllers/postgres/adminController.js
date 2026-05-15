@@ -11,7 +11,7 @@ exports.getDashboardState = async (req, res) => {
         const [orders, inventory, products, totalUsers, totalOrders, adminUsers, trafficData] = await Promise.all([
             prisma.order.findMany({
                 include: { transaction: true, receipt: true },
-                orderBy: { date: 'desc' },
+                orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit
             }),
@@ -33,12 +33,12 @@ exports.getDashboardState = async (req, res) => {
         // Real Order Trends (Last 6 months)
         const allPaidOrders = await prisma.order.findMany({
             where: { paymentStatus: 'paid' },
-            select: { totalAmount: true, date: true, createdAt: true }
+            select: { totalAmount: true, createdAt: true }
         });
 
         const monthlyRevenue = {};
         allPaidOrders.forEach(o => {
-            const d = new Date(o.date || o.createdAt);
+            const d = new Date(o.createdAt);
             const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
             monthlyRevenue[key] = (monthlyRevenue[key] || 0) + (o.totalAmount || 0);
         });
