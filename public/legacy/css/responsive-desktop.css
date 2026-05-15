@@ -10,9 +10,8 @@
         width: 215px;
     }
 
-    /* Hide Basket Button on Desktop */
-    .basket-nav-item {
-        display: none !important;
+    .sidebar:not(.storefront-sidebar) {
+        width: 215px;
     }
 
 

@@ -979,6 +979,8 @@ const Actions = {
             if (product) State._cache.favorites.push(product);
         }
         // Target specific button for immediate visual feedback without full reload
+        const counts = document.querySelectorAll('#basket-count, #mobile-basket-count, #header-basket-count');
+        counts.forEach(el => el.innerText = this._basket.length);
         const btns = document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`);
         btns.forEach(btn => {
             const svg = btn.querySelector('svg');
