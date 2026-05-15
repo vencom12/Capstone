@@ -602,8 +602,8 @@ function updateAITip() {
     const orders = State._cache.orders || [];
     const products = State._cache.products || [];
 
-    const pendingOrders = orders.filter(o => o.status === 'In Queue' || o.status === 'In Production');
-    const completedOrders = orders.filter(o => o.status === 'Completed' || o.status === 'Picked Up');
+    const pendingOrders = orders.filter(o => ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'].includes(o.status));
+    const completedOrders = orders.filter(o => o.status === 'Order Delivered');
 
     // 1. Determine Main Tip
     if (pendingOrders.length > 10) {
