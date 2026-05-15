@@ -129,7 +129,9 @@ app.use(helmet({
 }));
 
 // NoSQL Injection Prevention: Strips $ and . from request payloads
-app.use(mongoSanitize());
+if (process.env.DB_TYPE !== 'postgres') {
+    app.use(mongoSanitize());
+}
 
 // Global Rate Limiter: Max 300 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
@@ -236,24 +238,40 @@ app.use((req, res, next) => {
     next();
 });
 
-// MongoDB Connection - Optimized for Atlas Free Cluster
-const dbOptions = {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    family: 4, // Force IPv4
-    maxPoolSize: 10 // Recommended for free tier
-};
+const DB_TYPE = process.env.DB_TYPE || 'mongodb';
 
-mongoose.connect(process.env.MONGODB_URI, dbOptions)
-    .then(() => console.log('Connected to MongoDB Atlas'))
-    .catch(err => console.error('CRITICAL: MongoDB connection failed:', err));
+if (DB_TYPE === 'mongodb') {
+    // MongoDB Connection - Optimized for Atlas Free Cluster
+    const dbOptions = {
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        family: 4, // Force IPv4
+        maxPoolSize: 10 // Recommended for free tier
+    };
+
+    mongoose.connect(process.env.MONGODB_URI, dbOptions)
+        .then(() => console.log('Connected to MongoDB Atlas'))
+        .catch(err => console.error('CRITICAL: MongoDB connection failed:', err));
+} else {
+    console.log('[INFO] Database Mode: PostgreSQL (Supabase)');
+}
 
 // --- Modular Routes ---
-const authRoutes = require('./routes/auth');
-const customerRoutes = require('./routes/customer');
-const adminRoutes = require('./routes/admin');
-const employeeRoutes = require('./routes/employee');
-const aiRoutes = require('./routes/aiRoutes');
+let authRoutes, customerRoutes, adminRoutes, employeeRoutes, aiRoutes;
+
+if (DB_TYPE === 'postgres') {
+    authRoutes = require('./routes/postgres/auth');
+    adminRoutes = require('./routes/postgres/admin');
+    customerRoutes = require('./routes/postgres/customer');
+    employeeRoutes = require('./routes/postgres/employee');
+    aiRoutes = require('./routes/postgres/aiRoutes');
+} else {
+    authRoutes = require('./routes/auth');
+    adminRoutes = require('./routes/admin');
+    customerRoutes = require('./routes/customer');
+    employeeRoutes = require('./routes/employee');
+    aiRoutes = require('./routes/aiRoutes');
+}
 
 // Legacy Routes (for compatibility)
 // Health check for diagnostics

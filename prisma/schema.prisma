@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  employee
+  customer
+}
+
+enum OrderStatus {
+  Pending_Payment
+  Processing
+  Completed
+  Cancelled
+}
+
+model User {
+  id            String         @id @default(uuid())
+  username      String         @unique
+  email         String         @unique
+  password      String
+  role          Role           @default(customer)
+  walletBalance Float          @default(0)
+  phoneNumber   String?
+  address       String?
+  createdAt     DateTime       @default(now())
+  
+  orders        Order[]
+  transactions  Transaction[]
+  receipts      Receipt[]
+  favorites     Product[]      @relation("UserFavorites")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  price       Float
+  tag         String   @default("General")
+  description String?
+  imageUrl    String   @default("https://via.placeholder.com/200")
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  favoritedBy User[]   @relation("UserFavorites")
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderId       String      @unique
+  client        String
+  design        String
+  items         Json        // Storing as JSON to maintain MongoDB-like structure for now, or use relation
+  status        String      @default("Pending Payment")
+  progress      Int         @default(0)
+  paymentStatus String      @default("unpaid")
+  paymentMethod String      @default("none")
+  address       String?
+  deliveryTime  String?
+  notes         String?
+  totalAmount   Float       @default(0)
+  date          DateTime    @default(now())
+  
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?      @unique
+  
+  receipt       Receipt?     @relation(fields: [receiptId], references: [id])
+  receiptId     String?      @unique
+}
+
+model Inventory {
+  id          String   @id @default(uuid())
+  item        String   @unique
+  count       Int      @default(0)
+  unit        String   @default("Cones")
+  lastUpdated DateTime @default(now()) @updatedAt
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  transactionID String   @unique
+  orderID       String   // External order ID
+  amount        Float
+  status        String   @default("pending")
+  receiptLink   String?
+  receiptId     String?  @unique
+  timestamp     DateTime @default(now())
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  order         Order?
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptID     String   @unique
+  orderID       String
+  paymentMethod String
+  amount        Float
+  status        String   @default("Pending")
+  timestamp     DateTime @default(now())
+  metadata      Json?
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  order         Order?
+}
+
+model SiteTraffic {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  path      String   @default("/")
+  userAgent String?
+  isUnique  Boolean  @default(true)
+}

@@ -36,3 +36,5 @@ write_pngs.js
 development/dev_controller.js
 development/dev_routes.js
 
+
+/generated/prisma
