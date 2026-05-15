@@ -180,21 +180,36 @@ exports.removeFavorite = async (req, res) => {
 exports.getReceipt = async (req, res) => {
     try {
         const id = req.params.id;
-        // Try finding by transactionID first
-        let tx = await prisma.transaction.findFirst({
-            where: { transactionID: id },
-            include: { order: true }
+        // 1. Try Receipt table first (by receiptID)
+        let receiptData = await prisma.receipt.findFirst({
+            where: { receiptID: id },
+            include: { user: true }
         });
 
-        // If not found, try finding by orderId (some logic uses orderId as receipt id)
-        if (!tx) {
-            const order = await prisma.order.findFirst({
-                where: { orderId: id },
-                include: { transaction: true }
+        let tx;
+        if (receiptData) {
+            tx = await prisma.transaction.findFirst({
+                where: { orderID: receiptData.orderID },
+                include: { order: true, user: true }
             });
-            if (order && order.transaction) {
-                tx = order.transaction;
-                tx.order = order;
+        } else {
+            // 2. Try finding by transactionID
+            tx = await prisma.transaction.findFirst({
+                where: { transactionID: id },
+                include: { order: true, user: true }
+            });
+
+            // 3. Try finding by orderId
+            if (!tx) {
+                const order = await prisma.order.findFirst({
+                    where: { orderId: id },
+                    include: { transaction: true, user: true }
+                });
+                if (order && order.transaction) {
+                    tx = order.transaction;
+                    tx.order = order;
+                    tx.user = order.user;
+                }
             }
         }
 
@@ -222,14 +237,23 @@ exports.getReceipt = async (req, res) => {
 
 exports.downloadReceipt = async (req, res) => {
     try {
-        // For simplicity in this demo, we'll return the receipt data as a downloadable JSON file
-        // or redirect to a PDF generator if one existed.
-        // For now, we'll send a formatted text response that the browser treats as a file.
         const id = req.params.id;
-        const tx = await prisma.transaction.findFirst({
+        
+        // Try to find the transaction via multiple possible IDs (ReceiptID, TransactionID, or OrderID)
+        let tx = await prisma.transaction.findFirst({
             where: { OR: [{ transactionID: id }, { orderID: id }] },
-            include: { order: true }
+            include: { order: true, user: true }
         });
+
+        if (!tx) {
+            const receiptRecord = await prisma.receipt.findFirst({ where: { receiptID: id } });
+            if (receiptRecord) {
+                tx = await prisma.transaction.findFirst({
+                    where: { orderID: receiptRecord.orderID },
+                    include: { order: true, user: true }
+                });
+            }
+        }
 
         if (!tx) return res.status(404).send('Receipt not found');
 
@@ -241,9 +265,10 @@ Order ID: ${tx.orderID}
 Transaction: ${tx.transactionID}
 Date: ${new Date(tx.timestamp).toLocaleString()}
 Status: ${tx.status}
+Customer: ${tx.user?.username || 'Valued Client'}
 ----------------------------------
 Items:
-${(tx.order?.items || []).map(item => `- ${item.name}: $${item.price}`).join('\n')}
+${(tx.order?.items || []).map(item => `- ${item.name}: $${parseFloat(item.price).toFixed(2)}`).join('\n')}
 ----------------------------------
 TOTAL AMOUNT: $${parseFloat(tx.amount).toFixed(2)}
 ----------------------------------
@@ -254,6 +279,7 @@ Thank you for your business!
         res.setHeader('Content-type', 'text/plain');
         res.send(receiptText);
     } catch (err) {
+        console.error('downloadReceipt error:', err);
         res.status(500).send('Error generating download');
     }
 };
