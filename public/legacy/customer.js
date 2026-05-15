@@ -550,11 +550,13 @@ function updateFavoritesGrid() {
     if (favsGrid) {
         favsGrid.innerHTML = favorites.length === 0
             ? '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-dim);"><p>Your favorites will appear here.</p></div>'
-            : favorites.map(p => `
+            : favorites.map(p => {
+                const idStr = (p.id || p._id).toString();
+                return `
                 <div class="product-card glass animate-fade">
                     <div class="product-image" style="background-image: url('${p.imageUrl}'); background-size: cover; background-position: center; position: relative;">
                          <button class="fav-toggle-btn" 
-                            data-id="${p._id.toString()}" 
+                            data-id="${idStr}" 
                             data-fav="true" 
                             style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); border: none; padding: 8px; border-radius: 50%; color: #ef4444; cursor: pointer; backdrop-filter: blur(4px);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -563,9 +565,10 @@ function updateFavoritesGrid() {
                     <div class="product-details">
                         <h3 style="font-weight:600;">${p.name}</h3>
                         <p style="color:var(--primary); font-weight:700;">$${parseFloat(p.price).toFixed(2)}</p>
-                        <button class="btn btn-primary add-to-basket" data-id="${p._id}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
+                        <button class="btn btn-primary add-to-basket" data-id="${idStr}" data-name="${p.name}" data-price="${p.price}">Add to Basket</button>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
     }
 }
 // --- Checkout Manager ---
@@ -960,6 +963,25 @@ document.addEventListener('DOMContentLoaded', () => {
         State._cache.trackingDateFilter = e.target.value;
         updateUI();
     });
+
+    // Global Click Listener for Delegation (Favorites & Basket)
+    document.addEventListener('click', (e) => {
+        const favBtn = e.target.closest('.fav-toggle-btn');
+        if (favBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = favBtn.dataset.id;
+            Actions.toggleFavorite(id);
+        }
+
+        const basketBtn = e.target.closest('.add-to-basket');
+        if (basketBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = basketBtn.dataset.id;
+            Actions.addToBasketById(id);
+        }
+    });
 });
 
 const Actions = {
@@ -1063,12 +1085,10 @@ const Actions = {
         if (isFav) {
             State._cache.favorites = favorites.filter(f => (f._id || f.id)?.toString() !== pIdStr);
         } else {
-            const product = products.find(p => p._id.toString() === pIdStr);
+            const product = products.find(p => (p._id || p.id)?.toString() === pIdStr);
             if (product) State._cache.favorites.push(product);
         }
-        // Target specific button for immediate visual feedback without full reload
-        const counts = document.querySelectorAll('#basket-count, #mobile-basket-count, #header-basket-count');
-        counts.forEach(el => el.innerText = this._basket.length);
+        
         const btns = document.querySelectorAll(`.fav-toggle-btn[data-id="${productId}"]`);
         btns.forEach(btn => {
             const svg = btn.querySelector('svg');
@@ -1083,7 +1103,7 @@ const Actions = {
             }
         });
 
-        // Only update the favorites grid, NOT the entire product grid
+        // Only update the favorites grid
         updateFavoritesGrid();
 
         try {

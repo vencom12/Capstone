@@ -86,6 +86,19 @@ exports.getDashboardState = async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
+        // Top Liked Designs (Most Favorited)
+        const productsWithFavs = await prisma.product.findMany({
+            include: {
+                _count: {
+                    select: { favoritedBy: true }
+                }
+            }
+        });
+        const topLiked = productsWithFavs
+            .map(p => ({ _id: p.name, count: p._count.favoritedBy }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
         res.json({
             orders,
             inventory,
@@ -109,7 +122,7 @@ exports.getDashboardState = async (req, res) => {
                 orderTrends,
                 statusDistribution,
                 topOrdered: designStats,
-                topLiked: [], 
+                topLiked: topLiked, 
                 traffic: trafficData
             }
         });

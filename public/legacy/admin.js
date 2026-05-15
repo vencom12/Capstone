@@ -635,12 +635,20 @@ function updateAITip() {
         </div>
     `);
 
-    // MVP Design
-    if (products.length > 0) {
+    // MVP Design (Most Favorited)
+    const topFav = (State._cache.analytics?.topLiked || [])[0];
+    if (topFav && topFav.count > 0) {
+        insights.push(`
+            <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Most Wanted Design</p>
+                <p style="font-size: 0.85rem; color: #f472b6; font-weight: 600; margin: 0;">${topFav._id}</p>
+            </div>
+        `);
+    } else if (products.length > 0) {
         const topProduct = products[0];
         insights.push(`
             <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
-                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Top Catalog Design</p>
+                <p style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin: 0;">Catalog Highlight</p>
                 <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; margin: 0;">${topProduct.name}</p>
             </div>
         `);
