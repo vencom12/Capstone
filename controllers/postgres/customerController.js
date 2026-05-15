@@ -235,11 +235,12 @@ exports.getReceipt = async (req, res) => {
     }
 };
 
+const PDFDocument = require('pdfkit');
+
 exports.downloadReceipt = async (req, res) => {
     try {
         const id = req.params.id;
         
-        // Try to find the transaction via multiple possible IDs (ReceiptID, TransactionID, or OrderID)
         let tx = await prisma.transaction.findFirst({
             where: { OR: [{ transactionID: id }, { orderID: id }] },
             include: { order: true, user: true }
@@ -257,30 +258,88 @@ exports.downloadReceipt = async (req, res) => {
 
         if (!tx) return res.status(404).send('Receipt not found');
 
-        const receiptText = `
-----------------------------------
-       STITCH-OPT RECEIPT
-----------------------------------
-Order ID: ${tx.orderID}
-Transaction: ${tx.transactionID}
-Date: ${new Date(tx.timestamp).toLocaleString()}
-Status: ${tx.status}
-Customer: ${tx.user?.username || 'Valued Client'}
-----------------------------------
-Items:
-${(tx.order?.items || []).map(item => `- ${item.name}: $${parseFloat(item.price).toFixed(2)}`).join('\n')}
-----------------------------------
-TOTAL AMOUNT: $${parseFloat(tx.amount).toFixed(2)}
-----------------------------------
-Thank you for your business!
-        `;
+        const date = new Date(tx.timestamp);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString();
+        const items = tx.order?.items || [];
+        const subtotal = parseFloat(tx.amount);
+        const tax = subtotal * 0.12; 
+        const total = subtotal + tax;
 
-        res.setHeader('Content-disposition', `attachment; filename=receipt_${id}.txt`);
-        res.setHeader('Content-type', 'text/plain');
-        res.send(receiptText);
+        // Create PDF
+        const doc = new PDFDocument({ size: [300, 600], margin: 20 });
+        
+        res.setHeader('Content-disposition', `attachment; filename=STITCH_OPT_RECEIPT_${id}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(16).text('STITCH-OPT DESIGNS', { align: 'center', bold: true });
+        doc.fontSize(10).text('Premium Embroidery Services', { align: 'center' });
+        doc.text('123 Digital Thread Lane, Manila', { align: 'center' });
+        doc.text('Contact: +63 (02) 888-THREAD', { align: 'center' });
+        doc.moveDown();
+        doc.text('----------------------------------------------', { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Details
+        doc.fontSize(9);
+        doc.text(`RECEIPT: ${id}`);
+        doc.text(`DATE   : ${dateStr}`);
+        doc.text(`TIME   : ${timeStr}`);
+        doc.text(`CASHIER: StitchMaster AI`);
+        doc.text(`CUSTOMER: ${tx.user?.username || 'Valued Client'}`);
+        doc.moveDown();
+        doc.text('----------------------------------------------', { align: 'center' });
+
+        // Table Header
+        doc.moveDown(0.5);
+        doc.font('Helvetica-Bold');
+        doc.text('ITEM', 20, doc.y, { continued: true });
+        doc.text('QTY', 180, doc.y, { continued: true });
+        doc.text('PRICE', 230, doc.y);
+        doc.font('Helvetica');
+        doc.moveDown(0.5);
+
+        // Items
+        items.forEach(item => {
+            const currentY = doc.y;
+            doc.text(item.name || 'Custom Design', 20, currentY, { width: 150 });
+            doc.text('1', 180, currentY);
+            doc.text(`$${parseFloat(item.price).toFixed(2)}`, 230, currentY);
+            doc.moveDown(0.5);
+        });
+
+        doc.moveDown();
+        doc.text('----------------------------------------------', { align: 'center' });
+        
+        // Totals
+        doc.moveDown(0.5);
+        const totalsY = doc.y;
+        doc.text('SUBTOTAL:', 140, totalsY);
+        doc.text(`$${subtotal.toFixed(2)}`, 230, totalsY);
+        
+        doc.text('VAT (12%):', 140, totalsY + 15);
+        doc.text(`$${tax.toFixed(2)}`, 230, totalsY + 15);
+        
+        doc.font('Helvetica-Bold');
+        doc.text('TOTAL:', 140, totalsY + 35);
+        doc.text(`$${total.toFixed(2)}`, 230, totalsY + 35);
+        doc.font('Helvetica');
+
+        // Footer
+        doc.moveDown(4);
+        doc.text('----------------------------------------------', { align: 'center' });
+        doc.fontSize(10).text('Thank you for choosing us!', { align: 'center' });
+        doc.fontSize(8).text('Visit again for more designs!', { align: 'center' });
+        doc.text('www.stitch-opt.com', { align: 'center', color: 'blue' });
+
+        doc.end();
+
     } catch (err) {
         console.error('downloadReceipt error:', err);
-        res.status(500).send('Error generating download');
+        res.status(500).send('Error generating PDF');
     }
 };
 
