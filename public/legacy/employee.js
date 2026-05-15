@@ -167,7 +167,7 @@ function updateUI() {
                     </td>
                     <td data-label="Total" class="price-cell">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td data-label="Action">
-                        <button class="btn" onclick="openEditOrder('${order._id}')" 
+                        <button class="btn" onclick="openEditOrder('${order.id}')" 
                             style="background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); padding: 6px 12px; font-size: 0.8rem;">
                             Process
                         </button>
@@ -210,8 +210,8 @@ function updateUI() {
                         <p style="color: var(--text-dim); font-size: 0.85rem;">${p.tag} • $${p.price.toFixed(2)}</p>
                     </div>
                     <div style="display: flex; gap: 8px; width: 100%;">
-                        <button class="btn" onclick="openEditProduct('${p._id}')" style="flex: 1; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Customize</button>
-                        <button class="btn" onclick="deleteProduct('${p._id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
+                        <button class="btn" onclick="openEditProduct('${p.id}')" style="flex: 1; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Customize</button>
+                        <button class="btn" onclick="deleteProduct('${p.id}')" style="flex: 1; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px; font-size: 0.85rem; font-weight: 600;">Delete</button>
                     </div>
                 </div>`).join('');
         }
@@ -314,7 +314,7 @@ window.openCreateProduct = async () => {
 
 window.openEditProduct = async (id) => {
     await ModalManager.loadModal('create-product-modal', 'modals/create-product-modal.html');
-    const p = State._cache.products.find(prod => prod._id === id);
+    const p = State._cache.products.find(prod => prod.id === id);
     if (!p) return;
 
     document.getElementById('product-name').value = p.name;
@@ -344,7 +344,7 @@ window.deleteProduct = async (id) => {
 
 window.openEditOrder = async (id) => {
     await ModalManager.loadModal('edit-order-modal', 'modals/edit-order-modal.html');
-    const order = State._cache.orders.find(o => o._id === id);
+    const order = State._cache.orders.find(o => o.id === id);
     if (!order) return;
 
     const titleEl = document.getElementById('edit-order-modal-title');

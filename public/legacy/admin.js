@@ -205,7 +205,7 @@ const _updateUIInternal = debounce(() => {
                 const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 return `
-                <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transactionId?.transactionID}')" style="cursor: pointer;">
+                <tr onclick="if(!event.target.closest('input, button')) viewReceipt('${order.transaction?.transactionID}')" style="cursor: pointer;">
                     <td data-label="Order ID">
                         <div class="order-id-main">${order.orderId}</div>
                         <span class="status-pill-small">${order.status}</span>
@@ -218,8 +218,8 @@ const _updateUIInternal = debounce(() => {
                     <td data-label="Total" style="font-weight: 600;">$${parseFloat(order.totalAmount || 0).toFixed(2)}</td>
                     <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
-                            ${order.receiptRef ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receiptRef.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
+                            <button class="btn" onclick="event.stopPropagation(); openEditOrder('${order.id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 0.75rem;">Edit</button>
+                            ${order.receipt ? `<button class="btn" onclick="event.stopPropagation(); downloadReceipt('${order.receipt.receiptID}')" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; font-size: 0.75rem;">Download</button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -240,8 +240,8 @@ if (staffTable) {
                     <td data-label="Joined">${new Date(user.createdAt).toLocaleDateString()}</td>
                     <td data-label="Actions">
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="openEditStaff('${user._id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
-                            <button class="btn" onclick="deleteUser('${user._id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
+                            <button class="btn" onclick="openEditStaff('${user.id}')" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; font-size: 0.8rem;">Edit</button>
+                            <button class="btn" onclick="deleteUser('${user.id}')" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 14px; font-size: 0.8rem;">Delete</button>
                         </div>
                     </td>
                 </tr>`).join('');
