@@ -902,27 +902,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-
-    // Status button group listener
-    const statusGroup = document.getElementById('status-button-group');
-    if (statusGroup) {
-        statusGroup.addEventListener('click', (e) => {
-            const btn = e.target.closest('.status-btn');
-            if (btn) {
-                document.querySelectorAll('.status-btn').forEach(b => {
-                    b.classList.remove('btn-primary');
-                    b.style.background = 'rgba(255,255,255,0.05)';
-                    b.style.color = 'var(--text-dim)';
-                });
-                btn.classList.add('btn-primary');
-                btn.style.background = 'var(--primary)';
-                btn.style.color = 'white';
-                document.getElementById('edit-order-status').value = btn.dataset.value;
-            }
-        });
-    }
-
-    // Edit order form submit logic moved to global delegated listener
 });
 
 // --- Receipt Viewer ---
@@ -1265,6 +1244,26 @@ document.addEventListener('submit', async (e) => {
             const err = await response.json().catch(() => ({ message: 'Server error' }));
             showToast(`Update failed: ${err.message}`);
         }
+    }
+});
+
+// Global Click Delegation
+document.addEventListener('click', (e) => {
+    // 1. Status Button Clicks
+    const statusBtn = e.target.closest('.status-btn');
+    if (statusBtn) {
+        document.querySelectorAll('.status-btn').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.style.background = 'rgba(255,255,255,0.05)';
+            b.style.color = 'var(--text-dim)';
+        });
+        statusBtn.classList.add('btn-primary');
+        statusBtn.style.background = 'var(--primary)';
+        statusBtn.style.color = 'white';
+        
+        const input = document.getElementById('edit-order-status');
+        if (input) input.value = statusBtn.dataset.value;
+        return;
     }
 });
 
