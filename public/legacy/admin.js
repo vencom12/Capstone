@@ -503,20 +503,26 @@ async function openCreateMaterialModal() {
         submitBtn.disabled = true;
 
         try {
-            const res = await fetch(`${API_URL}/admin/inventory`, {
+            const res = await fetch(`${API_URL}/inventory`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
                 credentials: 'include'
             });
-            if (!res.ok) throw new Error('Failed to create material');
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.message || data.error || 'Failed to create material');
+            }
             
             UI.toggleModal('create-material-modal');
             // Refresh to show new item
             if (window.refreshDashboardState) window.refreshDashboardState();
+            if (typeof showToast === 'function') showToast('Material created successfully!', 'success');
         } catch (err) {
             console.error(err);
-            alert('Failed to create material.');
+            alert(`Error: ${err.message}`);
             submitBtn.innerText = "Create Material";
             submitBtn.disabled = false;
         }

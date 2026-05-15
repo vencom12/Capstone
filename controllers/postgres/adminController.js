@@ -317,7 +317,7 @@ exports.createInventoryItem = async (req, res) => {
                 action: 'Add',
                 amount: inventory.count,
                 newTotal: inventory.count,
-                userId: req.user?.username || 'Admin'
+                userId: req.user?.id || 'Admin'
             }
         });
 
@@ -325,7 +325,11 @@ exports.createInventoryItem = async (req, res) => {
         res.json(inventory);
     } catch (err) {
         console.error("Error creating inventory item:", err);
-        res.status(500).json({ message: 'Error creating inventory item' });
+        res.status(500).json({ 
+            message: 'Error creating inventory item', 
+            error: err.message,
+            code: err.code // Prisma error codes (e.g., P2002 for unique constraint)
+        });
     }
 };
 
