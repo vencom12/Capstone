@@ -238,7 +238,8 @@ app.use((req, res, next) => {
     next();
 });
 
-const DB_TYPE = process.env.DB_TYPE || 'mongodb';
+const DB_TYPE = (process.env.DB_TYPE || 'mongodb').trim().toLowerCase();
+console.log(`[SYSTEM] Starting in ${DB_TYPE.toUpperCase()} mode...`);
 
 if (DB_TYPE === 'mongodb') {
     const dbOptions = {
