@@ -73,6 +73,15 @@ window.downloadReceipt = (receiptId) => {
 
 // refreshCSRFToken, _syncCount, updateSyncIndicator all provided by js/core.js
 
+const refreshDashboardState = async () => {
+    updateSyncIndicator(true);
+    const data = await State.getDashboardState();
+    updateSyncIndicator(false);
+    if (data) updateUI();
+};
+
+window.refreshDashboardState = refreshDashboardState;
+
 // --- UI Rendering ---
 function updateUI() {
     _updateUIInternal();
@@ -1246,6 +1255,5 @@ document.addEventListener('change', (e) => {
 });
 
 
-
-
-
+// Initial Load
+refreshDashboardState();
