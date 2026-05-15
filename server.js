@@ -241,12 +241,10 @@ app.use((req, res, next) => {
 const DB_TYPE = process.env.DB_TYPE || 'mongodb';
 
 if (DB_TYPE === 'mongodb') {
-    // MongoDB Connection - Optimized for Atlas Free Cluster
     const dbOptions = {
-        serverSelectionTimeoutMS: 5000,
+        autoIndex: true,
+        connectTimeoutMS: 10000,
         socketTimeoutMS: 45000,
-        family: 4, // Force IPv4
-        maxPoolSize: 10 // Recommended for free tier
     };
 
     mongoose.connect(process.env.MONGODB_URI, dbOptions)
@@ -308,9 +306,16 @@ app.use('/api/v1/employee', employeeRoutes);
 // --- Shared/Public Routes ---
 app.get('/api/products', async (req, res) => {
     try {
-        const products = await Product.find().sort({ createdAt: -1 });
-        res.json(products);
+        if (process.env.DB_TYPE === 'postgres') {
+            const prisma = require('./utils/prisma');
+            const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+            res.json(products);
+        } else {
+            const products = await Product.find().sort({ createdAt: -1 });
+            res.json(products);
+        }
     } catch (err) {
+        console.error('API Products Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
