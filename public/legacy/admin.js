@@ -1115,7 +1115,11 @@ document.addEventListener('submit', async (e) => {
 
         if (!status) return showToast('Please select a status');
 
-        updateSyncIndicator(true);
+        const saveBtn = form.querySelector('button[type="submit"]');
+        const originalText = saveBtn.innerText;
+        saveBtn.innerText = 'Saving...';
+        saveBtn.disabled = true;
+
         try {
             const response = await apiFetch(`${API_URL}/orders/batch-status`, {
                 method: 'POST',
@@ -1126,7 +1130,8 @@ document.addEventListener('submit', async (e) => {
             if (response.ok) {
                 showToast('Order status updated');
                 UI.toggleModal('edit-order-modal');
-                refreshDashboardState();
+                const data = await State.getDashboardState();
+                if (data) updateUI();
             } else {
                 const err = await response.json().catch(() => ({ message: 'Update failed' }));
                 showToast(`Error: ${err.message}`);
@@ -1134,7 +1139,8 @@ document.addEventListener('submit', async (e) => {
         } catch (error) {
             showToast('Network error during update');
         } finally {
-            updateSyncIndicator(false);
+            saveBtn.innerText = originalText;
+            saveBtn.disabled = false;
         }
     }
 });
