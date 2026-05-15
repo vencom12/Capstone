@@ -296,6 +296,39 @@ exports.updateInventoryItem = async (req, res) => {
     }
 };
 
+exports.createInventoryItem = async (req, res) => {
+    try {
+        const { item, count, unit, minThreshold } = req.body;
+        if (!item) return res.status(400).json({ message: 'Item name is required' });
+
+        const inventory = await prisma.inventory.create({
+            data: {
+                item,
+                count: parseInt(count) || 0,
+                unit: unit || 'Cones',
+                minThreshold: parseInt(minThreshold) || 10
+            }
+        });
+
+        // Create log entry for initial stock
+        await prisma.inventoryLog.create({
+            data: {
+                inventoryId: inventory.id,
+                action: 'Add',
+                amount: inventory.count,
+                newTotal: inventory.count,
+                userId: req.user?.username || 'Admin'
+            }
+        });
+
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.INVENTORY, inventory);
+        res.json(inventory);
+    } catch (err) {
+        console.error("Error creating inventory item:", err);
+        res.status(500).json({ message: 'Error creating inventory item' });
+    }
+};
+
 exports.updateGlobalThreshold = async (req, res) => {
     try {
         const { minThreshold } = req.body;

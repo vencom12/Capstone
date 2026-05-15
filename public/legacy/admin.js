@@ -480,6 +480,51 @@ function renderInventoryLogs(logs) {
     }).join('');
 }
 
+async function openCreateMaterialModal() {
+    await ModalManager.loadModal('create-material-modal', 'modals/create-material-modal.html');
+    
+    const form = document.getElementById('create-material-form');
+    // Remove old listeners
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+
+    newForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const payload = {
+            item: document.getElementById('create-material-name').value,
+            count: parseInt(document.getElementById('create-material-stock').value),
+            unit: document.getElementById('create-material-unit').value,
+            minThreshold: parseInt(document.getElementById('create-material-threshold').value)
+        };
+
+        const submitBtn = newForm.querySelector('button[type="submit"]');
+        submitBtn.innerText = "Creating...";
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_URL}/admin/inventory`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Failed to create material');
+            
+            UI.toggleModal('create-material-modal');
+            // Refresh to show new item
+            if (window.refreshDashboardState) window.refreshDashboardState();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to create material.');
+            submitBtn.innerText = "Create Material";
+            submitBtn.disabled = false;
+        }
+    });
+
+    UI.toggleModal('create-material-modal');
+}
+
 function updatePaginationUI() {
     const { pagination } = State._cache;
     const indicator = document.getElementById('orders-page-indicator');
