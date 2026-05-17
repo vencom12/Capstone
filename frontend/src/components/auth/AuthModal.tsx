@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
+import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 
@@ -13,8 +14,9 @@ export default function AuthModal() {
   const searchParams = useSearchParams();
   const authParam = searchParams.get('auth'); // 'login' or 'register'
   
-  const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  // Subscribe to Zustand UI Store for instant rendering
+  const { isAuthOpen, authMode, setAuthOpen } = useUIStore();
+  const mode = authMode; // elegant map to preserve JSX references
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,24 +30,22 @@ export default function AuthModal() {
 
   const { login, register, isAuthenticated } = useAuthStore();
 
+  // Listen to deep links (e.g. visiting /?auth=login directly from bookmarks)
   useEffect(() => {
-    // If user is already authenticated and auth param is present, clear it and don't open
-    if (isAuthenticated && (authParam === 'login' || authParam === 'register')) {
-      handleClose();
-      return;
-    }
-
     if (authParam === 'login' || authParam === 'register') {
-      setMode(authParam);
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
+      if (isAuthenticated) {
+        handleClose();
+      } else {
+        setAuthOpen(true, authParam);
+      }
     }
-  }, [authParam, isAuthenticated]);
+  }, [authParam, isAuthenticated, setAuthOpen]);
 
   const handleClose = () => {
-    setIsOpen(false);
-    router.replace('/'); // clear query param
+    setAuthOpen(false);
+    if (authParam) {
+      router.replace('/'); // clear query param
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,7 +79,7 @@ export default function AuthModal() {
   };
 
   return (
-    <GlassModal isOpen={isOpen} onClose={handleClose} maxWidth={mode === 'register' ? 'max-w-[550px]' : 'max-w-[400px]'}>
+    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth={mode === 'register' ? 'max-w-[550px]' : 'max-w-[400px]'}>
       <div className="modal-stack">
         <div className="text-center mb-2">
           <h2 className="modal-title-sm">
@@ -209,7 +209,7 @@ export default function AuthModal() {
             {mode === 'login' ? "No account? " : "Already have an account? "}
           </span>
           <button 
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login')}
             className="bg-transparent border-none text-primary font-bold text-[0.8rem] hover:text-white cursor-pointer transition-colors"
           >
             {mode === 'login' ? "Create one here" : "Sign In"}

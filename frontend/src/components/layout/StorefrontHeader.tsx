@@ -126,8 +126,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </div>
         ) : (
           <div className="flex gap-2">
-            <Link href="/?auth=login" className="px-4 py-2 rounded-xl text-text-dim font-bold text-xs hover:bg-white/5 no-underline whitespace-nowrap">Login</Link>
-            <Link href="/?auth=register" className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap">Sign Up</Link>
+            <button 
+              onClick={() => useUIStore.getState().setAuthOpen(true, 'login')}
+              className="px-4 py-2 rounded-xl text-text-dim font-bold text-xs hover:bg-white/5 no-underline whitespace-nowrap bg-transparent border-none cursor-pointer"
+            >
+              Login
+            </button>
+            <button 
+              onClick={() => useUIStore.getState().setAuthOpen(true, 'register')}
+              className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              Sign Up
+            </button>
           </div>
         )}
 
