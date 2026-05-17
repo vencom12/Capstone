@@ -13,7 +13,7 @@ const getApiBase = () => {
   return '';
 };
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || getApiBase();
+export const API_BASE = typeof window !== 'undefined' ? getApiBase() : (process.env.NEXT_PUBLIC_API_URL || '');
 
 let _csrfToken: string | null = null;
 
