@@ -1,0 +1,107 @@
+<!-- auth-modal.html -->
+<style>
+    .auth-dialog.square {
+        border-radius: 4px !important;
+    }
+    .auth-dialog.square .input-group input,
+    .auth-dialog.square .input-group textarea,
+    .auth-dialog.square .btn {
+        border-radius: 4px !important;
+    }
+    .form-linear {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+</style>
+<div id="auth-overlay" class="auth-overlay">
+    <div class="modal glass animate-fade">
+        <span class="close-auth" onclick="closeAuth()">✕</span>
+        
+        <!-- Login Section -->
+        <div id="login-form-container">
+            <h2 id="login-heading" style="margin-bottom: 24px; font-size: 1.8rem; font-weight: 700;">Secure Access</h2>
+            <form id="main-login-form">
+                <div class="input-group">
+                    <label>Username / Email</label>
+                    <input type="text" id="login-email" placeholder="e.g. user@stitchopt.com" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="login-pass" placeholder="••••••••" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; padding-right: 45px;">
+                        <span class="password-toggle" onclick="togglePasswordVisibility('login-pass', this)">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line class="eye-slash" x1="3" y1="3" x2="21" y2="21" style="opacity: 0; transition: opacity 0.2s;"></line>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+                <div id="login-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
+
+                <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="login-remember" style="width: 16px; height: 16px; cursor: pointer;">
+                    <label for="login-remember" style="margin: 0; font-size: 0.9rem; color: var(--text-dim); cursor: pointer;">Stay logged in</label>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; font-weight: 700;">Establish Link</button>
+                
+                <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem; text-align: center;">
+                    No account? <a href="#" onclick="toggleAuthMode('register')" style="color: var(--primary); font-weight: 600;">Create one here</a>
+                </div>
+                
+                <div style="margin-top: 24px; border-top: 1px solid var(--border-glass); padding-top: 20px; font-size: 0.85rem; display: flex; justify-content: space-around;">
+                    <span style="color: var(--text-dim); font-weight: 600;">Staff Modules:</span>
+                    <a href="admin.html" style="color: var(--primary); text-decoration: none;">Admin Login</a>
+                    <a href="employee.html" style="color: var(--primary); text-decoration: none;">Employee Login</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Register Section -->
+        <div id="register-form-container" style="display: none;">
+            <h2 style="margin-bottom: 24px; font-size: 1.8rem; font-weight: 700;">Join Stitch-Opt</h2>
+            <form id="main-register-form">
+                <div class="responsive-form-grid">
+                    <div class="input-group">
+                        <label>Username</label>
+                        <input type="text" id="reg-username" placeholder="johndoe" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                    </div>
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="reg-email" placeholder="john@example.com" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                    </div>
+                    <div class="input-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="reg-phone" placeholder="+63..." required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white;">
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="reg-password" placeholder="Min. 8 chars" required minlength="8" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 8px; color: white; padding-right: 45px;">
+                            <span class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom: 24px;">
+                    <label>Full Address</label>
+                    <textarea id="reg-address" placeholder="123 Street, City, ZIP" required style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding: 12px; border-radius: 12px; color: white; outline: none; min-height: 80px; resize: none;"></textarea>
+                </div>
+                <div id="register-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 20px; display: none;"></div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; font-weight: 700;">Secure Registration</button>
+                
+                <div style="margin-top: 20px; color: var(--text-dim); font-size: 0.9rem; text-align: center;">
+                    Already have an account? <a href="#" onclick="toggleAuthMode('login')" style="color: var(--primary); font-weight: 600;">Sign In</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

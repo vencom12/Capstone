@@ -4,6 +4,7 @@ const aiController = require('../../controllers/postgres/aiController');
 const auth = require('../../middleware/auth');
 
 router.post('/chat', auth(), aiController.chat);
+router.get('/logs', auth(), aiController.getLogs);
 router.post('/verify-receipt', auth(), aiController.verifyReceipt);
 router.get('/models', aiController.listModels);
 

@@ -1,0 +1,25 @@
+{
+  "watch": [
+    "server.js",
+    "controllers",
+    "models",
+    "routes",
+    "middleware",
+    "utils",
+    "prisma"
+  ],
+  "ext": "js,json,prisma",
+  "delay": 2000,
+  "ignore": [
+    "node_modules",
+    "frontend",
+    "logs",
+    "uploads",
+    "scratch",
+    "public",
+    "server_log.txt",
+    "*.log",
+    ".git",
+    ".pids"
+  ]
+}

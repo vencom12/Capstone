@@ -1,0 +1,79 @@
+/* Refactored from styles.css */
+
+.storefront-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--header-height);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    background: var(--bg-header);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid var(--border-glass);
+    transition: all 0.3s ease;
+}
+
+/* Tablet & Mobile Header (2 Rows) */
+@media (max-width: 1100px) {
+    .storefront-header {
+        flex-wrap: wrap;
+        height: auto !important;
+        padding: 10px 15px !important;
+        gap: 8px !important;
+        justify-content: space-between;
+        border-bottom: none !important;
+        box-shadow: none !important;
+    }
+    .header-brand {
+        order: 1;
+        flex: 0 1 auto !important;
+    }
+    .header-actions {
+        order: 2;
+        flex: 0 1 auto !important;
+        gap: 8px !important;
+    }
+    .header-search {
+        order: 3;
+        width: 100% !important;
+        flex: none !important;
+        margin: 5px 0 0 0 !important;
+        max-width: none !important;
+        position: relative;
+    }
+
+    .header-search input {
+        padding: 10px 16px !important;
+        padding-right: 40px !important;
+        font-size: 0.9rem !important;
+        height: 40px !important;
+        border: none !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+    }
+    
+    /* Shrink buttons more to fit inline */
+    .header-actions {
+        gap: 12px !important;
+    }
+    .header-actions .header-btn {
+        padding: 6px 12px !important;
+        font-size: 0.8rem !important;
+        min-width: auto !important;
+    }
+    .header-actions .header-btn svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+}
+
+
+
+.storefront-header.scrolled {
+    background: var(--bg-sidebar);
+    height: 70px;
+}

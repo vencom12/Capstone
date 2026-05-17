@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stitch-Opt | Premium Embroidery Designs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Modular Design System -->
+    <link rel="stylesheet" href="css/base.css">
+    <style>
+        /* Immediate theme application to prevent white flash */
+        html { background-color: #0f172a !important; }
+    </style>
+    <link rel="stylesheet" href="css/header/header-base.css">
+    <link rel="stylesheet" href="css/header/header-logo.css">
+    <link rel="stylesheet" href="css/header/header-navbar.css">
+    <link rel="stylesheet" href="css/header/header-user.css">
+    <link rel="stylesheet" href="css/sidebar/sidebar-base.css">
+    <link rel="stylesheet" href="css/sidebar/sidebar-nav.css">
+    <link rel="stylesheet" href="css/sidebar/sidebar-toggle.css">
+    <link rel="stylesheet" href="css/sidebar/sidebar-submenu.css">
+    <link rel="stylesheet" href="css/content/content-base.css">
+    <link rel="stylesheet" href="css/content/content-cards.css">
+    <link rel="stylesheet" href="css/content/content-table.css">
+    <link rel="stylesheet" href="css/content/content-forms.css">
+    <link rel="stylesheet" href="css/utilities/utilities.css">
+    <link rel="stylesheet" href="css/components/status-badges.css">
+    <link rel="stylesheet" href="css/components/loaders.css">
+    <link rel="stylesheet" href="css/responsive-tablet.css">
+    <link rel="stylesheet" href="css/content/content-modals.css">
+    <link rel="stylesheet" href="css/responsive-mobile.css">
+    <link rel="stylesheet" href="css/responsive-desktop.css">
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <script src="js/core.js"></script>
+    <script src="js/modal-manager.js"></script>
+</head>
+<body>
+
+
+    <!-- Mobile Sidebar Toggle -->
+    <input type="checkbox" id="sidebar-mobile-toggle" style="display: none;">
+    <label for="sidebar-mobile-toggle" class="sidebar-overlay"></label>
+
+    <!-- Storefront Header -->
+    <header class="storefront-header">
+        <label for="sidebar-mobile-toggle" class="hamburger-btn" style="margin-right: 15px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </label>
+        <a href="index.html" class="header-brand"
+            style="text-decoration: none; display: flex; align-items: center; gap: 12px;">
+            <div
+                style="background: linear-gradient(135deg, var(--primary), var(--secondary)); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+            </div>
+            <h1
+                style="font-weight: 800; font-size: 1.3rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; margin: 0;">
+                Stitch-Opt</h1>
+        </a>
+
+        <div class="header-search">
+            <input type="text" id="storefront-search" placeholder="Search premium embroidery designs...">
+            <svg style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+
+        <div class="header-actions">
+            <button onclick="toggleTheme()" class="header-btn desktop-only"
+                style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+
+            <div id="guest-actions" style="display: flex; gap: 12px;">
+                <a href="#" class="header-btn" onclick="openAuth('login')">Login</a>
+                <a href="#" class="header-btn primary" onclick="openAuth('register')">Register</a>
+            </div>
+            <div id="user-actions" style="display: none; gap: 12px; align-items: center;">
+                <a href="user.html" class="header-btn">
+                    <div class="profile-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;"
+                        id="header-user-avatar">?</div>
+                    <span id="header-user-name">Account</span>
+                </a>
+                <a href="#" class="header-btn" onclick="AuthManager.logout()">Logout</a>
+            </div>
+
+
+        </div>
+
+        <script>
+            function toggleTheme() {
+                const html = document.documentElement;
+                const current = html.getAttribute('data-theme');
+                const next = current === 'light' ? 'dark' : 'light';
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                updateThemeIcon(next);
+            }
+
+            function updateThemeIcon(theme) {
+                const icons = [document.getElementById('theme-icon'), document.getElementById('theme-icon-mobile')];
+                icons.forEach(icon => {
+                    if (!icon) return;
+                    if (theme === 'light') {
+                        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+                    } else {
+                        icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+                    }
+                });
+            }
+
+            // Initialize theme on load
+            document.addEventListener('DOMContentLoaded', () => {
+                const savedTheme = localStorage.getItem('theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                updateThemeIcon(savedTheme);
+            });
+        </script>
+        <!-- Mobile Category Dropdown (Moved into header) -->
+        <div class="mobile-category-dropdown">
+            <div class="glass-select-wrapper">
+                <select id="mobile-category-select" class="glass-select">
+                    <option value="All">All Designs</option>
+                    <option value="Premium Embroidery">Premium Embroidery</option>
+                    <option value="Apparel & Fashion">Apparel & Fashion</option>
+                    <option value="Towels & Linens">Towels & Linens</option>
+                    <option value="Patches & Logos">Patches & Logos</option>
+                </select>
+                <svg class="select-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Catalog & Hero Dashboard Layout -->
+    <div class="storefront-container storefront-dashboard-layout">
+
+        <!-- Left Sidebar (Hero & Categories) -->
+        <aside class="sidebar storefront-sidebar glass">
+            <div class="mobile-only sidebar-actions" style="padding: 15px; border-bottom: 1px solid var(--border-glass); margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-dim);">Quick Actions</span>
+                    <button onclick="toggleTheme()" class="header-btn" style="padding: 8px; border-radius: 50%; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass);">
+                        <svg id="theme-icon-mobile" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Icon will be cloned by script -->
+                        </svg>
+                    </button>
+                </div>
+                <label for="nav-drawer-toggle" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); color: var(--primary);">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span id="mobile-sidebar-basket-count" class="badge" style="position: absolute; top: -8px; right: -8px; background: var(--primary); font-size: 0.65rem; padding: 2px 5px; border-radius: 8px; color: white !important;">0</span>
+                    </div>
+                    <span>View Basket</span>
+                </label>
+            </div>
+
+            <div class="sidebar-hero-content">
+                <h2
+                    style="font-size: 2rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1; letter-spacing: -1px;">
+                    Intelligence in Every Stitch.</h2>
+                <p style="color: var(--text-dim); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5;">
+                    <!--This is to be revised based on the liking of the client-->
+                    Explore our curated catalog of professional embroidery designs optimized for high-speed production.
+                </p>
+                <div id="install-button-container" style="display: none; margin-bottom: 30px;">
+                    <button id="install-button" class="btn btn-primary"
+                        style="background: rgba(168, 85, 247, 0.15); color: var(--accent); border: 1px solid rgba(168, 85, 247, 0.3); width: 100%; font-size: 0.9rem;">
+                        Install Desktop App
+                    </button>
+                </div>
+            </div>
+
+            <div class="sidebar-categories">
+                <h3
+                    style="font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; padding-left: 10px;">
+                    Categories</h3>
+
+                <ul class="nav-links category-links desktop-only">
+                    <li>
+                        <label class="category-btn active" data-category="All">
+                            <span style="font-weight: 600;">All Designs</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="category-btn" data-category="Premium Embroidery">
+                            <span>Premium Embroidery</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="category-btn" data-category="Apparel & Fashion">
+                            <span>Apparel & Fashion</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="category-btn" data-category="Towels & Linens">
+                            <span>Towels & Linens</span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="category-btn" data-category="Patches & Logos">
+                            <span>Patches & Logos</span>
+                        </label>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+
+
+        <!-- Right Main Content -->
+        <main class="storefront-main">
+            <div class="product-grid" id="storefront-grid">
+                <!-- High Fidelity Skeletons -->
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-img"></div>
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-button"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-img"></div>
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-button"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-img"></div>
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-button"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton skeleton-img"></div>
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-button"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Basket Drawer (Simplified from user.html) -->
+    <input type="checkbox" id="nav-drawer-toggle" style="display: none;">
+    <!-- Drawer Backdrop -->
+    <div class="storefront-overlay" onclick="document.getElementById('nav-drawer-toggle').checked = false;"></div>
+    <aside class="storefront-drawer glass">
+        <div class="drawer-header"
+            style="padding: 20px; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem;">Your Basket</h3>
+            <label for="nav-drawer-toggle" class="close-drawer"
+                style="cursor: pointer; font-size: 1.2rem; opacity: 0.6;">✕</label>
+        </div>
+        <div class="panel-section" style="padding: 20px;">
+            <div id="basket-items-list" class="basket-items"
+                style="min-height: 120px; display: flex; flex-direction: column; gap: 12px; color: var(--text-dim); text-align: center; font-size: 0.85rem;">
+                <p>Basket is empty</p>
+            </div>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-glass);">
+                <div
+                    style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1rem; margin-bottom: 16px;">
+                    <span>Total:</span>
+                    <span id="basket-total">$0.00</span>
+                </div>
+                <button id="checkout-btn" class="btn btn-primary"
+                    style="width: 100%; font-size: 0.9rem; padding: 10px;">Checkout Now</button>
+                <p id="checkout-guest-msg"
+                    style="display: none; margin-top: 15px; font-size: 0.75rem; color: var(--accent); text-align: center;">
+                    Login required to place orders.</p>
+            </div>
+        </div>
+    </aside>
+
+    <div id="global-sync-indicator" class="sync-indicator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path
+                d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.3-1.7-4.2-4-4.5C17.1 6.5 14 4 10.5 4a7 7 0 0 0-6.8 5.4C2 10.1 1 12.2 1 14.5c0 3 2.5 5.5 5.5 5.5" />
+        </svg>
+    </div>
+
+    <div id="dynamic-modals-container"></div>
+            <div id="system-diagnostic"
+                style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.85); color: #818cf8; font-size: 0.7rem; padding: 4px 12px; z-index: 100005; display: flex; gap: 15px; border-top: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px); pointer-events: none;">
+                <span>API: <b id="diag-api">Checking...</b></span>
+                <span>Database: <b id="diag-db">Checking...</b></span>
+                <span>Session: <b id="diag-session">None</b></span>
+            </div>
+
+            <script src="customer.js"></script>
+            <script>
+                // --- Storefront Specific Logic ---
+                async function openAuth(mode = 'login') {
+                    await ModalManager.open('AUTH', {
+                        onOpen: () => toggleAuthMode(mode)
+                    });
+                }
+
+                function closeAuth() {
+                    ModalManager.close('AUTH');
+                }
+
+                function toggleAuthMode(mode) {
+                    const loginContainer = document.getElementById('login-form-container');
+                    const registerContainer = document.getElementById('register-form-container');
+                    if (loginContainer && registerContainer) {
+                        if (mode === 'register') {
+                            loginContainer.style.display = 'none';
+                            registerContainer.style.display = 'block';
+                        } else {
+                            loginContainer.style.display = 'block';
+                            registerContainer.style.display = 'none';
+                        }
+                    }
+                }
+
+
+
+                // Diagnostic Updater
+                function updateDiagnostics() {
+                    try {
+                        if (typeof AuthManager !== 'undefined') {
+                            const session = AuthManager.getSession();
+                            const diagSession = document.getElementById('diag-session');
+                            if (diagSession) {
+                                diagSession.innerText = session ? session.user.username : 'Guest';
+                                diagSession.style.color = session ? '#10b981' : '#6366f1';
+                            }
+                        }
+                    } catch (e) { console.warn('Diag failed', e); }
+                }
+
+                // Initialize Storefront
+                document.addEventListener('DOMContentLoaded', async () => {
+                    console.log('[Storefront] Initializing system...');
+                    updateDiagnostics();
+
+                    // STEP 1: Check Auth State for Header
+                    let session = null;
+                    if (typeof AuthManager !== 'undefined') {
+                        session = AuthManager.getSession();
+                    }
+                    
+                    if (session) {
+                        const guestActions = document.getElementById('guest-actions');
+                        const userActions = document.getElementById('user-actions');
+                        if (guestActions) guestActions.style.display = 'none';
+                        if (userActions) {
+                            userActions.style.display = 'flex';
+                            document.getElementById('header-user-name').innerText = session.user.username;
+                            const avatar = document.getElementById('header-user-avatar');
+                            if (avatar) avatar.innerText = session.user.username.charAt(0).toUpperCase();
+                        }
+                    }
+
+                    // STEP 2: LOAD PRODUCTS (TOP PRIORITY)
+                    const apiDiag = document.getElementById('diag-api');
+                    const dbDiag = document.getElementById('diag-db');
+                    if (apiDiag) apiDiag.innerText = 'Syncing...';
+                    
+                    try {
+                        // 2.1 Check Health First
+                        fetch('/api/health').then(r => r.json()).then(health => {
+                            if (apiDiag) {
+                                apiDiag.innerText = 'Connected';
+                                apiDiag.style.color = '#10b981';
+                            }
+                            if (dbDiag) {
+                                dbDiag.innerText = health.database === 'Connected' ? 'Live' : health.database;
+                                dbDiag.style.color = health.database === 'Connected' ? '#10b981' : '#ef4444';
+                            }
+                        }).catch(() => {
+                            if (apiDiag) { apiDiag.innerText = 'Offline'; apiDiag.style.color = '#ef4444'; }
+                        });
+
+                        // 2.2 Load State
+                        if (window.refreshDashboardState) {
+                            const state = await window.refreshDashboardState();
+                            if (state && state.products) {
+                                // Products loaded successfully
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[Storefront] Initialization failed:', err);
+                    } finally {
+                        // Always try to clear skeletons at the end of init
+                        if (window.updateUI) window.updateUI();
+                    }
+
+                    // STEP 3: Setup Listeners
+                    const searchInput = document.getElementById('storefront-search');
+                    if (searchInput) {
+                        searchInput.addEventListener('input', (e) => {
+                            State._cache.searchQuery = e.target.value;
+                            updateUI();
+                        });
+                    }
+
+                    const categoryLabels = document.querySelectorAll('.category-links label');
+                    const mobileCategorySelect = document.getElementById('mobile-category-select');
+
+                    function setCategory(category) {
+                        State._cache.selectedCategory = category;
+                        categoryLabels.forEach(l => {
+                            const span = l.querySelector('span');
+                            if (span && span.innerText === category) {
+                                span.style.color = 'var(--primary)';
+                                span.style.fontWeight = '600';
+                            } else if (span) {
+                                span.style.color = 'var(--text-dim)';
+                                span.style.fontWeight = '400';
+                            }
+                        });
+                        if (mobileCategorySelect) mobileCategorySelect.value = category;
+                        updateUI();
+                    }
+
+                    categoryLabels.forEach(label => {
+                        label.addEventListener('click', () => {
+                            const span = label.querySelector('span');
+                            if (span) setCategory(span.innerText);
+                        });
+                    });
+
+                    if (mobileCategorySelect) {
+                        mobileCategorySelect.addEventListener('change', (e) => {
+                            setCategory(e.target.value);
+                        });
+                    }
+                });
+
+                // Global Auth Form Handler (Event Delegation for Dynamic Modals)
+                document.addEventListener('submit', async function (e) {
+                    // Login Handler
+                    if (e.target.id === 'main-login-form') {
+                        e.preventDefault();
+                        const email = document.getElementById('login-email').value;
+                        const password = document.getElementById('login-pass').value;
+                        const rememberMe = document.getElementById('login-remember').checked;
+                        const errorEl = document.getElementById('login-error');
+                        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+                        if (errorEl) errorEl.style.display = 'none';
+                        const originalBtnText = submitBtn.innerText;
+                        submitBtn.innerText = 'Verifying...';
+                        submitBtn.disabled = true;
+
+                        try {
+                            if (typeof AuthManager !== 'undefined') {
+                                // Enforce customer portal role validation
+                                const result = await AuthManager.login(email, password, rememberMe, 'customer');
+                                if (result.success) {
+                                    const role = AuthManager.getUserRole();
+                                    if (role === 'employee') {
+                                        window.location.href = 'employee.html';
+                                    } else if (role === 'admin') {
+                                        window.location.href = 'admin.html';
+                                    } else {
+                                        window.location.href = 'user.html';
+                                    }
+                                } else if (errorEl) {
+                                    errorEl.innerText = result.message || "Invalid credentials.";
+                                    errorEl.style.display = 'block';
+                                }
+                            }
+                        } catch (err) {
+                            if (errorEl) {
+                                errorEl.innerText = "Connection error.";
+                                errorEl.style.display = 'block';
+                            }
+                        } finally {
+                            submitBtn.innerText = originalBtnText;
+                            submitBtn.disabled = false;
+                        }
+                    }
+
+                    // Registration Handler
+                    if (e.target.id === 'main-register-form') {
+                        e.preventDefault();
+                        const username = document.getElementById('reg-username').value;
+                        const email = document.getElementById('reg-email').value;
+                        const phone = document.getElementById('reg-phone').value;
+                        const password = document.getElementById('reg-password').value;
+                        const address = document.getElementById('reg-address').value;
+                        const errorEl = document.getElementById('register-error');
+                        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+                        if (errorEl) errorEl.style.display = 'none';
+                        const originalBtnText = submitBtn.innerText;
+                        submitBtn.innerText = 'Registering...';
+                        submitBtn.disabled = true;
+
+                        try {
+                            if (typeof AuthManager !== 'undefined') {
+                                const result = await AuthManager.register(username, email, password, 'customer', phone, address);
+                                if (result.success) {
+                                    window.location.href = 'user.html';
+                                } else if (errorEl) {
+                                    errorEl.innerText = result.message || "Registration failed.";
+                                    errorEl.style.display = 'block';
+                                }
+                            }
+                        } catch (err) {
+                            if (errorEl) {
+                                errorEl.innerText = "Connection error.";
+                                errorEl.style.display = 'block';
+                            }
+                        } finally {
+                            submitBtn.innerText = originalBtnText;
+                            submitBtn.disabled = false;
+                        }
+                    }
+                });
+            </script>
+    <script>
+        // Auto-close sidebar drawer on mobile after clicking a link
+        document.querySelectorAll('.sidebar .nav-links label, .sidebar .nav-links a, .category-btn').forEach(item => {
+            item.addEventListener('click', () => {
+                const toggle = document.getElementById('sidebar-mobile-toggle');
+                if (toggle) toggle.checked = false;
+            });
+        });
+    </script>
+</body>
+</html>

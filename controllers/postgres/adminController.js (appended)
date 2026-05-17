@@ -1,0 +1,12 @@
+exports.deleteInventoryItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.inventory.delete({ where: { id } });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.INVENTORY, { id });
+        res.json({ message: 'Inventory item deleted' });
+    } catch (err) {
+        console.error("Error deleting inventory item:", err);
+        res.status(500).json({ message: 'Error deleting inventory item' });
+    }
+};

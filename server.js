@@ -1,4 +1,6 @@
 require('dotenv').config();
+const DB_TYPE = (process.env.DB_TYPE || 'postgres').trim().toLowerCase();
+
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -13,28 +15,51 @@ const compression = require('compression');
 const { Server } = require('socket.io');
 const cookieParser = require('cookie-parser');
 
-const User = require('./models/User');
-const Order = require('./models/Order');
-const Inventory = require('./models/Inventory');
-const Product = require('./models/Product');
-const SiteTraffic = require('./models/SiteTraffic');
-const Transaction = require('./models/Transaction');
+// Load Mongoose models only if running in MongoDB mode (archived in legacy_archive)
+let User, Order, Inventory, Product, SiteTraffic, Transaction;
+if (DB_TYPE === 'mongodb') {
+    User = require('./legacy_archive/models/User');
+    Order = require('./legacy_archive/models/Order');
+    Inventory = require('./legacy_archive/models/Inventory');
+    Product = require('./legacy_archive/models/Product');
+    SiteTraffic = require('./legacy_archive/models/SiteTraffic');
+    Transaction = require('./legacy_archive/models/Transaction');
+}
+
 const auth = require('./middleware/auth');
 
 const fs = require('fs');
 const crypto = require('crypto');
 const app = express();
 
-// Ensure uploads directory exists
+// --- CRITICAL CORS Setup (Must be absolute first to cover rate limits and early errors) ---
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow all origins in development, or specific ones in production
+        if (!origin || origin.includes('render.com') || origin.includes('localhost')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
+
+// Ensure uploads and logs directories exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
     console.log('[OK] Created missing uploads directory');
 }
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log('[OK] Created missing logs directory');
+}
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
-    fs.appendFileSync(path.join(__dirname, 'server_log.txt'), entry);
+    fs.appendFileSync(path.join(__dirname, 'logs', 'server_log.txt'), entry);
     console.error(msg);
 };
 
@@ -168,17 +193,6 @@ app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
 
 // Core Middleware
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow all origins in development, or specific ones in production
-        if (!origin || origin.includes('render.com') || origin.includes('localhost')) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
-}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
@@ -214,7 +228,7 @@ app.use((req, res, next) => {
 });
 
 // --- Serve Vanilla Frontend ---
-app.use(express.static(path.join(__dirname, 'public', 'legacy'), { extensions: ['html'] }));
+app.use(express.static(path.join(__dirname, 'legacy_archive', 'public', 'legacy'), { extensions: ['html'] }));
 // Fallback for assets in public root
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -236,7 +250,7 @@ app.get('/', async (req, res) => {
         }
     } catch (e) { /* ignore tracking errors */ }
     
-    res.sendFile(path.join(__dirname, 'public', 'legacy', 'index.html'));
+    res.sendFile(path.join(__dirname, 'legacy_archive', 'public', 'legacy', 'index.html'));
 });
 
 // Fallback for .html routes
@@ -257,7 +271,7 @@ app.get('/:page.html', async (req, res) => {
         }
     } catch (e) { /* ignore tracking errors */ }
     
-    res.sendFile(path.join(__dirname, 'public', 'legacy', `${req.params.page}.html`));
+    res.sendFile(path.join(__dirname, 'legacy_archive', 'public', 'legacy', `${req.params.page}.html`));
 });
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
@@ -267,7 +281,6 @@ app.use((req, res, next) => {
     next();
 });
 
-const DB_TYPE = (process.env.DB_TYPE || 'mongodb').trim().toLowerCase();
 console.log(`[SYSTEM] Starting in ${DB_TYPE.toUpperCase()} mode...`);
 
 if (DB_TYPE === 'mongodb') {
@@ -294,11 +307,11 @@ if (DB_TYPE === 'postgres') {
     employeeRoutes = require('./routes/postgres/employee');
     aiRoutes = require('./routes/postgres/aiRoutes');
 } else {
-    authRoutes = require('./routes/auth');
-    adminRoutes = require('./routes/admin');
-    customerRoutes = require('./routes/customer');
-    employeeRoutes = require('./routes/employee');
-    aiRoutes = require('./routes/aiRoutes');
+    authRoutes = require('./legacy_archive/routes/auth');
+    adminRoutes = require('./legacy_archive/routes/admin');
+    customerRoutes = require('./legacy_archive/routes/customer');
+    employeeRoutes = require('./legacy_archive/routes/employee');
+    aiRoutes = require('./legacy_archive/routes/aiRoutes');
 }
 
 // Health check for diagnostics
@@ -379,6 +392,7 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
             return res.json({
                 transactionID: tx.transactionID,
                 orderID: tx.orderID,
+                receiptId: tx.receiptId,
                 timestamp: tx.timestamp,
                 amount: tx.amount,
                 status: tx.status,
@@ -399,6 +413,7 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
             return res.json({
                 transactionID: tx.transactionID,
                 orderID: tx.orderID,
+                receiptId: tx.receiptId,
                 timestamp: tx.timestamp,
                 amount: tx.amount,
                 status: tx.status,
@@ -455,4 +470,45 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`[OK] Server listening on port ${PORT}`);
     console.log(`[OK] Socket.IO real-time engine active`);
     console.log(`[OK] Routes ready: /api/auth/profile (PUT), /api/products (GET), etc.`);
+});
+
+// Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination
+const gracefulShutdown = async (signal) => {
+    console.log(`[SYSTEM] Received ${signal}. Starting graceful shutdown...`);
+    if (process.env.DB_TYPE === 'postgres') {
+        try {
+            const prisma = require('./utils/prisma');
+            await prisma.$disconnect();
+            console.log('[OK] Prisma database connections closed.');
+        } catch (err) {
+            console.error('Error disconnecting Prisma on shutdown:', err.message);
+        }
+    }
+    server.close(() => {
+        console.log('[OK] HTTP server closed.');
+        process.exit(0);
+    });
+    
+    // Force close after 3s as fallback
+    setTimeout(() => {
+        console.warn('[WARNING] Graceful shutdown timed out, force exiting.');
+        process.exit(1);
+    }, 3000);
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+process.once('SIGUSR2', async () => {
+    console.log('[SYSTEM] Received SIGUSR2 (Nodemon reload). Cleaning connections...');
+    if (process.env.DB_TYPE === 'postgres') {
+        try {
+            const prisma = require('./utils/prisma');
+            await prisma.$disconnect();
+            console.log('[OK] Prisma database connections closed (Nodemon reload).');
+        } catch (err) {
+            console.error('Error disconnecting Prisma on nodemon reload:', err.message);
+        }
+    }
+    process.kill(process.pid, 'SIGUSR2');
 });

@@ -1,0 +1,369 @@
+/* Refactored from styles.css */
+
+/* Right panel styles removed - controlled by base.css */
+
+.product-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.responsive-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Base table spacing - only for desktop */
+@media (min-width: 1101px) {
+
+    th,
+    td {
+        min-width: 120px;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border-glass);
+    }
+}
+
+tr {
+    transition: background 0.3s ease;
+}
+
+tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.receipt-modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 30px 20px;
+    border-radius: 24px;
+    position: relative;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-card);
+}
+
+/* Adaptive Fluidity */
+.table-container {
+    width: 100%;
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-glass);
+    overflow: hidden;
+    /* Added to clip table corners */
+    margin-bottom: 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    position: relative;
+    backdrop-filter: var(--glass-blur);
+}
+
+@media (max-width: 768px) {
+    .table-container {
+        background: transparent;
+        border-color: transparent;
+    }
+}
+
+.table-header {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-glass);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.table-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .table-controls {
+        gap: 8px;
+    }
+
+    .table-controls input,
+    .table-controls select {
+        flex: 1;
+        min-width: 140px;
+    }
+}
+
+@media (max-width: 1100px) {
+
+    /* Hide headers */
+    .table-container thead {
+        display: none;
+    }
+
+    /* Card Transformation */
+    .table-container table {
+        display: block;
+        width: 100%;
+    }
+
+    .table-container tbody {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        /* 2 columns on tablet */
+        gap: 15px;
+        width: 100%;
+    }
+
+    /* Force 1-column on narrow phones */
+    @media (max-width: 650px) {
+        .table-container tbody {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .table-container {
+        width: 100%;
+        background: var(--bg-card);
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border-glass);
+        overflow: hidden;
+        /* Added to clip table corners */
+        margin-bottom: 30px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        position: relative;
+        backdrop-filter: var(--glass-blur);
+    }
+
+    .table-container td:first-child,
+    .table-container td:last-child {
+        padding-left: 15px;
+        padding-right: 15px;
+        text-align: left;
+    }
+
+    .table-container tr {
+        background: var(--bg-card);
+        border: 1px solid var(--border-glass);
+        border-radius: 20px;
+        padding: 15px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        /* Strict 50/50 split */
+        gap: 10px;
+        height: auto;
+    }
+
+    .table-container td {
+        width: 100% !important;
+        padding: 10px 5px !important;
+        border: none !important;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        min-height: auto;
+        min-width: 0 !important;
+    }
+
+    /* Reset special child padding for mobile */
+    .table-container td:first-child,
+    .table-container td:last-child,
+    .table-container td:nth-child(even) {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .table-container td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+        display: block;
+        opacity: 0.8;
+    }
+
+    /* Actions/Full-width cells */
+    .table-container td[data-label="Actions"],
+    .table-container td[data-label="View Details"],
+    .table-container td[data-label="Description"] {
+        width: 100%;
+        border-top: 1px solid var(--border-glass) !important;
+        margin-top: 10px;
+        padding-top: 15px !important;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .table-container td .status-pill,
+    .table-container td .status-pill-small {
+        margin: 0;
+    }
+
+    /* Force certain values to be bold and wrap */
+    .table-container td {
+        color: var(--text-main);
+        font-weight: 600;
+        font-size: 0.95rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .table-container tr {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .table-container tr:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: var(--primary) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.table-controls input,
+.table-controls select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 10px 16px;
+    border-radius: 12px;
+    color: var(--text-main);
+    outline: none;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+
+    .table-controls input,
+    .table-controls select {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+th,
+td {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-glass);
+    text-align: left;
+    color: var(--text-main);
+}
+
+@media (max-width: 1100px) {
+
+    th,
+    td {
+        padding: 12px 15px;
+    }
+}
+
+th {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Desktop-Only Column Control */
+@media (min-width: 1101px) {
+
+    td:first-child,
+    th:first-child {
+        width: auto;
+        min-width: 100px;
+    }
+
+    td:nth-child(2),
+    th:nth-child(2) {
+        width: auto;
+        min-width: 120px;
+    }
+}
+
+/* Name Column */
+
+/* Desktop-Only Column Alignment */
+@media (min-width: 1101px) {
+
+    th:first-child,
+    td:first-child {
+        padding-left: 24px;
+    }
+
+    th:last-child,
+    td:last-child {
+        padding-right: 24px;
+        text-align: right;
+    }
+}
+
+.table-empty-msg {
+    text-align: center !important;
+    padding: 40px !important;
+    color: var(--text-dim) !important;
+    font-style: italic;
+}
+
+/* Stacked Data Hierarchy */
+.product-price {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Stat Cards & Grid Blocks Highlight */
+.stat-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.stat-card:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: var(--primary) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.order-id-main {
+    color: var(--primary);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.timestamp-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+}
+
+.status-pill-small {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border: 1px solid var(--border-glass);
+}

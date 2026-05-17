@@ -19,6 +19,8 @@ router.post('/users', adminAuth(), adminController.createUser);
 router.put('/users/:id', adminAuth(), adminController.updateUser);
 router.delete('/users/:id', adminAuth(), adminController.deleteUser);
 router.get('/analytics', adminAuth(), adminController.getAnalytics);
+router.get('/settings', adminAuth(), adminController.getSettings);
+router.patch('/settings', adminAuth(), adminController.updateSettings);
 
 // --- Staff (Admin + Employee) Routes ---
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), adminController.updateOrdersStatus);
@@ -29,5 +31,6 @@ router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
 router.post('/inventory', staffAuth(), adminController.createInventoryItem);
 router.patch('/inventory/global', staffAuth(), adminController.updateGlobalThreshold);
 router.patch('/inventory/:id', staffAuth(), adminController.updateInventoryItem);
+router.delete('/inventory/:id', adminAuth(), adminController.deleteInventoryItem);
 
 module.exports = router;

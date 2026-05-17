@@ -113,7 +113,7 @@ exports.getDashboardState = async (req, res) => {
                 userCount: totalUsers,
                 revenue: revenueAggregate._sum.totalAmount || 0,
                 activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
-                lowStock: inventory.filter(i => i.count < 10).length,
+                lowStock: inventory.filter(i => i.count <= (i.minThreshold || 10)).length,
                 totalOrders: revenueAggregate._count.id || 0,
                 totalVisits: totalVisits30D || 0,
                 avgOrderValue: (revenueAggregate._count.id > 0) 
@@ -204,15 +204,26 @@ exports.deleteUser = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const { name, price, tag, description } = req.body;
+        const { name, price, tag, description, count, minThreshold } = req.body;
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
 
         if (req.file) {
             imageUrl = req.file.path;
         }
 
+        const recipe = req.body.recipe ? JSON.parse(req.body.recipe) : [];
+
         const newProduct = await prisma.product.create({
-            data: { name, price: parseFloat(price), tag, description, imageUrl }
+            data: { 
+                name, 
+                price: parseFloat(price), 
+                tag, 
+                description, 
+                imageUrl, 
+                recipe,
+                count: count !== undefined ? parseInt(count) : 0,
+                minThreshold: minThreshold !== undefined ? parseInt(minThreshold) : 5
+            }
         });
 
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, newProduct);
@@ -225,14 +236,39 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const { name, price, tag, description } = req.body;
-        const updateData = { name, price: parseFloat(price), tag, description };
+        const { name, price, tag, description, count, minThreshold } = req.body;
+        const updateData = {};
+        
+        if (name !== undefined) updateData.name = name;
+        if (price !== undefined) updateData.price = parseFloat(price);
+        if (tag !== undefined) updateData.tag = tag;
+        if (description !== undefined) updateData.description = description;
 
         if (req.file) {
             updateData.imageUrl = req.file.path;
         } else if (req.body.imageUrl) {
             updateData.imageUrl = req.body.imageUrl;
         }
+
+        if (req.body.recipe) {
+            updateData.recipe = JSON.parse(req.body.recipe);
+        }
+
+        // Safeguard: Prevent manual stock reductions below active order commitments
+        if (count !== undefined) {
+            const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+            if (existing) {
+                const targetCount = parseInt(count);
+                if (targetCount < existing.reservedCount) {
+                    return res.status(400).json({
+                        message: `Cannot reduce product stock below reserved count. Target: ${targetCount}, Reserved: ${existing.reservedCount}.`
+                    });
+                }
+                updateData.count = targetCount;
+            }
+        }
+
+        if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
 
         const product = await prisma.product.update({
             where: { id: req.params.id },
@@ -242,12 +278,19 @@ exports.updateProduct = async (req, res) => {
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, product);
         res.json({ message: 'Product updated', product });
     } catch (err) {
+        console.error('updateProduct error:', err);
         res.status(500).json({ message: 'Error updating product', error: err.message });
     }
 };
 
 exports.deleteProduct = async (req, res) => {
     try {
+        const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+        if (existing && existing.reservedCount > 0) {
+            return res.status(400).json({
+                message: `Cannot delete product "${existing.name}" because there are ${existing.reservedCount} units actively reserved for orders in the queue.`
+            });
+        }
         await prisma.product.delete({ where: { id: req.params.id } });
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.PRODUCT, { id: req.params.id });
         res.json({ message: 'Product deleted' });
@@ -258,15 +301,37 @@ exports.deleteProduct = async (req, res) => {
 
 exports.updateInventoryItem = async (req, res) => {
     try {
-        const { count, minThreshold, action, amount, userId } = req.body;
+        const { count, minThreshold, action, amount, userId, item, unit } = req.body;
         
         // Find existing to know what changed
         const existing = await prisma.inventory.findUnique({ where: { id: req.params.id } });
         if (!existing) return res.status(404).json({ message: 'Item not found' });
 
         const updateData = {};
-        if (count !== undefined) updateData.count = count;
-        if (minThreshold !== undefined) updateData.minThreshold = minThreshold;
+        if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
+        if (item !== undefined) updateData.item = item;
+        if (unit !== undefined) updateData.unit = unit;
+
+        let newCount = existing.count;
+        if (action && amount !== undefined) {
+            const qty = parseInt(amount);
+            if (action === 'Add') {
+                newCount = existing.count + qty;
+            } else if (action === 'Deduct') {
+                newCount = existing.count - qty;
+            }
+        } else if (count !== undefined) {
+            newCount = parseInt(count);
+        }
+
+        // Safeguard: Prevent manual stock reductions below active order commitments
+        if (newCount < (existing.reservedCount || 0)) {
+            return res.status(400).json({
+                message: `Cannot reduce stock below reserved count. Target: ${newCount}, Reserved: ${existing.reservedCount || 0}.`
+            });
+        }
+
+        updateData.count = newCount;
 
         const inventory = await prisma.inventory.update({
             where: { id: req.params.id },
@@ -317,7 +382,7 @@ exports.createInventoryItem = async (req, res) => {
                 action: 'Add',
                 amount: inventory.count,
                 newTotal: inventory.count,
-                userId: req.user?.id || 'Admin'
+                userId: req.user?.username || 'Admin'
             }
         });
 
@@ -380,6 +445,62 @@ exports.updateOrdersStatus = async (req, res) => {
         };
         const progress = progressMap[status] !== undefined ? progressMap[status] : 50;
 
+        // Fetch current orders to process inventory if status is 'Preparing Order'
+        if (status === 'Preparing Order') {
+            const orders = await prisma.order.findMany({
+                where: { id: { in: ids } }
+            });
+
+            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            const logEnabled = settings ? settings.inventoryAuditLog : true;
+
+            for (const order of orders) {
+                // items is Json, assume it's an array of { id, name, price, quantity }
+                const items = Array.isArray(order.items) ? order.items : [];
+                
+                for (const item of items) {
+                    // Fetch product recipe
+                    const product = await prisma.product.findUnique({
+                        where: { id: item.id }
+                    });
+
+                    if (product && product.recipe && Array.isArray(product.recipe)) {
+                        for (const component of product.recipe) {
+                            const totalDeduction = Math.ceil(component.quantity * (item.quantity || 1));
+                            
+                            // Check stock before deduction
+                            const inventoryItem = await prisma.inventory.findUnique({ where: { id: component.inventoryId } });
+                            if (inventoryItem && inventoryItem.count < totalDeduction) {
+                                console.warn(`Insufficient stock for ${component.name}. Needed: ${totalDeduction}, Available: ${inventoryItem.count}`);
+                                // We continue with the deduction (allowing negative) but log a warning
+                            }
+
+                            // Deduct from inventory
+                            const updatedInv = await prisma.inventory.update({
+                                where: { id: component.inventoryId },
+                                data: { count: { decrement: totalDeduction } }
+                            });
+
+                            // Log if enabled
+                            if (logEnabled) {
+                                await prisma.inventoryLog.create({
+                                    data: {
+                                        inventoryId: component.inventoryId,
+                                        action: 'Deduct',
+                                        amount: totalDeduction,
+                                        newTotal: updatedInv.count,
+                                        userId: req.user?.username || 'System (Auto)'
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            // Broadcast inventory change
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+        }
+
         await prisma.order.updateMany({
             where: { id: { in: ids } },
             data: { status, progress }
@@ -388,17 +509,18 @@ exports.updateOrdersStatus = async (req, res) => {
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status, progress });
         res.json({ message: 'Orders updated successfully' });
     } catch (err) {
+        console.error('Update Orders Error:', err);
         res.status(500).json({ message: 'Error updating order status' });
     }
 };
 
 exports.getAnalytics = async (req, res) => {
     try {
-        const [totalUsers, totalOrders, allPaidOrders, statusCounts, trafficData] = await Promise.all([
+        const [totalUsers, totalOrders, allValidOrders, statusCounts, trafficData] = await Promise.all([
             prisma.user.count(),
             prisma.order.count(),
             prisma.order.findMany({
-                where: { paymentStatus: 'paid' },
+                where: { NOT: { status: 'Order Canceled' } },
                 select: { totalAmount: true, date: true, createdAt: true }
             }),
             prisma.order.groupBy({
@@ -410,7 +532,7 @@ exports.getAnalytics = async (req, res) => {
 
         // Revenue Trends
         const monthlyRevenue = {};
-        allPaidOrders.forEach(o => {
+        allValidOrders.forEach(o => {
             const d = new Date(o.date || o.createdAt);
             const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
             monthlyRevenue[key] = (monthlyRevenue[key] || 0) + (o.totalAmount || 0);
@@ -421,7 +543,7 @@ exports.getAnalytics = async (req, res) => {
             return { _id: { month: parseInt(month), year: parseInt(year) }, revenue };
         }).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month)).slice(-6);
 
-        // Top Designs logic (already verified in dashboard state)
+        // Top Designs logic
         const allOrders = await prisma.order.findMany({ select: { items: true } });
         const itemCounts = {};
         allOrders.forEach(order => {
@@ -435,18 +557,81 @@ exports.getAnalytics = async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
+        // Top Liked Designs (Most Favorited)
+        const productsWithFavs = await prisma.product.findMany({
+            include: {
+                _count: {
+                    select: { favoritedBy: true }
+                }
+            }
+        });
+        const topLiked = productsWithFavs
+            .map(p => ({ _id: p.name, count: p._count.favoritedBy }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        const revenue = allValidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const avgOrderValue = allValidOrders.length > 0 ? revenue / allValidOrders.length : 0;
+        const totalVisits = await prisma.siteTraffic.count({
+            where: {
+                timestamp: {
+                    gte: new Date(new Date().setDate(new Date().getDate() - 30))
+                }
+            }
+        });
+
         res.json({
             userCount: totalUsers,
-            revenue: allPaidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+            revenue,
             totalOrders,
+            avgOrderValue,
             orderTrends,
             statusDistribution: statusCounts.map(s => ({ _id: s.status, count: s._count.id })),
             topOrdered: designStats,
-            topLiked: [], 
-            traffic: trafficData
+            topLiked,
+            traffic: trafficData,
+            totalVisits
         });
     } catch (err) {
         console.error('getAnalytics error:', err);
         res.status(500).json({ message: 'Error fetching analytics' });
+    }
+};
+
+exports.deleteInventoryItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.inventory.delete({ where: { id } });
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', await prisma.inventory.findMany());
+        res.json({ message: 'Inventory item deleted' });
+    } catch (err) {
+        console.error("Error deleting inventory item:", err);
+        res.status(500).json({ message: 'Error deleting inventory item' });
+    }
+};
+
+exports.getSettings = async (req, res) => {
+    try {
+        let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        if (!settings) {
+            settings = await prisma.systemSettings.create({ data: { id: 'global' } });
+        }
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching settings' });
+    }
+};
+
+exports.updateSettings = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.upsert({
+            where: { id: 'global' },
+            update: req.body,
+            create: { id: 'global', ...req.body }
+        });
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ message: 'Error updating settings' });
     }
 };

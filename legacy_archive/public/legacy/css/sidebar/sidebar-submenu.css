@@ -1,0 +1,95 @@
+/* Refactored from styles.css */
+
+.category-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+
+.category-links li {
+    margin-bottom: 5px;
+}
+
+
+.category-links label {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: var(--transition-fast);
+    color: var(--text-dim);
+}
+
+
+.category-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+
+.category-links li {
+    margin-bottom: 5px;
+}
+
+
+.category-links label {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: var(--transition-fast);
+    color: var(--text-dim);
+}
+
+
+.category-links label:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+
+.category-btn {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px !important;
+    border-radius: 12px !important;
+    cursor: pointer;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-glass) !important;
+    backdrop-filter: blur(8px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 6px !important;
+    color: var(--text-dim) !important;
+    text-decoration: none;
+}
+
+
+.category-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: translateX(4px);
+    color: white !important;
+}
+
+.category-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+    border-color: transparent !important;
+    color: white !important;
+    font-weight: 600;
+    box-shadow: 0 10px 20px -5px var(--primary-glow);
+}
+
+.category-btn span {
+    font-size: 0.85rem;
+    transition: color 0.3s ease;
+}
+
+.category-btn.active span {
+    color: white !important;
+}

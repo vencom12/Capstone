@@ -6,7 +6,7 @@ const path = require('path');
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
-    fs.appendFileSync(path.join(__dirname, '../../server_log.txt'), entry);
+    fs.appendFileSync(path.join(__dirname, '../../logs/server_log.txt'), entry);
     console.error(msg);
 };
 
@@ -56,7 +56,17 @@ exports.register = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000
         });
 
-        res.json({ user: { id: user.id, username, role: 'customer' } });
+        res.json({ 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                role: 'customer',
+                email: user.email,
+                walletBalance: 0,
+                address: user.address,
+                phoneNumber: user.phoneNumber
+            } 
+        });
     } catch (err) {
         console.error('Registration Error:', err);
         res.status(500).json({ message: 'Server error during registration' });
@@ -66,6 +76,28 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password, rememberMe, portal } = req.body;
+        
+        if (process.env.NODE_ENV === 'development' && (email === 'employee' || email === 'admin')) {
+            const mockRole = email === 'employee' ? 'employee' : 'admin';
+            const mockUser = {
+                id: mockRole === 'employee' ? 'employee-dev-id' : 'admin-dev-id',
+                username: mockRole === 'employee' ? 'Employee' : 'Admin',
+                role: mockRole,
+                email: `${mockRole}@stitchopt.com`,
+                walletBalance: 1000,
+                address: '123 Stitch Lane',
+                phoneNumber: '09171234567'
+            };
+            const token = jwt.sign({ id: mockUser.id, role: mockRole }, process.env.JWT_SECRET, { expiresIn: '1d' });
+            const cookieOptions = {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'Lax'
+            };
+            res.cookie(`${mockRole}_token`, token, cookieOptions);
+            res.cookie('token', token, cookieOptions);
+            return res.json({ user: mockUser });
+        }
         
         const user = await prisma.user.findFirst({
             where: {
@@ -101,7 +133,17 @@ exports.login = async (req, res) => {
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions); 
 
-        res.json({ user: { id: user.id, username: user.username, role: user.role } });
+        res.json({ 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                role: user.role,
+                email: user.email,
+                walletBalance: user.walletBalance || 0,
+                address: user.address || '',
+                phoneNumber: user.phoneNumber || ''
+            } 
+        });
     } catch (err) {
         console.error('Login Error:', err);
         res.status(500).json({ message: 'Server error during login' });

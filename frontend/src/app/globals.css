@@ -1,0 +1,442 @@
+@import "tailwindcss";
+
+/* ========================================
+   Stitch-Opt Design Tokens
+   Migrated from legacy base.css
+   ======================================== */
+
+/* NOTE: VS Code may show an "Unknown at rule" warning here. This is a false alarm; 
+   Tailwind v4 requires the @theme rule to register your custom design tokens. */
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-outfit), 'Inter', sans-serif;
+
+  /* Color Palette */
+  --color-primary: #6366f1;
+  --color-primary-glow: rgba(99, 102, 241, 0.5);
+  --color-secondary: #a855f7;
+  --color-accent: #f43f5e;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Dark Theme (Default) */
+  --color-bg-dark: #0f172a;
+  --color-bg-card: rgba(30, 41, 59, 0.7);
+  --color-bg-sidebar: rgba(15, 23, 42, 0.4);
+  --color-bg-header: rgba(30, 41, 59, 0.3);
+  --color-bg-surface: rgba(255, 255, 255, 0.03);
+  --color-text-main: #f8fafc;
+  --color-text-dim: #94a3b8;
+  --color-border-glass: rgba(255, 255, 255, 0.1);
+
+  /* Sizing */
+  --header-height: 80px;
+  --sidebar-width: 215px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-full: 50px;
+
+  /* Animations */
+  --ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ========================================
+   Light Theme Override
+   ======================================== */
+[data-theme="light"] {
+  --color-bg-dark: #f1f5f9;
+  --color-bg-card: rgba(255, 255, 255, 0.8);
+  --color-bg-sidebar: rgba(255, 255, 255, 0.6);
+  --color-bg-header: rgba(255, 255, 255, 0.4);
+  --color-bg-surface: rgba(0, 0, 0, 0.03);
+  --color-text-main: #0f172a;
+  --color-text-dim: #475569;
+  --color-border-glass: rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   Global Resets & Typography
+   ======================================== */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background-color: var(--color-bg-dark);
+  overflow: hidden;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-outfit), 'Inter', sans-serif;
+  background: radial-gradient(circle at top left, #1e1b4b, var(--color-bg-dark));
+  color: var(--color-text-main);
+  height: 100%;
+  overflow: hidden;
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(circle at top left, #e2e8f0, var(--color-bg-dark));
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-glass);
+  border-radius: 50px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+  background-clip: content-box;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+.glass {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glass);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalScaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade {
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ========================================
+   Universal Modal Styles
+   ======================================== */
+.modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* gap-4 */
+}
+
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* gap-3 */
+}
+
+.modal-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-glass);
+  border-radius: 12px;
+  /* radius-md */
+  padding: 0.75rem;
+  /* p-3 */
+}
+
+.modal-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  letter-spacing: 0.025em;
+}
+
+.modal-text-sm {
+  font-size: 0.85rem;
+  color: var(--color-text-main);
+}
+
+.modal-title-sm {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin: 0;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   Universal Glass Design System
+   ======================================== */
+
+/* Compact Glass Card (Standard for Blocks) */
+.glass-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glass);
+  border-radius: 16px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Glass Table Architecture */
+.glass-table-container {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glass);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.glass-th {
+  background: var(--color-bg-surface);
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border-glass);
+}
+
+.glass-td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border-glass);
+  font-size: 0.85rem;
+  color: var(--color-text-main);
+}
+
+.glass-tr:last-child .glass-td {
+  border-bottom: none;
+}
+
+.glass-tr:hover .glass-td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Dashboard Typography Tokens */
+.glass-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.glass-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin: 0.25rem 0 0 0;
+}
+
+/* ========================================
+   Universal Dashboard Styles
+   ======================================== */
+.dash-main {
+  padding: 1.5rem;
+  /* p-6 instead of p-8 */
+  height: 100%;
+  overflow-y: auto;
+}
+
+@media (max-width: 650px) {
+  .dash-main {
+    padding: 1rem;
+  }
+}
+
+.dash-header {
+  margin-bottom: 1.5rem;
+  /* mb-6 */
+}
+
+.dash-title {
+  font-size: 1.75rem;
+  /* text-2xl/3xl mix */
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+
+.dash-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin: 0;
+}
+
+.dash-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glass);
+  border-radius: 16px;
+  padding: 1.25rem;
+  /* p-5 */
+}
+
+.dash-table-container {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glass);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.dash-th {
+  background: var(--color-bg-surface);
+  color: var(--color-text-dim);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.25rem;
+  /* py-4 px-5 */
+}
+
+.dash-td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border-glass);
+  font-size: 0.85rem;
+}
+
+.dash-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+/* ========================================
+   Sleek Date Picker Theming
+   ======================================== */
+input[type="date"] {
+  color-scheme: dark;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Subtle glowing hover / focus effect */
+input[type="date"]:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+
+input[type="date"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+/* Modernize the native browser calendar trigger icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.8) sepia(100%) saturate(1000%) hue-rotate(210deg) brightness(1.2);
+  transition: all 0.2s ease-in-out;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  background-color: rgba(255, 255, 255, 0.1);
+  filter: invert(1) brightness(1.5);
+}
+
+/* Fallback for light mode override if applicable */
+[data-theme="light"] input[type="date"] {
+  color-scheme: light;
+}
+
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* ========================================
+   Recharts Universal Themed Chart Fonts & Colors
+   ======================================== */
+.recharts-text {
+  font-family: var(--font-outfit), 'Inter', sans-serif !important;
+  fill: var(--color-text-dim) !important;
+}
+
+.recharts-cartesian-axis-line,
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--color-border-glass) !important;
+}
+
+.recharts-legend-item-text {
+  font-family: var(--font-outfit), 'Inter', sans-serif !important;
+  color: var(--color-text-main) !important;
+}
+
+.recharts-default-tooltip {
+  font-family: var(--font-outfit), 'Inter', sans-serif !important;
+  background-color: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border-glass) !important;
+  color: var(--color-text-main) !important;
+}
+
+.recharts-tooltip-label,
+.recharts-label {
+  font-family: var(--font-outfit), 'Inter', sans-serif !important;
+  fill: var(--color-text-main) !important;
+  color: var(--color-text-main) !important;
+}

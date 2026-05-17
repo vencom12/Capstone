@@ -39,15 +39,19 @@ model User {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  price       Float
-  tag         String   @default("General")
-  tags        String[] @default([]) // For AI Recommendations
-  description String?
-  imageUrl    String   @default("https://via.placeholder.com/200")
-  views       Int      @default(0)
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  name          String
+  price         Float
+  tag           String   @default("General")
+  tags          String[] @default([]) // For AI Recommendations
+  description   String?
+  imageUrl      String   @default("https://via.placeholder.com/200")
+  recipe        Json?    // Array of { inventoryId, name, quantity }
+  views         Int      @default(0)
+  count         Int      @default(0)
+  reservedCount Int      @default(0)
+  minThreshold  Int      @default(5)
+  createdAt     DateTime @default(now())
 
   favoritedBy User[]   @relation("UserFavorites")
 }
@@ -85,14 +89,15 @@ model Order {
 }
 
 model Inventory {
-  id           String         @id @default(uuid())
-  item         String         @unique
-  count        Int            @default(0)
-  unit         String         @default("Cones")
-  minThreshold Int            @default(10)
-  lastUpdated  DateTime       @default(now()) @updatedAt
+  id            String         @id @default(uuid())
+  item          String         @unique
+  count         Int            @default(0)
+  reservedCount Int            @default(0)
+  unit          String         @default("Cones")
+  minThreshold  Int            @default(10)
+  lastUpdated   DateTime       @default(now()) @updatedAt
   
-  logs         InventoryLog[]
+  logs          InventoryLog[]
 }
 
 model InventoryLog {
@@ -150,4 +155,9 @@ model SiteTraffic {
   path      String   @default("/")
   userAgent String?
   isUnique  Boolean  @default(true)
+}
+
+model SystemSettings {
+  id                String  @id @default("global")
+  inventoryAuditLog Boolean @default(true)
 }

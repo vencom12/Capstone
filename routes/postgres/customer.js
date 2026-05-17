@@ -34,5 +34,6 @@ router.post('/upload-receipt', auth(), upload.single('receipt'), (req, res) => {
 });
 router.get('/receipt/:id', auth(), customerController.getReceipt);
 router.get('/receipt/:id/download', auth(), customerController.downloadReceipt);
+router.patch('/settings', auth(), customerController.updateSettings);
 
 module.exports = router;

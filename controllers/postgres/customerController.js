@@ -80,7 +80,36 @@ exports.submitOrder = async (req, res) => {
 
         // Prisma Transaction for Atomic operation
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Deduct balance if using wallet
+            // 1. Check stock availability for all items in the cart
+            for (const item of items) {
+                const product = await tx.product.findUnique({
+                    where: { id: item.productId }
+                });
+                if (!product) {
+                    throw new Error(`Product not found: ${item.name}`);
+                }
+
+                // ATP calculation
+                const atp = product.count - product.reservedCount;
+                const needed = item.quantity || 1;
+
+                if (atp < needed) {
+                    throw new Error(`OutOfStock:${product.name}`);
+                }
+            }
+
+            // 2. Reserve garments in database (lock counts)
+            for (const item of items) {
+                const needed = item.quantity || 1;
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        reservedCount: { increment: needed }
+                    }
+                });
+            }
+
+            // 3. Deduct balance if using wallet
             if (paymentMethod === 'wallet') {
                 await tx.user.update({
                     where: { id: userId },
@@ -88,7 +117,7 @@ exports.submitOrder = async (req, res) => {
                 });
             }
 
-            // 2. Create Order
+            // 4. Create Order
             const order = await tx.order.create({
                 data: {
                     orderId: secureOrderId,
@@ -107,7 +136,7 @@ exports.submitOrder = async (req, res) => {
                 }
             });
 
-            // 3. Create Transaction
+            // 5. Create Transaction
             const transaction = await tx.transaction.create({
                 data: {
                     transactionID: secureTransactionId,
@@ -120,7 +149,7 @@ exports.submitOrder = async (req, res) => {
                 }
             });
 
-            // 4. Create Receipt
+            // 6. Create Receipt
             const receipt = await tx.receipt.create({
                 data: {
                     receiptID: secureReceiptId,
@@ -133,7 +162,7 @@ exports.submitOrder = async (req, res) => {
                 }
             });
 
-            // 5. Link back to order
+            // 7. Link back to order
             return await tx.order.update({
                 where: { id: order.id },
                 data: { transactionId: transaction.id, receiptId: receipt.id }
@@ -145,10 +174,19 @@ exports.submitOrder = async (req, res) => {
         const io = req.app.get('io');
         socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, result, [`user:${user.id}`, 'staff']);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
+        // Broadcast product update (since reservedCount changed)
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
 
         res.json({ message: 'Order placed successfully.', order: result, receiptID: secureReceiptId });
     } catch (err) {
         console.error('submitOrder error:', err);
+        if (err.message && err.message.startsWith('OutOfStock:')) {
+            const productName = err.message.split('OutOfStock:')[1];
+            return res.status(400).json({ message: `Sorry, "${productName}" is currently out of stock (insufficient blank garments on hand).` });
+        }
+        if (err.message && err.message.startsWith('Product not found:')) {
+            return res.status(404).json({ message: err.message });
+        }
         res.status(400).json({ message: 'Failed to place order' });
     }
 };
@@ -193,9 +231,14 @@ exports.getReceipt = async (req, res) => {
                 include: { order: true, user: true }
             });
         } else {
-            // 2. Try finding by transactionID
+            // 2. Try finding by transactionID or id (UUID)
             tx = await prisma.transaction.findFirst({
-                where: { transactionID: id },
+                where: {
+                    OR: [
+                        { transactionID: id },
+                        { id: id }
+                    ]
+                },
                 include: { order: true, user: true }
             });
 
@@ -242,7 +285,13 @@ exports.downloadReceipt = async (req, res) => {
         const id = req.params.id;
         
         let tx = await prisma.transaction.findFirst({
-            where: { OR: [{ transactionID: id }, { orderID: id }] },
+            where: {
+                OR: [
+                    { transactionID: id },
+                    { orderID: id },
+                    { id: id }
+                ]
+            },
             include: { order: true, user: true }
         });
 
@@ -363,5 +412,39 @@ exports.validatePayment = async (req, res) => {
         res.json({ valid: true });
     } catch (err) {
         res.status(500).json({ message: 'Validation error' });
+    }
+};
+
+exports.updateSettings = async (req, res) => {
+    try {
+        const { username, email, address, phoneNumber, currentPassword, newPassword } = req.body;
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const updateData = {};
+        if (username) updateData.username = username;
+        if (email) updateData.email = email;
+        if (address) updateData.address = address;
+        if (phoneNumber) updateData.phoneNumber = phoneNumber;
+
+        if (newPassword) {
+            if (!currentPassword) return res.status(400).json({ message: 'Current password required to change password' });
+            const bcrypt = require('bcryptjs');
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if (!isMatch) return res.status(400).json({ message: 'Incorrect current password' });
+            updateData.password = await bcrypt.hash(newPassword, 10);
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: updateData
+        });
+
+        const safeUser = { ...updatedUser };
+        delete safeUser.password;
+        res.json({ message: 'Settings updated successfully', user: safeUser });
+    } catch (err) {
+        console.error('updateSettings error:', err);
+        res.status(500).json({ message: 'Error updating settings' });
     }
 };
