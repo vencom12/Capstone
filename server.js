@@ -1,30 +1,16 @@
 require('dotenv').config();
-const DB_TYPE = (process.env.DB_TYPE || 'postgres').trim().toLowerCase();
 
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 const { Server } = require('socket.io');
 const cookieParser = require('cookie-parser');
-
-// Load Mongoose models only if running in MongoDB mode (archived in legacy_archive)
-let User, Order, Inventory, Product, SiteTraffic, Transaction;
-if (DB_TYPE === 'mongodb') {
-    User = require('./legacy_archive/models/User');
-    Order = require('./legacy_archive/models/Order');
-    Inventory = require('./legacy_archive/models/Inventory');
-    Product = require('./legacy_archive/models/Product');
-    SiteTraffic = require('./legacy_archive/models/SiteTraffic');
-    Transaction = require('./legacy_archive/models/Transaction');
-}
 
 const auth = require('./middleware/auth');
 
@@ -153,10 +139,7 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false // Allow loading cross-origin images (product photos)
 }));
 
-// NoSQL Injection Prevention: Strips $ and . from request payloads
-if (process.env.DB_TYPE !== 'postgres') {
-    app.use(mongoSanitize());
-}
+// Running strictly in PostgreSQL mode
 
 // Global Rate Limiter: Max 300 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
@@ -227,30 +210,27 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- Serve Vanilla Frontend ---
-app.use(express.static(path.join(__dirname, 'legacy_archive', 'public', 'legacy'), { extensions: ['html'] }));
+// --- Serve Next.js Framework Frontend (Static Export) ---
+const frontendOutPath = path.join(__dirname, 'frontend', 'out');
+app.use(express.static(frontendOutPath, { extensions: ['html'] }));
+
 // Fallback for assets in public root
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Root route serves the legacy storefront
+// Root route serves the framework storefront
 app.get('/', async (req, res) => {
     // Auto-log visit for root landing
     try {
-        if (process.env.DB_TYPE === 'postgres') {
-            const prisma = require('./utils/prisma');
-            await prisma.siteTraffic.create({
-                data: { path: '/', userAgent: req.headers['user-agent'] || 'Unknown' }
-            });
-        } else {
-            const visit = new SiteTraffic({ path: '/', userAgent: req.headers['user-agent'] });
-            await visit.save();
-        }
+        const prisma = require('./utils/prisma');
+        await prisma.siteTraffic.create({
+            data: { path: '/', userAgent: req.headers['user-agent'] || 'Unknown' }
+        });
     } catch (e) { /* ignore tracking errors */ }
     
-    res.sendFile(path.join(__dirname, 'legacy_archive', 'public', 'legacy', 'index.html'));
+    res.sendFile(path.join(frontendOutPath, 'index.html'));
 });
 
 // Fallback for .html routes
@@ -259,19 +239,14 @@ app.get('/:page.html', async (req, res) => {
     try {
         const page = req.params.page;
         if (!['login', 'register', 'admin', 'employee'].includes(page)) {
-            if (process.env.DB_TYPE === 'postgres') {
-                const prisma = require('./utils/prisma');
-                await prisma.siteTraffic.create({
-                    data: { path: `/${page}.html`, userAgent: req.headers['user-agent'] || 'Unknown' }
-                });
-            } else {
-                const visit = new SiteTraffic({ path: `/${page}.html`, userAgent: req.headers['user-agent'] });
-                await visit.save();
-            }
+            const prisma = require('./utils/prisma');
+            await prisma.siteTraffic.create({
+                data: { path: `/${page}.html`, userAgent: req.headers['user-agent'] || 'Unknown' }
+            });
         }
     } catch (e) { /* ignore tracking errors */ }
     
-    res.sendFile(path.join(__dirname, 'legacy_archive', 'public', 'legacy', `${req.params.page}.html`));
+    res.sendFile(path.join(frontendOutPath, `${req.params.page}.html`));
 });
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
@@ -281,57 +256,28 @@ app.use((req, res, next) => {
     next();
 });
 
-console.log(`[SYSTEM] Starting in ${DB_TYPE.toUpperCase()} mode...`);
-
-if (DB_TYPE === 'mongodb') {
-    const dbOptions = {
-        autoIndex: true,
-        connectTimeoutMS: 10000,
-        socketTimeoutMS: 45000,
-    };
-
-    mongoose.connect(process.env.MONGODB_URI, dbOptions)
-        .then(() => console.log('Connected to MongoDB Atlas'))
-        .catch(err => console.error('CRITICAL: MongoDB connection failed:', err));
-} else {
-    console.log('[INFO] Database Mode: PostgreSQL (Supabase)');
-}
+console.log(`[SYSTEM] Starting in PostgreSQL mode...`);
 
 // --- Modular Routes ---
-let authRoutes, customerRoutes, adminRoutes, employeeRoutes, aiRoutes;
-
-if (DB_TYPE === 'postgres') {
-    authRoutes = require('./routes/postgres/auth');
-    adminRoutes = require('./routes/postgres/admin');
-    customerRoutes = require('./routes/postgres/customer');
-    employeeRoutes = require('./routes/postgres/employee');
-    aiRoutes = require('./routes/postgres/aiRoutes');
-} else {
-    authRoutes = require('./legacy_archive/routes/auth');
-    adminRoutes = require('./legacy_archive/routes/admin');
-    customerRoutes = require('./legacy_archive/routes/customer');
-    employeeRoutes = require('./legacy_archive/routes/employee');
-    aiRoutes = require('./legacy_archive/routes/aiRoutes');
-}
+const authRoutes = require('./routes/postgres/auth');
+const adminRoutes = require('./routes/postgres/admin');
+const customerRoutes = require('./routes/postgres/customer');
+const employeeRoutes = require('./routes/postgres/employee');
+const aiRoutes = require('./routes/postgres/aiRoutes');
 
 // Health check for diagnostics
 app.get('/api/health', async (req, res) => {
     let dbStatus = 'Disconnected';
-    
-    if (DB_TYPE === 'postgres') {
-        try {
-            const prisma = require('./utils/prisma');
-            await prisma.$queryRaw`SELECT 1`;
-            dbStatus = 'Connected';
-        } catch (e) { dbStatus = 'Error'; }
-    } else {
-        dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
-    }
+    try {
+        const prisma = require('./utils/prisma');
+        await prisma.$queryRaw`SELECT 1`;
+        dbStatus = 'Connected';
+    } catch (e) { dbStatus = 'Error'; }
 
     res.json({ 
         status: 'ok', 
         database: dbStatus,
-        dbType: DB_TYPE,
+        dbType: 'postgres',
         timestamp: new Date().toISOString()
     });
 });
@@ -360,14 +306,9 @@ app.use('/api/v1/employee', employeeRoutes);
 // --- Shared/Public Routes ---
 app.get('/api/products', async (req, res) => {
     try {
-        if (process.env.DB_TYPE === 'postgres') {
-            const prisma = require('./utils/prisma');
-            const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
-            res.json(products);
-        } else {
-            const products = await Product.find().sort({ createdAt: -1 });
-            res.json(products);
-        }
+        const prisma = require('./utils/prisma');
+        const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(products);
     } catch (err) {
         console.error('API Products Error:', err);
         res.status(500).json({ message: 'Server error' });
@@ -376,51 +317,27 @@ app.get('/api/products', async (req, res) => {
 
 app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
     try {
-        let tx;
-        if (process.env.DB_TYPE === 'postgres') {
-            const prisma = require('./utils/prisma');
-            tx = await prisma.transaction.findUnique({
-                where: { transactionID: req.params.transactionID },
-                include: { order: true, user: true }
-            });
-            if (!tx) return res.status(404).json({ message: 'Receipt not found' });
-            
-            if (tx.userId !== req.user.id && req.user.role === 'customer') {
-                return res.status(403).json({ message: 'Unauthorized' });
-            }
-
-            return res.json({
-                transactionID: tx.transactionID,
-                orderID: tx.orderID,
-                receiptId: tx.receiptId,
-                timestamp: tx.timestamp,
-                amount: tx.amount,
-                status: tx.status,
-                client: tx.order?.client || tx.user?.username || 'Guest',
-                items: tx.order?.items || []
-            });
-        } else {
-            tx = await Transaction.findOne({ transactionID: req.params.transactionID })
-                .populate('orderRef')
-                .populate('userID', 'username');
-
-            if (!tx) return res.status(404).json({ message: 'Receipt not found' });
-            
-            if (tx.userID._id.toString() !== req.user.id && req.user.role === 'customer') {
-                return res.status(403).json({ message: 'Unauthorized' });
-            }
-
-            return res.json({
-                transactionID: tx.transactionID,
-                orderID: tx.orderID,
-                receiptId: tx.receiptId,
-                timestamp: tx.timestamp,
-                amount: tx.amount,
-                status: tx.status,
-                client: tx.orderRef?.client || tx.userID?.username || 'Guest',
-                items: tx.orderRef?.items || []
-            });
+        const prisma = require('./utils/prisma');
+        const tx = await prisma.transaction.findUnique({
+            where: { transactionID: req.params.transactionID },
+            include: { order: true, user: true }
+        });
+        if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+        
+        if (tx.userId !== req.user.id && req.user.role === 'customer') {
+            return res.status(403).json({ message: 'Unauthorized' });
         }
+
+        return res.json({
+            transactionID: tx.transactionID,
+            orderID: tx.orderID,
+            receiptId: tx.receiptId,
+            timestamp: tx.timestamp,
+            amount: tx.amount,
+            status: tx.status,
+            client: tx.order?.client || tx.user?.username || 'Guest',
+            items: tx.order?.items || []
+        });
     } catch (err) {
         console.error('Receipt error:', err);
         res.status(500).json({ message: 'Server error' });
@@ -429,18 +346,13 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
 
 app.post('/api/analytics/visit', async (req, res) => {
     try {
-        if (process.env.DB_TYPE === 'postgres') {
-            const prisma = require('./utils/prisma');
-            await prisma.siteTraffic.create({
-                data: { 
-                    path: req.body.path || '/', 
-                    userAgent: req.headers['user-agent'] || 'Unknown' 
-                }
-            });
-        } else {
-            const visit = new SiteTraffic({ path: req.body.path || '/', userAgent: req.headers['user-agent'] });
-            await visit.save();
-        }
+        const prisma = require('./utils/prisma');
+        await prisma.siteTraffic.create({
+            data: { 
+                path: req.body.path || '/', 
+                userAgent: req.headers['user-agent'] || 'Unknown' 
+            }
+        });
         res.status(204).send();
     } catch (err) { res.status(500).send(); }
 });
@@ -473,23 +385,33 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 // Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination
+// Fallback for Next.js Clean URLs (SPA Router Fallback)
+app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.includes('.')) {
+        return next();
+    }
+    const cleanPath = req.path.replace(/\/$/, "");
+    const pageHtmlPath = path.join(frontendOutPath, `${cleanPath}.html`);
+    if (fs.existsSync(pageHtmlPath)) {
+        return res.sendFile(pageHtmlPath);
+    }
+    res.sendFile(path.join(frontendOutPath, 'index.html'));
+});
+
 const gracefulShutdown = async (signal) => {
     console.log(`[SYSTEM] Received ${signal}. Starting graceful shutdown...`);
-    if (process.env.DB_TYPE === 'postgres') {
-        try {
-            const prisma = require('./utils/prisma');
-            await prisma.$disconnect();
-            console.log('[OK] Prisma database connections closed.');
-        } catch (err) {
-            console.error('Error disconnecting Prisma on shutdown:', err.message);
-        }
+    try {
+        const prisma = require('./utils/prisma');
+        await prisma.$disconnect();
+        console.log('[OK] Prisma database connections closed.');
+    } catch (err) {
+        console.error('Error disconnecting Prisma on shutdown:', err.message);
     }
     server.close(() => {
         console.log('[OK] HTTP server closed.');
         process.exit(0);
     });
     
-    // Force close after 3s as fallback
     setTimeout(() => {
         console.warn('[WARNING] Graceful shutdown timed out, force exiting.');
         process.exit(1);
@@ -501,14 +423,12 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 process.once('SIGUSR2', async () => {
     console.log('[SYSTEM] Received SIGUSR2 (Nodemon reload). Cleaning connections...');
-    if (process.env.DB_TYPE === 'postgres') {
-        try {
-            const prisma = require('./utils/prisma');
-            await prisma.$disconnect();
-            console.log('[OK] Prisma database connections closed (Nodemon reload).');
-        } catch (err) {
-            console.error('Error disconnecting Prisma on nodemon reload:', err.message);
-        }
+    try {
+        const prisma = require('./utils/prisma');
+        await prisma.$disconnect();
+        console.log('[OK] Prisma database connections closed (Nodemon reload).');
+    } catch (err) {
+        console.error('Error disconnecting Prisma on nodemon reload:', err.message);
     }
     process.kill(process.pid, 'SIGUSR2');
 });

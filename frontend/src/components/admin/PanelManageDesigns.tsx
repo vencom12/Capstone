@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 
 interface PanelManageDesignsProps {
@@ -137,7 +137,7 @@ export default function PanelManageDesigns({
       const method = editingDesign ? 'PATCH' : 'POST';
       const path = editingDesign ? `/api/admin/products/${editingDesign.id || editingDesign._id}` : '/api/admin/products';
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${path}`, {
+      const response = await fetch(`${API_BASE}${path}`, {
         method,
         body: formData,
         credentials: 'include'

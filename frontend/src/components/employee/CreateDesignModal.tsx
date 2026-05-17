@@ -5,6 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
+import { API_BASE } from '@/lib/api';
 
 interface CreateDesignModalProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ export default function CreateDesignModal({ isOpen, onClose, editProduct, onRefr
         
       const method = editProduct ? 'PATCH' : 'POST';
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${url}`, {
+      const response = await fetch(`${API_BASE}${url}`, {
         method,
         body: formDataObj,
         credentials: 'include',

@@ -23,6 +23,9 @@ export interface Product {
   imageUrl: string;
   recipe?: RecipeItem[];
   views?: number;
+  count?: number;
+  reservedCount?: number;
+  minThreshold?: number;
   createdAt: string;
 }
 

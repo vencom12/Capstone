@@ -3,7 +3,17 @@
  * Replaces: apiFetch() from legacy core.js
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' && window.location.port === '3000') {
+      return 'http://localhost:5001';
+    }
+    return window.location.origin;
+  }
+  return '';
+};
+
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || getApiBase();
 
 let _csrfToken: string | null = null;
 

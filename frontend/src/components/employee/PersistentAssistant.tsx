@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { API_BASE } from '@/lib/api';
 
 interface ChatMessage {
   id: number;
@@ -48,7 +49,7 @@ export default function PersistentAssistant() {
   // Fetch AI Action Logs
   const fetchLogs = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/ai/logs`, {
+      const response = await fetch(`${API_BASE}/api/ai/logs`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -157,7 +158,7 @@ export default function PersistentAssistant() {
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/ai/chat`, {
+      const response = await fetch(`${API_BASE}/api/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

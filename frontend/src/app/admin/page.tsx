@@ -16,7 +16,7 @@ import PanelAnalytics from '@/components/admin/PanelAnalytics';
 // Common Components
 import StaffAuthModal from '@/components/auth/StaffAuthModal';
 import PersistentAssistant from '@/components/employee/PersistentAssistant';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
@@ -115,13 +115,13 @@ export default function AdminPage() {
     if (typeof window === 'undefined') return;
 
     const script = document.createElement('script');
-    script.src = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/socket.io/socket.io.js`;
+    script.src = `${API_BASE}/socket.io/socket.io.js`;
     script.async = true;
     script.onload = () => {
       const io = (window as any).io;
       if (!io) return;
 
-      const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001', {
+      const socket = io(API_BASE, {
         withCredentials: true,
         transports: ['websocket', 'polling']
       });

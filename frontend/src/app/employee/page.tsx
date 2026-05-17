@@ -8,7 +8,7 @@ import EmployeeSidebar from '@/components/employee/EmployeeSidebar';
 import PersistentAssistant from '@/components/employee/PersistentAssistant';
 import StaffAuthModal from '@/components/auth/StaffAuthModal';
 import GlassModal from '@/components/ui/GlassModal';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
@@ -100,13 +100,13 @@ export default function EmployeePage() {
     if (typeof window === 'undefined') return;
 
     const script = document.createElement('script');
-    script.src = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/socket.io/socket.io.js`;
+    script.src = `${API_BASE}/socket.io/socket.io.js`;
     script.async = true;
     script.onload = () => {
       const io = (window as any).io;
       if (!io) return;
 
-      const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001', {
+      const socket = io(API_BASE, {
         withCredentials: true,
         transports: ['websocket', 'polling']
       });
@@ -156,7 +156,7 @@ export default function EmployeePage() {
         : `/api/employee/orders/${orderId}`;
       const method = dbType === 'postgres' ? 'PATCH' : 'PUT';
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${url}`, {
+      const response = await fetch(`${API_BASE}${url}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
