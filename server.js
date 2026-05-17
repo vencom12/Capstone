@@ -235,9 +235,24 @@ app.get('/', async (req, res) => {
 
 // Fallback for .html routes
 app.get('/:page.html', async (req, res) => {
+    const page = req.params.page;
+
+    // Redirect legacy URLs to their new clean-URL framework counterparts
+    if (page === 'user' || page === 'dashboard') {
+        return res.redirect('/dashboard');
+    }
+    if (page === 'admin') {
+        return res.redirect('/admin');
+    }
+    if (page === 'employee') {
+        return res.redirect('/employee');
+    }
+    if (page === 'index') {
+        return res.redirect('/');
+    }
+
     // Auto-log visit for specific pages
     try {
-        const page = req.params.page;
         if (!['login', 'register', 'admin', 'employee'].includes(page)) {
             const prisma = require('./utils/prisma');
             await prisma.siteTraffic.create({
@@ -246,7 +261,13 @@ app.get('/:page.html', async (req, res) => {
         }
     } catch (e) { /* ignore tracking errors */ }
     
-    res.sendFile(path.join(frontendOutPath, `${req.params.page}.html`));
+    const pageHtmlPath = path.join(frontendOutPath, `${page}.html`);
+    if (fs.existsSync(pageHtmlPath)) {
+        return res.sendFile(pageHtmlPath);
+    }
+    
+    // Default to main index.html for SPA if the specific page doesn't exist
+    res.sendFile(path.join(frontendOutPath, 'index.html'));
 });
 
 console.log('>>> MIDDLEWARE INITIALIZED <<<');
