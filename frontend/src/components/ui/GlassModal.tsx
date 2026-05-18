@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode, useEffect, useCallback } from 'react';
+import { ReactNode, useEffect, useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface GlassModalProps {
   isOpen: boolean;
@@ -21,6 +22,14 @@ export default function GlassModal({
   maxWidth = 'max-w-[550px]',
   noPadding = false,
 }: GlassModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  // Mark component as mounted on the client side
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   // Close on Escape key
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -40,9 +49,9 @@ export default function GlassModal({
     };
   }, [isOpen, handleEscape]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-[8px]"
       onClick={(e) => {
@@ -85,6 +94,7 @@ export default function GlassModal({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

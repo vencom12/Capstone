@@ -52,6 +52,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         {/* Animated Custom Category Dropdown (Visible on Mobile only) */}
         <div className="hidden max-[650px]:block shrink-0 relative category-dropdown-container">
           <button 
+            suppressHydrationWarning
             onClick={() => setIsCategoryOpen(!isCategoryOpen)}
             className="flex items-center gap-2 bg-bg-surface border border-border-glass text-text-main px-4 py-3 rounded-xl text-sm font-bold outline-none cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
           >
@@ -73,6 +74,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             {categories.map(c => (
               <button
                 key={c}
+                suppressHydrationWarning
                 onClick={() => {
                   setSelectedCategory(c);
                   setIsCategoryOpen(false);
@@ -91,6 +93,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         {/* Search Input */}
         <div className="relative flex-1">
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Search designs..."
             value={searchQuery}
@@ -106,6 +109,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       {/* Right: Actions (Theme, Auth, Basket) */}
       <div className="flex items-center gap-3 justify-end max-[1250px]:order-2">
         <button
+          suppressHydrationWarning
           onClick={() => {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -127,12 +131,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         ) : (
           <div className="flex gap-2">
             <button 
+              suppressHydrationWarning
               onClick={() => useUIStore.getState().setAuthOpen(true, 'login')}
               className="px-4 py-2 rounded-xl text-text-dim font-bold text-xs hover:bg-white/5 no-underline whitespace-nowrap bg-transparent border-none cursor-pointer"
             >
               Login
             </button>
             <button 
+              suppressHydrationWarning
               onClick={() => useUIStore.getState().setAuthOpen(true, 'register')}
               className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity"
             >

@@ -75,6 +75,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
         {/* Favorite button */}
         <button
+          suppressHydrationWarning
           onClick={handleFavorite}
           className={`absolute top-3 right-3 bg-black/30 border-none p-2 rounded-full cursor-pointer backdrop-blur-[4px] transition-all duration-200 ${
             isFav ? 'text-danger' : 'text-text-dim hover:text-danger'

@@ -32,6 +32,7 @@ export default function GlassButton({
 }: GlassButtonProps) {
   return (
     <button
+      suppressHydrationWarning
       className={`
         inline-flex items-center justify-center gap-2
         font-semibold backdrop-blur-[4px]

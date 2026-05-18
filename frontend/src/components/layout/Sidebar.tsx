@@ -13,6 +13,7 @@ export default function Sidebar() {
       {/* Basket Toggle Section */}
       <div className="mb-6 px-1.5">
         <button
+          suppressHydrationWarning
           onClick={toggleBasket}
           className={`
             w-full flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer
@@ -51,6 +52,7 @@ export default function Sidebar() {
           {categories.map((category) => (
             <li key={category}>
               <button
+                suppressHydrationWarning
                 onClick={() => setSelectedCategory(category)}
                 className={`
                   w-full flex items-center px-4 py-2.5 rounded-xl cursor-pointer

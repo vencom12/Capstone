@@ -99,10 +99,15 @@ export default function EmployeePage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let activeSocket: any = null;
+    let isCancelled = false;
+
     const script = document.createElement('script');
     script.src = `${API_BASE}/socket.io/socket.io.js`;
     script.async = true;
     script.onload = () => {
+      if (isCancelled) return;
+
       const io = (window as any).io;
       if (!io) return;
 
@@ -110,6 +115,7 @@ export default function EmployeePage() {
         withCredentials: true,
         transports: ['websocket', 'polling']
       });
+      activeSocket = socket;
 
       socket.on('dataChanged', (data: any) => {
         console.log('[Socket] Data sync received:', data.entity, data.action);
@@ -123,6 +129,10 @@ export default function EmployeePage() {
     document.head.appendChild(script);
 
     return () => {
+      isCancelled = true;
+      if (activeSocket) {
+        activeSocket.close();
+      }
       const scripts = document.head.getElementsByTagName('script');
       for (let i = 0; i < scripts.length; i++) {
         if (scripts[i].src.includes('/socket.io/socket.io.js')) {
