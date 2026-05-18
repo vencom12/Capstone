@@ -1,6 +1,7 @@
 const prisma = require('../../utils/prisma');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
+const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 
 exports.getDashboardState = async (req, res) => {
     try {
@@ -435,79 +436,41 @@ exports.updateOrdersStatus = async (req, res) => {
         const { ids, status } = req.body;
         if (!ids || !status) return res.status(400).json({ message: 'Missing ids or status' });
 
-        const progressMap = {
-            'In Queue': 10,
-            'Preparing Order': 30,
-            'In Transit': 70,
-            'Ready For Pick Up': 90,
-            'Order Delivered': 100,
-            'Order Canceled': 0
-        };
-        const progress = progressMap[status] !== undefined ? progressMap[status] : 50;
+        const results = [];
+        const errors = [];
+        const username = req.user?.username || 'Admin';
 
-        // Fetch current orders to process inventory if status is 'Preparing Order'
-        if (status === 'Preparing Order') {
-            const orders = await prisma.order.findMany({
-                where: { id: { in: ids } }
-            });
-
-            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-            const logEnabled = settings ? settings.inventoryAuditLog : true;
-
-            for (const order of orders) {
-                // items is Json, assume it's an array of { id, name, price, quantity }
-                const items = Array.isArray(order.items) ? order.items : [];
-                
-                for (const item of items) {
-                    // Fetch product recipe
-                    const product = await prisma.product.findUnique({
-                        where: { id: item.id }
-                    });
-
-                    if (product && product.recipe && Array.isArray(product.recipe)) {
-                        for (const component of product.recipe) {
-                            const totalDeduction = Math.ceil(component.quantity * (item.quantity || 1));
-                            
-                            // Check stock before deduction
-                            const inventoryItem = await prisma.inventory.findUnique({ where: { id: component.inventoryId } });
-                            if (inventoryItem && inventoryItem.count < totalDeduction) {
-                                console.warn(`Insufficient stock for ${component.name}. Needed: ${totalDeduction}, Available: ${inventoryItem.count}`);
-                                // We continue with the deduction (allowing negative) but log a warning
-                            }
-
-                            // Deduct from inventory
-                            const updatedInv = await prisma.inventory.update({
-                                where: { id: component.inventoryId },
-                                data: { count: { decrement: totalDeduction } }
-                            });
-
-                            // Log if enabled
-                            if (logEnabled) {
-                                await prisma.inventoryLog.create({
-                                    data: {
-                                        inventoryId: component.inventoryId,
-                                        action: 'Deduct',
-                                        amount: totalDeduction,
-                                        newTotal: updatedInv.count,
-                                        userId: req.user?.username || 'System (Auto)'
-                                    }
-                                });
-                            }
-                        }
-                    }
+        for (const orderId of ids) {
+            try {
+                const updated = await prisma.$transaction(async (tx) => {
+                    return await handleOrderStateTransition(tx, orderId, status, username);
+                });
+                results.push(updated);
+            } catch (err) {
+                if (err.isStockError) {
+                    errors.push(err.message);
+                    results.push(err.heldOrder);
+                } else {
+                    throw err;
                 }
             }
-            // Broadcast inventory change
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
         }
 
-        await prisma.order.updateMany({
-            where: { id: { in: ids } },
-            data: { status, progress }
-        });
+        // Broadcast changes
+        const io = req.app.get('io');
+        io.to('staff').emit('ordersUpdated');
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status });
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
 
-        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status, progress });
-        res.json({ message: 'Orders updated successfully' });
+        if (errors.length > 0) {
+            return res.json({
+                message: `Processed ${results.length - errors.length} orders successfully. ${errors.length} orders had insufficient base garment stock and were routed to the Hold Queue.`,
+                errors
+            });
+        }
+
+        res.json({ message: 'Orders updated successfully', results });
     } catch (err) {
         console.error('Update Orders Error:', err);
         res.status(500).json({ message: 'Error updating order status' });

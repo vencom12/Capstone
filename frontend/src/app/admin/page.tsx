@@ -362,7 +362,7 @@ export default function AdminPage() {
 
             <div className="glass-card p-5 border border-border-glass rounded-[24px] flex-1 pr-2">
               {/* Desktop Table */}
-              <div className="glass-table-container max-[650px]:hidden">
+              <div className="glass-table-container max-[1024px]:hidden">
                 <table className="glass-table">
                   <thead>
                     <tr>
@@ -429,7 +429,7 @@ export default function AdminPage() {
               </div>
 
               {/* Mobile Card Blocks */}
-              <div className="min-[651px]:hidden flex flex-col gap-4">
+              <div className="min-[1025px]:hidden grid grid-cols-2 gap-4">
                 {historyOrders.map((o) => {
                   const id = o.id || o._id;
                   return (

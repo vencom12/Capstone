@@ -21,9 +21,17 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
 
   const productId = product.id || product._id || '';
 
+  // Available stock calculation
+  const available = (product.count ?? 0) - (product.reservedCount ?? 0);
+  const isOutOfStock = available <= 0;
+
   const handleAddToBasket = () => {
     if (!isAuthenticated) {
       showToast('Please login to add items to your basket', 'info');
+      return;
+    }
+    if (isOutOfStock) {
+      showToast('Sorry, this base garment is currently out of stock (insufficient blanks on hand).', 'error');
       return;
     }
     addItem({
@@ -66,8 +74,15 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             {product.name}
           </h2>
 
-          <div className="text-xl font-bold text-primary max-[650px]:text-lg">
-            ${product.price.toFixed(2)}
+          <div className="flex gap-4 items-center">
+            <div className="text-xl font-bold text-primary max-[650px]:text-lg">
+              ${product.price.toFixed(2)}
+            </div>
+            {isOutOfStock && (
+              <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-[0_4px_12px_rgba(239,68,68,0.5)]">
+                Out of Stock
+              </span>
+            )}
           </div>
 
           <p className="text-text-dim leading-relaxed text-[0.95rem] flex-grow m-0 max-[650px]:text-[0.85rem]">
@@ -76,11 +91,12 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
 
           <div className="flex gap-3 mt-3 max-[650px]:gap-2">
             <GlassButton
-              variant="primary"
+              variant={isOutOfStock ? "secondary" : "primary"}
               onClick={handleAddToBasket}
               className="flex-1"
+              disabled={isOutOfStock}
             >
-              Add to Basket
+              {isOutOfStock ? "Out of Stock" : "Add to Basket"}
             </GlassButton>
             <GlassButton
               variant="secondary"
