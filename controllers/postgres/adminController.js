@@ -613,7 +613,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
 
         // Calculate dynamic height based on number of items
         const itemsCount = lowStockItems.length;
-        const pageHeight = Math.max(380, 160 + itemsCount * 45 + 140);
+        const pageHeight = Math.max(260, 160 + itemsCount * 45 + 50);
         const doc = new PDFDocument({ size: [300, pageHeight], margin: 15 });
 
         // Set response headers for downloading a PDF file
@@ -673,24 +673,6 @@ exports.downloadShoppingListPdf = async (req, res) => {
         doc.font('Helvetica-Oblique').fontSize(6.5);
         doc.text('* Suggested orders restore a 2x safety stock level.', { align: 'left', indent: 10 });
         doc.text('* Verify current open orders before supplier purchase.', { align: 'left', indent: 10 });
-        
-        doc.moveDown(1.2);
-
-        // Draw visual barcode representation
-        const barcodeX = 50;
-        const barcodeY = doc.y;
-        
-        for (let i = 0; i < 38; i++) {
-            const thickness = (i % 3 === 0) ? 2.2 : (i % 5 === 0) ? 1.5 : 0.7;
-            doc.lineWidth(thickness);
-            doc.moveTo(barcodeX + i * 5, barcodeY)
-               .lineTo(barcodeX + i * 5, barcodeY + 20)
-               .stroke();
-        }
-
-        doc.moveDown(2.5);
-        doc.font('Courier').fontSize(7).text('*STITCH-OPT-REORDER-LIST*', { align: 'center' });
-
         doc.end();
 
     } catch (err) {
