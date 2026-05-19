@@ -14,7 +14,7 @@ import CheckoutModal from '@/components/checkout/CheckoutModal';
 import type { Product } from '@/lib/types';
 
 export default function StorefrontPage() {
-  const { fetchProducts, fetchDashboardState } = useProductStore();
+  const { products, fetchProducts, fetchDashboardState } = useProductStore();
   const { isAuthenticated } = useAuthStore();
   const { isBasketOpen, setBasketOpen } = useUIStore();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -50,7 +50,7 @@ export default function StorefrontPage() {
 
       {/* Product Quick-View Modal */}
       <ProductModal
-        product={selectedProduct}
+        product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />

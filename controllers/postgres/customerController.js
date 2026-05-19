@@ -23,11 +23,14 @@ exports.getDashboardState = async (req, res) => {
         }
 
         const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const enrichedProducts = await enrichProductsWithStock(products);
+        const enrichedFavorites = currentUser ? await enrichProductsWithStock(currentUser.favorites) : [];
 
         res.json({
             orders,
-            products,
-            favorites: currentUser ? currentUser.favorites : [],
+            products: enrichedProducts,
+            favorites: enrichedFavorites,
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
             transactions,
@@ -80,11 +83,13 @@ exports.submitOrder = async (req, res) => {
 
         // Prisma Transaction for Atomic operation
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Check stock availability for all items in the cart
+            // 1. Check stock availability for all items in the cart (with row locking)
             for (const item of items) {
-                const product = await tx.product.findUnique({
-                    where: { id: item.productId }
-                });
+                // Execute SELECT FOR UPDATE to lock this product row
+                const products = await tx.$queryRaw`
+                    SELECT * FROM "Product" WHERE id = ${item.productId} FOR UPDATE
+                `;
+                const product = products[0];
                 if (!product) {
                     throw new Error(`Product not found: ${item.name}`);
                 }
@@ -95,6 +100,28 @@ exports.submitOrder = async (req, res) => {
 
                 if (atp < needed) {
                     throw new Error(`OutOfStock:${product.name}`);
+                }
+
+                // Check and lock recipe thread inventory items
+                if (product.recipe && Array.isArray(product.recipe)) {
+                    const { getReservedThreadCounts } = require('../../utils/inventoryManager');
+                    const reservedThreads = await getReservedThreadCounts(tx);
+                    for (const component of product.recipe) {
+                        const neededMaterial = Math.ceil(component.quantity * needed);
+                        
+                        // SELECT FOR UPDATE to lock the inventory row
+                        const invItems = await tx.$queryRaw`
+                            SELECT * FROM "Inventory" WHERE id = ${component.inventoryId} FOR UPDATE
+                        `;
+                        const inventoryItem = invItems[0];
+                        const invCount = inventoryItem ? inventoryItem.count : 0;
+                        const reservedCount = reservedThreads[component.inventoryId] || 0;
+                        const availableMaterial = Math.max(0, invCount - reservedCount);
+                        
+                        if (availableMaterial < neededMaterial) {
+                            throw new Error(`OutOfStockMaterial:${product.name}:${component.name}`);
+                        }
+                    }
                 }
             }
 
@@ -175,11 +202,19 @@ exports.submitOrder = async (req, res) => {
         socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, result, [`user:${user.id}`, 'staff']);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
         // Broadcast product update (since reservedCount changed)
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
+        const productsList = await prisma.product.findMany();
+        const enrichedList = await enrichProductsWithStock(productsList);
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedList);
 
         res.json({ message: 'Order placed successfully.', order: result, receiptID: secureReceiptId });
     } catch (err) {
         console.error('submitOrder error:', err);
+        if (err.message && err.message.startsWith('OutOfStockMaterial:')) {
+            const parts = err.message.split('OutOfStockMaterial:')[1].split(':');
+            const productName = parts[0];
+            const materialName = parts[1];
+            return res.status(400).json({ message: `Sorry, "${productName}" cannot be ordered (insufficient "${materialName}" thread in inventory).` });
+        }
         if (err.message && err.message.startsWith('OutOfStock:')) {
             const productName = err.message.split('OutOfStock:')[1];
             return res.status(400).json({ message: `Sorry, "${productName}" is currently out of stock (insufficient blank garments on hand).` });

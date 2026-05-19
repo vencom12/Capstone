@@ -19,7 +19,7 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAccess, refreshUser } = useAuthStore();
-  const { fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories } = useProductStore();
+  const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories } = useProductStore();
   const { isBasketOpen, setBasketOpen, toggleBasket, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
 
   const [activeTab, setActiveTab] = useState<string>('shop');
@@ -538,7 +538,7 @@ export default function DashboardPage() {
 
       {/* Product Quick-View Modal */}
       <ProductModal
-        product={selectedProduct}
+        product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />

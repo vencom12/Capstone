@@ -328,8 +328,10 @@ app.use('/api/v1/employee', employeeRoutes);
 app.get('/api/products', async (req, res) => {
     try {
         const prisma = require('./utils/prisma');
+        const { enrichProductsWithStock } = require('./utils/inventoryManager');
         const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
-        res.json(products);
+        const enriched = await enrichProductsWithStock(products);
+        res.json(enriched);
     } catch (err) {
         console.error('API Products Error:', err);
         res.status(500).json({ message: 'Server error' });

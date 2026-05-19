@@ -181,8 +181,83 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     });
 }
 
+/**
+ * Helper to calculate thread quantities currently promised to active/pending orders.
+ * 
+ * @param {object} tx - Prisma context
+ * @returns {Promise<object>} Map of inventoryId to reserved quantity
+ */
+async function getReservedThreadCounts(tx = prisma) {
+    const activeOrders = await tx.order.findMany({
+        where: {
+            status: {
+                in: ['In Queue', 'Awaiting Payment', 'Pending Payment']
+            }
+        }
+    });
+
+    const reservedThreads = {};
+    for (const order of activeOrders) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const item of items) {
+            const productId = item.productId || item.id;
+            if (!productId) continue;
+
+            const product = await tx.product.findUnique({ where: { id: productId } });
+            if (product && product.recipe && Array.isArray(product.recipe)) {
+                const quantity = item.quantity || 1;
+                for (const component of product.recipe) {
+                    const needed = component.quantity * quantity;
+                    reservedThreads[component.inventoryId] = (reservedThreads[component.inventoryId] || 0) + needed;
+                }
+            }
+        }
+    }
+    return reservedThreads;
+}
+
+/**
+ * Enrichment function to calculate availableStock and isOutOfStock for products.
+ * 
+ * @param {Array} products - Array of product objects
+ * @param {object} [tx] - Optional transaction context or prisma instance
+ * @returns {Promise<Array>} Enriched products
+ */
+async function enrichProductsWithStock(products, tx = prisma) {
+    const inventory = await tx.inventory.findMany();
+    const reservedThreads = await getReservedThreadCounts(tx);
+
+    return products.map(product => {
+        const blanksAvailable = (product.count || 0) - (product.reservedCount || 0);
+        let availableStock = blanksAvailable;
+
+        if (product.recipe && Array.isArray(product.recipe) && product.recipe.length > 0) {
+            for (const component of product.recipe) {
+                const invItem = inventory.find(i => i.id === component.inventoryId);
+                const invCount = invItem ? invItem.count : 0;
+                const reservedCount = reservedThreads[component.inventoryId] || 0;
+                const availableCount = Math.max(0, invCount - reservedCount);
+
+                const quantityRequired = component.quantity || 1;
+                const maxFromComponent = Math.floor(availableCount / quantityRequired);
+                availableStock = Math.min(availableStock, maxFromComponent);
+            }
+        }
+
+        const finalAvailable = Math.max(0, availableStock);
+        return {
+            ...product,
+            availableStock: finalAvailable,
+            isOutOfStock: finalAvailable <= 0
+        };
+    });
+}
+
 module.exports = {
     handleOrderStateTransition,
+    enrichProductsWithStock,
+    getReservedThreadCounts,
     RESERVED_STATES,
     PROCESSED_STATES
 };
+

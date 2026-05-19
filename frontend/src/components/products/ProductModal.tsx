@@ -14,7 +14,7 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
-  const addItem = useBasketStore((s) => s.addItem);
+  const { items, addItem } = useBasketStore();
   const { isAuthenticated } = useAuthStore();
 
   if (!product) return null;
@@ -22,8 +22,8 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
   const productId = product.id || product._id || '';
 
   // Available stock calculation
-  const available = (product.count ?? 0) - (product.reservedCount ?? 0);
-  const isOutOfStock = available <= 0;
+  const availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+  const isOutOfStock = product.isOutOfStock !== undefined ? product.isOutOfStock : availableStock <= 0;
 
   const handleAddToBasket = () => {
     if (!isAuthenticated) {
@@ -31,9 +31,17 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
       return;
     }
     if (isOutOfStock) {
-      showToast('Sorry, this base garment is currently out of stock (insufficient blanks on hand).', 'error');
+      showToast(`Sorry, "${product.name}" is currently out of stock.`, 'error');
       return;
     }
+
+    const existing = items.find((i) => i.productId === productId);
+    const existingQty = existing ? existing.quantity : 0;
+    if (existingQty + 1 > availableStock) {
+      showToast(`Sorry, you cannot add more. Only ${availableStock} units of "${product.name}" can be made with current stock.`, 'error');
+      return;
+    }
+
     addItem({
       productId,
       name: product.name,

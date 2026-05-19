@@ -26,6 +26,8 @@ export interface Product {
   count?: number;
   reservedCount?: number;
   minThreshold?: number;
+  availableStock?: number;
+  isOutOfStock?: boolean;
   createdAt: string;
 }
 

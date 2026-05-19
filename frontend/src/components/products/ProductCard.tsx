@@ -13,7 +13,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onQuickView }: ProductCardProps) {
-  const addItem = useBasketStore((s) => s.addItem);
+  const { items, addItem } = useBasketStore();
   const { favorites, toggleFavorite } = useProductStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -21,8 +21,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   const isFav = favorites.some((f) => (f.id || f._id) === productId);
 
   // Available stock calculation
-  const available = (product.count ?? 0) - (product.reservedCount ?? 0);
-  const isOutOfStock = available <= 0;
+  const availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+  const isOutOfStock = product.isOutOfStock !== undefined ? product.isOutOfStock : availableStock <= 0;
 
   const handleAddToBasket = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -31,9 +31,17 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
       return;
     }
     if (isOutOfStock) {
-      showToast('Sorry, this base garment is currently out of stock (insufficient blanks on hand).', 'error');
+      showToast(`Sorry, "${product.name}" is currently out of stock.`, 'error');
       return;
     }
+
+    const existing = items.find((i) => i.productId === productId);
+    const existingQty = existing ? existing.quantity : 0;
+    if (existingQty + 1 > availableStock) {
+      showToast(`Sorry, you cannot add more. Only ${availableStock} units of "${product.name}" can be made with current stock.`, 'error');
+      return;
+    }
+
     addItem({
       productId,
       name: product.name,
