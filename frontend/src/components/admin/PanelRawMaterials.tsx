@@ -402,50 +402,20 @@ export default function PanelRawMaterials({
 
   const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
 
-  const handleDownloadRestockList = () => {
+  const handleDownloadRestockList = async () => {
     if (lowStockItems.length === 0) {
       showToast('All stockpile spools are healthy. No restocks required!', 'info');
       return;
     }
 
-    let fileContent = `==================================================\n`;
-    fileContent += `       STITCH-OPT AUTO-PROCUREMENT PLANNER        \n`;
-    fileContent += `             RESTOCK SHOPPING LIST                \n`;
-    fileContent += `==================================================\n`;
-    fileContent += `Generated On: ${new Date().toLocaleString()}\n`;
-    fileContent += `Needing Procurement: ${lowStockItems.length} items\n\n`;
-    fileContent += `--------------------------------------------------\n`;
-    fileContent += `MATERIAL NAME         | ON HAND  | MIN SAFETY | SUGGESTED ORDER\n`;
-    fileContent += `--------------------------------------------------\n`;
-
-    lowStockItems.forEach((i) => {
-      const minVal = i.minThreshold || 10;
-      const target = minVal * 2;
-      const suggestedOrder = Math.max(0, target - i.count);
-      
-      const nameCol = i.item.padEnd(21).substring(0, 21);
-      const countCol = `${i.count} ${i.unit || 'Cones'}`.padEnd(8).substring(0, 8);
-      const minCol = `${minVal} ${i.unit || 'Cones'}`.padEnd(10).substring(0, 10);
-      const orderCol = `${suggestedOrder} ${i.unit || 'Cones'}`;
-      
-      fileContent += `${nameCol} | ${countCol} | ${minCol} | ${orderCol}\n`;
-    });
-
-    fileContent += `--------------------------------------------------\n\n`;
-    fileContent += `Procurement Guidelines:\n`;
-    fileContent += `- Suggested order quantities are mathematically calculated to restore a healthy stock margin (2x Safety Limit).\n`;
-    fileContent += `- Cross-reference with active queue load before finalizing supplier purchases.\n\n`;
-    fileContent += `Generated Automatically by Stitch-Opt ERP.\n`;
-
-    const element = document.createElement("a");
-    const file = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
-    element.href = URL.createObjectURL(file);
-    element.download = `STITCH_OPT_RESTOCK_LIST_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
-    showToast('Restock purchase shopping list downloaded successfully!', 'success');
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      await api.download('/api/admin/inventory/shopping-list/pdf', `STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
+      showToast('Restock purchase shopping list PDF downloaded successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to download restock shopping list PDF', 'error');
+    }
   };
 
   return (

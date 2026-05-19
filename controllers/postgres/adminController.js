@@ -598,3 +598,103 @@ exports.updateSettings = async (req, res) => {
         res.status(500).json({ message: 'Error updating settings' });
     }
 };
+
+exports.downloadShoppingListPdf = async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        
+        // Fetch all inventory items
+        const inventory = await prisma.inventory.findMany();
+        const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
+
+        if (lowStockItems.length === 0) {
+            return res.status(400).send('All stockpile spools are healthy. No restocks required!');
+        }
+
+        // Calculate dynamic height based on number of items
+        const itemsCount = lowStockItems.length;
+        const pageHeight = Math.max(380, 160 + itemsCount * 45 + 140);
+        const doc = new PDFDocument({ size: [300, pageHeight], margin: 15 });
+
+        // Set response headers for downloading a PDF file
+        const dateStr = new Date().toISOString().split('T')[0];
+        res.setHeader('Content-disposition', `attachment; filename=STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+
+        doc.pipe(res);
+
+        // Header
+        doc.font('Helvetica-Bold').fontSize(14).text('STITCH-OPT DESIGNS', { align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });
+        doc.moveDown(0.2);
+        doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+        doc.text(`Operator: ${req.user?.username || 'Administrator'}`, { align: 'center' });
+        
+        doc.moveDown(0.5);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.3);
+
+        doc.font('Helvetica-Bold').fontSize(9).text('RESTOCK SHOPPING LIST', { align: 'center' });
+        doc.moveDown(0.4);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Table Header (using monospaced columns centered)
+        doc.font('Courier-Bold').fontSize(8);
+        const headerLine = 'MATERIAL'.padEnd(18) + 'STOCK'.padStart(8) + 'ORDER'.padStart(10);
+        doc.text(headerLine, { align: 'center' });
+        doc.font('Courier').fontSize(8);
+        doc.moveDown(0.5);
+
+        // Items List
+        lowStockItems.forEach((item) => {
+            const minVal = item.minThreshold || 10;
+            const target = minVal * 2;
+            const suggestedOrder = Math.max(0, target - item.count);
+
+            const name = item.item.substring(0, 17).padEnd(18);
+            const current = `${item.count}`.padStart(8);
+            const order = `+${suggestedOrder}`.padStart(10);
+            
+            doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
+            
+            // Subtext showing the safety threshold and unit details
+            doc.font('Courier-Oblique').fontSize(7);
+            const subtext = `  (safety limit: ${minVal} / unit: ${item.unit})`.padEnd(36);
+            doc.text(subtext, { align: 'center' });
+            doc.fontSize(8); // Reset font size
+            doc.moveDown(0.4);
+        });
+
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Procurement Guidelines
+        doc.font('Helvetica-Oblique').fontSize(6.5);
+        doc.text('* Suggested orders restore a 2x safety stock level.', { align: 'left', indent: 10 });
+        doc.text('* Verify current open orders before supplier purchase.', { align: 'left', indent: 10 });
+        
+        doc.moveDown(1.2);
+
+        // Draw visual barcode representation
+        const barcodeX = 50;
+        const barcodeY = doc.y;
+        
+        for (let i = 0; i < 38; i++) {
+            const thickness = (i % 3 === 0) ? 2.2 : (i % 5 === 0) ? 1.5 : 0.7;
+            doc.lineWidth(thickness);
+            doc.moveTo(barcodeX + i * 5, barcodeY)
+               .lineTo(barcodeX + i * 5, barcodeY + 20)
+               .stroke();
+        }
+
+        doc.moveDown(2.5);
+        doc.font('Courier').fontSize(7).text('*STITCH-OPT-REORDER-LIST*', { align: 'center' });
+
+        doc.end();
+
+    } catch (err) {
+        console.error('downloadShoppingListPdf error:', err);
+        res.status(500).send('Error generating PDF');
+    }
+};

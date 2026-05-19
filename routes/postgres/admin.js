@@ -28,6 +28,7 @@ router.post('/products', staffAuth(), upload.single('image'), adminController.cr
 router.patch('/products/:id', staffAuth(), upload.single('image'), adminController.updateProduct);
 router.delete('/products/:id', staffAuth(), adminController.deleteProduct);
 router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
+router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.downloadShoppingListPdf);
 router.post('/inventory', staffAuth(), adminController.createInventoryItem);
 router.patch('/inventory/global', staffAuth(), adminController.updateGlobalThreshold);
 router.patch('/inventory/:id', staffAuth(), adminController.updateInventoryItem);
