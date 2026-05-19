@@ -3,6 +3,7 @@ const fetch = global.fetch || require('node-fetch');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
+const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.3-70b-versatile';
@@ -10,17 +11,30 @@ const MODEL = 'llama-3.3-70b-versatile';
 const executeAction = async (functionName, args, req) => {
     let actionResult = "";
     if (functionName === "updateOrderStatus") {
-        const updated = await prisma.order.update({
-            where: { orderId: args.orderId },
-            data: { 
-                status: args.status,
-                progress: args.status === 'Completed' || args.status === 'Order Delivered' ? 100 : undefined
-            }
+        const order = await prisma.order.findUnique({
+            where: { orderId: args.orderId }
         });
-        actionResult = updated ? `Successfully updated Order ${args.orderId} status to "${args.status}".` : `Could not find Order ${args.orderId}.`;
-        if (updated) {
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
-            logAiChange('StitchMaster AI', 'Update Order Status', `Set order ${args.orderId} status to "${args.status}"`);
+        if (!order) {
+            actionResult = `Could not find Order ${args.orderId}.`;
+        } else {
+            let updated;
+            try {
+                updated = await prisma.$transaction(async (tx) => {
+                    return await handleOrderStateTransition(tx, order.id, args.status, 'StitchMaster AI');
+                });
+                actionResult = `Successfully updated Order ${args.orderId} status to "${args.status}".`;
+            } catch (err) {
+                console.error('AI Order Status Update Error:', err);
+                actionResult = `Failed to update Order ${args.orderId} status: ${err.message}`;
+            }
+
+            if (updated) {
+                const io = req.app.get('io');
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updated);
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
+                logAiChange('StitchMaster AI', 'Update Order Status', `Set order ${args.orderId} status to "${args.status}"`);
+            }
         }
     } 
     else if (functionName === "updateInventoryStock") {
