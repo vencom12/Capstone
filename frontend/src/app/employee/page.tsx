@@ -179,12 +179,8 @@ export default function EmployeePage() {
     let activeSocket: any = null;
     let isCancelled = false;
 
-    const script = document.createElement('script');
-    script.src = `${API_BASE}/socket.io/socket.io.js`;
-    script.async = true;
-    script.onload = () => {
+    const connectSocket = () => {
       if (isCancelled) return;
-
       const io = (window as any).io;
       if (!io) return;
 
@@ -203,19 +199,21 @@ export default function EmployeePage() {
       });
     };
 
-    document.head.appendChild(script);
+    // If socket.io is already loaded (cached from admin page or previous visit), connect immediately
+    if ((window as any).io) {
+      connectSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = connectSocket;
+      document.head.appendChild(script);
+    }
 
     return () => {
       isCancelled = true;
       if (activeSocket) {
         activeSocket.close();
-      }
-      const scripts = document.head.getElementsByTagName('script');
-      for (let i = 0; i < scripts.length; i++) {
-        if (scripts[i].src.includes('/socket.io/socket.io.js')) {
-          document.head.removeChild(scripts[i]);
-          break;
-        }
       }
     };
   }, []);
