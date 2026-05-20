@@ -21,8 +21,15 @@ const app = express();
 // --- CRITICAL CORS Setup (Must be absolute first to cover rate limits and early errors) ---
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all origins in development, or specific ones in production
-        if (!origin || origin.includes('render.com') || origin.includes('localhost')) {
+        // Allow requests with no origin (like mobile apps, curl)
+        if (!origin) return callback(null, true);
+        
+        // Exact match or strict subdomain regex matching
+        const isAllowed = origin === 'http://localhost:3000' || 
+                          /^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin) ||
+                          /^https:\/\/[a-zA-Z0-9-]+\.render\.com$/.test(origin);
+                          
+        if (isAllowed) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -171,6 +178,17 @@ const dashboardLimiter = rateLimit({
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+
+// Strict Checkout Rate Limiter: Max 5 checkout requests per minute
+const checkoutLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Checkout rate limit reached. Please wait a minute.' }
+});
+app.use('/api/order/submit', checkoutLimiter);
+app.use('/api/v1/order/submit', checkoutLimiter);
 // v1 Rate Limiters
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);

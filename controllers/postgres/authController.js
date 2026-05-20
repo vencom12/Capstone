@@ -77,7 +77,7 @@ exports.login = async (req, res) => {
     try {
         const { email, password, rememberMe, portal } = req.body;
         
-        if (process.env.NODE_ENV === 'development' && (email === 'employee' || email === 'admin')) {
+        if (process.env.ENABLE_DEV_BYPASS === 'true' && (email === 'employee' || email === 'admin')) {
             const mockRole = email === 'employee' ? 'employee' : 'admin';
             const mockUser = {
                 id: mockRole === 'employee' ? 'employee-dev-id' : 'admin-dev-id',
@@ -91,7 +91,7 @@ exports.login = async (req, res) => {
             const token = jwt.sign({ id: mockUser.id, role: mockRole }, process.env.JWT_SECRET, { expiresIn: '1d' });
             const cookieOptions = {
                 httpOnly: true,
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
                 sameSite: 'Lax'
             };
             res.cookie(`${mockRole}_token`, token, cookieOptions);
