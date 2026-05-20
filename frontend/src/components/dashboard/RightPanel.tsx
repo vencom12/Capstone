@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import GlassButton from '@/components/ui/GlassButton';
@@ -13,6 +14,11 @@ interface RightPanelProps {
 export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProps) {
   const { items, getCount, getTotal, removeItem, updateQuantity } = useBasketStore();
   const { orders, products } = useProductStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const basketCount = getCount();
   const basketTotal = getTotal();
 
@@ -51,12 +57,12 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
         <div className="flex items-center justify-between mb-4">
           <h3 className="m-0 text-[1.1rem] font-bold tracking-tight">Your Basket</h3>
           <span className="bg-primary px-3 py-1 rounded-full text-xs font-bold text-white shadow-[0_0_10px_rgba(99,102,241,0.3)]">
-            {basketCount} Items
+            {mounted ? basketCount : 0} Items
           </span>
         </div>
 
         <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
-          {items.length === 0 ? (
+          {!mounted || items.length === 0 ? (
             <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
               <p className="text-[0.9rem] m-0">Basket is empty</p>
@@ -91,13 +97,13 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
         <div className="mt-5">
           <div className="flex justify-between items-center mb-4">
             <span className="font-bold text-[1.1rem]">Total:</span>
-            <span className="font-extrabold text-[1.2rem] text-primary">${basketTotal.toFixed(2)}</span>
+            <span className="font-extrabold text-[1.2rem] text-primary">${mounted ? basketTotal.toFixed(2) : '0.00'}</span>
           </div>
           <GlassButton
             variant="primary"
             fullWidth
             onClick={onCheckout}
-            disabled={items.length === 0}
+            disabled={!mounted || items.length === 0}
           >
             Checkout Now
           </GlassButton>
@@ -112,7 +118,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-          {activeOrders.length === 0 ? (
+          {!mounted || activeOrders.length === 0 ? (
             <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
               <p className="text-[0.9rem] m-0">No active orders</p>

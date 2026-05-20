@@ -1,8 +1,13 @@
 const prisma = require('../utils/prisma');
-const { enrichProductsWithStock } = require('../utils/inventoryManager');
+const { enrichProductsWithStock, reconcileReservedCounts } = require('../utils/inventoryManager');
 
 async function runTests() {
     console.log('>>> RUNNING STOCK FLOW TESTS <<<');
+
+    // Clean up any leftover test orders from previous crashed runs
+    await prisma.order.deleteMany({
+        where: { client: 'Test Client' }
+    });
     
     // 1. Create/Find a test thread inventory item
     let testInventory = await prisma.inventory.findFirst({
@@ -26,12 +31,12 @@ async function runTests() {
 
     // 2. Create/Find a test product with a recipe
     let testProduct = await prisma.product.findFirst({
-        where: { name: 'Gold Stitch Jacket' }
+        where: { name: 'Test Stitch Jacket' }
     });
     if (!testProduct) {
         testProduct = await prisma.product.create({
             data: {
-                name: 'Gold Stitch Jacket',
+                name: 'Test Stitch Jacket',
                 price: 120.00,
                 tag: 'Jacket',
                 imageUrl: 'https://example.com/jacket.jpg',
@@ -223,16 +228,55 @@ async function runTests() {
     const succeededCount = results.filter(r => r.status === 'fulfilled').length;
     const failedCount = results.filter(r => r.status === 'rejected' && r.reason.message.includes('OutOfStockMaterial')).length;
 
+    if (succeededCount !== 1 || failedCount !== 1 || finalProduct.reservedCount !== 5) {
+        throw new Error(`Concurrency test failed: succeededCount=${succeededCount}, failedCount=${failedCount}, reservedCount=${finalProduct.reservedCount}`);
+    }
+    console.log('\n>>> CONCURRENCY TEST PASSED! Exactly one order succeeded, and exactly one failed due to OutOfStockMaterial. No double booking.');
+
+    console.log('\n--- Testing Self-Healing Reconciliation & Dynamic Resolution ---');
+    
+    // Reset thread inventory to 100 to ensure recipe check does not throttle availableStock to 0
+    await prisma.inventory.update({
+        where: { id: testInventory.id },
+        data: { count: 100 }
+    });
+
+    // 1. Artificially corrupt the reservedCount database column to trigger drift simulation
+    console.log('Artificially corrupting database column reservedCount to 99...');
+    await prisma.product.update({
+        where: { id: testProduct.id },
+        data: { reservedCount: 99 }
+    });
+
+    const corruptedProduct = await prisma.product.findUnique({ where: { id: testProduct.id } });
+    console.log(`Corrupted value in database: ${corruptedProduct.reservedCount}`);
+    if (corruptedProduct.reservedCount !== 99) throw new Error('Failed to set corrupted value');
+
+    // 2. Test that enrichProductsWithStock resolves dynamic count correctly (ignores corrupt value in DB)
+    const [enrichedCorrupted] = await enrichProductsWithStock([corruptedProduct]);
+    // The testProduct has count = 10, real reservations = 5. Available stock should be 10 - 5 = 5.
+    // If it used the corrupted value of 99, available stock would be 0.
+    console.log(`Dynamic availableStock (ignores DB column): ${enrichedCorrupted.availableStock}`);
+    if (enrichedCorrupted.availableStock !== 5) {
+        throw new Error(`Dynamic stock calculation failed: expected 5, got ${enrichedCorrupted.availableStock}`);
+    }
+    console.log('>>> Dynamic calculation resolved stock correctly (ignoring DB corruption)!');
+
+    // 3. Trigger reconciliation to self-heal the database column
+    console.log('Running reconcileReservedCounts() to repair database column...');
+    await reconcileReservedCounts(prisma);
+
+    const repairedProduct = await prisma.product.findUnique({ where: { id: testProduct.id } });
+    console.log(`Repaired value in database: ${repairedProduct.reservedCount}`);
+    if (repairedProduct.reservedCount !== 5) {
+        throw new Error(`Self-healing reconciliation failed: expected database column to be 5, got ${repairedProduct.reservedCount}`);
+    }
+    console.log('>>> Database column repaired and reconciled successfully!');
+
     // Cleanup at the end
     await prisma.order.deleteMany({
         where: { client: 'Test Client' }
     });
-
-    if (succeededCount === 1 && failedCount === 1 && finalProduct.reservedCount === 5) {
-        console.log('\n>>> CONCURRENCY TEST PASSED! Exactly one order succeeded, and exactly one failed due to OutOfStockMaterial. No double booking.');
-    } else {
-        throw new Error(`Concurrency test failed: succeededCount=${succeededCount}, failedCount=${failedCount}, reservedCount=${finalProduct.reservedCount}`);
-    }
 }
 
 runTests().catch(err => {

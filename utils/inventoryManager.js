@@ -175,10 +175,51 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     };
     const progress = progressMap[newStatus] !== undefined ? progressMap[newStatus] : 50;
 
-    return await tx.order.update({
+    const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: { status: newStatus, progress }
     });
+
+    // Run self-healing database column reconciliation inside transition transactions
+    await reconcileReservedCounts(tx);
+
+    return updatedOrder;
+}
+
+/**
+ * Scans active orders and reconciles/updates the reservedCount field for all products.
+ * This is a self-healing routine to fix any data drift.
+ * 
+ * @param {object} tx - Prisma context
+ */
+async function reconcileReservedCounts(tx = prisma) {
+    const activeOrders = await tx.order.findMany({
+        where: {
+            status: {
+                in: RESERVED_STATES
+            }
+        }
+    });
+
+    const reservedGarments = {};
+    for (const order of activeOrders) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const item of items) {
+            const productId = item.productId || item.id;
+            if (!productId) continue;
+            const quantity = item.quantity || 1;
+            reservedGarments[productId] = (reservedGarments[productId] || 0) + quantity;
+        }
+    }
+
+    const allProducts = await tx.product.findMany({ select: { id: true } });
+    for (const product of allProducts) {
+        const expectedReserved = reservedGarments[product.id] || 0;
+        await tx.product.update({
+            where: { id: product.id },
+            data: { reservedCount: expectedReserved }
+        });
+    }
 }
 
 /**
@@ -191,7 +232,7 @@ async function getReservedThreadCounts(tx = prisma) {
     const activeOrders = await tx.order.findMany({
         where: {
             status: {
-                in: ['In Queue', 'Awaiting Payment', 'Pending Payment']
+                in: ['In Queue', 'Awaiting Payment', 'Pending Payment', 'On Hold - Awaiting Materials']
             }
         }
     });
@@ -227,8 +268,29 @@ async function enrichProductsWithStock(products, tx = prisma) {
     const inventory = await tx.inventory.findMany();
     const reservedThreads = await getReservedThreadCounts(tx);
 
+    // Calculate product reserved count dynamically to prevent any locked stock drift
+    const activeOrders = await tx.order.findMany({
+        where: {
+            status: {
+                in: RESERVED_STATES
+            }
+        }
+    });
+
+    const reservedGarments = {};
+    for (const order of activeOrders) {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const item of items) {
+            const productId = item.productId || item.id;
+            if (!productId) continue;
+            const quantity = item.quantity || 1;
+            reservedGarments[productId] = (reservedGarments[productId] || 0) + quantity;
+        }
+    }
+
     return products.map(product => {
-        const blanksAvailable = (product.count || 0) - (product.reservedCount || 0);
+        const dynamicReserved = reservedGarments[product.id] || 0;
+        const blanksAvailable = (product.count || 0) - dynamicReserved;
         let availableStock = blanksAvailable;
 
         if (product.recipe && Array.isArray(product.recipe) && product.recipe.length > 0) {
@@ -247,6 +309,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
         const finalAvailable = Math.max(0, availableStock);
         return {
             ...product,
+            dynamicReserved,
             availableStock: finalAvailable,
             isOutOfStock: finalAvailable <= 0
         };
@@ -257,6 +320,7 @@ module.exports = {
     handleOrderStateTransition,
     enrichProductsWithStock,
     getReservedThreadCounts,
+    reconcileReservedCounts,
     RESERVED_STATES,
     PROCESSED_STATES
 };

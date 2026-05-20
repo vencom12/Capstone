@@ -401,10 +401,20 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', async () => {
     console.log(`[OK] Server listening on port ${PORT}`);
     console.log(`[OK] Socket.IO real-time engine active`);
     console.log(`[OK] Routes ready: /api/auth/profile (PUT), /api/products (GET), etc.`);
+
+    // Self-healing: reconcile reserved counts on startup
+    try {
+        const { reconcileReservedCounts } = require('./utils/inventoryManager');
+        const prisma = require('./utils/prisma');
+        await reconcileReservedCounts(prisma);
+        console.log(`[OK] Inventory reservations reconciled successfully on startup.`);
+    } catch (err) {
+        console.error('Failed to reconcile inventory reservations on startup:', err);
+    }
 });
 
 // Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination

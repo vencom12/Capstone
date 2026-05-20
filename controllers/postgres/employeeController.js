@@ -56,7 +56,10 @@ exports.updateOrderStatus = async (req, res) => {
         io.to(`user:${updatedOrder.userId}`).to('staff').emit('ordersUpdated');
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
+        const productsList = await prisma.product.findMany();
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const enrichedProducts = await enrichProductsWithStock(productsList);
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
         res.json(updatedOrder);
     } catch (err) {

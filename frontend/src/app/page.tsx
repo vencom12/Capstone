@@ -29,6 +29,55 @@ export default function StorefrontPage() {
     }
   }, [isAuthenticated, fetchProducts, fetchDashboardState]);
 
+  // Real-time socket updates for Storefront
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    let activeSocket: any = null;
+    let isCancelled = false;
+
+    const script = document.createElement('script');
+    script.src = `${API_BASE}/socket.io/socket.io.js`;
+    script.async = true;
+    script.onload = () => {
+      if (isCancelled) return;
+      const io = (window as any).io;
+      if (!io) return;
+
+      const socket = io(API_BASE, {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
+      activeSocket = socket;
+
+      socket.on('dataChanged', (data: any) => {
+        if (['PRODUCT', 'INVENTORY', 'ORDER'].includes(data.entity)) {
+          if (isAuthenticated) {
+            fetchDashboardState();
+          } else {
+            fetchProducts();
+          }
+        }
+      });
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      isCancelled = true;
+      if (activeSocket) {
+        activeSocket.close();
+      }
+      const scripts = document.head.getElementsByTagName('script');
+      for (let i = 0; i < scripts.length; i++) {
+        if (scripts[i].src.includes('/socket.io/socket.io.js')) {
+          document.head.removeChild(scripts[i]);
+          break;
+        }
+      }
+    };
+  }, [isAuthenticated, fetchProducts, fetchDashboardState]);
+
   const handleQuickView = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);

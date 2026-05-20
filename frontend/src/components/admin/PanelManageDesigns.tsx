@@ -205,7 +205,9 @@ export default function PanelManageDesigns({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredProducts.map((p) => {
               const id = p.id || p._id;
-              const isLowStock = ((p.count || 0) - (p.reservedCount || 0)) <= (p.minThreshold || 5);
+              const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
+              const dynamicReserved = p.dynamicReserved !== undefined ? p.dynamicReserved : (p.reservedCount || 0);
+              const isLowStock = availableStock <= (p.minThreshold || 5);
               return (
                 <div
                   key={id}
@@ -235,15 +237,15 @@ export default function PanelManageDesigns({
                     <div className="flex justify-between items-center text-[0.75rem] border-t border-white/5 pt-2 mt-2">
                       <span className="text-text-dim">
                         Stock: <b className="text-text-main">{p.count || 0}</b>
-                        {p.reservedCount > 0 && (
+                        {dynamicReserved > 0 && (
                           <span className="text-amber-500 font-bold ml-1" title="Reserved count locked for queue orders">
-                            ({p.reservedCount} locked)
+                            ({dynamicReserved} locked)
                           </span>
                         )}
                       </span>
                       <span className="text-text-dim">
                         Available: <b className={isLowStock ? "text-danger font-bold" : "text-success font-bold"}>
-                          {(p.count || 0) - (p.reservedCount || 0)}
+                          {availableStock}
                         </b>
                       </span>
                     </div>

@@ -16,7 +16,12 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const basketCount = useBasketStore((s) => s.getCount());
   const { isAuthenticated, user, logout } = useAuthStore();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const categories = getCategories();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -149,7 +154,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
         <div className="relative cursor-pointer hover:opacity-80 shrink-0" onClick={() => useUIStore.getState().setBasketOpen(true)}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-main"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-          {basketCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[0.6rem] w-4 h-4 rounded-full flex items-center justify-center font-bold">{basketCount}</span>}
+          {mounted && basketCount > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[0.6rem] w-4 h-4 rounded-full flex items-center justify-center font-bold">{basketCount}</span>}
         </div>
       </div>
     </header>

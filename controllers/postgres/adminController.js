@@ -100,10 +100,13 @@ exports.getDashboardState = async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const enrichedProducts = await enrichProductsWithStock(products);
+
         res.json({
             orders,
             inventory,
-            products,
+            products: enrichedProducts,
             users: adminUsers || [],
             pagination: {
                 currentPage: page,
@@ -227,8 +230,11 @@ exports.createProduct = async (req, res) => {
             }
         });
 
-        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, newProduct);
-        res.json({ message: 'Product created', product: newProduct });
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const [enrichedProduct] = await enrichProductsWithStock([newProduct]);
+
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, enrichedProduct);
+        res.json({ message: 'Product created', product: enrichedProduct });
     } catch (err) {
         console.error('createProduct error:', err);
         res.status(500).json({ message: 'Error creating product', error: err.message });
@@ -276,8 +282,11 @@ exports.updateProduct = async (req, res) => {
             data: updateData
         });
 
-        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, product);
-        res.json({ message: 'Product updated', product });
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const [enrichedProduct] = await enrichProductsWithStock([product]);
+
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProduct);
+        res.json({ message: 'Product updated', product: enrichedProduct });
     } catch (err) {
         console.error('updateProduct error:', err);
         res.status(500).json({ message: 'Error updating product', error: err.message });
@@ -461,7 +470,10 @@ exports.updateOrdersStatus = async (req, res) => {
         io.to('staff').emit('ordersUpdated');
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status });
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
+        const productsList = await prisma.product.findMany();
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const enrichedProducts = await enrichProductsWithStock(productsList);
+        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
         if (errors.length > 0) {
             return res.json({

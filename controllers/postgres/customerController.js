@@ -190,10 +190,16 @@ exports.submitOrder = async (req, res) => {
             });
 
             // 7. Link back to order
-            return await tx.order.update({
+            const updatedOrder = await tx.order.update({
                 where: { id: order.id },
                 data: { transactionId: transaction.id, receiptId: receipt.id }
             });
+
+            // 8. Reconcile reserved counts to ensure DB columns are clean
+            const { reconcileReservedCounts } = require('../../utils/inventoryManager');
+            await reconcileReservedCounts(tx);
+
+            return updatedOrder;
         });
 
         // Socket notifications

@@ -32,7 +32,10 @@ const executeAction = async (functionName, args, req) => {
                 const io = req.app.get('io');
                 socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updated);
                 socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, await prisma.product.findMany());
+                const productsList = await prisma.product.findMany();
+                const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+                const enrichedProducts = await enrichProductsWithStock(productsList);
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
                 logAiChange('StitchMaster AI', 'Update Order Status', `Set order ${args.orderId} status to "${args.status}"`);
             }
         }
@@ -88,7 +91,9 @@ const executeAction = async (functionName, args, req) => {
         });
         actionResult = created ? `Successfully created catalog design product "${args.name}" at price $${args.price}.` : `Failed to create catalog product.`;
         if (created) {
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, created);
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            const [enrichedCreated] = await enrichProductsWithStock([created]);
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, enrichedCreated);
             logAiChange('StitchMaster AI', 'Create Product Catalog', `Created product "${args.name}" at price $${args.price}`);
         }
     } 
@@ -114,7 +119,9 @@ const executeAction = async (functionName, args, req) => {
         });
         actionResult = updated ? `Successfully updated product "${updated.name}" details.` : `Failed to update product details.`;
         if (updated) {
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, updated);
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            const [enrichedUpdated] = await enrichProductsWithStock([updated]);
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedUpdated);
             logAiChange('StitchMaster AI', 'Update Product Catalog', `Updated details for product catalog design "${updated.name}"`);
         }
     }
