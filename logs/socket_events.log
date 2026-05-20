@@ -225,3 +225,11 @@
 {"timestamp":"2026-05-20T16:15:39.588Z","event":"dataChanged","sizeBytes":2179,"entity":"PRODUCT","action":"UPDATE"}
 {"timestamp":"2026-05-20T16:15:40.028Z","event":"dataChanged","sizeBytes":2179,"entity":"PRODUCT","action":"UPDATE"}
 {"timestamp":"2026-05-20T16:18:18.715Z","event":"dataChanged","sizeBytes":399,"entity":"MACHINE","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:29:25.093Z","event":"dataChanged","sizeBytes":1420,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:29:25.219Z","event":"dataChanged","sizeBytes":773,"entity":"INVENTORY","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:29:26.595Z","event":"dataChanged","sizeBytes":2179,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:30:28.995Z","event":"dataChanged","sizeBytes":281,"entity":"MACHINE","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:30:30.122Z","event":"dataChanged","sizeBytes":1379,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:30:30.184Z","event":"dataChanged","sizeBytes":773,"entity":"INVENTORY","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:30:31.573Z","event":"dataChanged","sizeBytes":2179,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-05-20T22:32:39.437Z","event":"dataChanged","sizeBytes":396,"entity":"MACHINE","action":"UPDATE"}

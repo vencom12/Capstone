@@ -187,6 +187,8 @@ export default function AdminPage() {
           fetchAdminData();
         } else if (['INVENTORY', 'INVENTORY_LOG'].includes(data.entity)) {
           fetchAdminData();
+        } else if (data.entity === 'MACHINE') {
+          fetchAdminData();
         }
       });
     };

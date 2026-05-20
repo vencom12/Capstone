@@ -220,11 +220,17 @@ const verifyCSRF = (req, res, next) => {
 };
 app.set('verifyCSRF', verifyCSRF);
 
-// Force no-cache for all requests to ensure PWA updates
+// Cache-Control: Allow browsers to cache static assets (favicon, images, CSS, JS)
+// but force no-cache for API and HTML responses to ensure PWA updates
 app.use((req, res, next) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
+    const isStaticAsset = /\.(ico|png|svg|jpg|jpeg|gif|webp|css|js|woff2?|ttf|webmanifest)$/i.test(req.path);
+    if (isStaticAsset) {
+        res.set('Cache-Control', 'public, max-age=86400'); // 24 hours
+    } else {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+    }
     next();
 });
 

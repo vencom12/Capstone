@@ -127,7 +127,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
         {isAuthenticated ? (
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="p-1 rounded-full border border-primary/30">
+            <Link href={user?.role === 'admin' ? '/admin' : user?.role === 'employee' ? '/employee' : '/dashboard'} className="p-1 rounded-full border border-primary/30">
               <span className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs">
                 {user?.username?.charAt(0).toUpperCase()}
               </span>

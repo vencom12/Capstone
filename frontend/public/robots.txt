@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://capstone-btr7.onrender.com/sitemap.xml

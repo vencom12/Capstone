@@ -196,7 +196,7 @@ export default function EmployeePage() {
 
       socket.on('dataChanged', (data: any) => {
         console.log('[Socket] Data sync received:', data.entity, data.action);
-        if (['PRODUCT', 'INVENTORY', 'ORDER'].includes(data.entity)) {
+        if (['PRODUCT', 'INVENTORY', 'ORDER', 'MACHINE'].includes(data.entity)) {
           fetchEmployeeData();
           showToast(`Dashboard updated in real-time (${data.entity.toLowerCase()})`, 'info');
         }

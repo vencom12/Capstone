@@ -157,7 +157,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
       `}>
       {/* Header / Logo */}
       <div className="p-4 pt-5 pb-2">
-        <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
+        <Link href="/admin" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
           <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
           </div>

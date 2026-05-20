@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import StorefrontHeader from '@/components/layout/StorefrontHeader';
 import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
@@ -14,12 +15,22 @@ import CheckoutModal from '@/components/checkout/CheckoutModal';
 import type { Product } from '@/lib/types';
 
 export default function StorefrontPage() {
+  const router = useRouter();
   const { products, fetchProducts, fetchDashboardState } = useProductStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { isBasketOpen, setBasketOpen } = useUIStore();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Role-based redirect: send admin/employee users back to their dashboards
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      router.replace('/admin');
+    } else if (isAuthenticated && user?.role === 'employee') {
+      router.replace('/employee');
+    }
+  }, [isAuthenticated, user?.role, router]);
 
   useEffect(() => {
     if (isAuthenticated) {
