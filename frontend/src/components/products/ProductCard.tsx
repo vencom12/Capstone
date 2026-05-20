@@ -67,11 +67,18 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
     >
       {/* Image */}
       <div
-        className="h-[140px] md:h-[180px] bg-white/5 flex items-center justify-center relative bg-cover bg-center"
-        style={{ backgroundImage: product.imageUrl ? `url(${product.imageUrl})` : undefined }}
+        className="h-[140px] md:h-[180px] bg-white/5 flex items-center justify-center relative overflow-hidden"
       >
-        {!product.imageUrl && (
-          <span className="text-text-dim text-xs tracking-wider font-semibold">STITCH PREVIEW</span>
+        {product.imageUrl ? (
+          <img 
+            src={product.imageUrl} 
+            alt={product.name} 
+            loading="lazy" 
+            decoding="async" 
+            className="absolute inset-0 w-full h-full object-cover object-center" 
+          />
+        ) : (
+          <span className="text-text-dim text-xs tracking-wider font-semibold z-10 relative">STITCH PREVIEW</span>
         )}
         
         {/* Out of Stock badge */}

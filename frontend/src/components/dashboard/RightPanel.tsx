@@ -71,7 +71,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
             items.map((item) => (
               <div key={item.id} className="flex gap-3 bg-bg-surface p-3 rounded-xl border border-border-glass animate-[fadeIn_0.3s_ease-out]">
                 {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} className="w-12 h-12 rounded-lg object-cover bg-black/20" />
+                  <img src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" className="w-12 h-12 rounded-lg object-cover bg-black/20" />
                 ) : (
                   <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-[0.6rem] font-bold text-text-dim text-center leading-tight">PREVIEW</div>
                 )}
