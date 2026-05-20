@@ -37,5 +37,6 @@ router.post('/login', loginValidation, authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', auth(), authController.me);
 router.put('/profile', auth(), profileValidation, authController.updateProfile);
+router.post('/revoke-sessions/:id', auth(['admin']), authController.revokeSessions);
 
 module.exports = router;

@@ -30,6 +30,7 @@ model User {
   walletBalance Float          @default(0)
   phoneNumber   String?
   address       String?
+  tokenVersion  Int            @default(0)
   createdAt     DateTime       @default(now())
   
   orders        Order[]

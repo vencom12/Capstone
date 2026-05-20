@@ -47,7 +47,7 @@ exports.register = async (req, res) => {
             }
         });
 
-        const token = jwt.sign({ id: user.id, role: 'customer' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('customer_token', token, {
             httpOnly: true,
@@ -88,7 +88,7 @@ exports.login = async (req, res) => {
                 address: '123 Stitch Lane',
                 phoneNumber: '09171234567'
             };
-            const token = jwt.sign({ id: mockUser.id, role: mockRole }, process.env.JWT_SECRET, { expiresIn: '1d' });
+            const token = jwt.sign({ id: mockUser.id, role: mockRole, tokenVersion: 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
             const cookieOptions = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -118,7 +118,7 @@ exports.login = async (req, res) => {
         }
 
         const expiresIn = rememberMe ? '30d' : '1d';
-        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn });
+        const token = jwt.sign({ id: user.id, role: user.role, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn });
 
         const cookieOptions = {
             httpOnly: true,
@@ -203,7 +203,7 @@ exports.updateProfile = async (req, res) => {
             select: { id: true, username: true, role: true, email: true }
         });
 
-        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user.id, role: user.role, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
         
         res.cookie('token', token, {
             httpOnly: true,
@@ -216,5 +216,19 @@ exports.updateProfile = async (req, res) => {
     } catch (err) {
         console.error('Update Profile Error:', err);
         res.status(500).json({ message: 'Server error during profile update' });
+    }
+};
+
+exports.revokeSessions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await prisma.user.update({
+            where: { id: id },
+            data: { tokenVersion: { increment: 1 } }
+        });
+        res.json({ message: 'All active sessions for this user have been instantly revoked.', tokenVersion: user.tokenVersion });
+    } catch (err) {
+        console.error('Revoke Sessions Error:', err);
+        res.status(500).json({ message: 'Server error during session revocation' });
     }
 };
