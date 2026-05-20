@@ -45,6 +45,9 @@ router.get('/dashboard-state', (req, res, next) => {
     next();
 }, customerController.getDashboardState);
 
+router.get('/capacity', customerController.getCapacity);
+router.get('/settings', customerController.getPublicSettings);
+
 // All routes below require authentication
 router.post('/wallet/topup', auth(), customerController.topupWallet);
 router.post('/payment/validate', auth(), customerController.validatePayment);

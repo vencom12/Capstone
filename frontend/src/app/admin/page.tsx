@@ -11,6 +11,7 @@ import PanelOverview from '@/components/admin/PanelOverview';
 import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
+import PanelFleetManagement from '@/components/admin/PanelFleetManagement';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
 
 // Common Components
@@ -49,6 +50,7 @@ export default function AdminPage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbType, setDbType] = useState<'mongodb' | 'postgres'>('mongodb');
 
@@ -61,6 +63,32 @@ export default function AdminPage() {
   const [historyReceiptDetails, setHistoryReceiptDetails] = useState<any>(null);
   const [isLoadingHistoryReceipt, setIsLoadingHistoryReceipt] = useState(false);
 
+  // Business Solutions Settings
+  const [giftPrice, setGiftPrice] = useState(5.00);
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated && activeTab === 'settings') {
+       api.get<any>('/api/admin/settings').then(res => {
+          if (res && res.giftPackagingPrice !== undefined) {
+             setGiftPrice(res.giftPackagingPrice);
+          }
+       }).catch(console.error);
+    }
+  }, [isHydrated, isAuthenticated, activeTab]);
+
+  const handleUpdateGiftPrice = async () => {
+     setIsUpdatingSettings(true);
+     try {
+       await api.put('/api/admin/settings', { giftPackagingPrice: parseFloat(giftPrice as any) });
+       showToast('Gift packaging price updated successfully', 'success');
+     } catch (e) {
+       showToast('Failed to update gift price', 'error');
+     } finally {
+       setIsUpdatingSettings(false);
+     }
+  };
+
   // Fetch complete admin state
   const fetchAdminData = async () => {
     setIsSyncing(true);
@@ -71,6 +99,15 @@ export default function AdminPage() {
         setInventory(data.inventory || data.rawMaterials || []);
         setProducts(data.products || []);
         setUsers(data.users || []);
+      }
+      // Fetch machines separately since admin dashboard-state doesn't include them
+      const machineData: any = await api.get('/api/machines');
+      if (machineData) {
+        if (machineData.data) {
+          setMachines(machineData.data);
+        } else if (Array.isArray(machineData)) {
+          setMachines(machineData);
+        }
       }
     } catch (err) {
       console.error('Failed to sync admin operations data:', err);
@@ -280,10 +317,13 @@ export default function AdminPage() {
             refreshData={fetchAdminData}
           />
         );
+      case 'fleet':
+        return <PanelFleetManagement users={users} />;
       case 'staffing':
         return (
           <PanelStaffing
             users={users}
+            machines={machines}
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
           />
@@ -585,6 +625,38 @@ export default function AdminPage() {
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card p-5 border border-border-glass rounded-[24px] pr-2 mt-6">
+              <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Business Solutions Pricing</h3>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-white">Luxury Gift Suite Price</span>
+                    <span className="text-xs text-text-dim mt-1">Controls the upsell price for premium packaging at checkout</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">$</span>
+                      <input 
+                        type="number" 
+                        value={giftPrice}
+                        onChange={(e) => setGiftPrice(e.target.value as any)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 pl-7 pr-3 text-white text-sm w-24 outline-none focus:border-primary transition-all"
+                        step="0.50"
+                        min="0"
+                      />
+                    </div>
+                    <button
+                      onClick={handleUpdateGiftPrice}
+                      disabled={isUpdatingSettings}
+                      className="flex items-center gap-2 text-xs font-bold text-bg-surface bg-primary px-4 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {isUpdatingSettings ? 'Saving...' : 'Save Price'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

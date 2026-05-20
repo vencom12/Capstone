@@ -7,12 +7,14 @@ import { showToast } from '@/components/ui/Toast';
 
 interface PanelStaffingProps {
   users: any[];
+  machines?: any[];
   isSyncing: boolean;
   refreshData: () => Promise<void>;
 }
 
 export default function PanelStaffing({
   users,
+  machines = [],
   isSyncing,
   refreshData
 }: PanelStaffingProps) {
@@ -153,7 +155,8 @@ export default function PanelStaffing({
               <tr>
                 <th className="glass-th text-left">Username</th>
                 <th className="glass-th text-left">Email Address</th>
-                <th className="glass-th text-left">Contact Info</th>
+                <th className="glass-th text-left">Shift Status</th>
+                <th className="glass-th text-left">Assigned Machine</th>
                 <th className="glass-th text-left">Access Level</th>
                 <th className="glass-th text-right">Actions</th>
               </tr>
@@ -161,13 +164,13 @@ export default function PanelStaffing({
             <tbody>
               {isSyncing && users.length === 0 ? (
                 <tr className="glass-tr">
-                  <td colSpan={5} className="glass-td text-center text-text-dim">
+                  <td colSpan={7} className="glass-td text-center text-text-dim">
                     Syncing database personnel...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr className="glass-tr">
-                  <td colSpan={5} className="glass-td text-center text-text-dim">
+                  <td colSpan={7} className="glass-td text-center text-text-dim">
                     No active staff credentials cataloged.
                   </td>
                 </tr>
@@ -182,11 +185,27 @@ export default function PanelStaffing({
                       <td className="glass-td font-medium text-sm text-text-main text-left">
                         {u.email}
                       </td>
+                      <td className="glass-td text-left">
+                        <span
+                          className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                            ${u.shiftStatus === 'clocked_in'
+                              ? 'bg-success/20 text-success border border-success/30'
+                              : 'bg-text-dim/20 text-text-dim border border-text-dim/30'
+                            }
+                          `}
+                        >
+                          {u.shiftStatus === 'clocked_in' ? '● On Shift' : '○ Offline'}
+                        </span>
+                      </td>
                       <td className="glass-td text-left text-sm">
-                        <div className="text-text-main font-mono">{u.phoneNumber || 'N/A'}</div>
-                        <div className="text-[0.75rem] text-text-dim truncate max-w-[150px]">
-                          {u.address || 'No Address'}
-                        </div>
+                        {(() => {
+                          const assignedMachine = machines.find((m: any) => m.assignedUserId === (u.id || u._id));
+                          return assignedMachine ? (
+                            <span className="font-mono font-bold text-primary text-xs">{assignedMachine.name}</span>
+                          ) : (
+                            <span className="text-text-dim italic text-xs">Unassigned</span>
+                          );
+                        })()}
                       </td>
                       <td className="glass-td text-left">
                         <span

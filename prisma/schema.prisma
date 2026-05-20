@@ -32,11 +32,13 @@ model User {
   address       String?
   tokenVersion  Int            @default(0)
   createdAt     DateTime       @default(now())
+  shiftStatus   String         @default("offline") // clocked_in, offline
   
   orders        Order[]
   transactions  Transaction[]
   receipts      Receipt[]
   favorites     Product[]      @relation("UserFavorites")
+  machines      Machine[]
 }
 
 model Product {
@@ -74,10 +76,20 @@ model Order {
   priorityScore Float       @default(0)     // For AI Queuing
   isRush        Boolean     @default(false) // For AI Queuing
   estimatedTime Int?                        // For AI Queuing (minutes)
+  
+  // Business Solutions Fields
+  isByog             Boolean  @default(false) // Bring Your Own Garment
+  waiverSigned       Boolean  @default(false) // Legal waiver
+  giftPackaging      Boolean  @default(false) // Premium upsell
+  calligraphyMessage String?                  // Handwritten note
+  personalization    Json?                    // Custom cursive data { text, font, color }
+
   date          DateTime    @default(now())
   
   userId        String
   user          User        @relation(fields: [userId], references: [id])
+  
+  machineId     String?
   
   transaction   Transaction? @relation(fields: [transactionId], references: [id])
   transactionId String?      @unique
@@ -159,8 +171,9 @@ model SiteTraffic {
 }
 
 model SystemSettings {
-  id                String  @id @default("global")
-  inventoryAuditLog Boolean @default(true)
+  id                 String  @id @default("global")
+  inventoryAuditLog  Boolean @default(true)
+  giftPackagingPrice Float   @default(5.00)
 }
 
 model GlobalAuditLog {
@@ -173,4 +186,17 @@ model GlobalAuditLog {
   entityId    String?
   ipAddress   String?
   diff        Json?
+}
+
+model Machine {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  type            String   @default("Embroidery")
+  status          String   @default("Idle") // Idle, Running, Maintenance, Offline
+  
+  assignedUserId  String?
+  assignedUser    User?    @relation(fields: [assignedUserId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
 }

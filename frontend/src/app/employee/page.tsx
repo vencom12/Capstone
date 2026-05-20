@@ -28,8 +28,10 @@ export default function EmployeePage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
   const [dbType, setDbType] = useState<'mongodb' | 'postgres'>('mongodb');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [shiftStatus, setShiftStatus] = useState('offline');
 
   // Search & Filters State
   const [ordersSearchQuery, setOrdersSearchQuery] = useState('');
@@ -45,6 +47,7 @@ export default function EmployeePage() {
   const [orderStatusInput, setOrderStatusInput] = useState('In Queue');
   const [orderProgressInput, setOrderProgressInput] = useState('10');
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const [orderMachineInput, setOrderMachineInput] = useState('');
 
   // Receipt Modal State
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
@@ -58,11 +61,34 @@ export default function EmployeePage() {
         setOrders(data.orders || []);
         setInventory(data.inventory || data.rawMaterials || []);
         setProducts(data.products || []);
+        setMachines(data.machines || []);
       }
     } catch (err) {
       console.error('Failed to fetch employee state:', err);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleToggleMachineStatus = async (machine: any) => {
+    try {
+      const nextStatus = machine.status === 'Idle' ? 'Running' : machine.status === 'Running' ? 'Maintenance' : 'Idle';
+      await api.put(`/api/machines/${machine.id}`, { status: nextStatus, name: machine.name, type: machine.type });
+      fetchEmployeeData();
+      showToast(`${machine.name} marked as ${nextStatus}`, 'success');
+    } catch (err) {
+      showToast('Failed to toggle machine status', 'error');
+    }
+  };
+
+  const handleToggleShift = async () => {
+    try {
+      const res: any = await api.put('/api/employee/shift', {});
+      const newStatus = res?.shiftStatus || (shiftStatus === 'clocked_in' ? 'offline' : 'clocked_in');
+      setShiftStatus(newStatus);
+      showToast(newStatus === 'clocked_in' ? 'Clocked in! You are now on shift.' : 'Clocked out. Have a good rest!', 'success');
+    } catch (err) {
+      showToast('Failed to toggle shift status', 'error');
     }
   };
 
@@ -94,6 +120,56 @@ export default function EmployeePage() {
       localStorage.setItem('stitch-employee-tab', activeTab);
     }
   }, [activeTab, isHydrated]);
+
+  const autoAllotOrders = async () => {
+    const unassignedOrders = orders.filter(
+      (o: any) => (o.status === 'In Queue' || o.status === 'Preparing Order') && !o.machineId
+    );
+    const runningMachines = machines.filter((m: any) => m.status === 'Running');
+
+    // Find which running machines already have orders assigned in the database
+    const assignedMachineIds = new Set(
+      orders
+        .filter((o: any) => o.machineId && (o.status === 'In Queue' || o.status === 'Preparing Order'))
+        .map((o: any) => o.machineId)
+    );
+
+    const idleRunningMachines = runningMachines.filter((m: any) => !assignedMachineIds.has(m.id));
+
+    if (unassignedOrders.length > 0 && idleRunningMachines.length > 0) {
+      for (let i = 0; i < Math.min(unassignedOrders.length, idleRunningMachines.length); i++) {
+        const order = unassignedOrders[i];
+        const machine = idleRunningMachines[i];
+        const orderId = order.id || order._id;
+        const url = dbType === 'postgres'
+          ? `/api/employee/orders/${orderId}/status`
+          : `/api/employee/orders/${orderId}`;
+
+        const payload = {
+          status: 'Preparing Order',
+          progress: 30,
+          machineId: machine.id
+        };
+
+        try {
+          if (dbType === 'postgres') {
+            await api.patch(url, payload);
+          } else {
+            await api.put(url, payload);
+          }
+        } catch (err) {
+          console.error('Failed to auto-allot order:', err);
+        }
+      }
+      fetchEmployeeData();
+    }
+  };
+
+  useEffect(() => {
+    if (machines.length > 0 && orders.length > 0) {
+      autoAllotOrders();
+    }
+  }, [machines, orders]);
 
   // Real-time Socket.IO Sync Listener
   useEffect(() => {
@@ -159,24 +235,22 @@ export default function EmployeePage() {
   const handleUpdateOrderStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder) return;
+    const orderId = selectedOrder.id || selectedOrder._id;
     try {
-      const orderId = selectedOrder.id || selectedOrder._id;
       const url = dbType === 'postgres'
         ? `/api/employee/orders/${orderId}/status`
         : `/api/employee/orders/${orderId}`;
-      const method = dbType === 'postgres' ? 'PATCH' : 'PUT';
 
-      const response = await fetch(`${API_BASE}${url}`, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: orderStatusInput, progress: parseInt(orderProgressInput) }),
-        credentials: 'include',
-      });
+      const payload = {
+        status: orderStatusInput,
+        progress: parseInt(orderProgressInput),
+        machineId: orderMachineInput || null
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to update status');
+      if (dbType === 'postgres') {
+        await api.patch(url, payload);
+      } else {
+        await api.put(url, payload);
       }
 
       showToast('Order status updated successfully', 'success');
@@ -184,6 +258,67 @@ export default function EmployeePage() {
       fetchEmployeeData();
     } catch (err) {
       showToast('Failed to update status', 'error');
+    }
+  };
+
+  const completeMachineTask = async (order: any, nextStatus: string, machineId: string) => {
+    try {
+      const orderId = order.id || order._id;
+      const url = dbType === 'postgres'
+        ? `/api/employee/orders/${orderId}/status`
+        : `/api/employee/orders/${orderId}`;
+
+      const payload = {
+        status: nextStatus,
+        progress: 100,
+        machineId: null
+      };
+
+      if (dbType === 'postgres') {
+        await api.patch(url, payload);
+      } else {
+        await api.put(url, payload);
+      }
+
+      showToast(`Order marked as ${nextStatus}`, 'success');
+      fetchEmployeeData();
+    } catch (err) {
+      showToast('Failed to complete task', 'error');
+    }
+  };
+
+  const setMachineStatus = async (machine: any, status: string) => {
+    try {
+      await api.put(`/api/machines/${machine.id}`, { status, name: machine.name, type: machine.type });
+      
+      // If the machine is set to Idle or Maintenance, and there was an active order assigned to it,
+      // we release that order by setting its machineId to null.
+      if (status !== 'Running') {
+        const assignedOrder = orders.find(
+          (o: any) => o.machineId === machine.id && (o.status === 'In Queue' || o.status === 'Preparing Order')
+        );
+        if (assignedOrder) {
+          const orderId = assignedOrder.id || assignedOrder._id;
+          const url = dbType === 'postgres'
+            ? `/api/employee/orders/${orderId}/status`
+            : `/api/employee/orders/${orderId}`;
+          const payload = {
+            status: 'In Queue',
+            progress: 10,
+            machineId: null
+          };
+          if (dbType === 'postgres') {
+            await api.patch(url, payload);
+          } else {
+            await api.put(url, payload);
+          }
+        }
+      }
+      
+      fetchEmployeeData();
+      showToast(`${machine.name} marked as ${status}`, 'success');
+    } catch (err) {
+      showToast('Failed to change machine status', 'error');
     }
   };
 
@@ -275,72 +410,130 @@ export default function EmployeePage() {
       case 'workbench':
         return (
           <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full">
-            <header className="mb-6 flex flex-col">
-              <h1 className="text-3xl font-extrabold mb-1">Workbench: Station B</h1>
-              <p className="text-text-dim text-[0.95rem] m-0">Good morning. There are currently {activeOrders.length} active orders pending.</p>
+            <header className="mb-6 flex justify-between items-center flex-wrap gap-4">
+              <div className="flex flex-col">
+                <h1 className="text-3xl font-extrabold mb-1">Workbench: Station B</h1>
+                <p className="text-text-dim text-[0.95rem] m-0">Good morning. There are currently {activeOrders.length} active orders pending.</p>
+              </div>
+              <button
+                onClick={handleToggleShift}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-bold text-[0.85rem] transition-all cursor-pointer border-none ${
+                  shiftStatus === 'clocked_in'
+                    ? 'bg-success/20 text-success border border-success/30 hover:bg-success/30'
+                    : 'bg-white/5 text-text-dim border border-border-glass hover:bg-white/10'
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${shiftStatus === 'clocked_in' ? 'bg-success animate-pulse' : 'bg-text-dim'}`}></span>
+                {shiftStatus === 'clocked_in' ? 'On Shift — Clock Out' : 'Clock In'}
+              </button>
             </header>
             
-            <div className="grid grid-cols-[1fr_1fr_1.5fr] gap-5 glass-card max-[1100px]:grid-cols-1 mb-6">
-              {/* Left: Job Info */}
-              <div className="flex flex-col pr-5 max-[1100px]:pr-0 border-r border-border-glass max-[1100px]:border-r-0 max-[1100px]:border-b max-[1100px]:pb-5">
-                 <div className="text-[0.75rem] uppercase tracking-wider text-text-dim font-bold mb-2">Current Active Job</div>
-                 <h3 className="text-xl font-bold m-0 mb-1 text-primary">Corporate Polos - Nike Team</h3>
-                 <div className="text-[0.85rem] text-text-dim mb-6">Design: <span className="text-text-main">Swoosh_Gold_v2.dst</span></div>
-                 <div className="flex gap-2 mt-auto">
-                    <button className="bg-danger/10 text-danger border border-danger/20 px-4 py-2 rounded-lg font-bold text-[0.85rem] flex-1 hover:bg-danger/20 transition-all cursor-pointer">Emergency Stop</button>
-                    <button className="bg-white/5 border border-border-glass px-4 py-2 rounded-lg text-text-main text-[0.85rem] hover:bg-white/10 transition-all cursor-pointer">Log Maintenance</button>
-                 </div>
-              </div>
-              
-              {/* Middle: Thread Config */}
-              <div className="flex flex-col px-5 max-[1100px]:px-0 border-r border-border-glass max-[1100px]:border-r-0 max-[1100px]:border-b max-[1100px]:pb-5">
-                 <div className="text-[0.75rem] uppercase tracking-wider text-text-dim font-bold mb-3">Thread Configuration</div>
-                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between bg-black/20 p-2.5 rounded-lg border border-border-glass/50">
-                       <span className="bg-white/10 w-6 h-6 rounded flex items-center justify-center text-[0.7rem] font-bold">N1</span>
-                       <span className="text-[0.85rem] font-medium text-[#fbbf24]">Gold Metallic</span>
-                       <span className="text-[0.75rem] text-text-dim font-mono">Madeira 1024</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-black/20 p-2.5 rounded-lg border border-border-glass/50">
-                       <span className="bg-white/10 w-6 h-6 rounded flex items-center justify-center text-[0.7rem] font-bold">N2</span>
-                       <span className="text-[0.85rem] font-medium text-[#60a5fa]">Deep Navy</span>
-                       <span className="text-[0.75rem] text-text-dim font-mono">Madeira 1103</span>
-                    </div>
-                 </div>
-              </div>
-
-              {/* Right: Live Progress */}
-              <div className="flex flex-col pl-5 max-[1100px]:pl-0">
-                 <div className="text-[0.75rem] uppercase tracking-wider text-text-dim font-bold mb-3">Live Progress</div>
-                 <div className="flex items-center justify-between mb-4">
-                    <span className="bg-success/20 text-success border border-success/30 px-3 py-1 rounded-full text-[0.75rem] font-bold">Running</span>
-                    <div className="font-mono">
-                      <span className="text-2xl font-extrabold text-white">6,500</span>
-                      <span className="text-text-dim text-[0.9rem]"> / 10,000</span>
-                    </div>
-                 </div>
-                 <div className="h-2 w-full bg-black/30 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full animate-[progressPulse_2s_infinite]" style={{ width: '65%' }}></div>
-                 </div>
-              </div>
-            </div>
-
-            {/* Machine Strip */}
-            <div className="grid grid-cols-2 gap-3 md:flex md:gap-4">
-               <div className="bg-bg-surface border border-border-glass p-3 px-4 rounded-xl flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[0.8rem] md:text-[0.85rem]">M#1 Happy</span>
-                    <span className="text-text-dim text-[0.65rem] md:text-[0.7rem]">Batch #42A</span>
+            {/* Machine Workstations Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-4">
+               {machines.length === 0 ? (
+                  <div className="glass-card flex items-center justify-center text-text-dim font-bold col-span-full h-32">
+                    No active machines assigned to fleet.
                   </div>
-               </div>
-               <div className="bg-bg-surface border border-border-glass p-3 px-4 rounded-xl flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-warning"></div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[0.8rem] md:text-[0.85rem]">M#2 Brother</span>
-                    <span className="text-text-dim text-[0.65rem] md:text-[0.7rem]">Idle / Ready</span>
-                  </div>
-               </div>
+               ) : (
+                 (() => {
+                   const pendingOrders = activeOrders.filter(o => o.status === 'In Queue' || o.status === 'Preparing Order');
+                   const machineOrderMap = new Map();
+                   machines.forEach(m => {
+                     const order = pendingOrders.find(o => o.machineId === m.id);
+                     if (order) {
+                       machineOrderMap.set(m.id, order);
+                     }
+                   });
+
+                   return machines.map(m => {
+                     const assignedOrder = machineOrderMap.get(m.id);
+                     return (
+                       <div key={m.id} className="glass-card flex flex-col border border-border-glass relative overflow-hidden min-h-[400px]">
+                          {/* Header: Machine Name & Status & 3 Buttons */}
+                          <div className="flex justify-between items-center mb-6 pb-4 border-b border-border-glass max-[650px]:flex-col max-[650px]:items-start max-[650px]:gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-3.5 h-3.5 rounded-full ${m.status === 'Running' ? 'bg-success shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : m.status === 'Idle' ? 'bg-warning' : 'bg-danger'}`}></div>
+                              <h3 className="m-0 font-bold text-xl">{m.name}</h3>
+                            </div>
+                            <div className="flex gap-2 max-[650px]:w-full">
+                               <button onClick={() => setMachineStatus(m, 'Idle')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Idle' ? 'bg-warning/20 text-warning border-warning/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Idle</button>
+                               <button onClick={() => setMachineStatus(m, 'Running')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Running' ? 'bg-success/20 text-success border-success/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Running</button>
+                               <button onClick={() => setMachineStatus(m, 'Maintenance')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Maintenance' ? 'bg-danger/20 text-danger border-danger/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Maintenance</button>
+                            </div>
+                          </div>
+
+                          {/* Task HUD */}
+                          {m.status === 'Running' ? (
+                            assignedOrder ? (
+                              <div className="flex flex-col flex-1">
+                                 <div className="flex justify-between items-start mb-4">
+                                    <div className="flex flex-col">
+                                       <span className="text-[0.7rem] uppercase text-text-dim font-bold mb-0.5">Assigned Tag ID</span>
+                                       <span className="text-2xl font-bold font-mono text-primary">{assignedOrder.orderId}</span>
+                                    </div>
+                                    <span className="bg-primary/20 text-primary px-3 py-1.5 rounded-full text-xs font-bold border border-primary/30">
+                                      Processing
+                                    </span>
+                                 </div>
+                                 
+                                 <div className="flex-1 bg-black/30 p-6 rounded-2xl border border-white/5 mb-6 flex flex-col items-center justify-center text-center shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]">
+                                    <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
+                                       {assignedOrder.personalization?.text || assignedOrder.client}
+                                    </h2>
+                                    <div className="flex items-center gap-4 mt-2">
+                                      <p className="text-sm text-text-dim italic m-0">Font: {assignedOrder.personalization?.font || 'Standard'}</p>
+                                      <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md border border-white/10">
+                                         <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: assignedOrder.personalization?.color || '#fbbf24' }}></div>
+                                         <span className="font-bold text-xs text-white">{assignedOrder.personalization?.color || 'Gold'}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {assignedOrder.items && Array.isArray(assignedOrder.items) && (
+                                       <div className="mt-4 pt-4 border-t border-white/10 w-full flex flex-wrap gap-2 justify-center">
+                                         {assignedOrder.items.map((item: any, idx: number) => (
+                                            <span key={idx} className="bg-white/5 px-2 py-1 rounded text-xs font-medium text-text-dim">
+                                              {item.quantity}x {item.name}
+                                            </span>
+                                         ))}
+                                       </div>
+                                    )}
+                                 </div>
+
+                                 {/* Action Buttons */}
+                                 <div className="grid grid-cols-2 gap-4 mt-auto">
+                                    <button 
+                                      onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id)}
+                                      className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(34,197,94,0.15)] hover:-translate-y-0.5 active:translate-y-0"
+                                    >
+                                      Ready for Pick Up
+                                    </button>
+                                    <button 
+                                      onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id)}
+                                      className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 active:translate-y-0"
+                                    >
+                                      In Transit (Online)
+                                    </button>
+                                 </div>
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
+                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                 <p className="m-0">No pending orders in queue.</p>
+                                 <p className="text-xs mt-1 opacity-60">Machine is idling.</p>
+                              </div>
+                            )
+                          ) : (
+                             <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-30"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                <p className="m-0">Machine is {m.status.toLowerCase()}.</p>
+                                <p className="text-xs mt-1 opacity-60">Switch to Running to auto-assign tasks.</p>
+                             </div>
+                          )}
+                       </div>
+                     );
+                   });
+                 })()
+               )}
             </div>
           </section>
         );
@@ -886,6 +1079,21 @@ export default function EmployeePage() {
                 className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
+            {machines.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold text-text-main">Assign Machine</label>
+                <select
+                  value={orderMachineInput}
+                  onChange={(e) => setOrderMachineInput(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+                >
+                  <option value="">— No Machine —</option>
+                  {machines.filter(m => m.status !== 'Maintenance' && m.status !== 'Offline').map(m => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.status})</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex gap-3 mt-4">
               <button
                 type="submit"

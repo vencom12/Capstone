@@ -64,7 +64,7 @@ exports.topupWallet = async (req, res) => {
 
 exports.submitOrder = async (req, res) => {
     try {
-        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl } = req.body;
+        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization } = req.body;
         const userId = req.user.id;
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
@@ -159,7 +159,12 @@ exports.submitOrder = async (req, res) => {
                     address,
                     deliveryTime,
                     notes,
-                    progress: (paymentMethod === 'wallet') ? 5 : 0
+                    progress: (paymentMethod === 'wallet') ? 5 : 0,
+                    isByog: isByog || false,
+                    waiverSigned: waiverSigned || false,
+                    giftPackaging: giftPackaging || false,
+                    calligraphyMessage: calligraphyMessage || null,
+                    personalization: personalization || null
                 }
             });
 
@@ -209,6 +214,7 @@ exports.submitOrder = async (req, res) => {
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
         // Broadcast product update (since reservedCount changed)
         const productsList = await prisma.product.findMany();
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const enrichedList = await enrichProductsWithStock(productsList);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedList);
 
@@ -314,8 +320,45 @@ exports.getReceipt = async (req, res) => {
             client: tx.user?.username || 'Customer'
         });
     } catch (err) {
-        console.error('getReceipt error:', err);
-        res.status(500).json({ message: 'Error fetching receipt' });
+        console.error('Download error:', err);
+        res.status(500).json({ message: 'Error downloading receipt' });
+    }
+};
+
+exports.getCapacity = async (req, res) => {
+  try {
+    const activeOrders = await prisma.order.count({
+      where: {
+        status: { in: ['Pending Payment', 'Awaiting Payment', 'In Queue', 'Preparing Order', 'In Transit'] }
+      }
+    });
+
+    const activeMachines = await prisma.machine.count({
+      where: {
+        status: { in: ['Running', 'Idle'] } // Consider idle machines as capacity
+      }
+    });
+
+    const machineCount = Math.max(1, activeMachines);
+    const estimatedMinutes = Math.ceil((activeOrders * 30) / machineCount);
+
+    res.json({
+      activeOrders,
+      activeMachines,
+      estimatedMinutes
+    });
+  } catch (err) {
+    console.error('Capacity error:', err);
+    res.status(500).json({ error: 'Server error fetching capacity' });
+  }
+};
+
+exports.getPublicSettings = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        res.json({ giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00 });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching public settings' });
     }
 };
 

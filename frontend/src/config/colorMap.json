@@ -1,0 +1,8 @@
+{
+  "Navy": ["Gold Metallic", "Classic White", "Silver Sparkle"],
+  "Black": ["Rose Gold", "Emerald Green", "Classic White"],
+  "White": ["Deep Navy", "Crimson Red", "Forest Green"],
+  "Emerald Green": ["Gold Metallic", "Off-White", "Pale Mint"],
+  "Burgundy": ["Champagne Gold", "Soft Pink", "Classic White"],
+  "Default": ["Classic White", "Midnight Black"]
+}

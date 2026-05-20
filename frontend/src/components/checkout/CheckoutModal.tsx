@@ -30,6 +30,24 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [paymentVerified, setPaymentVerified] = useState(false);
 
+  const [giftPackaging, setGiftPackaging] = useState(false);
+  const [calligraphyMessage, setCalligraphyMessage] = useState('');
+  const [giftPackagingPrice, setGiftPackagingPrice] = useState(5.00);
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get<{giftPackagingPrice: number}>('/api/customer/settings')
+        .then(res => res && setGiftPackagingPrice(res.giftPackagingPrice))
+        .catch(console.error);
+      api.get<{estimatedMinutes: number}>('/api/customer/capacity')
+        .then(res => res && setEstimatedMinutes(res.estimatedMinutes))
+        .catch(console.error);
+    }
+  }, [isOpen]);
+
+  const finalTotal = getTotal() + (giftPackaging ? giftPackagingPrice : 0);
+
   const handleTopUp = async () => {
     if (!topUpAmount || parseFloat(topUpAmount) <= 0) return;
     
@@ -72,11 +90,13 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     try {
       await api.post('/api/customer/order/submit', {
         items,
-        totalAmount: getTotal(),
+        totalAmount: finalTotal,
         address: user?.address,
         deliveryTime: deliveryTime || 'As soon as possible',
         notes,
-        paymentMethod
+        paymentMethod,
+        giftPackaging,
+        calligraphyMessage
       });
       
       showToast('Order placed successfully!', 'success');
@@ -84,8 +104,9 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       await fetchDashboardState(); // Instant update for orders/transactions
       clearBasket();
       onClose();
-    } catch (err) {
-      showToast('Failed to place order', 'error');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to place order';
+      showToast(errorMessage, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -149,9 +170,37 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   </div>
                 ))}
               </div>
+              {/* Gift Suite Upsell */}
+              <div className="flex flex-col gap-2 mt-2 bg-primary/10 border border-primary/20 p-3 rounded-xl transition-all">
+                 <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={giftPackaging} onChange={(e) => setGiftPackaging(e.target.checked)} className="accent-primary w-4 h-4" />
+                    <span className="text-[0.85rem] font-bold text-primary">Add Luxury Gift Suite (+${giftPackagingPrice.toFixed(2)})</span>
+                 </label>
+                 {giftPackaging && (
+                    <div className="flex flex-col animate-[fadeIn_0.3s_ease-out]">
+                       <span className="text-[0.7rem] text-text-dim mb-1 ml-6">Includes Premium Linen Box & Handwritten Calligraphy</span>
+                       <input 
+                         type="text" 
+                         placeholder="Enter brief calligraphy message (e.g. Happy Birthday!)" 
+                         value={calligraphyMessage}
+                         onChange={(e) => setCalligraphyMessage(e.target.value)}
+                         className="ml-6 bg-black/20 border border-white/10 p-2 rounded-lg text-white text-[0.8rem] outline-none focus:border-primary"
+                       />
+                    </div>
+                 )}
+              </div>
+
+              {/* Delivery ETA */}
+              {estimatedMinutes !== null && (
+                 <div className="flex justify-between items-center px-2 mt-1 text-[0.8rem] text-text-dim">
+                    <span>Estimated Completion:</span>
+                    <span className="font-bold text-white">~{Math.max(1, Math.ceil(estimatedMinutes / 60))} Hours</span>
+                 </div>
+              )}
+
               <div className="flex justify-between items-center px-2 mt-1">
                 <span className="font-bold text-base">Total Amount:</span>
-                <span className="text-xl font-extrabold text-primary font-mono">${getTotal().toFixed(2)}</span>
+                <span className="text-xl font-extrabold text-primary font-mono">${finalTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>

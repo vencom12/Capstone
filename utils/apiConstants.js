@@ -18,7 +18,8 @@ const ENTITIES = {
     USER: 'USER',
     PRODUCT: 'PRODUCT',
     INVENTORY: 'INVENTORY',
-    WALLET: 'WALLET'
+    WALLET: 'WALLET',
+    MACHINE: 'MACHINE'
 };
 
 module.exports = {

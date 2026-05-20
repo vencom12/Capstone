@@ -321,11 +321,12 @@ app.get('/api/health', async (req, res) => {
     });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/customer', customerRoutes);
 app.use('/api/employee', employeeRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/machines', require('./routes/postgres/machine'));
 
 // --- Development Tools (Only in Dev) ---
 if (process.env.NODE_ENV === 'development') {
