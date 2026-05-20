@@ -17,7 +17,7 @@ import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 
 export default function EmployeePage() {
   const router = useRouter();
-  const { isAuthenticated, checkAccess } = useAuthStore();
+  const { user, isAuthenticated, checkAccess } = useAuthStore();
   const { fetchProducts } = useProductStore();
 
   const [activeTab, setActiveTab] = useState('workbench');
@@ -125,7 +125,8 @@ export default function EmployeePage() {
     const unassignedOrders = orders.filter(
       (o: any) => (o.status === 'In Queue' || o.status === 'Preparing Order') && !o.machineId
     );
-    const runningMachines = machines.filter((m: any) => m.status === 'Running');
+    const myMachines = machines.filter((m: any) => m.assignedUserId === user?.id);
+    const runningMachines = myMachines.filter((m: any) => m.status === 'Running');
 
     // Find which running machines already have orders assigned in the database
     const assignedMachineIds = new Set(
@@ -430,22 +431,26 @@ export default function EmployeePage() {
             
             {/* Machine Workstations Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-4">
-               {machines.length === 0 ? (
-                  <div className="glass-card flex items-center justify-center text-text-dim font-bold col-span-full h-32">
-                    No active machines assigned to fleet.
-                  </div>
-               ) : (
-                 (() => {
+               {(() => {
+                   const myMachines = machines.filter((m: any) => m.assignedUserId === user?.id);
+                   if (myMachines.length === 0) {
+                     return (
+                       <div className="col-span-full py-12 text-center opacity-50 bg-white/5 rounded-2xl border border-white/10">
+                         No machines are currently assigned to you.
+                       </div>
+                     );
+                   }
+
                    const pendingOrders = activeOrders.filter(o => o.status === 'In Queue' || o.status === 'Preparing Order');
                    const machineOrderMap = new Map();
-                   machines.forEach(m => {
+                   myMachines.forEach(m => {
                      const order = pendingOrders.find(o => o.machineId === m.id);
                      if (order) {
                        machineOrderMap.set(m.id, order);
                      }
                    });
 
-                   return machines.map(m => {
+                   return myMachines.map(m => {
                      const assignedOrder = machineOrderMap.get(m.id);
                      return (
                        <div key={m.id} className="glass-card flex flex-col border border-border-glass relative overflow-hidden min-h-[400px]">
@@ -533,7 +538,7 @@ export default function EmployeePage() {
                      );
                    });
                  })()
-               )}
+               }
             </div>
           </section>
         );

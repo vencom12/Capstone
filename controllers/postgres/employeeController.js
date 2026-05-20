@@ -45,6 +45,10 @@ exports.updateOrderStatus = async (req, res) => {
         } catch (err) {
             if (err.isStockError) {
                 // Insufficient stock occurred. Broadcast changes and return 400
+                await prisma.order.update({
+                    where: { id: orderId },
+                    data: { status: "On Hold - Awaiting Materials", progress: 5 }
+                });
                 const io = req.app.get('io');
                 io.to('staff').emit('ordersUpdated');
                 socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, err.heldOrder);

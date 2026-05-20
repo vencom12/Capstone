@@ -457,6 +457,10 @@ exports.updateOrdersStatus = async (req, res) => {
                 results.push(updated);
             } catch (err) {
                 if (err.isStockError) {
+                    await prisma.order.update({
+                        where: { id: orderId },
+                        data: { status: "On Hold - Awaiting Materials", progress: 5 }
+                    });
                     errors.push(err.message);
                     results.push(err.heldOrder);
                 } else {

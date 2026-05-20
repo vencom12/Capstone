@@ -25,7 +25,15 @@ const executeAction = async (functionName, args, req) => {
                 actionResult = `Successfully updated Order ${args.orderId} status to "${args.status}".`;
             } catch (err) {
                 console.error('AI Order Status Update Error:', err);
-                actionResult = `Failed to update Order ${args.orderId} status: ${err.message}`;
+                if (err.isStockError) {
+                    await prisma.order.update({
+                        where: { id: order.id },
+                        data: { status: "On Hold - Awaiting Materials", progress: 5 }
+                    });
+                    actionResult = `Order ${args.orderId} routed to Hold Queue: ${err.message}`;
+                } else {
+                    actionResult = `Failed to update Order ${args.orderId} status: ${err.message}`;
+                }
             }
 
             if (updated) {

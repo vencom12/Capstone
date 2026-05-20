@@ -148,10 +148,10 @@ app.use(helmet({
 
 // Running strictly in PostgreSQL mode
 
-// Global Rate Limiter: Max 300 requests per 15 minutes per IP
+// Global Rate Limiter: Max 3000 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 300,
+    max: 3000,
     standardHeaders: true,
     legacyHeaders: false,
     message: { message: 'Too many requests from this IP, please try again after 15 minutes.' }
