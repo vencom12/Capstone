@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
 
 interface EmployeeSidebarProps {
@@ -11,6 +13,30 @@ interface EmployeeSidebarProps {
 
 export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggle }: EmployeeSidebarProps) {
   const { user, logout } = useAuthStore();
+  const { isSidebarOpen, setSidebarOpen } = useUIStore();
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    if (isLeftSwipe && window.innerWidth <= 650) {
+      // For employee sidebar, it relies on local state in page.tsx if isMobilePanelOpen is used, 
+      // but if we are standardizing, let's trigger the onMobileToggle callback if passed
+      if (onMobileToggle) onMobileToggle();
+      setSidebarOpen(false);
+    }
+  };
 
   const navItems = [
     { id: 'workbench', label: 'My Workbench', icon: (
@@ -40,7 +66,23 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
   ];
 
   return (
-    <aside className="w-[260px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 max-[1100px]:w-[80px] max-[650px]:w-[280px] shrink-0 group z-50">
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[1999] hidden max-[650px]:block backdrop-blur-sm transition-opacity"
+          onClick={() => {
+            if (onMobileToggle) onMobileToggle();
+            setSidebarOpen(false);
+          }}
+        />
+      )}
+      <aside 
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className="w-[260px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 max-[1100px]:w-[80px] max-[650px]:w-[280px] shrink-0 group z-[2000]"
+      >
       {/* Header / Logo */}
       <div className="p-4 pt-5 pb-2">
         <Link href="/employee" className="flex items-center gap-2.5 no-underline cursor-pointer min-[1101px]:group-hover:justify-start max-[1100px]:justify-center max-[650px]:justify-start">
@@ -103,5 +145,6 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
         </button>
       </div>
     </aside>
+    </>
   );
 }

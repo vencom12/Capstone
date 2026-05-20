@@ -17,10 +17,30 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
   const { toggleBasket, isBasketOpen, isSidebarOpen, setSidebarOpen } = useUIStore();
   const basketCount = useBasketStore((s) => s.getCount());
   const [mounted, setMounted] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    if (isLeftSwipe && window.innerWidth <= 650) {
+      setSidebarOpen(false);
+    }
+  };
 
   const navItems = [
     { id: 'shop', label: 'Shop Designs', icon: (
@@ -41,12 +61,24 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
   ];
 
   return (
-    <aside className={`
-      h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 shrink-0 z-[2000]
-      w-[260px] max-[1100px]:w-[80px] max-[650px]:w-[280px]
-      max-[650px]:fixed max-[650px]:left-0 max-[650px]:top-0
-      ${isSidebarOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
-    `}>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[1999] hidden max-[650px]:block backdrop-blur-sm transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside 
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className={`
+        h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 shrink-0 z-[2000]
+        w-[260px] max-[1100px]:w-[80px] max-[650px]:w-[280px]
+        max-[650px]:fixed max-[650px]:left-0 max-[650px]:top-0
+        ${isSidebarOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
+      `}>
       {/* Header / Logo */}
       <div className="p-4 pt-5 pb-2">
         <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
@@ -132,5 +164,6 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
         </button>
       </div>
     </aside>
+    </>
   );
 }

@@ -40,3 +40,4 @@ development/dev_routes.js
 /generated/prisma
 *.md
 *.pdf
+*.pid

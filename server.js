@@ -433,6 +433,26 @@ server.listen(PORT, '0.0.0.0', async () => {
     } catch (err) {
         console.error('Failed to reconcile inventory reservations on startup:', err);
     }
+
+    // 150-Day Global Audit Log Auto-Pruning Job
+    // Runs once every 24 hours to clear old logs and protect Supabase free tier storage
+    setInterval(async () => {
+        try {
+            const prisma = require('./utils/prisma');
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - 150);
+            
+            const result = await prisma.globalAuditLog.deleteMany({
+                where: { timestamp: { lt: cutoffDate } }
+            });
+            
+            if (result.count > 0) {
+                console.log(`[AUDIT] Pruned ${result.count} audit logs older than 150 days.`);
+            }
+        } catch (err) {
+            console.error('[AUDIT] Failed to prune audit logs:', err.message);
+        }
+    }, 24 * 60 * 60 * 1000); // 24 hours
 });
 
 // Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination

@@ -161,3 +161,15 @@ model SystemSettings {
   id                String  @id @default("global")
   inventoryAuditLog Boolean @default(true)
 }
+
+model GlobalAuditLog {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+  userId      String?
+  userRole    String?
+  action      String
+  entity      String
+  entityId    String?
+  ipAddress   String?
+  diff        Json?
+}
