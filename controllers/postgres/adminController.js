@@ -615,6 +615,56 @@ exports.updateSettings = async (req, res) => {
     }
 };
 
+exports.testAISettings = async (req, res) => {
+    try {
+        const { aiChatModel, aiProviderUrl } = req.body;
+        const apiKey = process.env.GROQ_API_KEY;
+
+        if (!apiKey) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "No GROQ_API_KEY registered in environment. Cannot verify dynamic connection pings." 
+            });
+        }
+
+        const fetch = global.fetch || require('node-fetch');
+        const response = await fetch(aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${apiKey}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                model: aiChatModel || 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: 'Connection test ping. Reply with only one word: OK' }],
+                max_tokens: 5
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.choices && data.choices[0]) {
+            res.json({
+                success: true,
+                message: "Connection verification successful!",
+                reply: data.choices[0].message.content.trim()
+            });
+        } else {
+            const errMsg = data.error?.message || response.statusText || "Provider rejected the request.";
+            res.status(400).json({
+                success: false,
+                message: `Connection failed: ${errMsg}`
+            });
+        }
+    } catch (err) {
+        console.error('Test AI settings error:', err);
+        res.status(500).json({ 
+            success: false, 
+            message: `Connection diagnostic error: ${err.message}` 
+        });
+    }
+};
+
 exports.downloadShoppingListPdf = async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');

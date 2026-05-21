@@ -5,8 +5,28 @@ const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
 const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const getAISettings = async () => {
+    try {
+        let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        if (!settings) {
+            settings = await prisma.systemSettings.create({ data: { id: 'global' } });
+        }
+        return {
+            aiChatModel: settings.aiChatModel || 'llama-3.3-70b-versatile',
+            aiVisionModel: settings.aiVisionModel || 'llama-3.2-11b-vision-preview',
+            aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
+            minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.75
+        };
+    } catch (e) {
+        console.error('Failed to fetch dynamic AI settings, using defaults:', e);
+        return {
+            aiChatModel: 'llama-3.3-70b-versatile',
+            aiVisionModel: 'llama-3.2-11b-vision-preview',
+            aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
+            minConfidenceScore: 0.75
+        };
+    }
+};
 
 const executeAction = async (functionName, args, req) => {
     let actionResult = "";
@@ -140,6 +160,10 @@ exports.chat = async (req, res) => {
     try {
         const { message, history } = req.body;
         const apiKey = process.env.GROQ_API_KEY;
+
+        const aiSettings = await getAISettings();
+        const GROQ_API_URL = aiSettings.aiProviderUrl;
+        const MODEL = aiSettings.aiChatModel;
 
         if (!apiKey) {
             return res.json({ 
@@ -429,13 +453,19 @@ exports.getLogs = async (req, res) => {
 };
 
 exports.listModels = async (req, res) => {
-    res.json({ message: "Automation Engine is active. Model: " + MODEL });
+    const aiSettings = await getAISettings();
+    res.json({ message: "Automation Engine is active. Model: " + aiSettings.aiChatModel });
 };
 
 exports.verifyReceipt = async (req, res) => {
     try {
         const { receiptUrl, orderTotal, orderId } = req.body;
         const apiKey = process.env.GROQ_API_KEY;
+
+        const aiSettings = await getAISettings();
+        const GROQ_API_URL = aiSettings.aiProviderUrl;
+        const VISION_MODEL = aiSettings.aiVisionModel;
+        const MIN_CONFIDENCE = aiSettings.minConfidenceScore;
 
         if (!apiKey) {
             return res.status(400).json({ success: false, message: "AI Verification requires an API Key." });
@@ -454,7 +484,7 @@ exports.verifyReceipt = async (req, res) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "llama-3.2-11b-vision-preview",
+                model: VISION_MODEL,
                 messages: [
                     {
                         role: "user",
@@ -492,20 +522,29 @@ exports.verifyReceipt = async (req, res) => {
 
         const aiResult = JSON.parse(data.choices[0].message.content);
 
+        // Apply Confidence Gate & Match condition
+        const confidence = aiResult.confidence !== undefined ? aiResult.confidence : 0;
+        const isPassedGate = confidence >= MIN_CONFIDENCE;
+        const isVerified = aiResult.isMatch && isPassedGate;
+
         // Update Database with AI Findings
         const updatedReceipt = await prisma.receipt.update({
             where: { orderID: orderId },
             data: {
                 ocrData: aiResult,
-                confidenceScore: aiResult.confidence || 0,
-                aiVerificationStatus: aiResult.isMatch ? 'verified' : 'flagged',
-                status: aiResult.isMatch ? 'Verified' : 'Manual Review'
+                confidenceScore: confidence,
+                aiVerificationStatus: isVerified ? 'verified' : (isPassedGate ? 'flagged' : 'flagged_low_confidence'),
+                status: isVerified ? 'Verified' : 'Manual Review'
             }
         });
 
         res.json({ 
             success: true, 
-            message: aiResult.isMatch ? "Payment verified by AI!" : "AI flagged a discrepancy.",
+            message: isVerified 
+                ? "Payment verified by AI!" 
+                : (!isPassedGate 
+                    ? `AI flagged: Confidence score (${confidence}) is below configured threshold (${MIN_CONFIDENCE}).` 
+                    : "AI flagged a discrepancy."),
             aiResult,
             updatedReceipt 
         });

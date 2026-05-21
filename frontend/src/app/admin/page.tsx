@@ -13,6 +13,7 @@ import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
 import PanelFleetManagement from '@/components/admin/PanelFleetManagement';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
+import PanelSettings from '@/components/admin/PanelSettings';
 
 // Common Components
 import StaffAuthModal from '@/components/auth/StaffAuthModal';
@@ -597,72 +598,14 @@ export default function AdminPage() {
 
       case 'settings':
         return (
-          <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans">
-            <header className="mb-6 flex flex-col">
-              <h1 className="text-3xl font-extrabold mb-1">System Settings</h1>
-              <p className="text-text-dim text-[0.95rem] m-0">Configure overall application parameters.</p>
-            </header>
-
-            <div className="glass-card p-5 border border-border-glass rounded-[24px] pr-2">
-              <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Visual Display Parameters</h3>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-white">Default Theme Configuration</span>
-                    <span className="text-xs text-text-dim mt-1">Locks standard premium dark-mode visuals across auth panels</span>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-2 text-xs font-bold text-primary bg-primary/10 px-4 py-2.5 rounded-full border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all active:scale-95 duration-200"
-                  >
-                    {theme === 'dark' ? (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                        Premium Dark Mode Enabled
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                        Premium Light Mode Enabled
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card p-5 border border-border-glass rounded-[24px] pr-2 mt-6">
-              <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Business Solutions Pricing</h3>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-white">Luxury Gift Suite Price</span>
-                    <span className="text-xs text-text-dim mt-1">Controls the upsell price for premium packaging at checkout</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">$</span>
-                      <input 
-                        type="number" 
-                        value={giftPrice}
-                        onChange={(e) => setGiftPrice(e.target.value as any)}
-                        className="bg-bg-surface border border-border-glass rounded-lg py-2 pl-7 pr-3 text-white text-sm w-24 outline-none focus:border-primary transition-all"
-                        step="0.50"
-                        min="0"
-                      />
-                    </div>
-                    <button
-                      onClick={handleUpdateGiftPrice}
-                      disabled={isUpdatingSettings}
-                      className="flex items-center gap-2 text-xs font-bold text-bg-surface bg-primary px-4 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-                    >
-                      {isUpdatingSettings ? 'Saving...' : 'Save Price'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          <PanelSettings
+            theme={theme}
+            toggleTheme={toggleTheme}
+            giftPrice={giftPrice}
+            setGiftPrice={setGiftPrice}
+            handleUpdateGiftPrice={handleUpdateGiftPrice}
+            isUpdatingSettings={isUpdatingSettings}
+          />
         );
 
       default:

@@ -30,6 +30,8 @@ router.delete('/users/:id', adminAuth(), auditLogger('User', 'DELETE_USER'), adm
 router.get('/analytics', adminAuth(), adminController.getAnalytics);
 router.get('/settings', adminAuth(), adminController.getSettings);
 router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
+router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
+router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 
 // --- Staff (Admin + Employee) Routes ---
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
