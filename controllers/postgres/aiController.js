@@ -153,6 +153,31 @@ const executeAction = async (functionName, args, req) => {
             logAiChange('StitchMaster AI', 'Update Product Catalog', `Updated details for product catalog design "${updated.name}"`);
         }
     }
+    else if (functionName === "getSystemAnalytics") {
+        const days = args.days || 7;
+        const sinceDate = new Date();
+        sinceDate.setDate(sinceDate.getDate() - days);
+        const traffic = await prisma.siteTraffic.findMany({
+            where: { timestamp: { gte: sinceDate } },
+            orderBy: { timestamp: 'desc' }
+        });
+        const uniques = traffic.filter(t => t.isUnique).length;
+        actionResult = `System traffic analytics for the last ${days} days: Total pageviews: ${traffic.length}, Unique visits: ${uniques}.`;
+    }
+    else if (functionName === "getMachineFleetStatus") {
+        const machines = await prisma.machine.findMany({
+            include: { assignedUser: true }
+        });
+        actionResult = `Active Machinery Fleet Status:\n` + machines.map(m => `- ${m.name} (${m.type}): Status is "${m.status}", Assigned Operator: ${m.assignedUser ? m.assignedUser.username : 'None'}`).join('\n');
+    }
+    else if (functionName === "getAuditLogs") {
+        const limit = args.limit || 10;
+        const logs = await prisma.globalAuditLog.findMany({
+            take: limit,
+            orderBy: { timestamp: 'desc' }
+        });
+        actionResult = `Recent System Audit Logs:\n` + logs.map(l => `- [${l.timestamp.toISOString()}] User: ${l.userId || 'System'} (${l.userRole || 'Unknown'}) performed "${l.action}" on ${l.entity} (ID: ${l.entityId || 'N/A'})`).join('\n');
+    }
     return actionResult;
 };
 
@@ -335,6 +360,43 @@ exports.chat = async (req, res) => {
                             description: { type: "string" }
                         },
                         required: ["productId"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "getSystemAnalytics",
+                    description: "Fetch site traffic and unique visitor counts for a given duration in days",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            days: { type: "number", description: "The number of days of history to retrieve (default: 7)" }
+                        }
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "getMachineFleetStatus",
+                    description: "Fetch a status report of all physical machines in the workshop and their assigned operators",
+                    parameters: {
+                        type: "object",
+                        properties: {}
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "getAuditLogs",
+                    description: "Fetch the most recent database changes and administrative actions logged in the system",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            limit: { type: "number", description: "The maximum number of recent logs to fetch (default: 10)" }
+                        }
                     }
                 }
             }

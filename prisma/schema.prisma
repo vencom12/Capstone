@@ -57,6 +57,8 @@ model Product {
   createdAt     DateTime @default(now())
 
   favoritedBy User[]   @relation("UserFavorites")
+
+  @@index([createdAt])
 }
 
 model Order {
@@ -76,6 +78,7 @@ model Order {
   priorityScore Float       @default(0)     // For AI Queuing
   isRush        Boolean     @default(false) // For AI Queuing
   estimatedTime Int?                        // For AI Queuing (minutes)
+  dueDate       DateTime?                   // For AI Queuing (due date/time)
   
   // Business Solutions Fields
   isByog             Boolean  @default(false) // Bring Your Own Garment
@@ -99,6 +102,12 @@ model Order {
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([machineId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([date])
 }
 
 model Inventory {
@@ -122,6 +131,9 @@ model InventoryLog {
   newTotal    Int      // Total after change
   userId      String   // Who made the change (username or ID)
   timestamp   DateTime @default(now())
+
+  @@index([inventoryId])
+  @@index([timestamp])
 }
 
 model Transaction {
@@ -138,6 +150,8 @@ model Transaction {
   user          User     @relation(fields: [userId], references: [id])
   
   order         Order?
+
+  @@index([userId])
 }
 
 model Receipt {
@@ -160,6 +174,10 @@ model Receipt {
   user          User     @relation(fields: [userId], references: [id])
   
   order         Order?
+
+  @@index([userId])
+  @@index([orderID])
+  @@index([aiVerificationStatus])
 }
 
 model SiteTraffic {
@@ -168,6 +186,8 @@ model SiteTraffic {
   path      String   @default("/")
   userAgent String?
   isUnique  Boolean  @default(true)
+
+  @@index([timestamp])
 }
 
 model SystemSettings {
@@ -192,6 +212,9 @@ model GlobalAuditLog {
   entityId    String?
   ipAddress   String?
   diff        Json?
+
+  @@index([timestamp])
+  @@index([userId])
 }
 
 model Machine {
@@ -205,4 +228,7 @@ model Machine {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
+
+  @@index([assignedUserId])
+  @@index([status])
 }

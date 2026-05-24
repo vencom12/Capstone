@@ -64,7 +64,7 @@ exports.topupWallet = async (req, res) => {
 
 exports.submitOrder = async (req, res) => {
     try {
-        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization } = req.body;
+        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization, isRush, dueDate } = req.body;
         const userId = req.user.id;
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
@@ -164,7 +164,9 @@ exports.submitOrder = async (req, res) => {
                     waiverSigned: waiverSigned || false,
                     giftPackaging: giftPackaging || false,
                     calligraphyMessage: calligraphyMessage || null,
-                    personalization: personalization || null
+                    personalization: personalization || null,
+                    isRush: isRush || false,
+                    dueDate: dueDate ? new Date(dueDate) : null
                 }
             });
 
@@ -210,7 +212,10 @@ exports.submitOrder = async (req, res) => {
         // Socket notifications
         const updatedUser = await prisma.user.findUnique({ where: { id: userId } });
         const io = req.app.get('io');
-        socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, result, [`user:${user.id}`, 'staff']);
+        
+        // Recalculate AI Queue priorities
+        const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+        await recalculateQueuePriorities(io);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
         // Broadcast product update (since reservedCount changed)
         const productsList = await prisma.product.findMany();
