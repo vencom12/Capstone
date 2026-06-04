@@ -1,0 +1,58 @@
+# Resolve Performance, UI, and Technical Trade-offs
+
+This plan addresses the performance bottlenecks, codebase duplication, and scaling issues introduced by the recent fallback and UI updates.
+
+## Proposed Changes
+
+### utils/groqClient.js
+#### [NEW] [groqClient.js](file:///C:/Users/revin/Downloads/Capstone/utils/groqClient.js)
+Extract the fallback and retry logic into a dedicated, robust utility module.
+- Provide `fetchGroqChatWithFallback` and `fetchGroqVisionWithFallback`.
+- Add proper fallback sequences for Vision requests (e.g. falling back from `llama-3.2-11b-vision-preview` to `llama-3.2-90b-vision-preview` or similar, depending on what's available).
+- Rather than a blocking 3-second sleep (`setTimeout`) on the main execution thread when rate limits hit, we'll return an immediate error and let the client handle it, OR we can implement an async background retry strategy without stalling the entire HTTP request if possible (since it's a web request we should fail fast to prevent connection pool exhaustion, but since it's a critical AI response, we'll configure short wait times and immediate failover to a smaller model).
+- Adjust temperature and max_tokens appropriately for fallback models to preserve quality.
+
+---
+
+### controllers/postgres
+#### [MODIFY] [aiController.js](file:///C:/Users/revin/Downloads/Capstone/controllers/postgres/aiController.js)
+- Remove the duplicated `fetchGroqChatWithFallback` and `fetchGroqVisionWithFallback` functions.
+- Import and use the unified client from `utils/groqClient.js`.
+
+#### [MODIFY] [forecastingController.js](file:///C:/Users/revin/Downloads/Capstone/controllers/postgres/forecastingController.js)
+- Remove the duplicated `fetchGroqChatWithFallback` function.
+- Import and use the unified client from `utils/groqClient.js`.
+- Add a periodic cleanup script in `getActiveSuggestionsInternal` or a separate utility to prune declined recommendations older than 7 days, keeping the DB lean. (e.g., `await prisma.declinedRecommendation.deleteMany({ where: { declinedAt: { lt: sevenDaysAgo } } })`).
+
+---
+
+### frontend/src/components/admin
+#### [MODIFY] [PanelAnalytics.tsx](file:///C:/Users/revin/Downloads/Capstone/frontend/src/components/admin/PanelAnalytics.tsx)
+- Refactor `handleExecuteAction` and `handleDeclineAction` to utilize true optimistic updates.
+- Store the previous `biData` state in a local constant before modifying `setBiData`.
+- If the API execution fails (in the `catch` block), instantly restore the previous `biData` state *without* triggering a new network request to `/api/admin/intelligence/suggestions`. This dramatically improves UI resilience when the server is struggling.
+
+---
+
+### frontend/src/components/ui
+#### [MODIFY] [Toast.tsx](file:///C:/Users/revin/Downloads/Capstone/frontend/src/components/ui/Toast.tsx)
+- Refactor `showToast` to accept an optional `toastKey` string identifier as a third parameter.
+- Replace the rigid string-matching deduplication (which checks for hardcoded text like `"telemetry"`) with key-based deduplication.
+- If a toast is dispatched with a `toastKey` that matches a recently shown toast within a specific time window, suppress it.
+- This creates a scalable pattern for developers to debounce/throttle any recurring toast notifications easily.
+
+## User Review Required
+
+> [!WARNING]  
+> Are there specific Vision models on Groq you'd prefer to use for the fallback sequence? Currently, `llama-3.2-11b-vision-preview` and `llama-3.2-90b-vision-preview` are standard.
+
+> [!TIP]  
+> Setting a 7-day TTL (Time-To-Live) on declined recommendations means a declined suggestion will reappear after 7 days if the problem still persists (e.g., inventory is still low). Do you approve of this 7-day retention period?
+
+## Verification Plan
+
+### Automated/Manual Testing
+- Manually trigger a UI execution failure (e.g., by mocking an error) to ensure the UI instantly restores state without a network spinner.
+- Confirm that telemetry toasts are cleanly throttled using the new key mechanism.
+- Verify that `aiController` and `forecastingController` endpoints operate normally using the new modular `groqClient.js`.
+- Verify Prisma properly prunes old rows from `DeclinedRecommendation`.

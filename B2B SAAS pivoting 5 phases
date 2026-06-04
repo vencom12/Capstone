@@ -1,0 +1,81 @@
+# Enterprise Architecture Implementation Plan
+
+This document outlines the strategy to transform StitchMaster AI from a single-company internal tool into a massively scalable, autonomous, multi-tenant B2B SaaS platform.
+
+> [!WARNING]  
+> Implementing all 5 features requires a fundamental rewrite of the database schema, API security, and AI orchestration layer. We must execute this in strictly defined phases to prevent data loss or system collapse.
+
+## User Review Required
+
+Please review the proposed phases below. **Phase 1 (Multi-Tenant Architecture)** is a breaking change that will alter every single database query in the application. It is recommended to complete Phase 1 first so that all subsequent features are natively multi-tenant.
+
+## Open Questions
+
+1. **Embedding Provider:** Groq currently focuses on LLMs and does not provide an embedding model API. For the Vector Database (RAG), should we integrate OpenAI (e.g., `text-embedding-3-small`), Cohere, or use a local open-source embedding model (e.g., HuggingFace transformers) to generate the vector arrays?
+2. **Email Provider:** For the Predictive Procurement (Auto-drafting POs) and Workflow Agents (Customer Notification), do you have a preferred email provider (SendGrid, Postmark, AWS SES, or Nodemailer with SMTP)?
+3. **Existing Data Migration:** When we switch to Multi-Tenant (Phase 1), should all existing users, orders, and inventory be migrated into a single default "Legacy Tenant", or should the database be wiped for a clean SaaS slate?
+
+---
+
+## Proposed Changes by Phase
+
+### Phase 1: Foundational SaaS Pivot (Multi-Tenant Architecture)
+To sell this software to other embroidery businesses, data must be strictly isolated.
+- **Database Schema**:
+  - Add a `Tenant` model (Company Name, Subdomain, Subscription Tier).
+  - Add `tenantId` to `User`, `Product`, `Order`, `Inventory`, `Transaction`, `Receipt`, `Machine`, and `GlobalAuditLog`.
+- **Authentication**:
+  - Update `authController.js` to inject `tenantId` into JWT tokens.
+  - Create tenant onboarding routes (Signup creates a Tenant + Admin User).
+- **Data Access Layer**:
+  - Refactor all Prisma queries (e.g., `prisma.order.findMany`) to include `where: { tenantId: req.user.tenantId }`.
+
+### Phase 2: RAG with Vector Search (Postgres pgvector)
+To allow the AI to contextually answer queries over millions of rows without hitting token limits.
+- **Database Schema**:
+  - Enable the `vector` extension in PostgreSQL.
+  - Create a `KnowledgeVector` model to store semantic embeddings of past orders, resolved maintenance logs, and catalog items.
+- **AI Controller**:
+  - Create an embedding pipeline to chunk and vectorize new data on creation.
+  - Update `aiController.js` chat endpoint: When the user asks a question, vectorize the question, perform a cosine similarity search against `KnowledgeVector`, and inject the top 5 results into the prompt.
+
+### Phase 3: Predictive Procurement & Supplier Integrations
+To automate the supply chain and maintain 100% operational uptime.
+- **Database Schema**:
+  - Create `Supplier` model (Name, Email, Lead Time in days).
+  - Create `PurchaseOrder` model (Status, ETA, Total Cost).
+- **Forecasting Engine**:
+  - Upgrade `forecastingController.js` to calculate depletion date vs. supplier lead time.
+  - Automatically draft a `PurchaseOrder` in the database and (optionally) email it to the supplier when the threshold is crossed.
+
+### Phase 4: Advanced A/B Testing & Price Elasticity Modeling
+To autonomously maximize revenue.
+- **Database Schema**:
+  - Create `PriceExperiment` model (Target Product, Base Price, Variant Price, Conversions, Views).
+- **Storefront Tracking**:
+  - Update frontend tracking to assign visitors to pricing variants and track conversion funnels.
+- **Agent Loop**:
+  - Add an autonomous cron job that analyzes `PriceExperiment` data using Bayesian probability to determine the most profitable price point and automatically locks it in.
+
+### Phase 5: Dynamic Workflow Automation Agents
+To replace middle-management coordination.
+- **Workflow Engine**:
+  - Introduce a background job queue (e.g., BullMQ) or expand the existing AI event loop.
+  - Upgrade `executeRecommendationAction` to support DAGs (Directed Acyclic Graphs) of actions.
+- **New Tools**:
+  - `routeOrderToMachine`: Re-assigns orders dynamically.
+  - `sendCustomerEmail`: Drafts and sends delay/update emails.
+  - `createMaintenanceTicket`: Flags machines for repair.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run full database migration tests on a staging environment for Phase 1 to ensure zero cross-tenant data bleed.
+- Unit test the RAG cosine similarity math to ensure relevant contexts are retrieved.
+
+### Manual Verification
+- **Phase 1**: Log in as User A from Tenant A and verify they absolutely cannot query `orderId` belonging to Tenant B.
+- **Phase 2**: Ask the AI a highly specific question about an old order to see if it retrieves it via Vector Search.
+- **Phase 3**: Artificially deplete stock in the UI and verify a Draft Purchase Order appears in the admin panel.

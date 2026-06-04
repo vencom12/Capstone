@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 enum Role {
@@ -21,137 +23,195 @@ enum OrderStatus {
   Cancelled
 }
 
+model Tenant {
+  id               String   @id @default(uuid())
+  name             String
+  subdomain        String?  @unique
+  subscriptionTier String   @default("free") // free, pro, enterprise
+  createdAt        DateTime @default(now())
+
+  users          User[]
+  products       Product[]
+  orders         Order[]
+  inventory      Inventory[]
+  machines       Machine[]
+  systemSettings SystemSettings?
+  auditLogs      GlobalAuditLog[]
+  declinedRecs   DeclinedRecommendation[]
+  Transaction    Transaction[]
+  Receipt        Receipt[]
+  SiteTraffic    SiteTraffic[]
+  InventoryLog   InventoryLog[]
+  purchaseOrders PurchaseOrder[]
+}
+
 model User {
-  id            String         @id @default(uuid())
-  username      String         @unique
-  email         String         @unique
+  id            String   @id @default(uuid())
+  username      String   @unique
+  email         String   @unique
   password      String
-  role          Role           @default(customer)
-  walletBalance Float          @default(0)
+  role          Role     @default(customer)
+  walletBalance Float    @default(0)
   phoneNumber   String?
   address       String?
-  tokenVersion  Int            @default(0)
-  createdAt     DateTime       @default(now())
-  shiftStatus   String         @default("offline") // clocked_in, offline
-  
-  orders        Order[]
-  transactions  Transaction[]
-  receipts      Receipt[]
-  favorites     Product[]      @relation("UserFavorites")
-  machines      Machine[]
+  tokenVersion  Int      @default(0)
+  createdAt     DateTime @default(now())
+  shiftStatus   String   @default("offline") // clocked_in, offline
+
+  orders       Order[]
+  transactions Transaction[]
+  receipts     Receipt[]
+  favorites    Product[]     @relation("UserFavorites")
+  machines     Machine[]
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }
 
 model Product {
-  id            String   @id @default(uuid())
+  id            String                      @id @default(uuid())
   name          String
   price         Float
-  tag           String   @default("General")
-  tags          String[] @default([]) // For AI Recommendations
+  tag           String                      @default("General")
+  tags          String[]                    @default([]) // For AI Recommendations
   description   String?
-  imageUrl      String   @default("https://via.placeholder.com/200")
-  recipe        Json?    // Array of { inventoryId, name, quantity }
-  views         Int      @default(0)
-  count         Int      @default(0)
-  reservedCount Int      @default(0)
-  minThreshold  Int      @default(5)
-  createdAt     DateTime @default(now())
+  imageUrl      String                      @default("https://via.placeholder.com/200")
+  recipe        Json? // Array of { inventoryId, name, quantity }
+  embedding     Unsupported("vector(384)")? // RAG Semantic Search
+  views         Int                         @default(0)
+  count         Int                         @default(0)
+  reservedCount Int                         @default(0)
+  minThreshold  Int                         @default(5)
+  createdAt     DateTime                    @default(now())
 
-  favoritedBy User[]   @relation("UserFavorites")
+  // A/B Testing Fields
+  isAbTesting    Boolean @default(false)
+  variantAPrice  Float?
+  variantBPrice  Float?
+  variantAViews  Int     @default(0)
+  variantBViews  Int     @default(0)
+  variantAOrders Int     @default(0)
+  variantBOrders Int     @default(0)
+
+  favoritedBy User[] @relation("UserFavorites")
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([createdAt])
+  @@index([tenantId])
 }
 
 model Order {
-  id            String      @id @default(uuid())
-  orderId       String      @unique
+  id            String    @id @default(uuid())
+  orderId       String    @unique
   client        String
   design        String
-  items         Json        // Storing as JSON to maintain MongoDB-like structure for now, or use relation
-  status        String      @default("Pending Payment")
-  progress      Int         @default(0)
-  paymentStatus String      @default("unpaid")
-  paymentMethod String      @default("none")
+  items         Json // Storing as JSON to maintain MongoDB-like structure for now, or use relation
+  status        String    @default("Pending Payment")
+  progress      Int       @default(0)
+  paymentStatus String    @default("unpaid")
+  paymentMethod String    @default("none")
   address       String?
   deliveryTime  String?
   notes         String?
-  totalAmount   Float       @default(0)
-  priorityScore Float       @default(0)     // For AI Queuing
-  isRush        Boolean     @default(false) // For AI Queuing
-  estimatedTime Int?                        // For AI Queuing (minutes)
-  dueDate       DateTime?                   // For AI Queuing (due date/time)
-  
-  // Business Solutions Fields
-  isByog             Boolean  @default(false) // Bring Your Own Garment
-  waiverSigned       Boolean  @default(false) // Legal waiver
-  giftPackaging      Boolean  @default(false) // Premium upsell
-  calligraphyMessage String?                  // Handwritten note
-  personalization    Json?                    // Custom cursive data { text, font, color }
+  totalAmount   Float     @default(0)
+  priorityScore Float     @default(0) // For AI Queuing
+  isRush        Boolean   @default(false) // For AI Queuing
+  estimatedTime Int? // For AI Queuing (minutes)
+  dueDate       DateTime? // For AI Queuing (due date/time)
 
-  date          DateTime    @default(now())
-  
-  userId        String
-  user          User        @relation(fields: [userId], references: [id])
-  
-  machineId     String?
-  
+  // Business Solutions Fields
+  isByog             Boolean @default(false) // Bring Your Own Garment
+  waiverSigned       Boolean @default(false) // Legal waiver
+  giftPackaging      Boolean @default(false) // Premium upsell
+  calligraphyMessage String? // Handwritten note
+  personalization    Json? // Custom cursive data { text, font, color }
+
+  date DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  machineId String?
+
   transaction   Transaction? @relation(fields: [transactionId], references: [id])
   transactionId String?      @unique
-  
-  receipt       Receipt?     @relation(fields: [receiptId], references: [id])
-  receiptId     String?      @unique
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @default(now()) @updatedAt
+  receipt   Receipt? @relation(fields: [receiptId], references: [id])
+  receiptId String?  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([userId])
   @@index([machineId])
   @@index([status])
   @@index([createdAt])
   @@index([date])
+  @@index([tenantId])
 }
 
 model Inventory {
-  id            String         @id @default(uuid())
-  item          String         @unique
-  count         Int            @default(0)
-  reservedCount Int            @default(0)
-  unit          String         @default("Cones")
-  minThreshold  Int            @default(10)
-  lastUpdated   DateTime       @default(now()) @updatedAt
-  
-  logs          InventoryLog[]
+  id            String   @id @default(uuid())
+  item          String   @unique
+  count         Int      @default(0)
+  reservedCount Int      @default(0)
+  unit          String   @default("Cones")
+  minThreshold  Int      @default(10)
+  lastUpdated   DateTime @default(now()) @updatedAt
+
+  logs           InventoryLog[]
+  purchaseOrders PurchaseOrder[]
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }
 
 model InventoryLog {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   inventoryId String
   inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  action      String   // "Add", "Deduct", "Update"
-  amount      Int      // Quantity changed
-  newTotal    Int      // Total after change
-  userId      String   // Who made the change (username or ID)
-  timestamp   DateTime @default(now())
+  action      String // "Add", "Deduct", "Update"
+  amount      Int // Quantity changed
+  newTotal    Int // Total after change
+  userId      String // Who made the change (username or ID)
+  timestamp   DateTime  @default(now())
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([inventoryId])
   @@index([timestamp])
+  @@index([tenantId])
 }
 
 model Transaction {
   id            String   @id @default(uuid())
   transactionID String   @unique
-  orderID       String   // External order ID
+  orderID       String // External order ID
   amount        Float
   status        String   @default("pending")
   receiptLink   String?
   receiptId     String?  @unique
   timestamp     DateTime @default(now())
-  
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  
-  order         Order?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+  Order    Order?
 
   @@index([userId])
+  @@index([tenantId])
 }
 
 model Receipt {
@@ -163,26 +223,29 @@ model Receipt {
   status        String   @default("Pending")
   timestamp     DateTime @default(now())
   metadata      Json?
-  
+
   // AI Vision Fields
   imageUrl             String?
   ocrData              Json?
-  confidenceScore      Float     @default(0)
-  aiVerificationStatus String    @default("pending")
-  
+  confidenceScore      Float   @default(0)
+  aiVerificationStatus String  @default("pending")
+
   // Anti-Replay Fraud Fields
-  imageHash     String?   @unique  // SHA-256 fingerprint of uploaded image (Defense 1)
-  referenceId   String?            // OCR-extracted transaction reference ID (Defense 2)
-  flaggedReason String?            // Human-readable reason if flagged
-  
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  
-  order         Order?
+  imageHash     String? @unique // SHA-256 fingerprint of uploaded image (Defense 1)
+  referenceId   String? // OCR-extracted transaction reference ID (Defense 2)
+  flaggedReason String? // Human-readable reason if flagged
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+  Order    Order?
 
   @@index([userId])
   @@index([orderID])
   @@index([aiVerificationStatus])
+  @@index([tenantId])
 }
 
 model SiteTraffic {
@@ -192,7 +255,11 @@ model SiteTraffic {
   userAgent String?
   isUnique  Boolean  @default(true)
 
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   @@index([timestamp])
+  @@index([tenantId])
 }
 
 model SystemSettings {
@@ -201,39 +268,79 @@ model SystemSettings {
   giftPackagingPrice Float   @default(5.00)
 
   // Dynamic AI Configuration (Phase 1: AI Sustainability)
-  aiChatModel        String  @default("llama-3.3-70b-versatile")
-  aiVisionModel      String  @default("llama-3.2-11b-vision-preview")
-  aiProviderUrl      String  @default("https://api.groq.com/openai/v1/chat/completions")
-  minConfidenceScore Float   @default(0.75)
+  aiChatModel        String @default("llama-3.3-70b-versatile")
+  aiVisionModel      String @default("llama-3.2-11b-vision-preview")
+  aiProviderUrl      String @default("https://api.groq.com/openai/v1/chat/completions")
+  minConfidenceScore Float  @default(0.75)
+
+  tenantId String? @unique
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }
 
 model GlobalAuditLog {
-  id          String   @id @default(uuid())
-  timestamp   DateTime @default(now())
-  userId      String?
-  userRole    String?
-  action      String
-  entity      String
-  entityId    String?
-  ipAddress   String?
-  diff        Json?
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  userId    String?
+  userRole  String?
+  action    String
+  entity    String
+  entityId  String?
+  ipAddress String?
+  diff      Json?
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([timestamp])
   @@index([userId])
+  @@index([tenantId])
 }
 
 model Machine {
-  id              String   @id @default(uuid())
-  name            String   @unique
-  type            String   @default("Embroidery")
-  status          String   @default("Idle") // Idle, Running, Maintenance, Offline
-  
-  assignedUserId  String?
-  assignedUser    User?    @relation(fields: [assignedUserId], references: [id])
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now()) @updatedAt
+  id     String @id @default(uuid())
+  name   String @unique
+  type   String @default("Embroidery")
+  status String @default("Idle") // Idle, Running, Maintenance, Offline
+
+  assignedUserId String?
+  assignedUser   User?   @relation(fields: [assignedUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([assignedUserId])
   @@index([status])
+  @@index([tenantId])
+}
+
+model DeclinedRecommendation {
+  id         String   @id @default(uuid())
+  sugId      String   @unique
+  declinedAt DateTime @default(now())
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model PurchaseOrder {
+  id            String    @id @default(uuid())
+  inventoryId   String
+  inventory     Inventory @relation(fields: [inventoryId], references: [id])
+  quantity      Int
+  status        String    @default("Draft") // Draft, Approved, Ordered, Received
+  estimatedCost Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }

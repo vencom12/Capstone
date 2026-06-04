@@ -1,0 +1,23 @@
+# Execution Walkthrough
+
+The performance, scalability, and code cleanliness improvements have been fully implemented according to the plan. Here is a summary of the executed changes:
+
+## 1. Groq Client Modularization & Non-Blocking Fallbacks
+- Created `utils/groqClient.js` to serve as a unified, optimized AI HTTP client.
+- **Removed the 3-second Node.js thread blocking**. When a TPM rate limit is hit, the system now instantly fails over to the next model in the fallback chain instead of keeping the user waiting for 3 seconds.
+- Automatically adjusts `temperature` on smaller fallback models to preserve output quality and format compliance.
+- Removed duplicated code in `aiController.js` and `forecastingController.js`.
+
+## 2. Instant Optimistic UI Restorations
+- Refactored `PanelAnalytics.tsx` to cache the `biData` state before executing or declining a suggestion.
+- If the backend request fails (e.g. server timeout), the UI now instantly reverts to the cached local state (`setBiData(previousState)`).
+- This completely eliminates the secondary backend network request that was previously used to recover the UI.
+
+## 3. O(1) Key-Based Toast Deduplication
+- Edited `Toast.tsx` to accept a `toastKey` parameter, migrating away from string-searching arrays.
+- Telemetry events (such as those in `app/employee/page.tsx`) now pass `'telemetry'` as their key.
+- This prevents memory leaks by purging old keys after 1.5s and guarantees O(1) performance for deduplication even if hundreds of real-time events fire simultaneously.
+
+## 4. Automatic Database Pruning (7-day TTL)
+- Updated `getActiveSuggestionsInternal` in `forecastingController.js` to automatically run `prisma.declinedRecommendation.deleteMany` for any records older than 7 days.
+- This ensures the `DeclinedRecommendation` table never grows unboundedly and prevents the Node.js memory spike when loading thousands of declined UUIDs.

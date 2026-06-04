@@ -138,6 +138,15 @@ console.log('>>> STITCH-OPT SERVER INITIALIZING <<<');
 // Enable Gzip/Brotli compression for all responses
 app.use(compression());
 
+// Health Check Endpoint for UptimeRobot (Keeps Render Free Tier Awake)
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
+
+// Initialize Automated Background Tasks
+const { initCronJobs } = require('./utils/cronJobs');
+initCronJobs();
+
 // --- Production Security Middleware ---
 
 // Helmet: Sets secure HTTP headers (XSS protection, clickjack prevention, MIME sniff guard)
@@ -197,6 +206,34 @@ app.use('/api/v1/auth/register', authLimiter);
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
+
+// Tenant Storage Middleware
+const tenantStorage = require('./utils/tenantContext');
+app.use((req, res, next) => {
+    let tenantId = null;
+    const token = req.cookies.token || req.cookies.customer_token || req.cookies.admin_token || req.cookies.employee_token;
+    if (token) {
+        try {
+            const decoded = jwt.decode(token);
+            if (decoded && decoded.tenantId) {
+                tenantId = decoded.tenantId;
+            }
+        } catch (e) {}
+    }
+    if (!tenantId && req.headers['x-tenant-id']) {
+        tenantId = req.headers['x-tenant-id'];
+    }
+    if (tenantId) {
+        tenantStorage.run(tenantId, () => {
+            next();
+        });
+    } else {
+        // Unauthenticated or system requests
+        tenantStorage.run(null, () => {
+            next();
+        });
+    }
+});
 
 // CSRF Protection: Issue a token to the client
 app.get('/api/auth/csrf-token', (req, res) => {

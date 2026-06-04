@@ -198,7 +198,7 @@ export default function EmployeePage() {
         console.log('[Socket] Data sync received:', data.entity, data.action);
         if (['PRODUCT', 'INVENTORY', 'ORDER', 'MACHINE'].includes(data.entity)) {
           fetchEmployeeData();
-          showToast(`Dashboard updated in real-time (${data.entity.toLowerCase()})`, 'info');
+          showToast(`Dashboard updated in real-time (${data.entity.toLowerCase()})`, 'info', 'telemetry');
         }
       });
     };

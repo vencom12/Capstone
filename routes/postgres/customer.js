@@ -62,4 +62,7 @@ router.get('/receipt/:id', auth(), customerController.getReceipt);
 router.get('/receipt/:id/download', auth(), customerController.downloadReceipt);
 router.patch('/settings', auth(), customerController.updateSettings);
 
+const forecastingController = require('../../controllers/postgres/forecastingController');
+router.post('/products/:id/track-view', forecastingController.trackProductView);
+
 module.exports = router;

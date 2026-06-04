@@ -6,14 +6,34 @@ interface ToastMessage {
   id: number;
   message: string;
   type: 'info' | 'success' | 'error';
+  toastKey?: string;
 }
 
 let toastId = 0;
 const listeners: Set<(toast: ToastMessage) => void> = new Set();
+const recentToasts = new Map<string, number>();
 
 // Global toast function — can be called from anywhere
-export function showToast(message: string, type: 'info' | 'success' | 'error' = 'info') {
-  const toast: ToastMessage = { id: ++toastId, message, type };
+export function showToast(message: string, type: 'info' | 'success' | 'error' = 'info', toastKey?: string) {
+  const now = Date.now();
+  
+  // Cleanup old keys (older than 1.5s) to prevent memory leak
+  recentToasts.forEach((timestamp, key) => {
+    if (now - timestamp > 1500) {
+      recentToasts.delete(key);
+    }
+  });
+
+  // Use the provided key, or fallback to the exact message for deduplication
+  const dedupeKey = toastKey || message;
+
+  if (recentToasts.has(dedupeKey)) {
+    return; // Suppress duplicate
+  }
+
+  recentToasts.set(dedupeKey, now);
+
+  const toast: ToastMessage = { id: ++toastId, message, type, toastKey };
   listeners.forEach((listener) => listener(toast));
 }
 

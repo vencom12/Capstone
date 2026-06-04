@@ -6,6 +6,7 @@ const { logAiChange } = require('../../utils/aiLogger');
 const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 const jwt = require('jsonwebtoken');
 const { getActiveSuggestions } = require('./forecastingController');
+const { fetchGroqChatWithFallback, fetchGroqVisionWithFallback } = require('../../utils/groqClient');
 
 const getAISettings = async () => {
     try {
@@ -59,12 +60,17 @@ const executeAction = async (functionName, args, req) => {
             'getSystemAnalytics',
             'getMachineFleetStatus',
             'getAuditLogs',
-            'executeRecommendationAction'
+            'executeRecommendationAction',
+            'routeOrderToMachine',
+            'sendCustomerEmail',
+            'createMaintenanceTicket'
         ],
         employee: [
             'updateOrderStatus',
             'getMachineFleetStatus',
-            'getSystemAnalytics'
+            'getSystemAnalytics',
+            'routeOrderToMachine',
+            'createMaintenanceTicket'
         ],
         customer: []
     };
@@ -223,6 +229,54 @@ const executeAction = async (functionName, args, req) => {
         });
         actionResult = `Recent System Audit Logs:\n` + logs.map(l => `- [${l.timestamp.toISOString()}] User: ${l.userId || 'System'} (${l.userRole || 'Unknown'}) performed "${l.action}" on ${l.entity} (ID: ${l.entityId || 'N/A'})`).join('\n');
     }
+    else if (functionName === "routeOrderToMachine") {
+        const { orderId, machineId } = args;
+        const updated = await prisma.order.update({
+            where: { orderId: orderId },
+            data: { machineId: machineId, status: 'Preparing Order' }
+        });
+        actionResult = `Successfully routed order ${orderId} to machine ${machineId}.`;
+        
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
+        logAiChange(username, 'Route Order to Machine', actionResult);
+    }
+    else if (functionName === "sendCustomerEmail") {
+        const { orderId, subject, body } = args;
+        // Mock email sending - log to audit logs
+        await prisma.globalAuditLog.create({
+            data: {
+                userId: req.user?.id || 'system',
+                userRole: req.user?.role || 'admin',
+                action: 'SEND_CUSTOMER_EMAIL',
+                entity: 'Order',
+                entityId: orderId,
+                diff: { subject, body }
+            }
+        });
+        actionResult = `Successfully sent email to customer for order ${orderId} with subject: "${subject}".`;
+        logAiChange(username, 'Send Customer Email', actionResult);
+    }
+    else if (functionName === "createMaintenanceTicket") {
+        const { machineId, issue } = args;
+        const updated = await prisma.machine.update({
+            where: { id: machineId },
+            data: { status: 'Maintenance' }
+        });
+        
+        await prisma.globalAuditLog.create({
+            data: {
+                userId: req.user?.id || 'system',
+                userRole: req.user?.role || 'admin',
+                action: 'CREATE_MAINTENANCE_TICKET',
+                entity: 'Machine',
+                entityId: machineId,
+                diff: { issue }
+            }
+        });
+        actionResult = `Flagged machine ${machineId} for maintenance. Issue: ${issue}`;
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.MACHINE, updated);
+        logAiChange(username, 'Create Maintenance Ticket', actionResult);
+    }
     else if (functionName === "executeRecommendationAction") {
         const { suggestionId } = args;
         
@@ -348,6 +402,8 @@ const executeAction = async (functionName, args, req) => {
     }
     return actionResult;
 };
+
+
 
 exports.chat = async (req, res) => {
     try {
@@ -804,6 +860,52 @@ exports.chat = async (req, res) => {
                         required: ["suggestionId"]
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "routeOrderToMachine",
+                    description: "Assigns an order to a specific embroidery machine to start processing.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            orderId: { type: "string", description: "The unique order ID string (e.g. ORD-1234)" },
+                            machineId: { type: "string", description: "The unique UUID of the machine" }
+                        },
+                        required: ["orderId", "machineId"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "sendCustomerEmail",
+                    description: "Sends an email to the customer regarding their order (e.g., delays, issues, tracking).",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            orderId: { type: "string", description: "The unique order ID" },
+                            subject: { type: "string", description: "Email subject line" },
+                            body: { type: "string", description: "Email body content" }
+                        },
+                        required: ["orderId", "subject", "body"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "createMaintenanceTicket",
+                    description: "Flags a machine as needing maintenance and creates a support ticket.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            machineId: { type: "string", description: "The UUID of the machine" },
+                            issue: { type: "string", description: "Description of the machine failure or issue" }
+                        },
+                        required: ["machineId", "issue"]
+                    }
+                }
             }
         ];
 
@@ -813,13 +915,7 @@ exports.chat = async (req, res) => {
             { role: 'user', content: message }
         ];
 
-        let response = await fetch(GROQ_API_URL, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: "auto" })
-        });
-
-        let data = await response.json();
+        let data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages, tools, tool_choice: "auto" });
         
         // Mode A: Native Tool Call execution
         if (data.choices && data.choices[0] && data.choices[0].message.tool_calls) {
@@ -833,12 +929,7 @@ exports.chat = async (req, res) => {
                 messages.push({ role: "tool", tool_call_id: toolCall.id, name: functionName, content: actionResult });
             }
 
-            response = await fetch(GROQ_API_URL, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: MODEL, messages })
-            });
-            data = await response.json();
+            data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages });
         }
         // Mode B: Fallback XML-like function parsing (when Llama generates pseudo-XML in plain text)
         else if (data.choices && data.choices[0] && data.choices[0].message.content) {
@@ -875,12 +966,7 @@ exports.chat = async (req, res) => {
                     content: `[SYSTEM] Function execution results:\n${results.join('\n')}\n\nPlease confirm these updates to the user in a natural, friendly conversational reply.` 
                 });
 
-                response = await fetch(GROQ_API_URL, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: MODEL, messages })
-                });
-                data = await response.json();
+                data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages });
             }
         }
 
@@ -1005,21 +1091,14 @@ exports.verifyReceipt = async (req, res) => {
         // === STEP 1 & 2: Visual Classification + OCR Extraction ===
         console.log(`[AI Vision] Steps 1-2: Classifying and extracting data for Order ${orderId}...`);
 
-        const response = await fetch(GROQ_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: VISION_MODEL,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: `You are a payment verification auditor. Analyze this image and perform TWO tasks:
+        const data = await fetchGroqVisionWithFallback(apiKey, GROQ_API_URL, VISION_MODEL, {
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `You are a payment verification auditor. Analyze this image and perform TWO tasks:
 
 TASK 1 - VISUAL CLASSIFICATION:
 Determine if this image is a legitimate digital payment receipt/transaction confirmation (e.g., GCash, PayMaya, BPI, BDO, bank transfer screenshot). Look for:
@@ -1051,19 +1130,16 @@ Output ONLY a JSON object:
   "confidence": number (0 to 1),
   "reason": "string explaining the analysis"
 }`
-                            },
-                            {
-                                type: "image_url",
-                                image_url: { url: receiptUrl }
-                            }
-                        ]
-                    }
-                ],
-                response_format: { type: "json_object" }
-            })
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: receiptUrl }
+                        }
+                    ]
+                }
+            ],
+            response_format: { type: "json_object" }
         });
-
-        const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             throw new Error("AI failed to provide a valid response.");
@@ -1300,9 +1376,31 @@ exports.storefrontChat = async (req, res) => {
             }
         }
 
-        // Fetch product catalog with stock enrichment
+        // Generate semantic embedding for the user's message
+        const { generateEmbedding } = require('../../utils/embeddingClient');
+        const queryEmbedding = await generateEmbedding(message);
+        const tenantStorage = require('../../utils/tenantContext');
+        const currentTenantId = tenantStorage.getStore();
+
+        let rawProducts = [];
+        if (queryEmbedding && currentTenantId) {
+            // Perform RAG Vector Search using pgvector cosine distance (<=>)
+            rawProducts = await prisma.$queryRaw`
+                SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount"
+                FROM "Product"
+                WHERE "tenantId" = ${currentTenantId}
+                ORDER BY embedding <=> ${queryEmbedding}::vector
+                LIMIT 10
+            `;
+        } else {
+            // Fallback to recent products if embedding fails or no tenant
+            rawProducts = await prisma.product.findMany({ 
+                take: 10,
+                orderBy: { createdAt: 'desc' } 
+            });
+        }
+
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const rawProducts = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
         const products = await enrichProductsWithStock(rawProducts);
 
         const productCatalog = products.map(p => ({
@@ -1310,7 +1408,6 @@ exports.storefrontChat = async (req, res) => {
             name: p.name,
             price: p.price,
             tag: p.tag,
-            tags: p.tags || [],
             description: p.description || '',
             availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
             isOutOfStock: p.isOutOfStock || false
@@ -1376,21 +1473,11 @@ CONVERSATION STYLE:
             { role: 'user', content: message }
         ];
 
-        const response = await fetch(GROQ_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: MODEL,
-                messages,
-                temperature: 0.7,
-                max_tokens: 1024
-            })
+        const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
+            messages,
+            temperature: 0.7,
+            max_tokens: 1024
         });
-
-        const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             console.error('[AI Storefront] No valid response:', JSON.stringify(data));

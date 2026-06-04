@@ -35,6 +35,10 @@ router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'),
 router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
 router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);
+router.post('/intelligence/decline', adminAuth(), forecastingController.declineSuggestionAction);
+
+router.get('/purchase-orders', adminAuth(), forecastingController.getPurchaseOrders);
+router.put('/purchase-orders/:id/approve', adminAuth(), forecastingController.approvePurchaseOrder);
 
 // --- Staff (Admin + Employee) Routes ---
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);

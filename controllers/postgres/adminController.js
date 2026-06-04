@@ -217,6 +217,9 @@ exports.createProduct = async (req, res) => {
 
         const recipe = req.body.recipe ? JSON.parse(req.body.recipe) : [];
 
+        const { generateEmbedding } = require('../../utils/embeddingClient');
+        const embedding = await generateEmbedding(`${name} ${tag} ${description || ''}`);
+
         const newProduct = await prisma.product.create({
             data: { 
                 name, 
@@ -229,6 +232,10 @@ exports.createProduct = async (req, res) => {
                 minThreshold: minThreshold !== undefined ? parseInt(minThreshold) : 5
             }
         });
+
+        if (embedding) {
+            await prisma.$executeRaw`UPDATE "Product" SET embedding = ${embedding}::vector WHERE id = ${newProduct.id}`;
+        }
 
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const [enrichedProduct] = await enrichProductsWithStock([newProduct]);
@@ -281,6 +288,15 @@ exports.updateProduct = async (req, res) => {
             where: { id: req.params.id },
             data: updateData
         });
+
+        if (name !== undefined || tag !== undefined || description !== undefined) {
+            const { generateEmbedding } = require('../../utils/embeddingClient');
+            const fullProduct = await prisma.product.findUnique({ where: { id: req.params.id } });
+            const embedding = await generateEmbedding(`${fullProduct.name} ${fullProduct.tag} ${fullProduct.description || ''}`);
+            if (embedding) {
+                await prisma.$executeRaw`UPDATE "Product" SET embedding = ${embedding}::vector WHERE id = ${req.params.id}`;
+            }
+        }
 
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const [enrichedProduct] = await enrichProductsWithStock([product]);

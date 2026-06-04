@@ -34,8 +34,8 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
   const [executingId, setExecutingId] = useState<string | null>(null);
 
   // 1. Fetch Business Analytics Data
-  const fetchAnalytics = async () => {
-    setIsLoadingAnalytics(true);
+  const fetchAnalytics = async (isBackground = false) => {
+    if (!isBackground) setIsLoadingAnalytics(true);
     try {
       const data = await api.get<any>('/api/admin/analytics');
       if (data) {
@@ -44,13 +44,13 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
     } catch (err) {
       console.error('Failed to load business analytics:', err);
     } finally {
-      setIsLoadingAnalytics(false);
+      if (!isBackground) setIsLoadingAnalytics(false);
     }
   };
 
   // 2. Fetch Business Intelligence suggestions & projections
-  const fetchBI = async () => {
-    setIsLoadingBI(true);
+  const fetchBI = async (isBackground = false) => {
+    if (!isBackground) setIsLoadingBI(true);
     try {
       const data = await api.get<any>('/api/admin/intelligence/suggestions');
       if (data) {
@@ -59,7 +59,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
     } catch (err) {
       console.error('Failed to load BI suggestions:', err);
     } finally {
-      setIsLoadingBI(false);
+      if (!isBackground) setIsLoadingBI(false);
     }
   };
 
@@ -70,6 +70,19 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
 
   const handleExecuteAction = async (suggestion: any) => {
     setExecutingId(suggestion.id);
+    
+    // Cache previous state
+    const previousState = biData;
+    
+    // Optimistically remove suggestion from state
+    setBiData((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        suggestions: prev.suggestions.filter((s: any) => s.id !== suggestion.id)
+      };
+    });
+
     try {
       showToast(`Executing BI strategy: ${suggestion.title}...`, 'info');
       const res = await api.post<any>('/api/admin/intelligence/execute', {
@@ -78,12 +91,49 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
       });
       showToast(res.message || 'Strategy action implemented successfully!', 'success');
       
-      // Reload both analytics and BI suggestions
-      fetchAnalytics();
-      fetchBI();
+      // Background reloads
+      fetchAnalytics(true);
+      fetchBI(true);
     } catch (err: any) {
       console.error(err);
       showToast(err.message || 'Failed to execute strategic action', 'error');
+      // Revert optimistic update locally without network request
+      setBiData(previousState);
+    } finally {
+      setExecutingId(null);
+    }
+  };
+
+  const handleDeclineAction = async (suggestionId: string) => {
+    setExecutingId(suggestionId);
+    
+    // Cache previous state
+    const previousState = biData;
+    
+    // Optimistically remove suggestion from state
+    setBiData((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        suggestions: prev.suggestions.filter((s: any) => s.id !== suggestionId)
+      };
+    });
+
+    try {
+      showToast('Declining recommendation...', 'info');
+      const res = await api.post<any>('/api/admin/intelligence/decline', {
+        suggestionId
+      });
+      showToast(res.message || 'Recommendation declined successfully.', 'success');
+      
+      // Background reloads
+      fetchAnalytics(true);
+      fetchBI(true);
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to decline recommendation', 'error');
+      // Revert optimistic update locally without network request
+      setBiData(previousState);
     } finally {
       setExecutingId(null);
     }
@@ -309,26 +359,36 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => handleExecuteAction(s)}
-                      disabled={isExecuting || !!executingId}
-                      className={`w-full py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2
-                        ${isCritical 
-                          ? 'bg-danger text-white hover:bg-danger/90' 
-                          : isWarning
-                            ? 'bg-warning text-black hover:bg-warning/90'
-                            : 'bg-primary text-white hover:bg-primary/95'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {isExecuting ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                          <span>Implementing...</span>
-                        </>
-                      ) : (
-                        <span>{s.actionText || 'Implement Action'}</span>
-                      )}
-                    </button>
+                    <div className="flex gap-2 w-full mt-auto">
+                      <button
+                        onClick={() => handleExecuteAction(s)}
+                        disabled={isExecuting || !!executingId}
+                        className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2
+                          ${isCritical 
+                            ? 'bg-danger text-white hover:bg-danger/90' 
+                            : isWarning
+                              ? 'bg-warning text-black hover:bg-warning/90'
+                              : 'bg-primary text-white hover:bg-primary/95'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {isExecuting ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                            <span>Implementing...</span>
+                          </>
+                        ) : (
+                          <span>{s.actionText || 'Implement Action'}</span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleDeclineAction(s.id)}
+                        disabled={isExecuting || !!executingId}
+                        className="bg-white/5 border border-border-glass text-text-dim px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        Decline
+                      </button>
+                    </div>
                   </div>
                 );
               })}

@@ -3,6 +3,7 @@ const fetch = global.fetch || require('node-fetch');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
+const { fetchGroqChatWithFallback } = require('../../utils/groqClient');
 
 // Simple global in-memory cache for BI suggestions
 let biCache = null;
@@ -201,9 +202,27 @@ async function getActiveSuggestionsInternal(force = false) {
     const fallbackSuggestions = [];
 
     // restock alarms
-    safetyStockProjections.forEach(proj => {
+    for (const proj of safetyStockProjections) {
         if (proj.isAlarmed || proj.depletionRisk === 'Critical' || proj.depletionRisk === 'Warning') {
             const suggestAmount = Math.max(10, proj.minThreshold * 2 - proj.count);
+            
+            // Phase 3: Predictive Procurement - Auto-draft PO for Critical Items
+            if (proj.depletionRisk === 'Critical' || proj.isAlarmed) {
+                const existingDraft = await prisma.purchaseOrder.findFirst({
+                    where: { inventoryId: proj.id, status: 'Draft' }
+                });
+                if (!existingDraft) {
+                    await prisma.purchaseOrder.create({
+                        data: {
+                            inventoryId: proj.id,
+                            quantity: suggestAmount,
+                            status: 'Draft',
+                            estimatedCost: suggestAmount * 5.0 // Estimated cost mock
+                        }
+                    });
+                }
+            }
+
             fallbackSuggestions.push({
                 id: `SUG-INV-${proj.id}`,
                 title: `Restock Spools: ${proj.item}`,
@@ -221,7 +240,7 @@ async function getActiveSuggestionsInternal(force = false) {
                 }
             });
         }
-    });
+    }
 
     // pricing optimizations based on sales velocity in the last 14 days
     const orderCounts = {};
@@ -241,16 +260,17 @@ async function getActiveSuggestionsInternal(force = false) {
             const suggestedPrice = parseFloat((originalPrice * 1.1).toFixed(2));
             fallbackSuggestions.push({
                 id: `SUG-PRICE-INC-${p.id}`,
-                title: `Price Optimization: ${p.name}`,
+                title: `A/B Price Testing: ${p.name}`,
                 category: 'Pricing',
                 severity: 'info',
-                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is $${originalPrice.toFixed(2)}. Suggest raising price to $${suggestedPrice.toFixed(2)} to capture higher margin during peak demand.`,
-                actionText: `Adjust Price to $${suggestedPrice.toFixed(2)}`,
+                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is $${originalPrice.toFixed(2)}. Suggest running an A/B test with a 10% price increase ($${suggestedPrice.toFixed(2)}) to model price elasticity and maximize margin.`,
+                actionText: `Start A/B Test ($${originalPrice.toFixed(2)} vs $${suggestedPrice.toFixed(2)})`,
                 action: {
-                    type: 'updatePrice',
+                    type: 'startAbTest',
                     payload: {
                         productId: p.id,
-                        price: suggestedPrice
+                        variantAPrice: originalPrice,
+                        variantBPrice: suggestedPrice
                     }
                 }
             });
@@ -344,18 +364,12 @@ Each object in the array must contain:
 
 Return ONLY the valid JSON array of objects.`;
 
-            const response = await fetch(GROQ_API_URL, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: MODEL,
-                    messages: [{ role: 'user', content: systemPrompt }],
-                    temperature: 0.1
-                })
+            const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
+                messages: [{ role: 'user', content: systemPrompt }],
+                temperature: 0.1
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (data) {
                 if (data.choices && data.choices[0] && data.choices[0].message?.content) {
                     const contentText = data.choices[0].message.content.trim();
                     const cleanJson = contentText.replace(/^```json/, '').replace(/```$/, '').trim();
@@ -387,6 +401,23 @@ Return ONLY the valid JSON array of objects.`;
             revenue: projectedRevenue
         }
     };
+
+    // Filter out declined suggestions
+    try {
+        // Prune recommendations older than 7 days
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        await prisma.declinedRecommendation.deleteMany({
+            where: { declinedAt: { lt: sevenDaysAgo } }
+        });
+
+        const declinedRecs = await prisma.declinedRecommendation.findMany({
+            select: { sugId: true }
+        });
+        const declinedIds = new Set(declinedRecs.map(d => d.sugId));
+        suggestions = suggestions.filter(s => !declinedIds.has(s.id));
+    } catch (dbErr) {
+        console.error('[BI Engine] Failed to fetch declined recommendations:', dbErr.message);
+    }
 
     biCache = { metrics, projections, suggestions };
     cacheTime = now;
@@ -473,6 +504,33 @@ exports.executeSuggestionAction = async (req, res) => {
             const productsList = await prisma.product.findMany();
             const enriched = await enrichProductsWithStock(productsList);
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enriched);
+        }
+        else if (actionType === 'startAbTest') {
+            const { productId, variantAPrice, variantBPrice } = payload;
+            const updated = await prisma.product.update({
+                where: { id: productId },
+                data: { 
+                    isAbTesting: true,
+                    variantAPrice: parseFloat(variantAPrice),
+                    variantBPrice: parseFloat(variantBPrice),
+                    variantAViews: 0,
+                    variantBViews: 0,
+                    variantAOrders: 0,
+                    variantBOrders: 0
+                }
+            });
+
+            entity = ENTITIES.PRODUCT;
+            entityId = updated.id;
+            actionDetails = `Started A/B price test for "${updated.name}" ($${variantAPrice} vs $${variantBPrice})`;
+            logAiChange(username, 'Start A/B Test', actionDetails);
+
+            biCache = null;
+
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            const productsList = await prisma.product.findMany();
+            const enriched = await enrichProductsWithStock(productsList);
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enriched);
         } 
         else if (actionType === 'prioritizeOrder') {
             const { orderId, isRush, priorityScore } = payload;
@@ -517,5 +575,89 @@ exports.executeSuggestionAction = async (req, res) => {
     } catch (err) {
         console.error('executeSuggestionAction Error:', err);
         res.status(500).json({ message: `Failed to execute BI action: ${err.message}` });
+    }
+};
+
+exports.declineSuggestionAction = async (req, res) => {
+    try {
+        const { suggestionId } = req.body;
+        if (!suggestionId) {
+            return res.status(400).json({ message: 'Missing suggestionId' });
+        }
+
+        await prisma.declinedRecommendation.upsert({
+            where: { sugId: suggestionId },
+            update: {},
+            create: { sugId: suggestionId }
+        });
+
+        // Invalidate BI Cache so declined suggestions disappear
+        biCache = null;
+
+        res.json({ success: true, message: `Recommendation ${suggestionId} declined successfully.` });
+    } catch (err) {
+        console.error('declineSuggestionAction Error:', err);
+        res.status(500).json({ message: `Failed to decline recommendation: ${err.message}` });
+    }
+};
+
+exports.getPurchaseOrders = async (req, res) => {
+    try {
+        const pos = await prisma.purchaseOrder.findMany({
+            include: { inventory: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(pos);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching purchase orders' });
+    }
+};
+
+exports.approvePurchaseOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: { status: 'Approved' }
+        });
+
+        // Add to global audit log
+        await prisma.globalAuditLog.create({
+            data: {
+                userId: req.user?.id || 'system',
+                userRole: req.user?.role || 'admin',
+                action: 'APPROVE_PURCHASE_ORDER',
+                entity: 'PurchaseOrder',
+                entityId: updated.id,
+                ipAddress: req.ip || '127.0.0.1',
+                diff: { status: 'Approved' }
+            }
+        });
+
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ message: 'Error approving purchase order' });
+    }
+};
+
+exports.trackProductView = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { variant } = req.body; // 'A' or 'B'
+        
+        const dataToUpdate = {};
+        if (variant === 'A') dataToUpdate.variantAViews = { increment: 1 };
+        if (variant === 'B') dataToUpdate.variantBViews = { increment: 1 };
+
+        if (Object.keys(dataToUpdate).length > 0) {
+            await prisma.product.update({
+                where: { id },
+                data: dataToUpdate
+            });
+        }
+        res.json({ success: true });
+    } catch (err) {
+        // silent fail to avoid interrupting user experience
+        res.status(500).json({ success: false });
     }
 };

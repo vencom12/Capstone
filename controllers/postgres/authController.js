@@ -37,6 +37,14 @@ exports.register = async (req, res) => {
         // Hash password (Prisma doesn't have pre-save hooks like Mongoose)
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        let targetTenantId = req.body.tenantId;
+        if (!targetTenantId) {
+            const legacyTenant = await prisma.tenant.findFirst({
+                where: { name: 'Stitch-Opt Legacy' }
+            });
+            targetTenantId = legacyTenant ? legacyTenant.id : null;
+        }
+
         const user = await prisma.user.create({
             data: {
                 username,
@@ -44,11 +52,12 @@ exports.register = async (req, res) => {
                 password: hashedPassword,
                 role: 'customer',
                 phoneNumber,
-                address
+                address,
+                tenantId: targetTenantId
             }
         });
 
-        const token = jwt.sign({ id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user.id, role: 'customer', tenantId: targetTenantId, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('customer_token', token, {
             httpOnly: true,
@@ -65,7 +74,8 @@ exports.register = async (req, res) => {
                 email: user.email,
                 walletBalance: 0,
                 address: user.address,
-                phoneNumber: user.phoneNumber
+                phoneNumber: user.phoneNumber,
+                tenantId: targetTenantId
             } 
         });
     } catch (err) {
@@ -119,7 +129,7 @@ exports.login = async (req, res) => {
         }
 
         const expiresIn = rememberMe ? '30d' : '1d';
-        const token = jwt.sign({ id: user.id, role: user.role, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn });
+        const token = jwt.sign({ id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn });
 
         const cookieOptions = {
             httpOnly: true,
@@ -142,7 +152,8 @@ exports.login = async (req, res) => {
                 email: user.email,
                 walletBalance: user.walletBalance || 0,
                 address: user.address || '',
-                phoneNumber: user.phoneNumber || ''
+                phoneNumber: user.phoneNumber || '',
+                tenantId: user.tenantId
             } 
         });
     } catch (err) {
