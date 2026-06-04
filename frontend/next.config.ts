@@ -13,10 +13,6 @@ const nextConfig: NextConfig = {
     // Disable type checking during build to prevent OOM errors on Render free tier
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Disable linting during build to speed up and reduce memory footprint on Render
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;
