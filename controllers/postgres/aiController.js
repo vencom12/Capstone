@@ -4,6 +4,8 @@ const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
 const { handleOrderStateTransition } = require('../../utils/inventoryManager');
+const jwt = require('jsonwebtoken');
+const { getActiveSuggestions } = require('./forecastingController');
 
 const getAISettings = async () => {
     try {
@@ -29,6 +31,49 @@ const getAISettings = async () => {
 };
 
 const executeAction = async (functionName, args, req) => {
+    if (!req.user || !req.user.id) {
+        return `Forbidden: Unauthenticated request.`;
+    }
+
+    const dbUser = await prisma.user.findUnique({
+        where: { id: req.user.id }
+    });
+
+    if (!dbUser) {
+        return `Forbidden: User not found.`;
+    }
+
+    const userRole = dbUser.role;
+    const username = dbUser.username;
+
+    // Strict Role-Based Access Control
+    const allowedTools = {
+        admin: [
+            'updateOrderStatus',
+            'updateInventoryStock',
+            'createInventoryItem',
+            'deleteInventoryItem',
+            'createProduct',
+            'deleteProduct',
+            'updateProduct',
+            'getSystemAnalytics',
+            'getMachineFleetStatus',
+            'getAuditLogs',
+            'executeRecommendationAction'
+        ],
+        employee: [
+            'updateOrderStatus',
+            'getMachineFleetStatus',
+            'getSystemAnalytics'
+        ],
+        customer: []
+    };
+
+    const userAllowed = allowedTools[userRole] || [];
+    if (!userAllowed.includes(functionName)) {
+        return `Forbidden: Insufficient privileges. Role "${userRole}" is not authorized to execute tool "${functionName}".`;
+    }
+
     let actionResult = "";
     if (functionName === "updateOrderStatus") {
         const order = await prisma.order.findUnique({
@@ -40,7 +85,7 @@ const executeAction = async (functionName, args, req) => {
             let updated;
             try {
                 updated = await prisma.$transaction(async (tx) => {
-                    return await handleOrderStateTransition(tx, order.id, args.status, 'StitchMaster AI');
+                    return await handleOrderStateTransition(tx, order.id, args.status, username);
                 });
                 actionResult = `Successfully updated Order ${args.orderId} status to "${args.status}".`;
             } catch (err) {
@@ -64,7 +109,7 @@ const executeAction = async (functionName, args, req) => {
                 const { enrichProductsWithStock } = require('../../utils/inventoryManager');
                 const enrichedProducts = await enrichProductsWithStock(productsList);
                 socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
-                logAiChange('StitchMaster AI', 'Update Order Status', `Set order ${args.orderId} status to "${args.status}"`);
+                logAiChange(username, 'Update Order Status', `Set order ${args.orderId} status to "${args.status}"`);
             }
         }
     } 
@@ -77,7 +122,7 @@ const executeAction = async (functionName, args, req) => {
         if (updated) {
             const allInv = await prisma.inventory.findMany();
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, allInv);
-            logAiChange('StitchMaster AI', 'Update Stock Count', `Set ${args.itemName} quantity to ${args.quantity}`);
+            logAiChange(username, 'Update Stock Count', `Set ${args.itemName} quantity to ${args.quantity}`);
         }
     } 
     else if (functionName === "createInventoryItem") {
@@ -93,7 +138,7 @@ const executeAction = async (functionName, args, req) => {
         if (created) {
             const allInv = await prisma.inventory.findMany();
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.INVENTORY, allInv);
-            logAiChange('StitchMaster AI', 'Create Stock Material', `Added ${args.itemName} with initial stock of ${args.count}`);
+            logAiChange(username, 'Create Stock Material', `Added ${args.itemName} with initial stock of ${args.count}`);
         }
     } 
     else if (functionName === "deleteInventoryItem") {
@@ -104,7 +149,7 @@ const executeAction = async (functionName, args, req) => {
         if (deleted) {
             const allInv = await prisma.inventory.findMany();
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.INVENTORY, allInv);
-            logAiChange('StitchMaster AI', 'Delete Stock Material', `Deleted raw material "${args.itemName}"`);
+            logAiChange(username, 'Delete Stock Material', `Deleted raw material "${args.itemName}"`);
         }
     } 
     else if (functionName === "createProduct") {
@@ -122,7 +167,7 @@ const executeAction = async (functionName, args, req) => {
             const { enrichProductsWithStock } = require('../../utils/inventoryManager');
             const [enrichedCreated] = await enrichProductsWithStock([created]);
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, enrichedCreated);
-            logAiChange('StitchMaster AI', 'Create Product Catalog', `Created product "${args.name}" at price $${args.price}`);
+            logAiChange(username, 'Create Product Catalog', `Created product "${args.name}" at price $${args.price}`);
         }
     } 
     else if (functionName === "deleteProduct") {
@@ -132,7 +177,7 @@ const executeAction = async (functionName, args, req) => {
         actionResult = deleted ? `Successfully deleted catalog product design (ID: ${args.productId}).` : `Failed to delete catalog product.`;
         if (deleted) {
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.PRODUCT, { id: args.productId });
-            logAiChange('StitchMaster AI', 'Delete Product Catalog', `Deleted design catalog product ID: ${args.productId}`);
+            logAiChange(username, 'Delete Product Catalog', `Deleted design catalog product ID: ${args.productId}`);
         }
     } 
     else if (functionName === "updateProduct") {
@@ -150,7 +195,7 @@ const executeAction = async (functionName, args, req) => {
             const { enrichProductsWithStock } = require('../../utils/inventoryManager');
             const [enrichedUpdated] = await enrichProductsWithStock([updated]);
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedUpdated);
-            logAiChange('StitchMaster AI', 'Update Product Catalog', `Updated details for product catalog design "${updated.name}"`);
+            logAiChange(username, 'Update Product Catalog', `Updated details for product catalog design "${updated.name}"`);
         }
     }
     else if (functionName === "getSystemAnalytics") {
@@ -178,6 +223,129 @@ const executeAction = async (functionName, args, req) => {
         });
         actionResult = `Recent System Audit Logs:\n` + logs.map(l => `- [${l.timestamp.toISOString()}] User: ${l.userId || 'System'} (${l.userRole || 'Unknown'}) performed "${l.action}" on ${l.entity} (ID: ${l.entityId || 'N/A'})`).join('\n');
     }
+    else if (functionName === "executeRecommendationAction") {
+        const { suggestionId } = args;
+        
+        let suggestionsData;
+        try {
+            suggestionsData = await getActiveSuggestions(false);
+        } catch (err) {
+            return `Failed to fetch active recommendations: ${err.message}`;
+        }
+        
+        const suggestion = suggestionsData?.suggestions?.find(s => s.id === suggestionId);
+        if (!suggestion) {
+            return `Could not find active recommendation with ID "${suggestionId}".`;
+        }
+        
+        const { type: actionType, payload } = suggestion.action || {};
+        if (!actionType || !payload) {
+            return `Recommendation "${suggestionId}" has no valid executable action.`;
+        }
+        
+        let actionDetails = '';
+        let entityId = '';
+        let entity = '';
+        
+        if (actionType === 'restock') {
+            const { inventoryId, amount, itemName } = payload;
+            const existing = await prisma.inventory.findUnique({ where: { id: inventoryId } });
+            if (!existing) {
+                return `Could not find material "${itemName}" (ID: ${inventoryId}) for restocking.`;
+            }
+
+            const updated = await prisma.inventory.update({
+                where: { id: inventoryId },
+                data: { count: existing.count + parseInt(amount) }
+            });
+
+            await prisma.inventoryLog.create({
+                data: {
+                    inventoryId: updated.id,
+                    action: 'Add',
+                    amount: parseInt(amount),
+                    newTotal: updated.count,
+                    userId: username
+                }
+            });
+
+            entity = ENTITIES.INVENTORY;
+            entityId = updated.id;
+            actionDetails = `Restocked spool "${updated.item}" (+${amount} cones). New total: ${updated.count}`;
+            logAiChange(username, 'Restock Spool (AI Recommendation)', actionDetails);
+
+            try {
+                await getActiveSuggestions(true);
+            } catch (cacheErr) {
+                console.warn('[AI Recommendation] Invalidation warning:', cacheErr.message);
+            }
+
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+        } 
+        else if (actionType === 'updatePrice') {
+            const { productId, price } = payload;
+            const updated = await prisma.product.update({
+                where: { id: productId },
+                data: { price: parseFloat(price) }
+            });
+
+            entity = ENTITIES.PRODUCT;
+            entityId = updated.id;
+            actionDetails = `Adjusted price for "${updated.name}" to $${price}`;
+            logAiChange(username, 'Adjust Product Price (AI Recommendation)', actionDetails);
+
+            try {
+                await getActiveSuggestions(true);
+            } catch (cacheErr) {
+                console.warn('[AI Recommendation] Invalidation warning:', cacheErr.message);
+            }
+
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            const productsList = await prisma.product.findMany();
+            const enriched = await enrichProductsWithStock(productsList);
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enriched);
+        } 
+        else if (actionType === 'prioritizeOrder') {
+            const { orderId, isRush, priorityScore } = payload;
+            const updated = await prisma.order.update({
+                where: { id: orderId },
+                data: { 
+                    isRush: isRush,
+                    priorityScore: parseFloat(priorityScore) 
+                }
+            });
+
+            entity = ENTITIES.ORDER;
+            entityId = updated.id;
+            actionDetails = `Set order ${updated.orderId} to Rush priority (Score: ${priorityScore})`;
+            logAiChange(username, 'Prioritize Order (AI Recommendation)', actionDetails);
+
+            try {
+                await getActiveSuggestions(true);
+            } catch (cacheErr) {
+                console.warn('[AI Recommendation] Invalidation warning:', cacheErr.message);
+            }
+
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
+        } 
+        else {
+            return `Unknown recommendation action type: ${actionType}`;
+        }
+        
+        await prisma.globalAuditLog.create({
+            data: {
+                userId: req.user?.id || 'system',
+                userRole: req.user?.role || 'admin',
+                action: `BI_AUTO_${actionType.toUpperCase()}`,
+                entity: entity,
+                entityId: entityId,
+                ipAddress: req.ip || '127.0.0.1',
+                diff: payload
+            }
+        });
+        
+        actionResult = `Successfully executed recommendation "${suggestionId}": ${actionDetails}`;
+    }
     return actionResult;
 };
 
@@ -185,6 +353,8 @@ exports.chat = async (req, res) => {
     try {
         const { message, history } = req.body;
         const apiKey = process.env.GROQ_API_KEY;
+
+        const now = new Date();
 
         const aiSettings = await getAISettings();
         const GROQ_API_URL = aiSettings.aiProviderUrl;
@@ -312,7 +482,87 @@ exports.chat = async (req, res) => {
             description: p.description
         }));
 
-        const systemPrompt = `You are StitchMaster AI, the super-privileged automated business intelligence facilitator for Stitch-Opt.
+        const dbUser = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+        if (!dbUser) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        // Fetch active recommendations
+        let activeSuggestions = [];
+        try {
+            const suggestionsData = await getActiveSuggestions(false);
+            activeSuggestions = suggestionsData?.suggestions || [];
+        } catch (suggestionErr) {
+            console.error('[AI Chat] Failed to fetch active suggestions:', suggestionErr);
+        }
+
+        let suggestionsContext = '';
+        if (activeSuggestions.length > 0) {
+            suggestionsContext = `\nACTIVE BUSINESS INTELLIGENCE STRATEGIC RECOMMENDATIONS:\n`;
+            activeSuggestions.forEach(s => {
+                suggestionsContext += `- Recommendation ID: ${s.id}\n`;
+                suggestionsContext += `  Title: ${s.title}\n`;
+                suggestionsContext += `  Category: ${s.category}\n`;
+                suggestionsContext += `  Severity: ${s.severity}\n`;
+                suggestionsContext += `  Description: ${s.description}\n`;
+                suggestionsContext += `  Action Text: ${s.actionText}\n`;
+                suggestionsContext += `  Action Payload: ${JSON.stringify(s.action || {})}\n\n`;
+            });
+            suggestionsContext += `You can execute any recommendation using executeRecommendationAction tool with the suggestionId parameter.\n`;
+        } else {
+            suggestionsContext = `\nACTIVE BUSINESS INTELLIGENCE STRATEGIC RECOMMENDATIONS: None\n`;
+        }
+
+        let userPromptContext = `\nAUTHENTICATED USER PROFILE:\n`;
+        userPromptContext += `- Username: ${dbUser.username}\n`;
+        userPromptContext += `- Role: ${dbUser.role}\n`;
+
+        if (dbUser.role === 'employee') {
+            const userMachines = await prisma.machine.findMany({
+                where: { assignedUserId: dbUser.id }
+            });
+            const machineIds = userMachines.map(m => m.id);
+            const activeTasks = machineIds.length > 0 ? await prisma.order.findMany({
+                where: {
+                    machineId: { in: machineIds },
+                    NOT: {
+                        status: { in: ['Order Delivered', 'Completed', 'Order Canceled', 'Cancelled'] }
+                    }
+                }
+            }) : [];
+
+            userPromptContext += `\nOPERATOR MACHINE ASSIGNMENTS:\n`;
+            if (userMachines.length > 0) {
+                userMachines.forEach(m => {
+                    userPromptContext += `  * ${m.name} (${m.type}) - Status: ${m.status}\n`;
+                });
+            } else {
+                userPromptContext += `  * None (No machines currently assigned to you)\n`;
+            }
+
+            userPromptContext += `\nOPERATOR ACTIVE TASK LIST (Unfinished orders on your assigned machines):\n`;
+            if (activeTasks.length > 0) {
+                activeTasks.forEach(t => {
+                    userPromptContext += `  * Order ID: ${t.orderId}, Client: ${t.client}, Design: ${t.design}, Status: ${t.status}, Progress: ${t.progress}%\n`;
+                });
+            } else {
+                userPromptContext += `  * None (No active tasks)\n`;
+            }
+
+            userPromptContext += `\nCRITICAL ROLE PRIVILEGES & DUTIES:
+- You are chatting with an Employee / Operator.
+- Focus strictly on operator duties: viewing/managing their assigned machines and updating the order workbench queue.
+- If they ask to perform administrative tasks (such as adjusting inventory stock, creating/deleting catalog products, purges, or fetching audit logs), explain that they have operator status and lack sufficient privileges. Do NOT run tools they don't have access to.`;
+        } else if (dbUser.role === 'admin') {
+            userPromptContext += `\nCRITICAL ROLE PRIVILEGES & DUTIES:
+- You are chatting with an Administrator.
+- You have access to all database mutation tools, audit logs, inventory adjustments, product catalog operations, and business intelligence recommendations.
+- You can execute strategic forecasting, optimize pricing, run restocks, and review security logs.`;
+        }
+
+        const systemPrompt = `You are StitchMaster AI, the strategic automated business intelligence facilitator for Stitch-Opt.
         
         CRITICAL REAL-TIME SYSTEM CONTEXT:
         - Active Orders: Total ${orderSummary.total} orders. Status: ${orderSummary.delivered} Delivered, ${orderSummary.preparing} Preparing, ${orderSummary.queue} In Queue, ${orderSummary.canceled} Canceled.
@@ -324,16 +574,18 @@ exports.chat = async (req, res) => {
         - Storefront Conversion Rate: ${(conversionRate * 100).toFixed(1)}% (based on ${totalVisits365D} visits and ${totalOrders365D} orders in the past 365 days)
         - Material Depletion Forecasts (velocity/day & days remaining): ${JSON.stringify(biForecastSummary)}
         
+        ${suggestionsContext}
+        ${userPromptContext}
+        
         POWERS & RESPONSIBILITIES:
-        - You have FULL privileges to alter database records dynamically (Orders, Inventory Stockpile, and Design Catalog Products) based on user instructions.
-        - Always look for exact matches or IDs. If a user asks to modify "White Thread" but it is "White Thread Cone" in the stockpile, use "White Thread Cone".
-        - Confirm mutations immediately using the tools provided.
+        - You have dynamic database access via tools based on the user's role.
+        - Confirm actions only after executing tools successfully.
         - Provide strategic advice, analysis, strategies, and tactics for the business based on inventory counts and order trends.
         - Format responses beautifully with markdown lists, bold headers, and transparent advice.
         - Every time you modify the database, the system will automatically record it in the change logs.
         
         CRITICAL TOOL USE CONSTRAINTS:
-        1. Do NOT call any database mutation functions/tools (like createProduct, updateOrderStatus, etc.) unless the user explicitly requests an action or modification to the database. For informational queries, brainstorming, or suggestions (like "suggest name for four designs"), do NOT call any tools; reply strictly with text.
+        1. Do NOT call any database mutation functions/tools unless the user explicitly requests an action or modification to the database. For informational queries, brainstorming, or suggestions, do NOT call any tools; reply strictly with text.
         2. If you decide to call a tool, you MUST ONLY generate the tool call itself. Do NOT output any markdown, conversational text, explanations, or thoughts before or after the tool call, as this will crash the API client. You will have a chance to explain or confirm the action in the subsequent chat turn once the system provides the tool execution result.`;
 
         const tools = [
@@ -487,6 +739,20 @@ exports.chat = async (req, res) => {
                         }
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "executeRecommendationAction",
+                    description: "Execute a strategic business recommendation from the BI dashboard by its suggestion ID",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            suggestionId: { type: "string", description: "The unique recommendation/suggestion ID (e.g. SUG-INV-1, SUG-PRICE-INC-1, SUG-OPS-1)" }
+                        },
+                        required: ["suggestionId"]
+                    }
+                }
             }
         ];
 
@@ -506,14 +772,15 @@ exports.chat = async (req, res) => {
         
         // Mode A: Native Tool Call execution
         if (data.choices && data.choices[0] && data.choices[0].message.tool_calls) {
-            const toolCall = data.choices[0].message.tool_calls[0];
-            const functionName = toolCall.function.name;
-            const args = JSON.parse(toolCall.function.arguments);
-            
-            const actionResult = await executeAction(functionName, args, req);
-
+            const toolCalls = data.choices[0].message.tool_calls;
             messages.push(data.choices[0].message);
-            messages.push({ role: "tool", tool_call_id: toolCall.id, name: functionName, content: actionResult });
+            
+            for (const toolCall of toolCalls) {
+                const functionName = toolCall.function.name;
+                const args = JSON.parse(toolCall.function.arguments);
+                const actionResult = await executeAction(functionName, args, req);
+                messages.push({ role: "tool", tool_call_id: toolCall.id, name: functionName, content: actionResult });
+            }
 
             response = await fetch(GROQ_API_URL, {
                 method: 'POST',
@@ -929,6 +1196,59 @@ exports.storefrontChat = async (req, res) => {
             });
         }
 
+        // Fetch user context if authenticated
+        const token = req.cookies?.admin_token || req.cookies?.employee_token || req.cookies?.customer_token || req.cookies?.token;
+        let customerContext = '';
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const dbUser = await prisma.user.findUnique({
+                    where: { id: decoded.id },
+                    include: {
+                        favorites: {
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true
+                            }
+                        },
+                        orders: {
+                            take: 5,
+                            orderBy: { createdAt: 'desc' },
+                            select: {
+                                orderId: true,
+                                status: true,
+                                totalAmount: true,
+                                createdAt: true,
+                                design: true
+                            }
+                        }
+                    }
+                });
+
+                if (dbUser && dbUser.tokenVersion === decoded.tokenVersion) {
+                    customerContext = `\nLOGGED-IN CUSTOMER INFO:\n`;
+                    customerContext += `- Username: ${dbUser.username}\n`;
+                    customerContext += `- Email: ${dbUser.email}\n`;
+                    if (dbUser.favorites && dbUser.favorites.length > 0) {
+                        customerContext += `- Saved Favorites: ${dbUser.favorites.map(f => `"${f.name}" (ID: ${f.id}, Price: $${f.price})`).join(', ')}\n`;
+                    } else {
+                        customerContext += `- Saved Favorites: None\n`;
+                    }
+                    if (dbUser.orders && dbUser.orders.length > 0) {
+                        customerContext += `- Recent 5 Orders:\n`;
+                        dbUser.orders.forEach(o => {
+                            customerContext += `  * Order ID: ${o.orderId}, Design: ${o.design}, Total: $${o.totalAmount}, Status: ${o.status}, Placed: ${o.createdAt.toISOString()}\n`;
+                        });
+                    } else {
+                        customerContext += `- Recent 5 Orders: No orders placed yet.\n`;
+                    }
+                }
+            } catch (err) {
+                console.warn('[Storefront AI Auth] Token verification failed:', err.message);
+            }
+        }
+
         // Fetch product catalog with stock enrichment
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const rawProducts = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
@@ -957,6 +1277,8 @@ exports.storefrontChat = async (req, res) => {
         }
 
         const systemPrompt = `You are the Stitch-Opt Virtual Store Attendant, a warm and knowledgeable AI shopping assistant for Stitch-Opt — a professional embroidery design store.
+
+${customerContext ? `You are chatting with a logged-in customer. Here is their profile:\n${customerContext}\nGreet them by their name/username, and use this information to answer any questions about their account, favorites, or order history. Be sure to check this profile first before stating you don't know about their account details!` : 'You are chatting with a guest visitor (not logged in).'}
 
 YOUR ROLE:
 - Help customers find the perfect embroidery design based on their needs, occasion, style, or budget.

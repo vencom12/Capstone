@@ -41,287 +41,284 @@ function calculateLinearProjections(dataPoints, forecastDays = 7) {
     return projections;
 }
 
-exports.getSuggestions = async (req, res) => {
-    try {
-        const now = new Date();
-        
-        // 1. Throttling and Cache check
-        const force = req.query.refresh === 'true';
-        if (force) {
-            // Throttling: limit force refresh to once every 5 minutes
-            if (lastForceRefresh && (now - lastForceRefresh < 5 * 60 * 1000)) {
-                console.log('[BI Cache] Throttling active, serving from cache.');
-            } else {
-                console.log('[BI Cache] Force refresh triggered. Invalidating cache.');
-                lastForceRefresh = now;
-                biCache = null;
-            }
+async function getActiveSuggestionsInternal(force = false) {
+    const now = new Date();
+    
+    if (force) {
+        // Throttling: limit force refresh to once every 5 minutes
+        if (lastForceRefresh && (now - lastForceRefresh < 5 * 60 * 1000)) {
+            console.log('[BI Cache] Throttling active, serving from cache.');
+        } else {
+            console.log('[BI Cache] Force refresh triggered. Invalidating cache.');
+            lastForceRefresh = now;
+            biCache = null;
         }
+    }
 
-        // Cache hit (1 hour duration)
-        if (biCache && cacheTime && (now - cacheTime < 60 * 60 * 1000)) {
-            console.log('[BI Cache] Cache hit. Serving cached recommendations.');
-            return res.json(biCache);
-        }
+    // Cache hit (1 hour duration)
+    if (biCache && cacheTime && (now - cacheTime < 60 * 60 * 1000)) {
+        console.log('[BI Cache] Cache hit. Serving cached recommendations.');
+        return biCache;
+    }
 
-        const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
-        const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
+    const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
+    const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
 
-        console.log('[BI Engine] Querying 365-day database aggregates...');
+    console.log('[BI Engine] Querying 365-day database aggregates...');
 
-        // 2. High-performance DB-level aggregations
-        const [
-            trafficRollups,
-            orderRollups,
-            orders14d,
-            inventory,
-            products,
-            totalOrders
-        ] = await Promise.all([
-            // Aggregate daily site traffic visits (365 days)
-            prisma.$queryRaw`
-                SELECT 
-                    TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
-                    COUNT(*)::int AS count
-                FROM "SiteTraffic"
-                WHERE timestamp >= ${date365dAgo}
-                GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
-            `,
-            // Aggregate daily orders count and revenue (365 days)
-            prisma.$queryRaw`
-                SELECT 
-                    TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
-                    COUNT(*)::int AS count,
-                    SUM("totalAmount")::float AS revenue
-                FROM "Order"
-                WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
-                GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
-            `,
-            // Fetch raw items JSON only for safety stock velocities (last 14 days)
-            prisma.order.findMany({
-                where: {
-                    date: { gte: date14dAgo },
-                    NOT: { status: 'Order Canceled' }
-                },
-                select: { items: true, createdAt: true }
-            }),
-            prisma.inventory.findMany(),
-            prisma.product.findMany(),
-            prisma.order.count()
-        ]);
-
-        // Process rollups into maps for fast O(1) lookups
-        const trafficMap = {};
-        let totalVisits365D = 0;
-        trafficRollups.forEach(r => {
-            trafficMap[r.day] = r.count;
-            totalVisits365D += r.count;
-        });
-
-        const orderMap = {};
-        let totalOrders365D = 0;
-        let totalRevenue365D = 0;
-        orderRollups.forEach(r => {
-            orderMap[r.day] = { count: r.count, revenue: r.revenue };
-            totalOrders365D += r.count;
-            totalRevenue365D += r.revenue;
-        });
-
-        // 3. Perform Mathematical Projections (Daily trends for last 14 days to project next 7 days)
-        const dailyVisits = Array(14).fill(0);
-        const dailyOrders = Array(14).fill(0);
-        const dailyRevenue = Array(14).fill(0);
-        const dateLabels = [];
-
-        // Generate past 14 days date filters
-        for (let i = 13; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(now.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            dateLabels.push(dateStr);
-        }
-
-        dateLabels.forEach((dateStr, idx) => {
-            dailyVisits[idx] = trafficMap[dateStr] || 0;
-            const oStats = orderMap[dateStr] || { count: 0, revenue: 0 };
-            dailyOrders[idx] = oStats.count;
-            dailyRevenue[idx] = oStats.revenue;
-        });
-
-        // Forecast the next 7 days using linear regression
-        const projectedVisits = calculateLinearProjections(dailyVisits, 7);
-        const projectedOrders = calculateLinearProjections(dailyOrders, 7);
-        const projectedRevenue = calculateLinearProjections(dailyRevenue, 7);
-
-        // 4. Inventory Spools Stock Velocity & safety threshold calculations (last 14 days)
-        const productRecipes = {};
-        products.forEach(p => {
-            productRecipes[p.name.toLowerCase()] = p.recipe || [];
-        });
-
-        const materialConsumption = {};
-        inventory.forEach(inv => {
-            materialConsumption[inv.id] = 0;
-            materialConsumption[inv.item.toLowerCase()] = 0;
-        });
-
-        // Sum consumption of materials from orders in the last 14 days
-        orders14d.forEach(order => {
-            const items = order.items || [];
-            items.forEach(item => {
-                const recipe = productRecipes[item.name.toLowerCase()] || [];
-                recipe.forEach(recipeItem => {
-                    const key = recipeItem.inventoryId || recipeItem.name.toLowerCase();
-                    const qty = (item.quantity || 1) * (recipeItem.quantity || 1);
-                    if (materialConsumption[key] !== undefined) {
-                        materialConsumption[key] += qty;
-                    } else {
-                        materialConsumption[recipeItem.name.toLowerCase()] = (materialConsumption[recipeItem.name.toLowerCase()] || 0) + qty;
-                    }
-                });
-            });
-        });
-
-        // Calculate Safety Stock Velocity (daily depletion rate)
-        const safetyStockProjections = inventory.map(inv => {
-            const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
-            const dailyVelocity = consumption / 14;
-            const daysRemaining = dailyVelocity > 0 ? (inv.count / dailyVelocity) : 9999;
-            return {
-                id: inv.id,
-                item: inv.item,
-                count: inv.count,
-                unit: inv.unit,
-                minThreshold: inv.minThreshold,
-                dailyVelocity,
-                daysRemaining: daysRemaining === 9999 ? 'Stable' : parseFloat(daysRemaining.toFixed(1)),
-                isAlarmed: inv.count <= inv.minThreshold,
-                depletionRisk: daysRemaining <= 5 ? 'Critical' : (daysRemaining <= 10 ? 'Warning' : 'Low')
-            };
-        });
-
-        // 5. Heuristic Suggestions Generator (Robust Local Fallback)
-        const fallbackSuggestions = [];
-
-        // restock alarms
-        safetyStockProjections.forEach(proj => {
-            if (proj.isAlarmed || proj.depletionRisk === 'Critical' || proj.depletionRisk === 'Warning') {
-                const suggestAmount = Math.max(10, proj.minThreshold * 2 - proj.count);
-                fallbackSuggestions.push({
-                    id: `SUG-INV-${proj.id}`,
-                    title: `Restock Spools: ${proj.item}`,
-                    category: 'Inventory',
-                    severity: proj.depletionRisk === 'Critical' ? 'critical' : 'warning',
-                    description: `Stock level for spools of "${proj.item}" is currently at ${proj.count} ${proj.unit} (Safety Limit: ${proj.minThreshold}). Based on order consumption velocity of ${proj.dailyVelocity.toFixed(2)} spools/day, stock is projected to deplete in ${proj.daysRemaining} days. Recommend restocking immediately.`,
-                    actionText: `Restock +${suggestAmount} Spools`,
-                    action: {
-                        type: 'restock',
-                        payload: {
-                            inventoryId: proj.id,
-                            itemName: proj.item,
-                            amount: suggestAmount
-                        }
-                    }
-                });
-            }
-        });
-
-        // pricing optimizations based on sales velocity in the last 14 days
-        const orderCounts = {};
-        orders14d.forEach(order => {
-            const items = order.items || [];
-            items.forEach(item => {
-                orderCounts[item.name.toLowerCase()] = (orderCounts[item.name.toLowerCase()] || 0) + (item.quantity || 1);
-            });
-        });
-
-        products.forEach(p => {
-            const ordersQty = orderCounts[p.name.toLowerCase()] || 0;
-            const dailyVelocity = ordersQty / 14;
-            
-            if (dailyVelocity > 0.3) {
-                const originalPrice = p.price;
-                const suggestedPrice = parseFloat((originalPrice * 1.1).toFixed(2));
-                fallbackSuggestions.push({
-                    id: `SUG-PRICE-INC-${p.id}`,
-                    title: `Price Optimization: ${p.name}`,
-                    category: 'Pricing',
-                    severity: 'info',
-                    description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is $${originalPrice.toFixed(2)}. Suggest raising price to $${suggestedPrice.toFixed(2)} to capture higher margin during peak demand.`,
-                    actionText: `Adjust Price to $${suggestedPrice.toFixed(2)}`,
-                    action: {
-                        type: 'updatePrice',
-                        payload: {
-                            productId: p.id,
-                            price: suggestedPrice
-                        }
-                    }
-                });
-            } else if (ordersQty === 0 && p.count > 10) {
-                const originalPrice = p.price;
-                const suggestedPrice = parseFloat((originalPrice * 0.85).toFixed(2));
-                fallbackSuggestions.push({
-                    id: `SUG-PRICE-DEC-${p.id}`,
-                    title: `Clearance Discount: ${p.name}`,
-                    category: 'Pricing',
-                    severity: 'info',
-                    description: `Design "${p.name}" is slow-moving with 0 orders in the last 14 days. Current stockpile count is ${p.count}. Suggest temporary 15% markdown to $${suggestedPrice.toFixed(2)} to stimulate sales and free up inventory resources.`,
-                    actionText: `Apply 15% Discount ($${suggestedPrice.toFixed(2)})`,
-                    action: {
-                        type: 'updatePrice',
-                        payload: {
-                            productId: p.id,
-                            price: suggestedPrice
-                        }
-                    }
-                });
-            }
-        });
-
-        // backlog priority escalations
-        const pendingBacklog = await prisma.order.findMany({
+    // 2. High-performance DB-level aggregations
+    const [
+        trafficRollups,
+        orderRollups,
+        orders14d,
+        inventory,
+        products,
+        totalOrders
+    ] = await Promise.all([
+        // Aggregate daily site traffic visits (365 days)
+        prisma.$queryRaw`
+            SELECT 
+                TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
+                COUNT(*)::int AS count
+            FROM "SiteTraffic"
+            WHERE timestamp >= ${date365dAgo}
+            GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
+        `,
+        // Aggregate daily orders count and revenue (365 days)
+        prisma.$queryRaw`
+            SELECT 
+                TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
+                COUNT(*)::int AS count,
+                SUM("totalAmount")::float AS revenue
+            FROM "Order"
+            WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
+            GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
+        `,
+        // Fetch raw items JSON only for safety stock velocities (last 14 days)
+        prisma.order.findMany({
             where: {
-                status: { in: ['Pending Payment', 'Preparing Order', 'In Queue'] },
-                isRush: false
+                date: { gte: date14dAgo },
+                NOT: { status: 'Order Canceled' }
             },
-            take: 5,
-            orderBy: { createdAt: 'asc' }
-        });
+            select: { items: true, createdAt: true }
+        }),
+        prisma.inventory.findMany(),
+        prisma.product.findMany(),
+        prisma.order.count()
+    ]);
 
-        pendingBacklog.forEach(order => {
-            const ageInHours = (now - new Date(order.createdAt)) / (1000 * 60 * 60);
-            if (ageInHours > 24) {
-                fallbackSuggestions.push({
-                    id: `SUG-OPS-${order.id}`,
-                    title: `Escalate Order Prioritization: ${order.orderId}`,
-                    category: 'Operations',
-                    severity: 'warning',
-                    description: `Order "${order.orderId}" for client "${order.client || 'Valued Customer'}" has been pending for ${Math.round(ageInHours)} hours in status "${order.status}". Suggest escalating to priority rush to prevent customer satisfaction SLA breach.`,
-                    actionText: `Prioritize Order (Rush)`,
-                    action: {
-                        type: 'prioritizeOrder',
-                        payload: {
-                            orderId: order.id,
-                            orderTicketId: order.orderId,
-                            isRush: true,
-                            priorityScore: 20
-                        }
+    // Process rollups into maps for fast O(1) lookups
+    const trafficMap = {};
+    let totalVisits365D = 0;
+    trafficRollups.forEach(r => {
+        trafficMap[r.day] = r.count;
+        totalVisits365D += r.count;
+    });
+
+    const orderMap = {};
+    let totalOrders365D = 0;
+    let totalRevenue365D = 0;
+    orderRollups.forEach(r => {
+        orderMap[r.day] = { count: r.count, revenue: r.revenue };
+        totalOrders365D += r.count;
+        totalRevenue365D += r.revenue;
+    });
+
+    // 3. Perform Mathematical Projections (Daily trends for last 14 days to project next 7 days)
+    const dailyVisits = Array(14).fill(0);
+    const dailyOrders = Array(14).fill(0);
+    const dailyRevenue = Array(14).fill(0);
+    const dateLabels = [];
+
+    // Generate past 14 days date filters
+    for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        dateLabels.push(dateStr);
+    }
+
+    dateLabels.forEach((dateStr, idx) => {
+        dailyVisits[idx] = trafficMap[dateStr] || 0;
+        const oStats = orderMap[dateStr] || { count: 0, revenue: 0 };
+        dailyOrders[idx] = oStats.count;
+        dailyRevenue[idx] = oStats.revenue;
+    });
+
+    // Forecast the next 7 days using linear regression
+    const projectedVisits = calculateLinearProjections(dailyVisits, 7);
+    const projectedOrders = calculateLinearProjections(dailyOrders, 7);
+    const projectedRevenue = calculateLinearProjections(dailyRevenue, 7);
+
+    // 4. Inventory Spools Stock Velocity & safety threshold calculations (last 14 days)
+    const productRecipes = {};
+    products.forEach(p => {
+        productRecipes[p.name.toLowerCase()] = p.recipe || [];
+    });
+
+    const materialConsumption = {};
+    inventory.forEach(inv => {
+        materialConsumption[inv.id] = 0;
+        materialConsumption[inv.item.toLowerCase()] = 0;
+    });
+
+    // Sum consumption of materials from orders in the last 14 days
+    orders14d.forEach(order => {
+        const items = order.items || [];
+        items.forEach(item => {
+            const recipe = productRecipes[item.name.toLowerCase()] || [];
+            recipe.forEach(recipeItem => {
+                const key = recipeItem.inventoryId || recipeItem.name.toLowerCase();
+                const qty = (item.quantity || 1) * (recipeItem.quantity || 1);
+                if (materialConsumption[key] !== undefined) {
+                    materialConsumption[key] += qty;
+                } else {
+                    materialConsumption[recipeItem.name.toLowerCase()] = (materialConsumption[recipeItem.name.toLowerCase()] || 0) + qty;
+                }
+            });
+        });
+    });
+
+    // Calculate Safety Stock Velocity (daily depletion rate)
+    const safetyStockProjections = inventory.map(inv => {
+        const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
+        const dailyVelocity = consumption / 14;
+        const daysRemaining = dailyVelocity > 0 ? (inv.count / dailyVelocity) : 9999;
+        return {
+            id: inv.id,
+            item: inv.item,
+            count: inv.count,
+            unit: inv.unit,
+            minThreshold: inv.minThreshold,
+            dailyVelocity,
+            daysRemaining: daysRemaining === 9999 ? 'Stable' : parseFloat(daysRemaining.toFixed(1)),
+            isAlarmed: inv.count <= inv.minThreshold,
+            depletionRisk: daysRemaining <= 5 ? 'Critical' : (daysRemaining <= 10 ? 'Warning' : 'Low')
+        };
+    });
+
+    // 5. Heuristic Suggestions Generator (Robust Local Fallback)
+    const fallbackSuggestions = [];
+
+    // restock alarms
+    safetyStockProjections.forEach(proj => {
+        if (proj.isAlarmed || proj.depletionRisk === 'Critical' || proj.depletionRisk === 'Warning') {
+            const suggestAmount = Math.max(10, proj.minThreshold * 2 - proj.count);
+            fallbackSuggestions.push({
+                id: `SUG-INV-${proj.id}`,
+                title: `Restock Spools: ${proj.item}`,
+                category: 'Inventory',
+                severity: proj.depletionRisk === 'Critical' ? 'critical' : 'warning',
+                description: `Stock level for spools of "${proj.item}" is currently at ${proj.count} ${proj.unit} (Safety Limit: ${proj.minThreshold}). Based on order consumption velocity of ${proj.dailyVelocity.toFixed(2)} spools/day, stock is projected to deplete in ${proj.daysRemaining} days. Recommend restocking immediately.`,
+                actionText: `Restock +${suggestAmount} Spools`,
+                action: {
+                    type: 'restock',
+                    payload: {
+                        inventoryId: proj.id,
+                        itemName: proj.item,
+                        amount: suggestAmount
                     }
-                });
-            }
+                }
+            });
+        }
+    });
+
+    // pricing optimizations based on sales velocity in the last 14 days
+    const orderCounts = {};
+    orders14d.forEach(order => {
+        const items = order.items || [];
+        items.forEach(item => {
+            orderCounts[item.name.toLowerCase()] = (orderCounts[item.name.toLowerCase()] || 0) + (item.quantity || 1);
         });
+    });
 
-        // 6. Try Groq AI Suggestion Engine (with fallback)
-        let suggestions = [...fallbackSuggestions];
-        const apiKey = process.env.GROQ_API_KEY;
+    products.forEach(p => {
+        const ordersQty = orderCounts[p.name.toLowerCase()] || 0;
+        const dailyVelocity = ordersQty / 14;
+        
+        if (dailyVelocity > 0.3) {
+            const originalPrice = p.price;
+            const suggestedPrice = parseFloat((originalPrice * 1.1).toFixed(2));
+            fallbackSuggestions.push({
+                id: `SUG-PRICE-INC-${p.id}`,
+                title: `Price Optimization: ${p.name}`,
+                category: 'Pricing',
+                severity: 'info',
+                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is $${originalPrice.toFixed(2)}. Suggest raising price to $${suggestedPrice.toFixed(2)} to capture higher margin during peak demand.`,
+                actionText: `Adjust Price to $${suggestedPrice.toFixed(2)}`,
+                action: {
+                    type: 'updatePrice',
+                    payload: {
+                        productId: p.id,
+                        price: suggestedPrice
+                    }
+                }
+            });
+        } else if (ordersQty === 0 && p.count > 10) {
+            const originalPrice = p.price;
+            const suggestedPrice = parseFloat((originalPrice * 0.85).toFixed(2));
+            fallbackSuggestions.push({
+                id: `SUG-PRICE-DEC-${p.id}`,
+                title: `Clearance Discount: ${p.name}`,
+                category: 'Pricing',
+                severity: 'info',
+                description: `Design "${p.name}" is slow-moving with 0 orders in the last 14 days. Current stockpile count is ${p.count}. Suggest temporary 15% markdown to $${suggestedPrice.toFixed(2)} to stimulate sales and free up inventory resources.`,
+                actionText: `Apply 15% Discount ($${suggestedPrice.toFixed(2)})`,
+                action: {
+                    type: 'updatePrice',
+                    payload: {
+                        productId: p.id,
+                        price: suggestedPrice
+                    }
+                }
+            });
+        }
+    });
 
-        if (apiKey) {
-            try {
-                let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-                const GROQ_API_URL = settings?.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions';
-                const MODEL = settings?.aiChatModel || 'llama-3.3-70b-versatile';
+    // backlog priority escalations
+    const pendingBacklog = await prisma.order.findMany({
+        where: {
+            status: { in: ['Pending Payment', 'Preparing Order', 'In Queue'] },
+            isRush: false
+        },
+        take: 5,
+        orderBy: { createdAt: 'asc' }
+    });
 
-                const systemPrompt = `You are StitchMaster AI, the strategic Business Intelligence advisor for Stitch-Opt.
+    pendingBacklog.forEach(order => {
+        const ageInHours = (now - new Date(order.createdAt)) / (1000 * 60 * 60);
+        if (ageInHours > 24) {
+            fallbackSuggestions.push({
+                id: `SUG-OPS-${order.id}`,
+                title: `Escalate Order Prioritization: ${order.orderId}`,
+                category: 'Operations',
+                severity: 'warning',
+                description: `Order "${order.orderId}" for client "${order.client || 'Valued Customer'}" has been pending for ${Math.round(ageInHours)} hours in status "${order.status}". Suggest escalating to priority rush to prevent customer satisfaction SLA breach.`,
+                actionText: `Prioritize Order (Rush)`,
+                action: {
+                    type: 'prioritizeOrder',
+                    payload: {
+                        orderId: order.id,
+                        orderTicketId: order.orderId,
+                        isRush: true,
+                        priorityScore: 20
+                    }
+                }
+            });
+        }
+    });
+
+    // 6. Try Groq AI Suggestion Engine (with fallback)
+    let suggestions = [...fallbackSuggestions];
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (apiKey) {
+        try {
+            let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            const GROQ_API_URL = settings?.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions';
+            const MODEL = settings?.aiChatModel || 'llama-3.3-70b-versatile';
+
+            const systemPrompt = `You are StitchMaster AI, the strategic Business Intelligence advisor for Stitch-Opt.
 You are analyzing historical traffic, sales orders, and raw inventory levels to recommend actions.
 
 Here is the current business status:
@@ -347,56 +344,63 @@ Each object in the array must contain:
 
 Return ONLY the valid JSON array of objects.`;
 
-                const response = await fetch(GROQ_API_URL, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: MODEL,
-                        messages: [{ role: 'user', content: systemPrompt }],
-                        temperature: 0.1
-                    })
-                });
+            const response = await fetch(GROQ_API_URL, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: MODEL,
+                    messages: [{ role: 'user', content: systemPrompt }],
+                    temperature: 0.1
+                })
+            });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.choices && data.choices[0] && data.choices[0].message?.content) {
-                        const contentText = data.choices[0].message.content.trim();
-                        const cleanJson = contentText.replace(/^```json/, '').replace(/```$/, '').trim();
-                        const parsed = JSON.parse(cleanJson);
-                        if (Array.isArray(parsed)) {
-                            suggestions = parsed;
-                        }
+            if (response.ok) {
+                const data = await response.json();
+                if (data.choices && data.choices[0] && data.choices[0].message?.content) {
+                    const contentText = data.choices[0].message.content.trim();
+                    const cleanJson = contentText.replace(/^```json/, '').replace(/```$/, '').trim();
+                    const parsed = JSON.parse(cleanJson);
+                    if (Array.isArray(parsed)) {
+                        suggestions = parsed;
                     }
                 }
-            } catch (err) {
-                console.warn('[BI Advisor Warning] LLM Suggestion failed, utilizing baseline heuristics:', err.message);
             }
+        } catch (err) {
+            console.warn('[BI Advisor Warning] LLM Suggestion failed, utilizing baseline heuristics:', err.message);
         }
+    }
 
-        const metrics = {
-            totalVisits: totalVisits365D,
-            avgOrderValue: totalOrders365D > 0 ? (totalRevenue365D / totalOrders365D) : 0,
-            conversionRate: totalVisits365D > 0 ? (totalOrders365D / totalVisits365D) : 0,
-        };
+    const metrics = {
+        totalVisits: totalVisits365D,
+        avgOrderValue: totalOrders365D > 0 ? (totalRevenue365D / totalOrders365D) : 0,
+        conversionRate: totalVisits365D > 0 ? (totalOrders365D / totalVisits365D) : 0,
+    };
 
-        const projections = {
-            labels: dateLabels,
-            visits: dailyVisits,
-            orders: dailyOrders,
-            revenue: dailyRevenue,
-            forecast: {
-                visits: projectedVisits,
-                orders: projectedOrders,
-                revenue: projectedRevenue
-            }
-        };
+    const projections = {
+        labels: dateLabels,
+        visits: dailyVisits,
+        orders: dailyOrders,
+        revenue: dailyRevenue,
+        forecast: {
+            visits: projectedVisits,
+            orders: projectedOrders,
+            revenue: projectedRevenue
+        }
+    };
 
-        // Cache the result
-        biCache = { metrics, projections, suggestions };
-        cacheTime = now;
+    biCache = { metrics, projections, suggestions };
+    cacheTime = now;
 
-        res.json(biCache);
+    return biCache;
+}
 
+exports.getActiveSuggestions = getActiveSuggestionsInternal;
+
+exports.getSuggestions = async (req, res) => {
+    try {
+        const force = req.query.refresh === 'true';
+        const biData = await getActiveSuggestionsInternal(force);
+        res.json(biData);
     } catch (err) {
         console.error('getSuggestions BI Error:', err);
         res.status(500).json({ message: 'Error compiling business intelligence metrics' });
