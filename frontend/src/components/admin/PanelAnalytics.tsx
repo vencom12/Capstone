@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { AnalyticsSkeleton } from '@/components/ui/Skeletons';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -90,10 +91,13 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
 
   if (isLoadingAnalytics || !analytics) {
     return (
-      <div className="py-20 text-center text-text-dim">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-        <span>Compiling business analytics and trends data...</span>
-      </div>
+      <section className="animate-fade flex flex-col min-h-full text-left font-sans pb-10">
+        <header className="dash-header mb-6">
+          <h1 className="dash-title text-3xl font-extrabold mb-1">Business Analytics & Intelligence</h1>
+          <p className="dash-subtitle text-text-dim text-[0.95rem] m-0">Review sales metrics, storefront traffic, and AI-driven strategic forecasting.</p>
+        </header>
+        <AnalyticsSkeleton />
+      </section>
     );
   }
 

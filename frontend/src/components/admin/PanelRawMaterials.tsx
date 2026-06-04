@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 
 interface InlineStockAdjusterProps {
   material: any;
@@ -481,33 +482,31 @@ export default function PanelRawMaterials({
             </div>
           )}
 
-          {/* Desktop Table View */}
-          <div className="glass-table-container max-[1024px]:hidden">
-            <table className="glass-table">
-              <thead>
-                <tr>
-                  <th className="glass-th text-left">Material Spool</th>
-                  <th className="glass-th text-left">Current Count</th>
-                  <th className="glass-th text-left">Low Warning</th>
-                  <th className="glass-th text-left">Status</th>
-                  <th className="glass-th text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isSyncing && inventory.length === 0 ? (
-                  <tr className="glass-tr">
-                    <td colSpan={5} className="glass-td text-center text-text-dim">
-                      Syncing stockpile records...
-                    </td>
+          {isSyncing && inventory.length === 0 ? (
+            <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
+              <TableSkeleton rows={5} cols={5} />
+            </div>
+          ) : (
+            <div className="glass-table-container max-[1024px]:hidden">
+              <table className="glass-table">
+                <thead>
+                  <tr>
+                    <th className="glass-th text-left">Material Spool</th>
+                    <th className="glass-th text-left">Current Count</th>
+                    <th className="glass-th text-left">Low Warning</th>
+                    <th className="glass-th text-left">Status</th>
+                    <th className="glass-th text-right">Actions</th>
                   </tr>
-                ) : filteredInventory.length === 0 ? (
-                  <tr className="glass-tr">
-                    <td colSpan={5} className="glass-td text-center text-text-dim">
-                      No stockpile thread spools cataloged.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredInventory.map((i) => {
+                </thead>
+                <tbody>
+                  {filteredInventory.length === 0 ? (
+                    <tr className="glass-tr">
+                      <td colSpan={5} className="glass-td text-center text-text-dim">
+                        No stockpile thread spools cataloged.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInventory.map((i) => {
                     const id = i.id || i._id;
                     const isLow = i.count <= (i.minThreshold || 10);
                     return (
@@ -558,61 +557,70 @@ export default function PanelRawMaterials({
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Mobile Card Blocks View */}
           <div className="min-[1025px]:hidden grid grid-cols-2 gap-4 animate-fade">
-            {filteredInventory.map((i) => {
-              const id = i.id || i._id;
-              const isLow = i.count <= (i.minThreshold || 10);
-              return (
-                <div
-                  key={id}
-                  className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative"
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-text-main text-sm">{i.item}</span>
-                    <span
-                      className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                        ${isLow
-                          ? 'bg-danger/20 text-danger border border-danger/30'
-                          : 'bg-success/20 text-success border border-success/30'
-                        }
-                      `}
-                    >
-                      {isLow ? 'Low Stock' : 'Healthy'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-2.5 text-xs font-medium">
-                    <div>
-                      <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
-                      <InlineStockAdjuster
-                        material={i}
-                        refreshData={refreshData}
-                        fetchAuditLogs={fetchAuditLogs}
-                      />
+            {isSyncing && inventory.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))
+            ) : filteredInventory.length === 0 ? (
+              <div className="glass-card p-6 text-center text-text-dim col-span-full">No stockpile thread spools cataloged.</div>
+            ) : (
+              filteredInventory.map((i) => {
+                const id = i.id || i._id;
+                const isLow = i.count <= (i.minThreshold || 10);
+                return (
+                  <div
+                    key={id}
+                    className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-text-main text-sm">{i.item}</span>
+                      <span
+                        className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                          ${isLow
+                            ? 'bg-danger/20 text-danger border border-danger/30'
+                            : 'bg-success/20 text-success border border-success/30'
+                          }
+                        `}
+                      >
+                        {isLow ? 'Low Stock' : 'Healthy'}
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-[0.65rem] text-text-dim block mb-1">Low Warning Limit</span>
-                      <InlineThresholdAdjuster
-                        material={i}
-                        refreshData={refreshData}
-                        fetchAuditLogs={fetchAuditLogs}
-                      />
+
+                    <div className="flex flex-col gap-2.5 text-xs font-medium">
+                      <div>
+                        <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
+                        <InlineStockAdjuster
+                          material={i}
+                          refreshData={refreshData}
+                          fetchAuditLogs={fetchAuditLogs}
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[0.65rem] text-text-dim block mb-1">Low Warning Limit</span>
+                        <InlineThresholdAdjuster
+                          material={i}
+                          refreshData={refreshData}
+                          fetchAuditLogs={fetchAuditLogs}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 w-full mt-2">
+                      <button
+                        onClick={() => handleDelete(id)}
+                        className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
+                      >
+                        Delete Material
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex gap-2 w-full mt-2">
-                    <button
-                      onClick={() => handleDelete(id)}
-                      className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
-                    >
-                      Delete Material
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 

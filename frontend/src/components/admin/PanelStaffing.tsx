@@ -4,6 +4,7 @@ import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelStaffingProps {
   users: any[];
@@ -149,33 +150,32 @@ export default function PanelStaffing({
         <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Personnel Registry</h3>
 
         {/* Desktop View */}
-        <div className="glass-table-container max-[650px]:hidden">
-          <table className="glass-table">
-            <thead>
-              <tr>
-                <th className="glass-th text-left">Username</th>
-                <th className="glass-th text-left">Email Address</th>
-                <th className="glass-th text-left">Shift Status</th>
-                <th className="glass-th text-left">Assigned Machine</th>
-                <th className="glass-th text-left">Access Level</th>
-                <th className="glass-th text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isSyncing && users.length === 0 ? (
-                <tr className="glass-tr">
-                  <td colSpan={7} className="glass-td text-center text-text-dim">
-                    Syncing database personnel...
-                  </td>
+        {isSyncing && users.length === 0 ? (
+          <div className="max-[650px]:hidden mb-4 w-full animate-pulse">
+            <TableSkeleton rows={5} cols={6} />
+          </div>
+        ) : (
+          <div className="glass-table-container max-[650px]:hidden">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th className="glass-th text-left">Username</th>
+                  <th className="glass-th text-left">Email Address</th>
+                  <th className="glass-th text-left">Shift Status</th>
+                  <th className="glass-th text-left">Assigned Machine</th>
+                  <th className="glass-th text-left">Access Level</th>
+                  <th className="glass-th text-right">Actions</th>
                 </tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr className="glass-tr">
-                  <td colSpan={7} className="glass-td text-center text-text-dim">
-                    No active staff credentials cataloged.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((u) => {
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr className="glass-tr">
+                    <td colSpan={7} className="glass-td text-center text-text-dim">
+                      No active staff credentials cataloged.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => {
                   const id = u.id || u._id;
                   return (
                     <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
@@ -242,10 +242,18 @@ export default function PanelStaffing({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Mobile View */}
         <div className="min-[651px]:hidden flex flex-col gap-4">
-          {filteredUsers.map((u) => {
+          {isSyncing && users.length === 0 ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))
+          ) : filteredUsers.length === 0 ? (
+            <div className="glass-card p-6 text-center text-text-dim">No active staff credentials cataloged.</div>
+          ) : (
+            filteredUsers.map((u) => {
             const id = u.id || u._id;
             return (
               <div
@@ -302,9 +310,10 @@ export default function PanelStaffing({
                 </div>
               </div>
             );
-          })}
-        </div>
+          })
+        )}
       </div>
+    </div>
 
       {/* Modal Wizard Account Details */}
       <GlassModal

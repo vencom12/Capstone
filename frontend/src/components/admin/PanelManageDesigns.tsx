@@ -4,6 +4,7 @@ import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -197,7 +198,13 @@ export default function PanelManageDesigns({
 
       {/* Design card grid layout */}
       <div className="w-full pr-2 flex-1">
-        {filteredProducts.length === 0 ? (
+        {isSyncing && products.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="glass-card text-center text-text-dim py-12">
             No catalog designs found. Create one to begin.
           </div>

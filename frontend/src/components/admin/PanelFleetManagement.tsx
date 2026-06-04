@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { CardSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelFleetManagementProps {
   users?: any[];
@@ -149,7 +150,11 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
         <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Machine Registry</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading ? (
-            <p className="text-text-dim p-4">Loading fleet...</p>
+            <>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </>
           ) : machines.length === 0 ? (
             <p className="text-text-dim p-4">No machines registered in the fleet yet.</p>
           ) : (

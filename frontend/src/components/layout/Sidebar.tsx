@@ -2,9 +2,10 @@
 
 import { useProductStore } from '@/stores/useProductStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { SidebarCategoriesSkeleton } from '@/components/ui/Skeletons';
 
 export default function Sidebar() {
-  const { selectedCategory, setSelectedCategory, getCategories } = useProductStore();
+  const { selectedCategory, setSelectedCategory, getCategories, isSyncing } = useProductStore();
   const { toggleBasket, isBasketOpen } = useUIStore();
   const categories = getCategories();
 
@@ -48,27 +49,31 @@ export default function Sidebar() {
         <h3 className="text-[0.9rem] text-text-dim uppercase tracking-wider mb-4 px-2.5 font-medium">
           Categories
         </h3>
-        <ul className="list-none p-0 m-0 flex flex-col gap-1.5">
-          {categories.map((category) => (
-            <li key={category}>
-              <button
-                suppressHydrationWarning
-                onClick={() => setSelectedCategory(category)}
-                className={`
-                  w-full flex items-center px-4 py-2.5 rounded-xl cursor-pointer
-                  transition-all duration-300 text-left text-[0.85rem] border
-                  ${
-                    selectedCategory === category
-                      ? 'bg-gradient-to-r from-primary to-secondary border-transparent text-white font-semibold shadow-[0_10px_20px_-5px_rgba(99,102,241,0.5)]'
-                      : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
-                  }
-                `}
-              >
-                {category === 'All' ? 'All Designs' : category}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {isSyncing && categories.length === 0 ? (
+          <SidebarCategoriesSkeleton />
+        ) : (
+          <ul className="list-none p-0 m-0 flex flex-col gap-1.5">
+            {categories.map((category) => (
+              <li key={category}>
+                <button
+                  suppressHydrationWarning
+                  onClick={() => setSelectedCategory(category)}
+                  className={`
+                    w-full flex items-center px-4 py-2.5 rounded-xl cursor-pointer
+                    transition-all duration-300 text-left text-[0.85rem] border
+                    ${
+                      selectedCategory === category
+                        ? 'bg-gradient-to-r from-primary to-secondary border-transparent text-white font-semibold shadow-[0_10px_20px_-5px_rgba(99,102,241,0.5)]'
+                        : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
+                    }
+                  `}
+                >
+                  {category === 'All' ? 'All Designs' : category}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </aside>
   );

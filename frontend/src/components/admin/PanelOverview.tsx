@@ -6,6 +6,7 @@ import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelOverviewProps {
   orders: any[];
@@ -268,42 +269,40 @@ export default function PanelOverview({
           </button>
         </div>
 
-        {/* Table view */}
-        <div className="glass-table-container max-[1100px]:hidden">
-          <table className="glass-table">
-            <thead>
-              <tr>
-                <th className="glass-th w-[45px] text-center">
-                  <input
-                    type="checkbox"
-                    checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
-                    onChange={toggleSelectAll}
-                    className="cursor-pointer"
-                  />
-                </th>
-                <th className="glass-th text-left">Order ID</th>
-                <th className="glass-th text-left">Client & Date</th>
-                <th className="glass-th text-left">Items / Custom Design</th>
-                <th className="glass-th text-left">Amount</th>
-                <th className="glass-th text-left">Status</th>
-                <th className="glass-th text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isSyncing && orders.length === 0 ? (
-                <tr className="glass-tr">
-                  <td colSpan={7} className="glass-td text-center text-text-dim">
-                    Fetching latest records...
-                  </td>
+        {isSyncing && orders.length === 0 ? (
+          <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
+            <TableSkeleton rows={5} cols={7} />
+          </div>
+        ) : (
+          <div className="glass-table-container max-[1100px]:hidden">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th className="glass-th w-[45px] text-center">
+                    <input
+                      type="checkbox"
+                      checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                  <th className="glass-th text-left">Order ID</th>
+                  <th className="glass-th text-left">Client & Date</th>
+                  <th className="glass-th text-left">Items / Custom Design</th>
+                  <th className="glass-th text-left">Amount</th>
+                  <th className="glass-th text-left">Status</th>
+                  <th className="glass-th text-right">Actions</th>
                 </tr>
-              ) : activeOrders.length === 0 ? (
-                <tr className="glass-tr">
-                  <td colSpan={7} className="glass-td text-center text-text-dim">
-                    No active orders found.
-                  </td>
-                </tr>
-              ) : (
-                activeOrders.map((o) => {
+              </thead>
+              <tbody>
+                {activeOrders.length === 0 ? (
+                  <tr className="glass-tr">
+                    <td colSpan={7} className="glass-td text-center text-text-dim">
+                      No active orders found.
+                    </td>
+                  </tr>
+                ) : (
+                  activeOrders.map((o) => {
                   const id = o.id || o._id;
                   const isChecked = selectedIds.includes(id);
                   return (
@@ -381,10 +380,18 @@ export default function PanelOverview({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Mobile Grid layout */}
         <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-          {activeOrders.map((o) => {
+          {isSyncing && orders.length === 0 ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))
+          ) : activeOrders.length === 0 ? (
+            <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
+          ) : (
+            activeOrders.map((o) => {
             const id = o.id || o._id;
             const isChecked = selectedIds.includes(id);
             return (
@@ -479,9 +486,10 @@ export default function PanelOverview({
                 </button>
               </div>
             );
-          })}
-        </div>
+          })
+        )}
       </div>
+    </div>
 
       {/* Modal: View Receipt Details */}
       <GlassModal

@@ -15,11 +15,12 @@ import ReceiptModal from '@/components/dashboard/ReceiptModal';
 import type { Product, Order } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
+import { TableSkeleton, CardSkeleton, ProductCardSkeleton } from '@/components/ui/Skeletons';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAccess, refreshUser } = useAuthStore();
-  const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories } = useProductStore();
+  const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories, isSyncing } = useProductStore();
   const { isBasketOpen, setBasketOpen, toggleBasket, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
 
   const [activeTab, setActiveTab] = useState<string>('shop');
@@ -237,7 +238,13 @@ export default function DashboardPage() {
             </header>
             <div className="flex-1 overflow-y-auto pr-2">
             
-            {filteredOrders.length === 0 ? (
+            {isSyncing && orders.length === 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredOrders.length === 0 ? (
               <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                 <p className="text-lg font-medium m-0">No active orders found</p>
@@ -304,7 +311,13 @@ export default function DashboardPage() {
               <p className="text-text-dim text-[0.85rem] m-0">Designs you've saved for later.</p>
             </header>
             <div className="flex-1 overflow-y-auto pr-2">
-            {favorites.length === 0 ? (
+            {isSyncing && favorites.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : favorites.length === 0 ? (
               <div className="border-2 border-dashed border-border-glass rounded-3xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 text-accent"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                  <p className="text-lg font-medium m-0">You haven't favorited any designs yet.</p>
@@ -344,7 +357,13 @@ export default function DashboardPage() {
             </header>
             <div className="flex-1 overflow-y-auto pr-2">
             
-            {filteredTransactions.length === 0 ? (
+            {isSyncing && transactions.length === 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredTransactions.length === 0 ? (
               <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                 <p className="text-lg font-medium m-0">No transactions found</p>

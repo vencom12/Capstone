@@ -8,6 +8,7 @@ import EmployeeSidebar from '@/components/employee/EmployeeSidebar';
 import PersistentAssistant from '@/components/employee/PersistentAssistant';
 import StaffAuthModal from '@/components/auth/StaffAuthModal';
 import GlassModal from '@/components/ui/GlassModal';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
@@ -601,25 +602,28 @@ export default function EmployeePage() {
                  
               </div>
             </header>
-            <div className="glass-table-container max-[1100px]:hidden">
-                <table className="glass-table">
-                  <thead>
-                     <tr>
-                       <th className="glass-th text-left">Order ID & Status</th>
-                       <th className="glass-th text-left">Priority / Est. Time</th>
-                       <th className="glass-th text-left">Client & Date</th>
-                       <th className="glass-th text-left">Design / Items</th>
-                       <th className="glass-th text-left">Total</th>
-                       <th className="glass-th text-right">Action</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     {isSyncing && orders.length === 0 ? (
-                       <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">Syncing active queue with database...</td></tr>
-                     ) : activeOrders.length === 0 ? (
-                       <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
-                     ) : (
-                       activeOrders.map((o) => {
+            {isSyncing && orders.length === 0 ? (
+               <div className="max-[1100px]:hidden mb-4 w-full">
+                 <TableSkeleton rows={5} cols={6} />
+               </div>
+             ) : (
+               <div className="glass-table-container max-[1100px]:hidden">
+                   <table className="glass-table">
+                     <thead>
+                        <tr>
+                          <th className="glass-th text-left">Order ID & Status</th>
+                          <th className="glass-th text-left">Priority / Est. Time</th>
+                          <th className="glass-th text-left">Client & Date</th>
+                          <th className="glass-th text-left">Design / Items</th>
+                          <th className="glass-th text-left">Total</th>
+                          <th className="glass-th text-right">Action</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        {activeOrders.length === 0 ? (
+                          <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
+                        ) : (
+                          activeOrders.map((o) => {
                          const isBatchMatched = o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim());
                          return (
                            <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
@@ -714,11 +718,14 @@ export default function EmployeePage() {
                   </tbody>
                 </table>
              </div>
+             )}
 
             {/* Tablet & Mobile Card Block View */}
             <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
               {isSyncing && orders.length === 0 ? (
-                <div className="glass-card p-6 text-center text-text-dim">Syncing active queue with database...</div>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))
               ) : activeOrders.length === 0 ? (
                 <div className="glass-card p-6 text-center text-text-dim">No active orders in queue.</div>
               ) : (
@@ -857,25 +864,28 @@ export default function EmployeePage() {
                  />
               </div>
             </header>
-            <div className="glass-table-container max-[1100px]:hidden">
-               <table className="glass-table">
-                 <thead>
-                   <tr>
-                     <th className="glass-th">Order ID</th>
-                     <th className="glass-th">Client</th>
-                     <th className="glass-th">Design / Items</th>
-                     <th className="glass-th">Status</th>
-                     <th className="glass-th">Date</th>
-                     <th className="glass-th text-right">Action</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                    {isSyncing && orders.length === 0 ? (
-                      <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">Syncing history with database...</td></tr>
-                    ) : historyOrders.length === 0 ? (
-                      <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No historical completed or canceled orders found.</td></tr>
-                    ) : (
-                      historyOrders.map((o) => {
+             {isSyncing && orders.length === 0 ? (
+               <div className="max-[1100px]:hidden mb-4 w-full">
+                 <TableSkeleton rows={5} cols={6} />
+               </div>
+             ) : (
+               <div className="glass-table-container max-[1100px]:hidden">
+                  <table className="glass-table">
+                    <thead>
+                      <tr>
+                        <th className="glass-th">Order ID</th>
+                        <th className="glass-th">Client</th>
+                        <th className="glass-th">Design / Items</th>
+                        <th className="glass-th">Status</th>
+                        <th className="glass-th">Date</th>
+                        <th className="glass-th text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                       {historyOrders.length === 0 ? (
+                         <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No historical completed or canceled orders found.</td></tr>
+                       ) : (
+                         historyOrders.map((o) => {
                         return (
                           <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
                             <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
@@ -935,11 +945,14 @@ export default function EmployeePage() {
                  </tbody>
                </table>
             </div>
+            )}
 
             {/* Tablet & Mobile Card Block View */}
             <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
               {isSyncing && orders.length === 0 ? (
-                <div className="glass-card p-6 text-center text-text-dim">Syncing history with database...</div>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))
               ) : historyOrders.length === 0 ? (
                 <div className="glass-card p-6 text-center text-text-dim">No historical completed or canceled orders found.</div>
               ) : (

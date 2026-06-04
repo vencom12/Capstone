@@ -3,28 +3,11 @@
 import type { Product } from '@/lib/types';
 import { useProductStore } from '@/stores/useProductStore';
 import ProductCard from './ProductCard';
+import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 
 interface ProductGridProps {
   onQuickView: (product: Product) => void;
   products?: Product[];
-}
-
-// Skeleton card for loading state
-function SkeletonCard() {
-  return (
-    <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] overflow-hidden animate-pulse">
-      <div className="h-[180px] bg-white/5" />
-      <div className="p-6 flex flex-col gap-3">
-        <div className="h-4 w-16 bg-white/10 rounded-full" />
-        <div className="flex justify-between">
-          <div className="h-5 w-24 bg-white/10 rounded" />
-          <div className="h-5 w-16 bg-white/10 rounded" />
-        </div>
-        <div className="h-3 w-full bg-white/10 rounded" />
-        <div className="h-10 w-full bg-white/10 rounded-xl mt-2" />
-      </div>
-    </div>
-  );
 }
 
 export default function ProductGrid({ onQuickView, products: customProducts }: ProductGridProps) {
@@ -36,7 +19,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
     return (
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
+          <ProductCardSkeleton key={i} />
         ))}
       </div>
     );
