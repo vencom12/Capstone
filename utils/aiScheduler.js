@@ -53,7 +53,7 @@ async function recalculateQueuePriorities(io) {
     try {
         console.log('[AI Queue] Starting queue prioritization analysis...');
         
-        // Fetch all non-completed, non-canceled orders
+        // Fetch all active/pending orders in the queue lifecycle
         const activeOrders = await prisma.order.findMany({
           where: {
             status: {
@@ -69,52 +69,96 @@ async function recalculateQueuePriorities(io) {
 
         const now = new Date();
 
-        // Calculate and update each order in a transaction
+        // 1. Optimization: Query customer historical completed order counts in a single batch GroupBy
+        const userIds = [...new Set(activeOrders.map(o => o.userId))];
+        const orderCounts = await prisma.order.groupBy({
+            by: ['userId'],
+            _count: { id: true },
+            where: {
+                userId: { in: userIds },
+                status: 'Completed'
+            }
+        });
+
+        const completedCountMap = {};
+        orderCounts.forEach(c => {
+            completedCountMap[c.userId] = c._count.id;
+        });
+
+        // 2. Optimization: Identify active designs currently in 'Preparing Order' state in memory
+        const activeDesigns = activeOrders
+            .filter(o => o.status === 'Preparing Order' && o.design)
+            .map(o => o.design.toLowerCase().trim());
+
+        // Calculate and update each active order in parallel database updates
         const updates = activeOrders.map(async (order) => {
             let score = 0;
             const estTime = estimateProductionTime(order);
 
-            // 1. Rush status (major boost)
-            if (order.isRush) {
-                score += 150;
-            }
-
-            // 2. Delivery target urgency (dueDate)
+            // A. Urgency Score (Max 40 points)
+            let urgencyScore = 0;
             if (order.dueDate) {
-                const hoursRemaining = (new Date(order.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60);
-                if (hoursRemaining <= 0) {
-                    score += 300; // Overdue gets maximum priority
-                } else if (hoursRemaining <= 4) {
-                    score += 200; // Due in next 4 hours
-                } else if (hoursRemaining <= 24) {
-                    score += 100; // Due within 24 hours
-                } else if (hoursRemaining <= 72) {
-                    score += 50;  // Due within 3 days
+                const createdTime = new Date(order.createdAt || order.date || now).getTime();
+                const dueTime = new Date(order.dueDate).getTime();
+                const nowTime = now.getTime();
+                const totalWindow = dueTime - createdTime;
+                
+                if (totalWindow <= 0) {
+                    urgencyScore = 40; // Overdue or immediate due date gets max points
+                } else {
+                    const elapsed = nowTime - createdTime;
+                    const ratio = Math.max(0, Math.min(1, elapsed / totalWindow));
+                    urgencyScore = ratio * 40;
                 }
             } else if (order.deliveryTime) {
-                // Fallback check if deliveryTime is a string but contains hints
-                const delLower = order.deliveryTime.toLowerCase();
+                const delLower = order.deliveryTime.toLowerCase().trim();
                 if (delLower.includes('today') || delLower.includes('hour') || delLower.includes('asap')) {
-                    score += 80;
+                    urgencyScore = 40;
                 } else if (delLower.includes('tomorrow')) {
-                    score += 40;
+                    urgencyScore = 25;
+                } else {
+                    const match = delLower.match(/(\d+)\s*day/);
+                    if (match) {
+                        const days = parseInt(match[1]);
+                        urgencyScore = Math.max(0, Math.min(40, (10 - days) * 4));
+                    } else {
+                        urgencyScore = 15;
+                    }
                 }
+            } else {
+                // Starvation prevention: scale based on age up to 7 days
+                const createdTime = new Date(order.createdAt || order.date || now).getTime();
+                const elapsed = now.getTime() - createdTime;
+                const defaultWindow = 7 * 24 * 60 * 60 * 1000; // 7 days
+                urgencyScore = Math.min(40, (elapsed / defaultWindow) * 40);
+            }
+            score += urgencyScore;
+
+            // B. Rush Processing flat boost (Max 30 points)
+            if (order.isRush) {
+                score += 30;
             }
 
-            // 3. Order age (prevents starvation of low-priority orders)
-            const hoursInQueue = (now.getTime() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60);
-            score += hoursInQueue * 5; // +5 points for every hour waiting in queue
-
-            // 4. Luxury Upsell (Gift Packaging) gets minor priority bump
-            if (order.giftPackaging) {
+            // C. Batching Compatibility (Max 20 points)
+            // Adds bonus if order is in queue and matches a design configuration already running
+            const designLower = (order.design || '').toLowerCase().trim();
+            if (order.status === 'In Queue' && designLower && activeDesigns.includes(designLower)) {
                 score += 20;
             }
 
-            // Update in DB
+            // D. Customer Tier historical loyalty bonus (Max 10 points)
+            const completedCount = completedCountMap[order.userId] || 0;
+            const tierScore = Math.min(10, completedCount);
+            score += tierScore;
+
+            // Strict 0-100 cap
+            const finalScore = Math.min(100, score);
+
+            // Update database row
             return prisma.order.update({
                 where: { id: order.id },
                 data: {
-                    priorityScore: parseFloat(score.toFixed(2)),
+                    priorityScore: parseFloat(finalScore.toFixed(2)),
                     estimatedTime: Math.ceil(estTime)
                 }
             });
@@ -123,9 +167,14 @@ async function recalculateQueuePriorities(io) {
         await Promise.all(updates);
         console.log(`[AI Queue] Successfully recalculated priority scores for ${activeOrders.length} orders.`);
 
-        // Fetch refreshed orders list to broadcast to all clients
+        // Fetch refreshed top-100 sorted orders list to broadcast to all clients
         const allOrders = await prisma.order.findMany({
-            include: { transaction: true, receipt: true }
+            include: { transaction: true, receipt: true },
+            orderBy: [
+                { priorityScore: 'desc' },
+                { createdAt: 'asc' }
+            ],
+            take: 100
         });
         
         if (io) {

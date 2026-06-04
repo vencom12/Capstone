@@ -203,6 +203,90 @@ exports.chat = async (req, res) => {
             prisma.product.findMany({ take: 30, orderBy: { createdAt: 'desc' } })
         ]);
 
+        const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
+        const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
+
+        const [orders14d, trafficRollups, orderRollups] = await Promise.all([
+            // Fetch raw items JSON only for safety stock velocities (last 14 days)
+            prisma.order.findMany({
+                where: {
+                    date: { gte: date14dAgo },
+                    NOT: { status: 'Order Canceled' }
+                },
+                select: { items: true }
+            }),
+            // Aggregate daily site traffic visits (365 days)
+            prisma.$queryRaw`
+                SELECT 
+                    TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
+                    COUNT(*)::int AS count
+                FROM "SiteTraffic"
+                WHERE timestamp >= ${date365dAgo}
+                GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
+            `,
+            // Aggregate daily orders count (365 days)
+            prisma.$queryRaw`
+                SELECT 
+                    TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
+                    COUNT(*)::int AS count
+                FROM "Order"
+                WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
+                GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
+            `
+        ]);
+
+        let totalVisits365D = 0;
+        trafficRollups.forEach(r => {
+            totalVisits365D += r.count;
+        });
+
+        let totalOrders365D = 0;
+        orderRollups.forEach(r => {
+            totalOrders365D += r.count;
+        });
+
+        const conversionRate = totalVisits365D > 0 ? (totalOrders365D / totalVisits365D) : 0;
+
+        const productRecipes = {};
+        products.forEach(p => {
+            productRecipes[p.name.toLowerCase()] = p.recipe || [];
+        });
+
+        const materialConsumption = {};
+        inventory.forEach(inv => {
+            materialConsumption[inv.id] = 0;
+            materialConsumption[inv.item.toLowerCase()] = 0;
+        });
+
+        orders14d.forEach(order => {
+            const items = order.items || [];
+            items.forEach(item => {
+                const recipe = productRecipes[item.name.toLowerCase()] || [];
+                recipe.forEach(recipeItem => {
+                    const key = recipeItem.inventoryId || recipeItem.name.toLowerCase();
+                    const qty = (item.quantity || 1) * (recipeItem.quantity || 1);
+                    if (materialConsumption[key] !== undefined) {
+                        materialConsumption[key] += qty;
+                    } else {
+                        materialConsumption[recipeItem.name.toLowerCase()] = (materialConsumption[recipeItem.name.toLowerCase()] || 0) + qty;
+                    }
+                });
+            });
+        });
+
+        const biForecastSummary = inventory.map(inv => {
+            const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
+            const velocity = consumption / 14;
+            const days = velocity > 0 ? (inv.count / velocity) : 9999;
+            return {
+                item: inv.item,
+                count: inv.count,
+                velocity: parseFloat(velocity.toFixed(2)),
+                daysRemaining: days === 9999 ? 'Stable' : parseFloat(days.toFixed(1)),
+                risk: days <= 5 ? 'Critical' : (days <= 10 ? 'Warning' : 'Low')
+            };
+        });
+
         const orderSummary = {
             total: orders.length,
             delivered: orders.filter(o => ['Order Delivered', 'Delivered', 'Completed'].includes(o.status)).length,
@@ -235,6 +319,10 @@ exports.chat = async (req, res) => {
         - Recent Orders List: ${JSON.stringify(orderSummary.recent)}
         - Inventory stockpile: ${JSON.stringify(inventorySummary)}
         - Product catalog items: ${JSON.stringify(productCatalog)}
+        
+        REAL-TIME BI & FORECAST METRICS:
+        - Storefront Conversion Rate: ${(conversionRate * 100).toFixed(1)}% (based on ${totalVisits365D} visits and ${totalOrders365D} orders in the past 365 days)
+        - Material Depletion Forecasts (velocity/day & days remaining): ${JSON.stringify(biForecastSummary)}
         
         POWERS & RESPONSIBILITIES:
         - You have FULL privileges to alter database records dynamically (Orders, Inventory Stockpile, and Design Catalog Products) based on user instructions.
@@ -523,6 +611,34 @@ exports.verifyReceipt = async (req, res) => {
     try {
         const { receiptUrl, orderTotal, orderId } = req.body;
         const apiKey = process.env.GROQ_API_KEY;
+        const crypto = require('crypto');
+
+        // === Input Validation ===
+        if (!receiptUrl || typeof receiptUrl !== 'string') {
+            return res.status(400).json({ success: false, message: "No receipt URL provided." });
+        }
+        if (!orderId || typeof orderId !== 'string') {
+            return res.status(400).json({ success: false, message: "No order ID provided." });
+        }
+        if (orderTotal === undefined || isNaN(parseFloat(orderTotal)) || parseFloat(orderTotal) <= 0) {
+            return res.status(400).json({ success: false, message: "Invalid order total." });
+        }
+
+        const numOrderTotal = parseFloat(orderTotal);
+
+        // === Ownership Validation ===
+        const receipt = await prisma.receipt.findFirst({ where: { orderID: orderId } });
+        if (!receipt) {
+            return res.status(404).json({ success: false, message: "Receipt not found for this order." });
+        }
+        if (receipt.userId !== req.user.id) {
+            return res.status(403).json({ success: false, message: "You are not authorized to verify this receipt." });
+        }
+
+        // === Check if already verified ===
+        if (receipt.aiVerificationStatus === 'verified') {
+            return res.json({ success: true, message: "This receipt has already been verified.", aiResult: receipt.ocrData, updatedReceipt: receipt });
+        }
 
         const aiSettings = await getAISettings();
         const GROQ_API_URL = aiSettings.aiProviderUrl;
@@ -533,11 +649,43 @@ exports.verifyReceipt = async (req, res) => {
             return res.status(400).json({ success: false, message: "AI Verification requires an API Key." });
         }
 
-        if (!receiptUrl) {
-            return res.status(400).json({ success: false, message: "No receipt URL provided." });
+        // === DEFENSE 1: SHA-256 Image Hash Deduplication ===
+        console.log(`[AI Vision] Defense 1: Computing image hash for Order ${orderId}...`);
+        let imageHash = null;
+        try {
+            const imageResponse = await fetch(receiptUrl);
+            if (imageResponse.ok) {
+                const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+                imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+
+                // Check if this exact image was already used
+                const existingByHash = await prisma.receipt.findFirst({
+                    where: { imageHash, NOT: { id: receipt.id } }
+                });
+                if (existingByHash) {
+                    console.log(`[AI Vision] BLOCKED: Duplicate image hash detected (${imageHash.substring(0, 12)}...)`);
+                    await prisma.receipt.update({
+                        where: { id: receipt.id },
+                        data: {
+                            imageHash,
+                            aiVerificationStatus: 'flagged',
+                            flaggedReason: `Duplicate receipt: This exact image was already used for order ${existingByHash.orderID}.`,
+                            status: 'Rejected'
+                        }
+                    });
+                    return res.json({
+                        success: false,
+                        message: "This receipt image has already been used for another order. Please upload a unique payment screenshot.",
+                        flaggedReason: 'duplicate_image'
+                    });
+                }
+            }
+        } catch (hashErr) {
+            console.warn('[AI Vision] Could not compute image hash (non-fatal):', hashErr.message);
         }
 
-        console.log(`[AI Vision] Analyzing receipt for Order ${orderId}...`);
+        // === STEP 1 & 2: Visual Classification + OCR Extraction ===
+        console.log(`[AI Vision] Steps 1-2: Classifying and extracting data for Order ${orderId}...`);
 
         const response = await fetch(GROQ_API_URL, {
             method: 'POST',
@@ -553,17 +701,38 @@ exports.verifyReceipt = async (req, res) => {
                         content: [
                             {
                                 type: "text",
-                                text: `Extract payment details from this receipt image. 
-                                Compare the extracted "Total Amount" with the expected value: ${orderTotal}.
-                                Output ONLY a JSON object:
-                                {
-                                  "extractedAmount": number,
-                                  "transactionId": "string",
-                                  "date": "string",
-                                  "isMatch": boolean,
-                                  "confidence": number,
-                                  "reason": "string"
-                                }`
+                                text: `You are a payment verification auditor. Analyze this image and perform TWO tasks:
+
+TASK 1 - VISUAL CLASSIFICATION:
+Determine if this image is a legitimate digital payment receipt/transaction confirmation (e.g., GCash, PayMaya, BPI, BDO, bank transfer screenshot). Look for:
+- Payment platform branding (logos, colors, headers)
+- Transaction success indicators ("Sent Successfully", "Payment Received", checkmarks)
+- Structured financial data (amounts, reference numbers, dates)
+
+If this is NOT a payment receipt (e.g., a meme, random photo, unrelated screenshot), set isValidReceipt to false.
+
+TASK 2 - DATA EXTRACTION (only if isValidReceipt is true):
+Extract these fields from the receipt:
+- extractedAmount: The total payment amount as a number
+- referenceId: The unique transaction/reference number (e.g., "Ref No: 9012 384 102")
+- transactionDate: The date and time of the transaction (ISO format if possible, otherwise as shown)
+- recipientName: The name of the recipient/receiver
+- paymentPlatform: The payment platform used (e.g., "GCash", "PayMaya", "BDO")
+
+Compare the extracted amount with the expected order total: ${numOrderTotal}.
+
+Output ONLY a JSON object:
+{
+  "isValidReceipt": boolean,
+  "extractedAmount": number or null,
+  "referenceId": "string" or null,
+  "transactionDate": "string" or null,
+  "recipientName": "string" or null,
+  "paymentPlatform": "string" or null,
+  "isAmountMatch": boolean,
+  "confidence": number (0 to 1),
+  "reason": "string explaining the analysis"
+}`
                             },
                             {
                                 type: "image_url",
@@ -577,42 +746,323 @@ exports.verifyReceipt = async (req, res) => {
         });
 
         const data = await response.json();
-        
-        if (!data.choices || !data.choices[0]) {
-            throw new Error("AI failed to provide a choice.");
+
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error("AI failed to provide a valid response.");
         }
 
-        const aiResult = JSON.parse(data.choices[0].message.content);
+        let aiResult;
+        try {
+            aiResult = JSON.parse(data.choices[0].message.content);
+        } catch (parseErr) {
+            throw new Error("AI returned malformed JSON: " + data.choices[0].message.content.substring(0, 200));
+        }
 
-        // Apply Confidence Gate & Match condition
-        const confidence = aiResult.confidence !== undefined ? aiResult.confidence : 0;
+        // Sanitize confidence to a valid range
+        const confidence = Math.max(0, Math.min(1, aiResult.confidence !== undefined ? parseFloat(aiResult.confidence) : 0));
         const isPassedGate = confidence >= MIN_CONFIDENCE;
-        const isVerified = aiResult.isMatch && isPassedGate;
 
-        // Update Database with AI Findings
+        // === STEP 1 RESULT: Visual Classification ===
+        if (!aiResult.isValidReceipt) {
+            console.log(`[AI Vision] REJECTED: Not a valid receipt (confidence: ${confidence})`);
+            await prisma.receipt.update({
+                where: { id: receipt.id },
+                data: {
+                    imageHash,
+                    ocrData: aiResult,
+                    confidenceScore: confidence,
+                    aiVerificationStatus: 'rejected',
+                    flaggedReason: 'Invalid document: The uploaded image is not a payment receipt.',
+                    status: 'Rejected'
+                }
+            });
+            return res.json({
+                success: false,
+                message: "The uploaded image does not appear to be a payment receipt. Please upload a screenshot of your payment transaction.",
+                flaggedReason: 'invalid_document',
+                aiResult
+            });
+        }
+
+        // === STEP 3: Database Reconciliation (3 Audit Checks) ===
+        console.log(`[AI Vision] Step 3: Running audit checks for Order ${orderId}...`);
+        const auditFailures = [];
+
+        // Platform-specific service validations
+        if (receipt.paymentMethod === 'gcash') {
+            const gcashService = require('../../services/payments/gcashService');
+            const platformCheck = gcashService.validateReceiptData(aiResult);
+            if (!platformCheck.isValid) {
+                auditFailures.push(platformCheck.error);
+            }
+        } else if (receipt.paymentMethod === 'paymaya') {
+            const paymayaService = require('../../services/payments/paymayaService');
+            const platformCheck = paymayaService.validateReceiptData(aiResult);
+            if (!platformCheck.isValid) {
+                auditFailures.push(platformCheck.error);
+            }
+        }
+
+        // Audit Check A: Price Match
+        const extractedAmount = parseFloat(aiResult.extractedAmount) || 0;
+        if (extractedAmount < numOrderTotal) {
+            auditFailures.push(`Underpayment: Receipt shows ${extractedAmount} but order requires ${numOrderTotal}.`);
+        }
+
+        // Audit Check B: Duplicate Reference ID (Defense 2)
+        if (aiResult.referenceId) {
+            const cleanRefId = aiResult.referenceId.replace(/\s+/g, '');
+            const existingByRef = await prisma.receipt.findFirst({
+                where: {
+                    referenceId: cleanRefId,
+                    NOT: { id: receipt.id },
+                    aiVerificationStatus: 'verified'
+                }
+            });
+            if (existingByRef) {
+                auditFailures.push(`Duplicate reference ID: "${cleanRefId}" was already used for order ${existingByRef.orderID}.`);
+            }
+            aiResult.referenceId = cleanRefId; // Normalize for storage
+        }
+
+        // Audit Check C: Recency (within last 24 hours)
+        if (aiResult.transactionDate) {
+            try {
+                const txDate = new Date(aiResult.transactionDate);
+                const now = new Date();
+                const hoursAgo = (now - txDate) / (1000 * 60 * 60);
+                if (hoursAgo > 24) {
+                    auditFailures.push(`Expired receipt: Transaction date (${aiResult.transactionDate}) is more than 24 hours old.`);
+                }
+            } catch (dateErr) {
+                // If date can't be parsed, don't fail on this check alone
+                console.warn('[AI Vision] Could not parse transaction date:', aiResult.transactionDate);
+            }
+        }
+
+        // === STEP 4: Automated Verdict ===
+        const allChecksPassed = auditFailures.length === 0 && aiResult.isAmountMatch && isPassedGate;
+        const flaggedReason = auditFailures.length > 0 ? auditFailures.join(' | ') : (!isPassedGate ? `Low confidence: ${confidence} (threshold: ${MIN_CONFIDENCE})` : null);
+        const verificationStatus = allChecksPassed ? 'verified' : 'flagged';
+
+        console.log(`[AI Vision] Step 4: Verdict for Order ${orderId}: ${verificationStatus}${flaggedReason ? ' — ' + flaggedReason : ''}`);
+
+        // Update Receipt
         const updatedReceipt = await prisma.receipt.update({
-            where: { orderID: orderId },
+            where: { id: receipt.id },
             data: {
                 ocrData: aiResult,
                 confidenceScore: confidence,
-                aiVerificationStatus: isVerified ? 'verified' : (isPassedGate ? 'flagged' : 'flagged_low_confidence'),
-                status: isVerified ? 'Verified' : 'Manual Review'
+                aiVerificationStatus: verificationStatus,
+                status: allChecksPassed ? 'Verified' : 'Manual Review',
+                imageHash,
+                referenceId: aiResult.referenceId || null,
+                flaggedReason
             }
         });
 
-        res.json({ 
-            success: true, 
-            message: isVerified 
-                ? "Payment verified by AI!" 
-                : (!isPassedGate 
-                    ? `AI flagged: Confidence score (${confidence}) is below configured threshold (${MIN_CONFIDENCE}).` 
-                    : "AI flagged a discrepancy."),
-            aiResult,
-            updatedReceipt 
+        // Update Order status based on verdict
+        if (allChecksPassed) {
+            await prisma.order.updateMany({
+                where: { orderId: orderId },
+                data: {
+                    paymentStatus: 'paid',
+                    status: 'In Queue',
+                    progress: 5
+                }
+            });
+
+            // Notify via socket
+            const io = req.app.get('io');
+            if (io) {
+                const socketUtil = require('../../utils/socketUtil');
+                const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { orderId, status: 'In Queue' });
+            }
+        }
+
+        res.json({
+            success: allChecksPassed,
+            message: allChecksPassed
+                ? "Payment verified by AI! Your order is now in the queue."
+                : (flaggedReason || "AI flagged a discrepancy. An admin will review your payment."),
+            aiResult: {
+                isValidReceipt: aiResult.isValidReceipt,
+                extractedAmount,
+                referenceId: aiResult.referenceId,
+                paymentPlatform: aiResult.paymentPlatform,
+                confidence,
+                isAmountMatch: aiResult.isAmountMatch
+            },
+            verificationStatus,
+            flaggedReason,
+            updatedReceipt
         });
 
     } catch (error) {
         console.error('[AI Vision Error]:', error);
         res.status(500).json({ success: false, message: "AI Analysis failed: " + error.message });
+    }
+};
+
+// ====================================================
+// Storefront AI Attendant — Public, Read-Only Chatbot
+// ====================================================
+exports.storefrontChat = async (req, res) => {
+    try {
+        const { message, history, context } = req.body;
+        const apiKey = process.env.GROQ_API_KEY;
+
+        if (!message || typeof message !== 'string' || message.trim().length === 0) {
+            return res.status(400).json({ success: false, reply: 'Please enter a message.' });
+        }
+
+        const aiSettings = await getAISettings();
+        const GROQ_API_URL = aiSettings.aiProviderUrl;
+        const MODEL = aiSettings.aiChatModel;
+
+        if (!apiKey) {
+            return res.json({
+                success: true,
+                reply: "Hi! I'm the Stitch-Opt store assistant. AI features require an API key to be configured. In the meantime, feel free to browse our catalog! 🧵",
+                suggestedProducts: []
+            });
+        }
+
+        // Fetch product catalog with stock enrichment
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const rawProducts = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+        const products = await enrichProductsWithStock(rawProducts);
+
+        const productCatalog = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            tag: p.tag,
+            tags: p.tags || [],
+            description: p.description || '',
+            availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
+            isOutOfStock: p.isOutOfStock || false
+        }));
+
+        // Build browsing context string from client-side context
+        let browsingContext = '';
+        if (context) {
+            if (context.selectedCategory && context.selectedCategory !== 'All') {
+                browsingContext += `The customer is currently browsing the "${context.selectedCategory}" category. `;
+            }
+            if (context.searchQuery) {
+                browsingContext += `The customer searched for "${context.searchQuery}". `;
+            }
+        }
+
+        const systemPrompt = `You are the Stitch-Opt Virtual Store Attendant, a warm and knowledgeable AI shopping assistant for Stitch-Opt — a professional embroidery design store.
+
+YOUR ROLE:
+- Help customers find the perfect embroidery design based on their needs, occasion, style, or budget.
+- Provide a personalized, guided shopping experience through natural conversation.
+- Suggest relevant products from the catalog when appropriate.
+- Support natural language search — customers may describe what they want instead of searching exact names (e.g. "something blue and floral", "a gift for graduation", "matching cap and shirt designs").
+- Be friendly, enthusiastic, and knowledgeable about embroidery and fashion.
+
+CURRENT PRODUCT CATALOG (${productCatalog.length} designs):
+${JSON.stringify(productCatalog)}
+
+${browsingContext ? `CUSTOMER BROWSING CONTEXT: ${browsingContext}` : ''}
+
+CRITICAL INSTRUCTIONS FOR PRODUCT SUGGESTIONS:
+When you want to suggest or recommend specific products from the catalog, you MUST include a special marker in your response with the product IDs:
+[PRODUCTS:id1,id2,id3]
+
+For example, if recommending products with IDs "abc-123" and "def-456", include:
+[PRODUCTS:abc-123,def-456]
+
+Rules for the marker:
+- Place the marker at the END of your response, after your conversational text.
+- Include up to 6 product IDs maximum per response.
+- Only include IDs that exist in the catalog above.
+- Do NOT include the marker if you're not recommending specific products (e.g. for greetings or general questions).
+- Prioritize in-stock items. If an item is out of stock, mention it but still suggest alternatives.
+
+CONVERSATION STYLE:
+- Keep responses concise but helpful (2-4 sentences of text before product suggestions).
+- Use emoji sparingly for warmth (1-2 per response max).
+- Format text nicely with bold (**text**) for emphasis where appropriate.
+- If the customer asks about something not in the catalog, acknowledge it and suggest the closest available alternatives.
+- Never mention the [PRODUCTS:] marker syntax to the customer — it's for internal use only.`;
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...(history || []).slice(-10).map(h => ({
+                role: h.role === 'user' ? 'user' : 'assistant',
+                content: h.text
+            })),
+            { role: 'user', content: message }
+        ];
+
+        const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: MODEL,
+                messages,
+                temperature: 0.7,
+                max_tokens: 1024
+            })
+        });
+
+        const data = await response.json();
+
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            console.error('[AI Storefront] No valid response:', JSON.stringify(data));
+            return res.json({
+                success: false,
+                reply: "I'm having trouble thinking right now. Please try again in a moment! 🙏",
+                suggestedProducts: []
+            });
+        }
+
+        let reply = data.choices[0].message.content;
+        let suggestedProducts = [];
+
+        // Parse [PRODUCTS:id1,id2,...] marker from the response
+        const productMarkerRegex = /\[PRODUCTS?:([\w\-,\s]+)\]/gi;
+        const match = productMarkerRegex.exec(reply);
+
+        if (match) {
+            const ids = match[1].split(',').map(id => id.trim()).filter(Boolean);
+            suggestedProducts = products
+                .filter(p => ids.includes(p.id))
+                .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    price: p.price,
+                    tag: p.tag,
+                    description: p.description,
+                    imageUrl: p.imageUrl,
+                    availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
+                    isOutOfStock: p.isOutOfStock || false
+                }));
+
+            // Remove the marker from the visible reply
+            reply = reply.replace(productMarkerRegex, '').trim();
+        }
+
+        res.json({
+            success: true,
+            reply,
+            suggestedProducts
+        });
+
+    } catch (error) {
+        console.error('[AI Storefront Error]:', error);
+        res.status(500).json({
+            success: false,
+            reply: "Something went wrong on my end. Please try again! 🔧",
+            suggestedProducts: []
+        });
     }
 };

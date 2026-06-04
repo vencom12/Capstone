@@ -12,7 +12,8 @@ const logErr = (msg) => {
 
 exports.register = async (req, res) => {
     try {
-        logErr('Postgres Register attempt: ' + JSON.stringify(req.body));
+        const { password: _pw, ...safeBody } = req.body;
+        logErr('Postgres Register attempt: ' + JSON.stringify(safeBody));
         const { username, email, password, phoneNumber, address } = req.body;
         
         if (!phoneNumber || !address) {

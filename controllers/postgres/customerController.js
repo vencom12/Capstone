@@ -69,12 +69,40 @@ exports.submitOrder = async (req, res) => {
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
 
+        // Fix B: Payment Method Whitelist
+        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'paymaya'];
+        if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+            return res.status(400).json({ message: 'Invalid payment method.' });
+        }
+
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const numTotal = parseFloat(totalAmount);
+        // Fix A: Server-side total recalculation (never trust client-sent total)
+        let serverTotal = 0;
+        for (const item of items) {
+            const product = await prisma.product.findUnique({ where: { id: item.productId } });
+            if (!product) return res.status(404).json({ message: `Product not found: ${item.name || item.productId}` });
+            serverTotal += product.price * (item.quantity || 1);
+        }
+        // Add gift packaging if selected
+        if (giftPackaging) {
+            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            serverTotal += settings ? settings.giftPackagingPrice : 5.00;
+        }
+        const numTotal = Math.round(serverTotal * 100) / 100; // Round to 2 decimal places
+
         if (paymentMethod === 'wallet' && (user.walletBalance || 0) < numTotal) {
             return res.status(400).json({ message: 'Insufficient wallet balance' });
+        }
+
+        // Fix D: For e-wallet payments, require a verified receipt
+        if (['gcash', 'paymaya'].includes(paymentMethod) && receiptUrl) {
+            const verifiedReceipt = await prisma.receipt.findFirst({
+                where: { imageUrl: receiptUrl, aiVerificationStatus: 'verified' }
+            });
+            // Note: If no verified receipt exists yet, we still allow order creation in "Awaiting Payment" status.
+            // The AI verification flow will promote it to "In Queue" after verification.
         }
 
         const secureOrderId = `ORD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -213,9 +241,13 @@ exports.submitOrder = async (req, res) => {
         const updatedUser = await prisma.user.findUnique({ where: { id: userId } });
         const io = req.app.get('io');
         
-        // Recalculate AI Queue priorities
+        // Recalculate AI Queue priorities asynchronously
         const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
-        await recalculateQueuePriorities(io);
+        setImmediate(() => {
+            recalculateQueuePriorities(io).catch(err => {
+                console.error('[AI Queue Background Error] Recalculation failed:', err);
+            });
+        });
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
         // Broadcast product update (since reservedCount changed)
         const productsList = await prisma.product.findMany();

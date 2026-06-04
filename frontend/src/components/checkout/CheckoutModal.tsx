@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import GCashPayment from './GCashPayment';
+import PayMayaPayment from './PayMayaPayment';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -29,6 +31,8 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState('');
+  const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
 
   const [giftPackaging, setGiftPackaging] = useState(false);
   const [calligraphyMessage, setCalligraphyMessage] = useState('');
@@ -67,22 +71,88 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setReceiptFile(e.target.files[0]);
-      setAiAnalyzing(true);
-      // Simulate AI analysis
-      setTimeout(() => {
-        setAiAnalyzing(false);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setReceiptFile(file);
+    setAiAnalyzing(true);
+    setPaymentVerified(false);
+    setAiVerificationResult(null);
+
+    try {
+      // Step 1: Upload receipt image to Cloudinary
+      const formData = new FormData();
+      formData.append('receipt', file);
+      
+      const uploadRes = await fetch('/api/customer/upload-receipt', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok || !uploadData.url) {
+        throw new Error(uploadData.message || 'Failed to upload receipt');
+      }
+
+      setReceiptUrl(uploadData.url);
+
+      // Step 2: Submit order first (in "Awaiting Payment" status) to get orderId
+      const orderRes = await api.post<{ order: { orderId: string }, receiptID: string }>('/api/customer/order/submit', {
+        items,
+        totalAmount: finalTotal,
+        address: user?.address,
+        deliveryTime: deliveryTime || 'As soon as possible',
+        notes,
+        paymentMethod,
+        receiptUrl: uploadData.url,
+        giftPackaging,
+        calligraphyMessage
+      });
+
+      // Step 3: Call AI verification with the uploaded receipt
+      const verifyRes = await api.post<{
+        success: boolean;
+        message: string;
+        verificationStatus?: string;
+        flaggedReason?: string;
+        aiResult?: { extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
+      }>('/api/ai/verify-receipt', {
+        receiptUrl: uploadData.url,
+        orderTotal: finalTotal,
+        orderId: orderRes.order.orderId
+      });
+
+      if (verifyRes.success) {
         setPaymentVerified(true);
-        showToast('StitchMaster AI: Receipt verified successfully!', 'success');
-      }, 2000);
+        const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
+        setAiVerificationResult(`✅ Verified${conf ? ` (${conf} confidence)` : ''} — Amount: $${verifyRes.aiResult?.extractedAmount?.toFixed(2) || '?'}`);
+        showToast('StitchMaster AI: Payment verified! Your order is now in the queue.', 'success');
+        await refreshUser();
+        await fetchDashboardState();
+        clearBasket();
+        onClose();
+      } else {
+        setAiVerificationResult(`⚠️ ${verifyRes.message}`);
+        showToast(verifyRes.message || 'AI could not verify this receipt', 'error');
+        // Order exists but remains in "Awaiting Payment" — admin can review
+        await fetchDashboardState();
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Verification failed';
+      setAiVerificationResult(`❌ ${msg}`);
+      showToast(msg, 'error');
+    } finally {
+      setAiAnalyzing(false);
     }
   };
 
   const handlePlaceOrder = async () => {
-    if ((paymentMethod === 'gcash' || paymentMethod === 'paymaya') && !paymentVerified) {
-      showToast('Please upload and verify your payment receipt', 'error');
+    // For e-wallet methods, the order is already placed during handleFileSelect
+    if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') {
+      if (!paymentVerified) {
+        showToast('Please upload and verify your payment receipt', 'error');
+      }
       return;
     }
 
@@ -100,8 +170,8 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       });
       
       showToast('Order placed successfully!', 'success');
-      await refreshUser(); // Update wallet balance
-      await fetchDashboardState(); // Instant update for orders/transactions
+      await refreshUser();
+      await fetchDashboardState();
       clearBasket();
       onClose();
     } catch (err: any) {
@@ -261,34 +331,23 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
               </div>
 
               {/* Receipt Upload (for e-wallets) */}
-              {(paymentMethod === 'gcash' || paymentMethod === 'paymaya') && (
-                <div className="flex flex-col gap-3 max-[650px]:gap-2 border-t border-border-glass pt-4 max-[650px]:pt-2 mt-2 max-[650px]:mt-0 animate-[fadeIn_0.3s_ease-out]">
-                  <h4 className="text-[0.85rem] max-[650px]:text-[0.75rem] font-bold m-0 flex items-center gap-2 max-[650px]:gap-1.5">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="max-[650px]:w-3.5 max-[650px]:h-3.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                    Upload Payment Receipt
-                  </h4>
-                  <div 
-                    onClick={() => document.getElementById('receipt-upload')?.click()}
-                    className="border-2 border-dashed border-border-glass rounded-xl max-[650px]:rounded-lg p-5 max-[650px]:p-3 text-center cursor-pointer hover:border-primary/50 transition-all bg-black/20"
-                  >
-                    <input id="receipt-upload" type="file" className="hidden" accept="image/*" onChange={handleFileSelect} />
-                    {receiptFile ? (
-                      <span className="text-[0.85rem] max-[650px]:text-[0.75rem] text-primary font-medium">{receiptFile.name}</span>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim max-[650px]:w-5 max-[650px]:h-5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                        <span className="text-[0.75rem] max-[650px]:text-[0.65rem] text-text-dim">Click to upload screenshot</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {aiAnalyzing && (
-                    <div className="flex items-center gap-2 bg-primary/10 border border-primary p-3 rounded-lg">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                      <span className="text-[0.75rem] text-text-main font-bold">StitchMaster AI is analyzing...</span>
-                    </div>
-                  )}
-                </div>
+              {paymentMethod === 'gcash' && (
+                <GCashPayment
+                  receiptFile={receiptFile}
+                  aiAnalyzing={aiAnalyzing}
+                  aiVerificationResult={aiVerificationResult}
+                  paymentVerified={paymentVerified}
+                  onFileSelect={handleFileSelect}
+                />
+              )}
+              {paymentMethod === 'paymaya' && (
+                <PayMayaPayment
+                  receiptFile={receiptFile}
+                  aiAnalyzing={aiAnalyzing}
+                  aiVerificationResult={aiVerificationResult}
+                  paymentVerified={paymentVerified}
+                  onFileSelect={handleFileSelect}
+                />
               )}
 
               <div className="flex items-center justify-between border-t border-border-glass pt-4 max-[650px]:pt-2.5 mt-auto">

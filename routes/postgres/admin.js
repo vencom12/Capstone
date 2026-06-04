@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../../controllers/postgres/adminController');
+const forecastingController = require('../../controllers/postgres/forecastingController');
 const adminAuth = require('../../middleware/adminAuth');
 const staffAuth = require('../../middleware/staffAuth');
 const auditLogger = require('../../middleware/postgres/auditLogger');
@@ -32,6 +33,8 @@ router.get('/settings', adminAuth(), adminController.getSettings);
 router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
+router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
+router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);
 
 // --- Staff (Admin + Employee) Routes ---
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);

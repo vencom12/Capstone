@@ -370,6 +370,34 @@ export default function EmployeePage() {
     }
   };
 
+  const getRelativeTime = (dueDate: string | Date | null) => {
+    if (!dueDate) return null;
+    const dueTime = new Date(dueDate).getTime();
+    const nowTime = Date.now();
+    const diff = dueTime - nowTime;
+    const isOverdue = diff < 0;
+    const absDiff = Math.abs(diff);
+
+    const mins = Math.floor(absDiff / (1000 * 60));
+    const hours = Math.floor(absDiff / (1000 * 60 * 60));
+    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+
+    if (isOverdue) {
+      if (mins < 60) return `Overdue by ${mins}m`;
+      if (hours < 24) return `Overdue by ${hours}h`;
+      return `Overdue by ${days}d`;
+    } else {
+      if (mins < 60) return `due in ${mins}m`;
+      if (hours < 24) return `due in ${hours}h`;
+      return `due in ${days}d`;
+    }
+  };
+
+  // Find currently active designs to show Batch Match markers
+  const activeDesigns = orders
+    .filter((o: any) => o.status === 'Preparing Order' && o.design)
+    .map((o: any) => o.design.toLowerCase().trim());
+
   // --- Filtering & Sorting ---
   const activeOrders = orders.filter(o => {
     if (['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
@@ -457,6 +485,15 @@ export default function EmployeePage() {
                             <div className="flex items-center gap-3">
                               <div className={`w-3.5 h-3.5 rounded-full ${m.status === 'Running' ? 'bg-success shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : m.status === 'Idle' ? 'bg-warning' : 'bg-danger'}`}></div>
                               <h3 className="m-0 font-bold text-xl">{m.name}</h3>
+                              {m.status === 'Running' && assignedOrder && (
+                               <span className={`text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
+                                 assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger shadow-[0_0_8px_rgba(239,68,68,0.2)]' :
+                                 assignedOrder.priorityScore >= 40 ? 'bg-warning/20 border-warning/30 text-warning' :
+                                 'bg-primary/20 border-primary/30 text-primary'
+                               }`}>
+                                 Score: {assignedOrder.priorityScore !== undefined ? assignedOrder.priorityScore.toFixed(0) : '0'}
+                               </span>
+                             )}
                             </div>
                             <div className="flex gap-2 max-[650px]:w-full">
                                <button onClick={() => setMachineStatus(m, 'Idle')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Idle' ? 'bg-warning/20 text-warning border-warning/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Idle</button>
@@ -565,83 +602,118 @@ export default function EmployeePage() {
               </div>
             </header>
             <div className="glass-table-container max-[1100px]:hidden">
-               <table className="glass-table">
-                 <thead>
-                    <tr>
-                      <th className="glass-th text-left">Order ID & Status</th>
-                      <th className="glass-th text-left">Client & Date</th>
-                      <th className="glass-th text-left">Design / Items</th>
-                      <th className="glass-th text-left">Total</th>
-                      <th className="glass-th text-right">Action</th>
-                    </tr>
-                 </thead>
-                 <tbody>
-                    {isSyncing && orders.length === 0 ? (
-                      <tr className="glass-tr"><td colSpan={5} className="glass-td text-center text-text-dim">Syncing active queue with database...</td></tr>
-                    ) : activeOrders.length === 0 ? (
-                      <tr className="glass-tr"><td colSpan={5} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
-                    ) : (
-                      activeOrders.map((o) => {
-                        return (
-                          <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
-                            <td className="glass-td">
-                              <div className="flex flex-col text-left">
-                                <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                                <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
-                                  ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                    o.status === 'In Transit' ? 'bg-warning/20 text-warning border border-warning/30' :
-                                    o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                                    'bg-white/10 text-text-dim border border-white/20'
-                                  }
-                                `}>
-                                  {o.status} ({o.progress || 0}%)
-                                </span>
-                              </div>
-                            </td>
-                            <td className="glass-td text-text-main text-sm font-medium text-left">
-                              <div>{o.client || 'Valued Customer'}</div>
-                              <div className="text-[0.75rem] text-text-dim mt-0.5">
-                                {new Date(o.date || o.createdAt).toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="glass-td text-text-main text-sm text-left">
-                              {o.items && Array.isArray(o.items) ? (
-                                <div className="flex flex-col gap-0.5">
-                                  {o.items.map((item: any, idx: number) => (
-                                    <span key={idx} className="line-clamp-1">
-                                      {item.quantity}x {item.name}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span>{o.design || 'Embroidery Design'}</span>
-                              )}
-                            </td>
-                            <td className="glass-td text-primary font-mono font-bold text-sm text-left">
-                              ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
-                            </td>
-                            <td className="glass-td text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => {
-                                    setSelectedOrder(o);
-                                    setOrderStatusInput(o.status || 'In Queue');
-                                    setOrderProgressInput((o.progress || 10).toString());
-                                    setIsProcessModalOpen(true);
-                                  }}
-                                  className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                                >
-                                  Process
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                 </tbody>
-               </table>
-            </div>
+                <table className="glass-table">
+                  <thead>
+                     <tr>
+                       <th className="glass-th text-left">Order ID & Status</th>
+                       <th className="glass-th text-left">Priority / Est. Time</th>
+                       <th className="glass-th text-left">Client & Date</th>
+                       <th className="glass-th text-left">Design / Items</th>
+                       <th className="glass-th text-left">Total</th>
+                       <th className="glass-th text-right">Action</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {isSyncing && orders.length === 0 ? (
+                       <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">Syncing active queue with database...</td></tr>
+                     ) : activeOrders.length === 0 ? (
+                       <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
+                     ) : (
+                       activeOrders.map((o) => {
+                         const isBatchMatched = o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim());
+                         return (
+                           <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
+                             <td className="glass-td">
+                               <div className="flex flex-col text-left">
+                                 <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                                 <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
+                                   ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
+                                     o.status === 'In Transit' ? 'bg-warning/20 text-warning border border-warning/30' :
+                                     o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
+                                     'bg-white/10 text-text-dim border border-white/20'
+                                   }
+                                 `}>
+                                   {o.status} ({o.progress || 0}%)
+                                 </span>
+                               </div>
+                             </td>
+                             <td className="glass-td text-left">
+                               <div className="flex flex-col">
+                                 <div className="flex items-center gap-1.5">
+                                   <span className={`w-2 h-2 rounded-full ${
+                                     o.priorityScore >= 80 ? 'bg-danger animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.7)]' :
+                                     o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
+                                   }`}></span>
+                                   <span className="font-bold text-text-main text-sm">
+                                     Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
+                                   </span>
+                                   {o.isRush && (
+                                     <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                       Rush
+                                     </span>
+                                   )}
+                                 </div>
+                                 <span className="text-[0.75rem] text-text-dim mt-0.5">
+                                   🕒 Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
+                                 </span>
+                               </div>
+                             </td>
+                             <td className="glass-td text-text-main text-sm font-medium text-left">
+                               <div>{o.client || 'Valued Customer'}</div>
+                               <div className="text-[0.75rem] text-text-dim mt-0.5">
+                                 {new Date(o.date || o.createdAt).toLocaleString()}
+                               </div>
+                               {o.dueDate && (
+                                 <div className={`text-[0.7rem] font-extrabold mt-1 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
+                                   📅 {getRelativeTime(o.dueDate)}
+                                 </div>
+                               )}
+                             </td>
+                             <td className="glass-td text-text-main text-sm text-left">
+                               {o.items && Array.isArray(o.items) ? (
+                                 <div className="flex flex-col gap-0.5">
+                                   {o.items.map((item: any, idx: number) => (
+                                     <span key={idx} className="line-clamp-1">
+                                       {item.quantity}x {item.name}
+                                     </span>
+                                   ))}
+                                 </div>
+                               ) : (
+                                 <span className="font-semibold">{o.design || 'Embroidery Design'}</span>
+                               )}
+                               {isBatchMatched && (
+                                 <div className="mt-1">
+                                   <span className="inline-flex items-center gap-0.5 text-[0.65rem] bg-secondary/25 text-secondary border border-secondary/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                     ⚡ Batch Match
+                                   </span>
+                                 </div>
+                               )}
+                             </td>
+                             <td className="glass-td text-primary font-mono font-bold text-sm text-left">
+                               ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                             </td>
+                             <td className="glass-td text-right">
+                               <div className="flex gap-2 justify-end">
+                                 <button
+                                   onClick={() => {
+                                     setSelectedOrder(o);
+                                     setOrderStatusInput(o.status || 'In Queue');
+                                     setOrderProgressInput((o.progress || 10).toString());
+                                     setIsProcessModalOpen(true);
+                                   }}
+                                   className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                                 >
+                                   Process
+                                 </button>
+                               </div>
+                             </td>
+                           </tr>
+                         );
+                       })
+                     )}
+                  </tbody>
+                </table>
+             </div>
 
             {/* Tablet & Mobile Card Block View */}
             <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
@@ -654,8 +726,8 @@ export default function EmployeePage() {
                   return (
                     <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
                       <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
-                        {/* Left Side: ID & Timestamp, Status Badge, Client Name */}
-                        <div className="flex flex-col gap-2.5 text-left justify-between h-full">
+                        {/* Left Side: ID & Status Badge, Client, Priority Details */}
+                        <div className="flex flex-col gap-2 text-left justify-between h-full">
                           {/* Status Badge */}
                           <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
                             ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
@@ -667,10 +739,32 @@ export default function EmployeePage() {
                             {o.status} ({o.progress || 0}%)
                           </span>
 
-                          {/* Upper Left: ID & Timestamp */}
+                          {/* Upper Left: ID & Timestamp & Priority */}
                           <div className="flex flex-col">
                             <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
                             <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleString()}</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                o.priorityScore >= 80 ? 'bg-danger animate-pulse' :
+                                o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
+                              }`}></span>
+                              <span className="text-[0.7rem] font-bold text-text-main">
+                                Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
+                              </span>
+                              {o.isRush && (
+                                <span className="text-[0.6rem] bg-danger/25 text-danger font-extrabold px-1 rounded uppercase">
+                                  Rush
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[0.65rem] text-text-dim mt-0.5">
+                              🕒 Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
+                            </span>
+                            {o.dueDate && (
+                              <span className={`text-[0.65rem] font-bold mt-0.5 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
+                                📅 {getRelativeTime(o.dueDate)}
+                              </span>
+                            )}
                           </div>
 
                           {/* Client Name */}
@@ -694,6 +788,11 @@ export default function EmployeePage() {
                               <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
                             )}
                           </div>
+                          {o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim()) && (
+                            <span className="inline-flex items-center justify-center gap-0.5 text-[0.6rem] bg-secondary/25 text-secondary border border-secondary/30 font-extrabold px-1 py-0.5 rounded uppercase tracking-wider w-full mt-1">
+                              ⚡ Batch Match
+                            </span>
+                          )}
                         </div>
                       </div>
 

@@ -479,6 +479,14 @@ exports.updateOrdersStatus = async (req, res) => {
         const enrichedProducts = await enrichProductsWithStock(productsList);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
+        // Recalculate AI Queue priorities asynchronously
+        const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+        setImmediate(() => {
+            recalculateQueuePriorities(io).catch(err => {
+                console.error('[AI Queue Background Error] Recalculation failed:', err);
+            });
+        });
+
         if (errors.length > 0) {
             return res.json({
                 message: `Processed ${results.length - errors.length} orders successfully. ${errors.length} orders had insufficient base garment stock and were routed to the Hold Queue.`,

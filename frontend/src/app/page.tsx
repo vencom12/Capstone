@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import AuthModal from '@/components/auth/AuthModal';
+import AiAttendant from '@/components/products/AiAttendant';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -140,6 +141,9 @@ export default function StorefrontPage() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
       />
+
+      {/* AI Store Attendant Chatbot */}
+      <AiAttendant />
     </div>
   );
 }

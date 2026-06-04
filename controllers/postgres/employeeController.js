@@ -8,7 +8,10 @@ exports.getDashboardState = async (req, res) => {
         const [orders, inventory, products, machines] = await Promise.all([
             prisma.order.findMany({ 
                 include: { transaction: true },
-                orderBy: { createdAt: 'desc' }, 
+                orderBy: [
+                    { priorityScore: 'desc' },
+                    { createdAt: 'asc' }
+                ], 
                 take: 100 
             }),
             prisma.inventory.findMany(),
@@ -75,6 +78,14 @@ exports.updateOrderStatus = async (req, res) => {
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const enrichedProducts = await enrichProductsWithStock(productsList);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
+
+        // Recalculate AI Queue priorities asynchronously
+        const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+        setImmediate(() => {
+            recalculateQueuePriorities(io).catch(err => {
+                console.error('[AI Queue Background Error] Recalculation failed:', err);
+            });
+        });
 
         res.json(updatedOrder);
     } catch (err) {

@@ -170,6 +170,11 @@ model Receipt {
   confidenceScore      Float     @default(0)
   aiVerificationStatus String    @default("pending")
   
+  // Anti-Replay Fraud Fields
+  imageHash     String?   @unique  // SHA-256 fingerprint of uploaded image (Defense 1)
+  referenceId   String?            // OCR-extracted transaction reference ID (Defense 2)
+  flaggedReason String?            // Human-readable reason if flagged
+  
   userId        String
   user          User     @relation(fields: [userId], references: [id])
   

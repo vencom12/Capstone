@@ -1,0 +1,55 @@
+# Refactor GCash and PayMaya into Modular Components
+
+This plan refactors the codebase to separate GCash and PayMaya payment flows on both the frontend and backend, making it modular and ready for direct API keys.
+
+## Proposed Changes
+
+---
+
+### Backend Service Tier
+
+We will create a new payment service structure on the backend to isolate payment platform-specific actions (e.g. creating links, checking statuses, validating transaction details).
+
+#### [NEW] [gcashService.js](file:///c:/Users/revin/Downloads/Capstone/services/payments/gcashService.js)
+This service encapsulates GCash direct API integrations (like PayMongo GCash source creation) and AI screenshot verification specific validation checks:
+- Boilerplate for PayMongo/Xendit GCash API calls (link generation, source creation).
+- GCash transaction reference validation helper.
+
+#### [NEW] [paymayaService.js](file:///c:/Users/revin/Downloads/Capstone/services/payments/paymayaService.js)
+This service encapsulates PayMaya/Maya direct API integrations (like Maya Checkout API) and AI screenshot verification specific validation checks:
+- Boilerplate for Maya Checkout and Payment Intent API calls.
+- PayMaya transaction reference validation helper.
+
+#### [MODIFY] [aiController.js](file:///c:/Users/revin/Downloads/Capstone/controllers/postgres/aiController.js)
+- Import `gcashService` and `paymayaService`.
+- Delegate platform-specific validation checks to their respective service module inside the receipt verification pipeline.
+
+---
+
+### Frontend Components
+
+We will pull the GCash and PayMaya upload/verification UI out of the monolithic `CheckoutModal.tsx` and place them into clean, separate, reusable components.
+
+#### [NEW] [GCashPayment.tsx](file:///c:/Users/revin/Downloads/Capstone/frontend/src/components/checkout/GCashPayment.tsx)
+- Dedicated UI panel for GCash payment.
+- Handles GCash-specific design guidelines, branding colors, receipt file input, and loading states.
+
+#### [NEW] [PayMayaPayment.tsx](file:///c:/Users/revin/Downloads/Capstone/frontend/src/components/checkout/PayMayaPayment.tsx)
+- Dedicated UI panel for PayMaya (Maya) payment.
+- Handles PayMaya-specific green theme branding, receipt file input, and loading states.
+
+#### [MODIFY] [CheckoutModal.tsx](file:///c:/Users/revin/Downloads/Capstone/frontend/src/components/checkout/CheckoutModal.tsx)
+- Clean up the main checkout modal file by importing `<GCashPayment />` and `<PayMayaPayment />`.
+- Pass shared handlers (such as `handleFileSelect`, `aiAnalyzing`, `aiVerificationResult`, `paymentVerified`) as props.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Validate TypeScript compilation by running `npm run build --prefix frontend`.
+- Validate that all server imports load successfully by running the server.
+
+### Manual Verification
+- Verify that GCash and PayMaya payment methods can still be selected in the storefront Checkout modal.
+- Verify that the receipt upload and AI verification pipeline functions exactly as before under the new modular code paths.
