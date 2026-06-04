@@ -6,8 +6,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "framework": "npx -y concurrently \"npm run dev\" \"npm run dev --prefix frontend\"",
-    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend",
-    "postinstall": "npx prisma generate && npm install --prefix frontend && npm run build --prefix frontend",
+    "build": "npm install && npm install --include=dev --prefix frontend && npm run build --prefix frontend",
+    "postinstall": "npx prisma generate && npm install --include=dev --prefix frontend && npm run build --prefix frontend",
     "postbuild": "echo Build Complete"
   },
   "dependencies": {
