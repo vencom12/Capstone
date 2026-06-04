@@ -35,7 +35,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   }, [isCategoryOpen]);
 
   return (
-    <header className="sticky top-0 w-full shrink-0 h-[var(--header-height)] z-[2000] flex items-center justify-between px-10 bg-bg-header backdrop-blur-[15px] border-b border-r border-border-glass transition-all duration-300 rounded-tr-[20px] rounded-br-[20px] rounded-tl-none rounded-bl-none mt-0 ml-0
+    <header className="sticky top-0 w-full shrink-0 h-[var(--header-height)] z-[2000] flex items-center justify-between px-10 bg-bg-header backdrop-blur-[15px] border-b border-border-glass transition-all duration-300
       max-[1250px]:grid max-[1250px]:grid-cols-2 max-[1250px]:h-auto max-[1250px]:px-4 max-[1250px]:py-4 max-[1250px]:gap-y-4">
       
       {/* Brand & Hamburger Area - Stays Top Left */}

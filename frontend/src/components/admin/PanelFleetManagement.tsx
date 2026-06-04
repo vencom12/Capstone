@@ -131,7 +131,7 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
   };
 
   return (
-    <section className="animate-fade flex flex-col h-full text-left">
+    <section className="animate-fade flex flex-col min-h-full text-left">
       <header className="dash-header flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="dash-title">Fleet Management</h1>

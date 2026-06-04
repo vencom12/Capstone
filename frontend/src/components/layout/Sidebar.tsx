@@ -9,7 +9,7 @@ export default function Sidebar() {
   const categories = getCategories();
 
   return (
-    <aside className="w-[215px] h-full bg-bg-sidebar backdrop-blur-[12px] border border-border-glass rounded-[20px] flex flex-col p-5 px-2.5 transition-all duration-300 overflow-hidden max-[1100px]:w-[190px] max-[1100px]:p-4 max-[1100px]:px-2.5 max-[650px]:hidden shrink-0">
+    <aside className="w-[215px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col p-5 px-2.5 transition-all duration-300 overflow-hidden max-[1100px]:w-[190px] max-[1100px]:p-4 max-[1100px]:px-2.5 max-[650px]:hidden shrink-0">
       {/* Basket Toggle Section */}
       <div className="mb-6 px-1.5">
         <button

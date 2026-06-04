@@ -145,7 +145,7 @@ export default function PanelSettings({
   };
 
   return (
-    <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans max-w-[1000px] w-full">
+    <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col min-h-full text-left font-sans max-w-[1000px] w-full">
       <header className="mb-6 flex flex-col">
         <h1 className="text-3xl font-extrabold mb-1">System & AI Settings</h1>
         <p className="text-text-dim text-[0.95rem] m-0">Configure overall application parameters, dynamic AI swapping, and confidence threshold gates.</p>

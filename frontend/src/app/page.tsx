@@ -100,7 +100,7 @@ export default function StorefrontPage() {
       <StorefrontHeader />
 
       {/* Main Layout */}
-      <div className="flex-1 flex gap-3 p-3 w-full overflow-hidden items-stretch max-[650px]:flex-col max-[650px]:p-0">
+      <div className="flex-1 flex w-full overflow-hidden items-stretch max-[650px]:flex-col">
         <Sidebar />
 
         {/* Main Content */}

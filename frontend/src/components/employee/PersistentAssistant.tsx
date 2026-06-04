@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
+
+// Type declarations for Web Speech API
+const SpeechRecognition = typeof window !== 'undefined'
+  ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+  : null;
 
 interface ChatMessage {
   id: number;
@@ -27,6 +33,10 @@ export default function PersistentAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [logs, setLogs] = useState<AiLogEntry[]>([]);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Voice Typing States
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   // Dragging States
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -145,6 +155,64 @@ export default function PersistentAssistant() {
       window.removeEventListener('touchend', handleMouseUp);
     };
   }, [isDragging]);
+
+  // Start/Stop voice listening
+  const startListening = () => {
+    if (!SpeechRecognition) {
+      showToast('Speech recognition is not supported in this browser.', 'error');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+        showToast('Listening... Speak now!', 'info');
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue((prev) => {
+          const spacing = prev.trim() ? ' ' : '';
+          return prev + spacing + transcript;
+        });
+      };
+
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please check site permissions.', 'error');
+        } else if (event.error !== 'aborted') {
+          showToast('Speech recognition failed. Try again.', 'error');
+        }
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   // Conversational AI completion caller
   const handleSend = async (e: React.FormEvent) => {
@@ -271,6 +339,27 @@ export default function PersistentAssistant() {
               {/* Input Area */}
               <form onSubmit={handleSend} className="p-3 bg-bg-surface border-t border-border-glass shrink-0">
                 <div className="flex items-center gap-2 bg-black/30 border border-border-glass rounded-xl p-1 pr-2 focus-within:border-primary transition-colors">
+                  {SpeechRecognition && (
+                    <button
+                      onClick={startListening}
+                      type="button"
+                      className={`
+                        w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer ml-1
+                        ${isListening 
+                          ? 'bg-danger/20 border-danger/40 text-danger shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse'
+                          : 'bg-white/[0.05] border-transparent text-text-dim hover:text-text-main hover:bg-white/10'
+                        }
+                      `}
+                      title={isListening ? 'Stop listening' : 'Start voice typing'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                      </svg>
+                    </button>
+                  )}
                   <input 
                     type="text" 
                     value={inputValue}

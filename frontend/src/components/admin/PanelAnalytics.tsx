@@ -196,7 +196,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
   };
 
   return (
-    <section className="animate-fade flex flex-col h-full text-left font-sans pb-10">
+    <section className="animate-fade flex flex-col min-h-full text-left font-sans pb-10">
       <header className="dash-header mb-6">
         <h1 className="dash-title text-3xl font-extrabold mb-1">Business Analytics & Intelligence</h1>
         <p className="dash-subtitle text-text-dim text-[0.95rem] m-0">Review sales metrics, storefront traffic, and AI-driven strategic forecasting.</p>

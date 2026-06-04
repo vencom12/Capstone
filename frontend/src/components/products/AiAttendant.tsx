@@ -23,6 +23,11 @@ interface StorefrontChatResponse {
 
 let messageId = 0;
 
+// Type declarations for Web Speech API
+const SpeechRecognition = typeof window !== 'undefined'
+  ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+  : null;
+
 export default function AiAttendant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -36,6 +41,152 @@ export default function AiAttendant() {
   const { selectedCategory, searchQuery } = useProductStore();
   const { isAuthenticated } = useAuthStore();
   const { items: basketItems, addItem } = useBasketStore();
+
+  // Voice Typing States
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Dragging States
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; posX: number; posY: number }>({ startX: 0, startY: 0, posX: 0, posY: 0 });
+
+  // Handle Dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
+    setIsDragging(true);
+    const initX = position ? position.x : window.innerWidth - 404; // 380 width + 24 padding
+    const initY = position ? position.y : window.innerHeight - 604; // 520 height + 84 padding
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      posX: initX,
+      posY: initY
+    };
+    e.preventDefault();
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
+    setIsDragging(true);
+    const touch = e.touches[0];
+    const initX = position ? position.x : window.innerWidth - 404;
+    const initY = position ? position.y : window.innerHeight - 604;
+    dragStartRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      posX: initX,
+      posY: initY
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      
+      let newX = dragStartRef.current.posX + dx;
+      let newY = dragStartRef.current.posY + dy;
+
+      // Viewport bounds clipping
+      const padding = 10;
+      newX = Math.max(padding, Math.min(newX, window.innerWidth - 380 - padding));
+      newY = Math.max(padding, Math.min(newY, window.innerHeight - 520 - padding));
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - dragStartRef.current.startX;
+      const dy = touch.clientY - dragStartRef.current.startY;
+      
+      let newX = dragStartRef.current.posX + dx;
+      let newY = dragStartRef.current.posY + dy;
+
+      const padding = 10;
+      newX = Math.max(padding, Math.min(newX, window.innerWidth - 380 - padding));
+      newY = Math.max(padding, Math.min(newY, window.innerHeight - 520 - padding));
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchend', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Start/Stop voice listening
+  const startListening = () => {
+    if (!SpeechRecognition) {
+      showToast('Speech recognition is not supported in this browser.', 'error');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+        showToast('Listening... Speak now!', 'info');
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput((prev) => {
+          const spacing = prev.trim() ? ' ' : '';
+          return prev + spacing + transcript;
+        });
+      };
+
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please check site permissions.', 'error');
+        } else if (event.error !== 'aborted') {
+          showToast('Speech recognition failed. Try again.', 'error');
+        }
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -190,8 +341,12 @@ export default function AiAttendant() {
 
       {/* Chat Panel */}
       <div
+        style={{
+          ...(position ? { top: `${position.y}px`, left: `${position.x}px`, bottom: 'auto', right: 'auto' } : {}),
+          transition: isDragging ? 'none' : 'opacity 300ms ease-out, transform 300ms ease-out'
+        }}
         className={`
-          fixed z-[2400] transition-all duration-300 ease-out
+          fixed z-[2400] ease-out
           ${isOpen
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'
@@ -208,7 +363,11 @@ export default function AiAttendant() {
         <div className="w-full h-full bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl max-[500px]:rounded-none flex flex-col overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
 
           {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-gradient-to-r from-primary/10 to-secondary/10">
+          <div 
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-gradient-to-r from-primary/10 to-secondary/10 cursor-grab select-none"
+          >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
@@ -218,7 +377,20 @@ export default function AiAttendant() {
               <h3 className="text-sm font-bold m-0 text-text-main">Store Attendant</h3>
               <p className="text-[0.7rem] text-text-dim m-0">AI-powered shopping assistant</p>
             </div>
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse" title="Online" />
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" title="Online" />
+              <button 
+                suppressHydrationWarning
+                onClick={() => setIsOpen(false)} 
+                className="text-text-main hover:text-text-main/70 bg-transparent border-none cursor-pointer p-1 flex items-center justify-center"
+                aria-label="Close assistant"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
@@ -309,6 +481,28 @@ export default function AiAttendant() {
           {/* Input Area */}
           <div className="px-4 py-3 border-t border-border-glass shrink-0 bg-bg-surface/50">
             <div className="flex items-center gap-2">
+              {SpeechRecognition && (
+                <button
+                  suppressHydrationWarning
+                  onClick={startListening}
+                  type="button"
+                  className={`
+                    w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer
+                    ${isListening 
+                      ? 'bg-danger/20 border-danger/40 text-danger shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse'
+                      : 'bg-white/[0.05] border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
+                    }
+                  `}
+                  title={isListening ? 'Stop listening' : 'Start voice typing'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+              )}
               <input
                 suppressHydrationWarning
                 ref={inputRef}
