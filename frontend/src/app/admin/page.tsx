@@ -16,8 +16,11 @@ import PanelAnalytics from '@/components/admin/PanelAnalytics';
 import PanelSettings from '@/components/admin/PanelSettings';
 
 // Common Components
-import StaffAuthModal from '@/components/auth/StaffAuthModal';
-import PersistentAssistant from '@/components/employee/PersistentAssistant';
+import dynamic from 'next/dynamic';
+
+const PersistentAssistant = dynamic(() => import('@/components/employee/PersistentAssistant'), {
+  ssr: false,
+});
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
@@ -211,17 +214,21 @@ export default function AdminPage() {
     };
   }, []);
 
-  if (!isHydrated) {
+  // client-side redirect gate if unauthenticated or not admin
+  useEffect(() => {
+    if (isHydrated) {
+      if (!isAuthenticated || !checkAccess('admin')) {
+        router.replace('/?auth=login&role=admin');
+      }
+    }
+  }, [isHydrated, isAuthenticated, checkAccess, router]);
+
+  if (!isHydrated || !isAuthenticated || !checkAccess('admin')) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-transparent text-text-main">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
       </div>
     );
-  }
-
-  // Auth Gate
-  if (!isAuthenticated || !checkAccess('admin')) {
-    return <StaffAuthModal role="admin" />;
   }
 
   // --- Filtering History Queue ---

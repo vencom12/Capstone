@@ -27,8 +27,26 @@ export default function AuthModal() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'customer' | 'employee' | 'admin'>('customer');
 
   const { login, register, isAuthenticated } = useAuthStore();
+
+  // Sync from URL role param on open
+  useEffect(() => {
+    if (isAuthOpen) {
+      const roleParam = searchParams.get('role');
+      if (roleParam === 'admin' || roleParam === 'employee' || roleParam === 'customer') {
+        setSelectedRole(roleParam);
+      }
+    }
+  }, [isAuthOpen, searchParams]);
+
+  // Force customer role in registration view
+  useEffect(() => {
+    if (authMode === 'register') {
+      setSelectedRole('customer');
+    }
+  }, [authMode]);
 
   // Listen to deep links (e.g. visiting /?auth=login directly from bookmarks)
   useEffect(() => {
@@ -54,10 +72,17 @@ export default function AuthModal() {
 
     try {
       if (mode === 'login') {
-        const res = await login(email, password, rememberMe);
+        const res = await login(email, password, rememberMe, selectedRole);
         if (res.success) {
           showToast('Logged in successfully!', 'success');
           handleClose();
+          if (selectedRole === 'admin') {
+            window.location.href = '/admin';
+          } else if (selectedRole === 'employee') {
+            window.location.href = '/employee';
+          } else {
+            window.location.reload();
+          }
         } else {
           showToast(res.message || 'Login failed', 'error');
         }
@@ -67,6 +92,7 @@ export default function AuthModal() {
         if (res.success) {
           showToast('Registration successful!', 'success');
           handleClose();
+          window.location.reload();
         } else {
           showToast(res.message || 'Registration failed', 'error');
         }
@@ -91,6 +117,28 @@ export default function AuthModal() {
               : 'Sign up to purchase premium designs.'}
           </p>
         </div>
+
+        {/* Role Segmented Tabs (only in Login mode) */}
+        {mode === 'login' && (
+          <div className="bg-white/[0.05] border border-border-glass rounded-xl p-1 flex gap-1 mb-2">
+            {(['customer', 'employee', 'admin'] as const).map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setSelectedRole(role)}
+                className={`
+                  flex-1 py-1.5 rounded-lg text-[0.75rem] font-bold transition-all border-none cursor-pointer text-center capitalize
+                  ${selectedRole === role
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(99,102,241,0.3)] font-extrabold'
+                    : 'bg-transparent text-text-dim hover:text-text-main hover:bg-white/5'
+                  }
+                `}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {mode === 'register' && (
@@ -122,12 +170,26 @@ export default function AuthModal() {
           
           <div className="flex flex-col gap-1">
             <label className="modal-label ml-1">
-              {mode === 'login' ? 'Username / Email' : 'Email Address'}
+              {mode === 'login' 
+                ? selectedRole === 'employee' 
+                  ? 'Staff ID / Email' 
+                  : selectedRole === 'admin' 
+                    ? 'Admin ID / Email' 
+                    : 'Username / Email'
+                : 'Email Address'}
             </label>
             <input 
               type={mode === 'login' ? 'text' : 'email'} 
               required 
-              placeholder={mode === 'login' ? 'e.g. johndoe' : 'you@example.com'}
+              placeholder={
+                mode === 'login' 
+                  ? selectedRole === 'employee' 
+                    ? 'e.g. EMP-001' 
+                    : selectedRole === 'admin' 
+                      ? 'Admin ID' 
+                      : 'e.g. johndoe'
+                  : 'you@example.com'
+              }
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
@@ -218,9 +280,21 @@ export default function AuthModal() {
 
         {mode === 'login' && (
           <div className="pt-4 border-t border-border-glass flex justify-around text-[0.75rem]">
-            <span className="text-text-dim font-bold">Staff:</span>
-            <Link href="/admin" className="text-primary no-underline hover:text-white transition-colors">Admin</Link>
-            <Link href="/employee" className="text-primary no-underline hover:text-white transition-colors">Employee</Link>
+            <span className="text-text-dim font-bold">Staff Access:</span>
+            <button 
+              type="button" 
+              onClick={() => setSelectedRole('admin')}
+              className="bg-transparent border-none text-primary font-bold hover:text-white cursor-pointer transition-colors text-[0.75rem]"
+            >
+              Admin Panel
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setSelectedRole('employee')}
+              className="bg-transparent border-none text-primary font-bold hover:text-white cursor-pointer transition-colors text-[0.75rem]"
+            >
+              Staff Terminal
+            </button>
           </div>
         )}
       </div>

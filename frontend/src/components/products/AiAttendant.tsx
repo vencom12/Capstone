@@ -35,6 +35,12 @@ export default function AiAttendant() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
 
+  // Hydration safety mount check
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -51,12 +57,20 @@ export default function AiAttendant() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ startX: number; startY: number; posX: number; posY: number }>({ startX: 0, startY: 0, posX: 0, posY: 0 });
 
+  // Responsive / Maximize state
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toggleExpanded = () => {
+    setIsExpanded((prev) => !prev);
+    setPosition(null); // Reset custom coordinates so CSS handles the window position
+  };
+
   // Handle Dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
+    if (isExpanded) return; // Prevent dragging while expanded
     setIsDragging(true);
     const initX = position ? position.x : window.innerWidth - 404; // 380 width + 24 padding
-    const initY = position ? position.y : window.innerHeight - 604; // 520 height + 84 padding
+    const initY = position ? position.y : window.innerHeight - 664; // 580 height + 84 padding
     dragStartRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -68,10 +82,11 @@ export default function AiAttendant() {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
+    if (isExpanded) return; // Prevent dragging while expanded
     setIsDragging(true);
     const touch = e.touches[0];
     const initX = position ? position.x : window.innerWidth - 404;
-    const initY = position ? position.y : window.innerHeight - 604;
+    const initY = position ? position.y : window.innerHeight - 664;
     dragStartRef.current = {
       startX: touch.clientX,
       startY: touch.clientY,
@@ -91,8 +106,10 @@ export default function AiAttendant() {
 
       // Viewport bounds clipping
       const padding = 10;
-      newX = Math.max(padding, Math.min(newX, window.innerWidth - 380 - padding));
-      newY = Math.max(padding, Math.min(newY, window.innerHeight - 520 - padding));
+      const currentWidth = isExpanded ? 800 : 380;
+      const currentHeight = isExpanded ? 750 : 580;
+      newX = Math.max(padding, Math.min(newX, window.innerWidth - currentWidth - padding));
+      newY = Math.max(padding, Math.min(newY, window.innerHeight - currentHeight - padding));
 
       setPosition({ x: newX, y: newY });
     };
@@ -107,8 +124,10 @@ export default function AiAttendant() {
       let newY = dragStartRef.current.posY + dy;
 
       const padding = 10;
-      newX = Math.max(padding, Math.min(newX, window.innerWidth - 380 - padding));
-      newY = Math.max(padding, Math.min(newY, window.innerHeight - 520 - padding));
+      const currentWidth = isExpanded ? 800 : 380;
+      const currentHeight = isExpanded ? 750 : 580;
+      newX = Math.max(padding, Math.min(newX, window.innerWidth - currentWidth - padding));
+      newY = Math.max(padding, Math.min(newY, window.innerHeight - currentHeight - padding));
 
       setPosition({ x: newX, y: newY });
     };
@@ -128,7 +147,7 @@ export default function AiAttendant() {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, isExpanded]);
 
   // Start/Stop voice listening
   const startListening = () => {
@@ -290,15 +309,214 @@ export default function AiAttendant() {
     showToast(`Added ${product.name} to basket`, 'success');
   };
 
-  // Simple markdown-ish text renderer for bold
-  const renderText = (text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+  // Status Badge Highlighting helper
+  const renderStatusBadges = (text: string): React.ReactNode => {
+    const trimmed = text.trim();
+    const upper = trimmed.toUpperCase();
+    
+    if (upper === 'LOW_STOCK' || upper === 'LOW STOCK') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">⚠️ Low Stock</span>;
+    }
+    if (upper === 'HEALTHY' || upper === 'STABLE') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">🟢 {trimmed}</span>;
+    }
+    if (upper === 'CRITICAL') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">🔴 Critical</span>;
+    }
+    if (upper === 'WARNING') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🟡 Warning</span>;
+    }
+    if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">✓ Delivered</span>;
+    }
+    if (['PREPARING ORDER', 'PREPARING'].includes(upper)) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">⚙ Preparing</span>;
+    }
+    if (upper === 'IN QUEUE') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">📥 In Queue</span>;
+    }
+    if (['ORDER CANCELED', 'CANCELED', 'CANCELLED'].includes(upper)) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">✕ Canceled</span>;
+    }
+    if (upper === 'PENDING PAYMENT') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">⏱ Pending Pay</span>;
+    }
+    
+    return text;
+  };
+
+  // Inline formatting helper (bold, italic, code)
+  const renderTextInline = (text: string): React.ReactNode[] => {
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+        const inner = part.slice(2, -2);
+        return <strong key={i} className="font-bold text-white">{renderStatusBadges(inner)}</strong>;
       }
-      return <span key={i}>{part}</span>;
+      if (part.startsWith('*') && part.endsWith('*')) {
+        const inner = part.slice(1, -1);
+        return <em key={i} className="italic text-white/80">{renderStatusBadges(inner)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        const inner = part.slice(1, -1);
+        return <code key={i} className="bg-white/15 px-1.5 py-0.5 rounded font-mono text-[0.75rem] text-[#818cf8] border border-white/5">{inner}</code>;
+      }
+      return <span key={i}>{renderStatusBadges(part)}</span>;
     });
+  };
+
+  // Main Markdown list & table parsing engine
+  const renderMessageContent = (text: string) => {
+    if (!text) return null;
+
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let currentTable: string[][] = [];
+    let isInsideTable = false;
+    let currentList: { items: string[]; type: 'bullet' | 'ordered' } | null = null;
+
+    const flushTable = (key: number) => {
+      if (currentTable.length === 0) return;
+      
+      const filteredRows = currentTable.filter(row => {
+        const isSeparator = row.every(cell => /^[:-|\s]*$/.test(cell));
+        return !isSeparator;
+      });
+
+      if (filteredRows.length > 0) {
+        const headers = filteredRows[0];
+        const dataRows = filteredRows.slice(1);
+        
+        elements.push(
+          <div key={`table-${key}`} className="w-full overflow-x-auto my-3 rounded-xl border border-white/10 bg-white/[0.03] shadow-inner">
+            <table className="w-full border-collapse text-[0.8rem] text-left">
+              <thead>
+                <tr className="border-b border-white/15 bg-white/5 font-semibold text-white/95">
+                  {headers.map((h, i) => (
+                    <th key={i} className="px-4 py-2.5 font-bold">{renderTextInline(h.trim())}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataRows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-b border-white/5 hover:bg-white/[0.02] last:border-none transition-colors">
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="px-4 py-2.5 font-medium text-text-main">
+                        {renderTextInline(cell.trim())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      currentTable = [];
+      isInsideTable = false;
+    };
+
+    const flushList = (key: number) => {
+      if (!currentList) return;
+      const { items, type } = currentList;
+      const ListTag = type === 'ordered' ? 'ol' : 'ul';
+      const listClass = type === 'ordered' ? 'list-decimal pl-5 my-2 flex flex-col gap-1 text-[0.85rem]' : 'list-disc pl-5 my-2 flex flex-col gap-1 text-[0.85rem]';
+      
+      elements.push(
+        <ListTag key={`list-${key}`} className={listClass}>
+          {items.map((item, idx) => (
+            <li key={idx} className="text-text-main leading-relaxed">
+              {renderTextInline(item)}
+            </li>
+          ))}
+        </ListTag>
+      );
+      currentList = null;
+    };
+
+    let elementKey = 0;
+
+    for (let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
+      const trimmed = line.trim();
+
+      // Table Detection
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        if (currentList) flushList(elementKey++);
+        isInsideTable = true;
+        const cols = line.split('|').slice(1, -1);
+        currentTable.push(cols);
+        continue;
+      } else if (isInsideTable) {
+        flushTable(elementKey++);
+      }
+
+      // Heading Detection
+      if (trimmed.startsWith('###')) {
+        if (currentList) flushList(elementKey++);
+        elements.push(
+          <h4 key={elementKey++} className="text-[0.95rem] font-bold text-white mt-4 mb-2 first:mt-0 tracking-tight">
+            {renderTextInline(trimmed.replace(/^###\s*/, ''))}
+          </h4>
+        );
+        continue;
+      } else if (trimmed.startsWith('##')) {
+        if (currentList) flushList(elementKey++);
+        elements.push(
+          <h3 key={elementKey++} className="text-[1.1rem] font-bold text-white mt-5 mb-2 first:mt-0 tracking-tight">
+            {renderTextInline(trimmed.replace(/^##\s*/, ''))}
+          </h3>
+        );
+        continue;
+      } else if (trimmed.startsWith('#')) {
+        if (currentList) flushList(elementKey++);
+        elements.push(
+          <h2 key={elementKey++} className="text-[1.25rem] font-bold text-white mt-6 mb-3 first:mt-0 tracking-tight">
+            {renderTextInline(trimmed.replace(/^#\s*/, ''))}
+          </h2>
+        );
+        continue;
+      }
+
+      // List Detection
+      const bulletMatch = trimmed.match(/^[*+-]\s+(.*)/);
+      const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
+
+      if (bulletMatch) {
+        if (currentList && currentList.type !== 'bullet') flushList(elementKey++);
+        if (!currentList) {
+          currentList = { items: [], type: 'bullet' };
+        }
+        currentList.items.push(bulletMatch[1]);
+        continue;
+      } else if (orderedMatch) {
+        if (currentList && currentList.type !== 'ordered') flushList(elementKey++);
+        if (!currentList) {
+          currentList = { items: [], type: 'ordered' };
+        }
+        currentList.items.push(orderedMatch[2]);
+        continue;
+      } else if (currentList) {
+        flushList(elementKey++);
+      }
+
+      // Blank line
+      if (!trimmed) {
+        continue;
+      }
+
+      // Normal paragraph
+      elements.push(
+        <p key={elementKey++} className="m-0 mb-2 last:mb-0 text-[0.85rem] leading-relaxed text-text-main">
+          {renderTextInline(line)}
+        </p>
+      );
+    }
+
+    if (isInsideTable) flushTable(elementKey++);
+    if (currentList) flushList(elementKey++);
+
+    return elements;
   };
 
   return (
@@ -346,13 +564,16 @@ export default function AiAttendant() {
           transition: isDragging ? 'none' : 'opacity 300ms ease-out, transform 300ms ease-out'
         }}
         className={`
-          fixed z-[2400] ease-out
+          fixed z-[2400] transition-all duration-300 ease-in-out
           ${isOpen
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'
           }
-          bottom-24 right-4
-          w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-8rem)]
+          
+          ${isExpanded 
+            ? 'bottom-24 right-6 w-[800px] max-w-[95vw] h-[750px] max-h-[85vh]' 
+            : 'bottom-24 right-4 w-[380px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-8rem)]'
+          }
 
           max-[500px]:bottom-0 max-[500px]:right-0 max-[500px]:left-0
           max-[500px]:w-full max-[500px]:max-w-none
@@ -379,6 +600,24 @@ export default function AiAttendant() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" title="Online" />
+              
+              {/* Maximize Button */}
+              <button 
+                onClick={toggleExpanded}
+                className="text-text-main hover:text-text-main/70 bg-transparent border-none cursor-pointer p-1 flex items-center justify-center"
+                title={isExpanded ? 'Restore window size' : 'Expand workspace'}
+              >
+                {isExpanded ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+                  </svg>
+                )}
+              </button>
+
               <button 
                 suppressHydrationWarning
                 onClick={() => setIsOpen(false)} 
@@ -401,13 +640,15 @@ export default function AiAttendant() {
                 <div className={`
                   max-w-[85%] px-4 py-2.5 text-[0.85rem] leading-relaxed
                   ${msg.role === 'user'
-                    ? 'bg-primary text-white rounded-2xl rounded-br-md'
+                    ? 'bg-primary text-white rounded-2xl rounded-br-md whitespace-pre-wrap'
                     : 'bg-white/[0.06] border border-border-glass text-text-main rounded-2xl rounded-bl-md'
                   }
                 `}>
-                  {msg.text.split('\n').map((line, i) => (
-                    <p key={i} className="m-0 mb-1 last:mb-0">{renderText(line)}</p>
-                  ))}
+                  {msg.role === 'user' ? (
+                    msg.text
+                  ) : (
+                    renderMessageContent(msg.text)
+                  )}
                 </div>
 
                 {/* Product Suggestion Cards */}
@@ -481,7 +722,7 @@ export default function AiAttendant() {
           {/* Input Area */}
           <div className="px-4 py-3 border-t border-border-glass shrink-0 bg-bg-surface/50">
             <div className="flex items-center gap-2">
-              {SpeechRecognition && (
+              {isClient && SpeechRecognition && (
                 <button
                   suppressHydrationWarning
                   onClick={startListening}

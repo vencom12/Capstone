@@ -1,5 +1,40 @@
 [
   {
+    "id": "E35WZJB",
+    "timestamp": "2026-06-04T10:55:19.165Z",
+    "user": "employ",
+    "action": "Update Order Status",
+    "details": "Set order ORD-432E8460 status to \"Order Delivered\""
+  },
+  {
+    "id": "F086JYN",
+    "timestamp": "2026-06-04T10:54:45.311Z",
+    "user": "employ",
+    "action": "Update Order Status",
+    "details": "Set order ORD-4789E64F status to \"Order Delivered\""
+  },
+  {
+    "id": "B0HM7TY",
+    "timestamp": "2026-06-04T10:53:49.171Z",
+    "user": "employ",
+    "action": "Update Order Status",
+    "details": "Set order ORD-4789E64F status to \"Preparing Order\""
+  },
+  {
+    "id": "BZFFY2E",
+    "timestamp": "2026-06-04T10:53:27.210Z",
+    "user": "employ",
+    "action": "Update Order Status",
+    "details": "Set order ORD-DD05AC00 status to \"Order Delivered\""
+  },
+  {
+    "id": "RL4SFO1",
+    "timestamp": "2026-06-04T02:36:03.258Z",
+    "user": "ryven",
+    "action": "Prioritize Order (AI Recommendation)",
+    "details": "Set order ORD-DD05AC00 to Rush priority (Score: 20)"
+  },
+  {
     "id": "G7KWQ87",
     "timestamp": "2026-06-04T02:33:04.037Z",
     "user": "ryven",

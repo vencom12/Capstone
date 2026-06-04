@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import EmployeeSidebar from '@/components/employee/EmployeeSidebar';
-import PersistentAssistant from '@/components/employee/PersistentAssistant';
-import StaffAuthModal from '@/components/auth/StaffAuthModal';
+import dynamic from 'next/dynamic';
+
+const PersistentAssistant = dynamic(() => import('@/components/employee/PersistentAssistant'), {
+  ssr: false,
+});
 import GlassModal from '@/components/ui/GlassModal';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { api, API_BASE } from '@/lib/api';
@@ -219,16 +222,21 @@ export default function EmployeePage() {
     };
   }, []);
 
-  if (!isHydrated) {
+  // client-side redirect gate if unauthenticated or not employee
+  useEffect(() => {
+    if (isHydrated) {
+      if (!isAuthenticated || !checkAccess('employee')) {
+        router.replace('/?auth=login&role=employee');
+      }
+    }
+  }, [isHydrated, isAuthenticated, checkAccess, router]);
+
+  if (!isHydrated || !isAuthenticated || !checkAccess('employee')) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#0f172a] text-white">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
       </div>
     );
-  }
-
-  if (!isAuthenticated || !checkAccess('employee')) {
-    return <StaffAuthModal role="employee" />;
   }
 
   // --- Action Handlers ---
@@ -476,103 +484,166 @@ export default function EmployeePage() {
                        machineOrderMap.set(m.id, order);
                      }
                    });
-
                    return myMachines.map(m => {
-                     const assignedOrder = machineOrderMap.get(m.id);
-                     return (
-                       <div key={m.id} className="glass-card flex flex-col border border-border-glass relative overflow-hidden min-h-[400px]">
-                          {/* Header: Machine Name & Status & 3 Buttons */}
-                          <div className="flex justify-between items-center mb-6 pb-4 border-b border-border-glass max-[650px]:flex-col max-[650px]:items-start max-[650px]:gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-3.5 h-3.5 rounded-full ${m.status === 'Running' ? 'bg-success shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : m.status === 'Idle' ? 'bg-warning' : 'bg-danger'}`}></div>
-                              <h3 className="m-0 font-bold text-xl">{m.name}</h3>
-                              {m.status === 'Running' && assignedOrder && (
-                               <span className={`text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
-                                 assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger shadow-[0_0_8px_rgba(239,68,68,0.2)]' :
-                                 assignedOrder.priorityScore >= 40 ? 'bg-warning/20 border-warning/30 text-warning' :
-                                 'bg-primary/20 border-primary/30 text-primary'
-                               }`}>
-                                 Score: {assignedOrder.priorityScore !== undefined ? assignedOrder.priorityScore.toFixed(0) : '0'}
-                               </span>
-                             )}
-                            </div>
-                            <div className="flex gap-2 max-[650px]:w-full">
-                               <button onClick={() => setMachineStatus(m, 'Idle')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Idle' ? 'bg-warning/20 text-warning border-warning/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Idle</button>
-                               <button onClick={() => setMachineStatus(m, 'Running')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Running' ? 'bg-success/20 text-success border-success/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Running</button>
-                               <button onClick={() => setMachineStatus(m, 'Maintenance')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${m.status === 'Maintenance' ? 'bg-danger/20 text-danger border-danger/30' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Maintenance</button>
-                            </div>
-                          </div>
+                      const assignedOrder = machineOrderMap.get(m.id);
+                      const score = assignedOrder?.priorityScore ?? 0;
 
-                          {/* Task HUD */}
-                          {m.status === 'Running' ? (
-                            assignedOrder ? (
-                              <div className="flex flex-col flex-1">
-                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="flex flex-col">
-                                       <span className="text-[0.7rem] uppercase text-text-dim font-bold mb-0.5">Assigned Tag ID</span>
-                                       <span className="text-2xl font-bold font-mono text-primary">{assignedOrder.orderId}</span>
-                                    </div>
-                                    <span className="bg-primary/20 text-primary px-3 py-1.5 rounded-full text-xs font-bold border border-primary/30">
-                                      Processing
-                                    </span>
-                                 </div>
-                                 
-                                 <div className="flex-1 bg-black/30 p-6 rounded-2xl border border-white/5 mb-6 flex flex-col items-center justify-center text-center shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]">
-                                    <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
-                                       {assignedOrder.personalization?.text || assignedOrder.client}
-                                    </h2>
-                                    <div className="flex items-center gap-4 mt-2">
-                                      <p className="text-sm text-text-dim italic m-0">Font: {assignedOrder.personalization?.font || 'Standard'}</p>
-                                      <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md border border-white/10">
-                                         <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: assignedOrder.personalization?.color || '#fbbf24' }}></div>
-                                         <span className="font-bold text-xs text-white">{assignedOrder.personalization?.color || 'Gold'}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    {assignedOrder.items && Array.isArray(assignedOrder.items) && (
-                                       <div className="mt-4 pt-4 border-t border-white/10 w-full flex flex-wrap gap-2 justify-center">
-                                         {assignedOrder.items.map((item: any, idx: number) => (
-                                            <span key={idx} className="bg-white/5 px-2 py-1 rounded text-xs font-medium text-text-dim">
-                                              {item.quantity}x {item.name}
-                                            </span>
-                                         ))}
-                                       </div>
-                                    )}
-                                 </div>
+                      // Dynamic card borders and subtle neon glow based on status
+                      const cardBorderClass = m.status === 'Running'
+                        ? 'border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.03)]'
+                        : m.status === 'Idle'
+                        ? 'border-amber-500/20 hover:border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.02)]'
+                        : 'border-rose-500/30 hover:border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.03)]';
 
-                                 {/* Action Buttons */}
-                                 <div className="grid grid-cols-2 gap-4 mt-auto">
-                                    <button 
-                                      onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id)}
-                                      className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(34,197,94,0.15)] hover:-translate-y-0.5 active:translate-y-0"
-                                    >
-                                      Ready for Pick Up
-                                    </button>
-                                    <button 
-                                      onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id)}
-                                      className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 active:translate-y-0"
-                                    >
-                                      In Transit (Online)
-                                    </button>
-                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
-                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                                 <p className="m-0">No pending orders in queue.</p>
-                                 <p className="text-xs mt-1 opacity-60">Machine is idling.</p>
-                              </div>
-                            )
-                          ) : (
-                             <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-30"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                <p className="m-0">Machine is {m.status.toLowerCase()}.</p>
-                                <p className="text-xs mt-1 opacity-60">Switch to Running to auto-assign tasks.</p>
+                      return (
+                        <div 
+                          key={m.id} 
+                          className={`glass-card flex flex-col border relative overflow-hidden min-h-[400px] transition-all duration-300 ${cardBorderClass}`}
+                        >
+                           {/* Header: Machine Name & Status & 3 Buttons */}
+                           <div className="flex justify-between items-center mb-6 pb-4 border-b border-border-glass max-[650px]:flex-col max-[650px]:items-start max-[650px]:gap-4">
+                             <div className="flex items-center gap-3">
+                               <div className="w-3.5 h-3.5 rounded-full shrink-0 relative flex items-center justify-center">
+                                 {m.status === 'Running' ? (
+                                   <>
+                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]"></span>
+                                   </>
+                                 ) : m.status === 'Idle' ? (
+                                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"></span>
+                                 ) : (
+                                   <>
+                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)]"></span>
+                                   </>
+                                 )}
+                               </div>
+                               <h3 className="m-0 font-bold text-xl text-text-main">{m.name}</h3>
+                               {m.status === 'Running' && assignedOrder && (
+                                <span className={`text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
+                                  assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger shadow-[0_0_8px_rgba(239,68,68,0.2)]' :
+                                  assignedOrder.priorityScore >= 40 ? 'bg-warning/20 border-warning/30 text-warning' :
+                                  'bg-primary/20 border-primary/30 text-primary'
+                                }`}>
+                                  Score: {assignedOrder.priorityScore !== undefined ? assignedOrder.priorityScore.toFixed(0) : '0'}
+                                </span>
+                              )}
                              </div>
-                          )}
-                       </div>
-                     );
-                   });
+                             <div className="flex gap-2 max-[650px]:w-full">
+                                <button onClick={() => setMachineStatus(m, 'Idle')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Idle' ? 'bg-warning/20 text-warning border-warning/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Idle</button>
+                                <button onClick={() => setMachineStatus(m, 'Running')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Running' ? 'bg-success/20 text-success border-success/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Running</button>
+                                <button onClick={() => setMachineStatus(m, 'Maintenance')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Maintenance' ? 'bg-danger/20 text-danger border-danger/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Maintenance</button>
+                             </div>
+                           </div>
+
+                           {/* Task HUD */}
+                           {m.status === 'Running' ? (
+                             assignedOrder ? (
+                               <div className="flex flex-col flex-1">
+                                  <div className="flex justify-between items-start mb-4">
+                                     <div className="flex flex-col text-left">
+                                        <span className="text-[0.7rem] uppercase text-text-dim font-bold mb-0.5">Assigned Tag ID</span>
+                                        <span className="text-2xl font-bold font-mono text-primary">{assignedOrder.orderId}</span>
+                                     </div>
+
+                                     {/* Radial Urgency / Priority Gauge */}
+                                     <div className="flex items-center gap-3">
+                                       <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                                         <svg className="w-full h-full transform -rotate-90">
+                                           {/* Background track circle */}
+                                           <circle
+                                             cx="28"
+                                             cy="28"
+                                             r="22"
+                                             className="stroke-white/10"
+                                             strokeWidth="4"
+                                             fill="transparent"
+                                           />
+                                           {/* Active progress circle */}
+                                           <circle
+                                             cx="28"
+                                             cy="28"
+                                             r="22"
+                                             className="transition-all duration-500 ease-out"
+                                             style={{
+                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#6366f1',
+                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(99,102,241,0.5)'})`
+                                             }}
+                                             strokeWidth="4"
+                                             fill="transparent"
+                                             strokeDasharray={2 * Math.PI * 22}
+                                             strokeDashoffset={2 * Math.PI * 22 - (Math.min(Math.max(score, 0), 100) / 100) * 2 * Math.PI * 22}
+                                             strokeLinecap="round"
+                                           />
+                                         </svg>
+                                         <div className="absolute flex flex-col items-center justify-center">
+                                           <span className="text-[0.8rem] font-black text-white leading-none">{score.toFixed(0)}</span>
+                                           <span className="text-[0.45rem] uppercase text-text-dim font-bold mt-0.5 leading-none">PRI</span>
+                                         </div>
+                                       </div>
+
+                                       <span className="bg-primary/20 text-primary px-3 py-1.5 rounded-full text-xs font-bold border border-primary/30 shrink-0">
+                                         Processing
+                                       </span>
+                                     </div>
+                                  </div>
+
+                                  <div className="flex-1 bg-black/30 p-6 rounded-2xl border border-white/5 mb-6 flex flex-col items-center justify-center text-center shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]">
+                                     <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
+                                        {assignedOrder.personalization?.text || assignedOrder.client}
+                                     </h2>
+                                     <div className="flex items-center gap-4 mt-2">
+                                       <p className="text-sm text-text-dim italic m-0">Font: {assignedOrder.personalization?.font || 'Standard'}</p>
+                                       <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md border border-white/10">
+                                          <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: assignedOrder.personalization?.color || '#fbbf24' }}></div>
+                                          <span className="font-bold text-xs text-white">{assignedOrder.personalization?.color || 'Gold'}</span>
+                                       </div>
+                                     </div>
+
+                                     {assignedOrder.items && Array.isArray(assignedOrder.items) && (
+                                        <div className="mt-4 pt-4 border-t border-white/10 w-full flex flex-wrap gap-2 justify-center">
+                                          {assignedOrder.items.map((item: any, idx: number) => (
+                                             <span key={idx} className="bg-white/5 px-2 py-1 rounded text-xs font-medium text-text-dim">
+                                               {item.quantity}x {item.name}
+                                             </span>
+                                          ))}
+                                        </div>
+                                     )}
+                                  </div>
+
+                                  {/* Action Buttons */}
+                                  <div className="grid grid-cols-2 gap-4 mt-auto">
+                                     <button 
+                                       onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id)}
+                                       className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(34,197,94,0.15)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                     >
+                                       Ready for Pick Up
+                                     </button>
+                                     <button 
+                                       onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id)}
+                                       className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                     >
+                                       In Transit (Online)
+                                     </button>
+                                  </div>
+                               </div>
+                             ) : (
+                               <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
+                                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                  <p className="m-0 text-sm">No pending orders in queue.</p>
+                                  <p className="text-xs mt-1 opacity-60">Machine is idling.</p>
+                               </div>
+                             )
+                           ) : (
+                              <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
+                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-30"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                 <p className="m-0 text-sm">Machine is {m.status.toLowerCase()}.</p>
+                                 <p className="text-xs mt-1 opacity-60">Switch to Running to auto-assign tasks.</p>
+                              </div>
+                           )}
+                        </div>
+                      );
+                    });
                  })()
                }
             </div>

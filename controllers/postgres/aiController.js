@@ -367,43 +367,93 @@ exports.chat = async (req, res) => {
             });
         }
 
-        const [orders, inventory, products] = await Promise.all([
-            prisma.order.findMany({ take: 30, orderBy: { createdAt: 'desc' } }),
-            prisma.inventory.findMany(),
-            prisma.product.findMany({ take: 30, orderBy: { createdAt: 'desc' } })
-        ]);
+        const dbUser = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+        if (!dbUser) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        // Strict RBAC boundary check: customer cannot access staff assistant chat
+        if (dbUser.role === 'customer') {
+            return res.status(403).json({ message: 'Forbidden: Insufficient privileges' });
+        }
 
         const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
         const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
 
-        const [orders14d, trafficRollups, orderRollups] = await Promise.all([
-            // Fetch raw items JSON only for safety stock velocities (last 14 days)
-            prisma.order.findMany({
-                where: {
-                    date: { gte: date14dAgo },
-                    NOT: { status: 'Order Canceled' }
-                },
-                select: { items: true }
-            }),
-            // Aggregate daily site traffic visits (365 days)
-            prisma.$queryRaw`
-                SELECT 
-                    TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
-                    COUNT(*)::int AS count
-                FROM "SiteTraffic"
-                WHERE timestamp >= ${date365dAgo}
-                GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
-            `,
-            // Aggregate daily orders count (365 days)
-            prisma.$queryRaw`
-                SELECT 
-                    TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
-                    COUNT(*)::int AS count
-                FROM "Order"
-                WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
-                GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
-            `
-        ]);
+        let orders = [];
+        let inventory = [];
+        let products = [];
+        let orders14d = [];
+        let trafficRollups = [];
+        let orderRollups = [];
+
+        if (dbUser.role === 'admin') {
+            [orders, inventory, products, orders14d, trafficRollups, orderRollups] = await Promise.all([
+                prisma.order.findMany({ take: 30, orderBy: { createdAt: 'desc' } }),
+                prisma.inventory.findMany(),
+                prisma.product.findMany({ take: 30, orderBy: { createdAt: 'desc' } }),
+                prisma.order.findMany({
+                    where: {
+                        date: { gte: date14dAgo },
+                        NOT: { status: 'Order Canceled' }
+                    },
+                    select: { items: true }
+                }),
+                prisma.$queryRaw`
+                    SELECT 
+                        TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
+                        COUNT(*)::int AS count
+                    FROM "SiteTraffic"
+                    WHERE timestamp >= ${date365dAgo}
+                    GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
+                `,
+                prisma.$queryRaw`
+                    SELECT 
+                        TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
+                        COUNT(*)::int AS count
+                    FROM "Order"
+                    WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
+                    GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
+                `
+            ]);
+        } else if (dbUser.role === 'employee') {
+            const userMachines = await prisma.machine.findMany({
+                where: { assignedUserId: dbUser.id }
+            });
+            const machineIds = userMachines.map(m => m.id);
+
+            [orders, inventory, products] = await Promise.all([
+                // Only orders assigned to their machines (uncompleted ones)
+                prisma.order.findMany({
+                    where: {
+                        machineId: { in: machineIds },
+                        NOT: {
+                            status: { in: ['Order Delivered', 'Completed', 'Order Canceled', 'Cancelled'] }
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        orderId: true,
+                        status: true,
+                        client: true,
+                        design: true,
+                        progress: true,
+                        createdAt: true
+                    }
+                }),
+                // Only basic inventory (item name and count)
+                prisma.inventory.findMany({
+                    select: { id: true, item: true, count: true }
+                }),
+                // Only basic products catalog (no cost/prices)
+                prisma.product.findMany({
+                    select: { id: true, name: true, tag: true, description: true }
+                })
+            ]);
+        }
 
         let totalVisits365D = 0;
         trafficRollups.forEach(r => {
@@ -444,7 +494,7 @@ exports.chat = async (req, res) => {
             });
         });
 
-        const biForecastSummary = inventory.map(inv => {
+        const biForecastSummary = dbUser.role === 'admin' ? inventory.map(inv => {
             const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
             const velocity = consumption / 14;
             const days = velocity > 0 ? (inv.count / velocity) : 9999;
@@ -455,7 +505,7 @@ exports.chat = async (req, res) => {
                 daysRemaining: days === 9999 ? 'Stable' : parseFloat(days.toFixed(1)),
                 risk: days <= 5 ? 'Critical' : (days <= 10 ? 'Warning' : 'Low')
             };
-        });
+        }) : [];
 
         const orderSummary = {
             total: orders.length,
@@ -463,31 +513,31 @@ exports.chat = async (req, res) => {
             queue: orders.filter(o => o.status === 'In Queue').length,
             preparing: orders.filter(o => o.status === 'Preparing Order').length,
             canceled: orders.filter(o => ['Order Canceled', 'Canceled'].includes(o.status)).length,
-            recent: orders.slice(0, 15).map(o => ({ id: o.orderId, status: o.status, client: o.client, design: o.design, total: o.totalAmount }))
+            recent: orders.slice(0, 15).map(o => ({ 
+                id: o.orderId, 
+                status: o.status, 
+                client: o.client, 
+                design: o.design, 
+                total: dbUser.role === 'admin' ? o.totalAmount : undefined, 
+                progress: o.progress 
+            }))
         };
 
         const inventorySummary = inventory.map(i => ({
             item: i.item,
             count: i.count,
-            unit: i.unit,
+            unit: i.unit || 'Cones',
             threshold: i.minThreshold,
-            status: i.count <= i.minThreshold ? 'LOW_STOCK' : 'HEALTHY'
+            status: (i.minThreshold && i.count <= i.minThreshold) ? 'LOW_STOCK' : 'HEALTHY'
         }));
 
         const productCatalog = products.map(p => ({
             id: p.id,
             name: p.name,
-            price: p.price,
+            price: dbUser.role === 'admin' ? p.price : undefined,
             tag: p.tag,
             description: p.description
         }));
-
-        const dbUser = await prisma.user.findUnique({
-            where: { id: req.user.id }
-        });
-        if (!dbUser) {
-            return res.status(401).json({ message: 'User not found' });
-        }
 
         // Fetch active recommendations
         let activeSuggestions = [];
@@ -558,8 +608,8 @@ exports.chat = async (req, res) => {
         } else if (dbUser.role === 'admin') {
             userPromptContext += `\nCRITICAL ROLE PRIVILEGES & DUTIES:
 - You are chatting with an Administrator.
-- You have access to all database mutation tools, audit logs, inventory adjustments, product catalog operations, and business intelligence recommendations.
-- You can execute strategic forecasting, optimize pricing, run restocks, and review security logs.`;
+- You have administrative access to adjust pricing, authorize spools restocks, prioritize orders, and audit registry logs.
+- Frame your assistance around business growth, efficiency, and optimization.`;
         }
 
         const systemPrompt = `You are StitchMaster AI, the strategic automated business intelligence facilitator for Stitch-Opt.
@@ -570,9 +620,9 @@ exports.chat = async (req, res) => {
         - Inventory stockpile: ${JSON.stringify(inventorySummary)}
         - Product catalog items: ${JSON.stringify(productCatalog)}
         
-        REAL-TIME BI & FORECAST METRICS:
+        ${dbUser.role === 'admin' ? `REAL-TIME BI & FORECAST METRICS:
         - Storefront Conversion Rate: ${(conversionRate * 100).toFixed(1)}% (based on ${totalVisits365D} visits and ${totalOrders365D} orders in the past 365 days)
-        - Material Depletion Forecasts (velocity/day & days remaining): ${JSON.stringify(biForecastSummary)}
+        - Material Depletion Forecasts (velocity/day & days remaining): ${JSON.stringify(biForecastSummary)}` : ''}
         
         ${suggestionsContext}
         ${userPromptContext}
@@ -580,8 +630,9 @@ exports.chat = async (req, res) => {
         POWERS & RESPONSIBILITIES:
         - You have dynamic database access via tools based on the user's role.
         - Confirm actions only after executing tools successfully.
+        - Format overviews and lists in beautiful Markdown Tables.
+        - Always use uppercase status identifiers in tables/lists so the UI highlights them as premium colored pills (e.g., 'LOW_STOCK', 'HEALTHY', 'CRITICAL', 'WARNING', 'DELIVERED', 'PREPARING', 'IN QUEUE', 'PENDING PAYMENT', 'CANCELED').
         - Provide strategic advice, analysis, strategies, and tactics for the business based on inventory counts and order trends.
-        - Format responses beautifully with markdown lists, bold headers, and transparent advice.
         - Every time you modify the database, the system will automatically record it in the change logs.
         
         CRITICAL TOOL USE CONSTRAINTS:
@@ -1278,7 +1329,9 @@ exports.storefrontChat = async (req, res) => {
 
         const systemPrompt = `You are the Stitch-Opt Virtual Store Attendant, a warm and knowledgeable AI shopping assistant for Stitch-Opt — a professional embroidery design store.
 
-${customerContext ? `You are chatting with a logged-in customer. Here is their profile:\n${customerContext}\nGreet them by their name/username, and use this information to answer any questions about their account, favorites, or order history. Be sure to check this profile first before stating you don't know about their account details!` : 'You are chatting with a guest visitor (not logged in).'}
+${customerContext ? `You are chatting with a LOGGED-IN user. Greet them by their name/username, and use the profile information below to answer any questions about their account, favorites, or order history. You have direct read access to their favorites and their recent 5 orders. Do NOT state you don't have access to order history or account data!
+Here is their profile context:
+${customerContext}` : `You are chatting with a GUEST VISITOR (not logged in). If they ask about their profile, order status, favorites, or account details, explain clearly and politely that they are currently browsing as a guest and must log in first to view their personal details and order history.`}
 
 YOUR ROLE:
 - Help customers find the perfect embroidery design based on their needs, occasion, style, or budget.
@@ -1309,7 +1362,8 @@ Rules for the marker:
 CONVERSATION STYLE:
 - Keep responses concise but helpful (2-4 sentences of text before product suggestions).
 - Use emoji sparingly for warmth (1-2 per response max).
-- Format text nicely with bold (**text**) for emphasis where appropriate.
+- Format text nicely with bold (**text**) for emphasis, and use clean Markdown Tables or Lists for product comparisons or structured options.
+- You can use uppercase status tags like 'HEALTHY', 'LOW_STOCK', 'CRITICAL', 'WARNING' to draw attention to stock states in lists/tables.
 - If the customer asks about something not in the catalog, acknowledge it and suggest the closest available alternatives.
 - Never mention the [PRODUCTS:] marker syntax to the customer — it's for internal use only.`;
 

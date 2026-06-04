@@ -7,7 +7,11 @@ import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import AuthModal from '@/components/auth/AuthModal';
-import AiAttendant from '@/components/products/AiAttendant';
+import dynamic from 'next/dynamic';
+
+const AiAttendant = dynamic(() => import('@/components/products/AiAttendant'), {
+  ssr: false,
+});
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';

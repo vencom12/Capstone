@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip
+} from 'recharts';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
@@ -63,6 +70,28 @@ export default function PanelOverview({
 
   const queuedRevenue = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
   const realizedRevenue = completedOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+
+  const totalProjected = realizedRevenue + queuedRevenue;
+  const progressPercent = totalProjected > 0 ? (realizedRevenue / totalProjected) * 100 : 0;
+
+  // Group pending orders by status for Pie Chart
+  const statusCounts = pendingOrders.reduce((acc: Record<string, number>, order) => {
+    const status = order.status || 'In Queue';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const pieData = Object.entries(statusCounts).map(([status, count]) => ({
+    name: status,
+    value: count
+  }));
+
+  const STATUS_COLORS: Record<string, string> = {
+    'In Queue': '#a855f7',         // Purple
+    'Preparing Order': '#6366f1',  // Indigo/Primary
+    'In Transit': '#fbbf24',       // Amber/Warning
+    'Ready For Pick Up': '#10b981'  // Emerald/Success
+  };
 
   // AI Main Tip text based on pending queue size
   let aiTipText = '';
@@ -191,305 +220,392 @@ export default function PanelOverview({
 
 
       {/* AI Master Banner */}
-      <div className="glass-card mb-4 relative overflow-hidden flex flex-col gap-2.5 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 text-sm font-bold">
+      <div className="glass-card mb-5 relative overflow-hidden flex flex-col gap-3 shrink-0 border border-border-glass p-5 rounded-[24px]">
+        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-primary to-secondary w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 text-base font-bold shadow-md">
             🤖
           </div>
           <div className="flex flex-col text-left">
-            <span className="font-extrabold text-[0.9rem] text-text-main leading-tight">StitchMaster AI Production Insights</span>
-            <span className="text-[0.75rem] text-text-dim mt-0.5" id="ai-main-tip">{aiTipText}</span>
+            <span className="font-extrabold text-[0.95rem] text-text-main leading-tight">StitchMaster AI Production Insights</span>
+            <span className="text-[0.78rem] text-text-dim mt-0.5" id="ai-main-tip">{aiTipText}</span>
           </div>
         </div>
 
         {/* insights card container */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1" id="ai-insights-container">
-          <div className="bg-white/5 border border-border-glass p-2.5 rounded-xl flex flex-col text-left">
-            <span className="text-[0.65rem] font-bold text-text-dim uppercase tracking-wider">Queued Revenue</span>
-            <span className="text-base font-extrabold text-success mt-0.5">${queuedRevenue.toFixed(2)}</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-1.5" id="ai-insights-container">
+          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Queued Revenue</span>
+            <span className="text-lg font-extrabold text-success mt-1">${queuedRevenue.toFixed(2)}</span>
           </div>
-          <div className="bg-white/5 border border-border-glass p-2.5 rounded-xl flex flex-col text-left">
-            <span className="text-[0.65rem] font-bold text-text-dim uppercase tracking-wider">Realized Revenue</span>
-            <span className="text-base font-extrabold text-primary mt-0.5">${realizedRevenue.toFixed(2)}</span>
+          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Realized Revenue</span>
+            <span className="text-lg font-extrabold text-primary mt-1">${realizedRevenue.toFixed(2)}</span>
           </div>
-          <div className="bg-white/5 border border-border-glass p-2.5 rounded-xl flex flex-col text-left">
-            <span className="text-[0.65rem] font-bold text-text-dim uppercase tracking-wider">Catalog Velocity</span>
-            <span className="text-base font-extrabold text-white mt-0.5">{pendingOrders.length} active</span>
+          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Catalog Velocity</span>
+            <span className="text-lg font-extrabold text-white mt-1">{pendingOrders.length} active</span>
           </div>
-          <div className="bg-white/5 border border-border-glass p-2.5 rounded-xl flex flex-col text-left">
-            <span className="text-[0.65rem] font-bold text-text-dim uppercase tracking-wider">Order Load</span>
-            <span className="text-base font-extrabold text-secondary mt-0.5">{orders.length} total</span>
+          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Order Load</span>
+            <span className="text-lg font-extrabold text-secondary mt-1">{orders.length} total</span>
           </div>
         </div>
+
+        {/* Revenue Progression Bar */}
+        {totalProjected > 0 && (
+          <div className="mt-2 pt-4 border-t border-border-glass/30 text-left">
+            <div className="flex justify-between items-center text-xs font-semibold mb-2">
+              <span className="text-text-dim uppercase tracking-wider">Revenue Realization Progress</span>
+              <span className="text-primary font-bold">{progressPercent.toFixed(1)}% Realized</span>
+            </div>
+            <div className="w-full h-2.5 bg-black/45 rounded-full overflow-hidden border border-white/5 relative">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-success rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)] transition-all duration-500 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[0.7rem] text-text-dim mt-1.5 font-medium">
+              <span>Paid: ${realizedRevenue.toFixed(2)}</span>
+              <span>Projected Target: ${totalProjected.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Action desk */}
-      <div className="glass-card mb-4">
-        <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
-          <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
-          <div className="flex gap-3 items-center flex-wrap">
-            <GlassDatePicker
-              value={dateFilter}
-              onChange={(val) => setDateFilter(val)}
-              placeholder="Filter date"
-            />
-            <input
-              type="text"
-              placeholder="Search ID or Customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
-            />
+      {/* Main split grid */}
+      <div className="flex flex-col lg:flex-row gap-5 items-start mb-6 w-full">
+        {/* Left Column: Active orders queue (70%) */}
+        <div className="glass-card flex-1 w-full min-w-0 p-5 border border-border-glass rounded-[24px]">
+          <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
+            <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
+            <div className="flex gap-3 items-center flex-wrap">
+              <GlassDatePicker
+                value={dateFilter}
+                onChange={(val) => setDateFilter(val)}
+                placeholder="Filter date"
+              />
+              <input
+                type="text"
+                placeholder="Search ID or Customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Batch operations desk */}
-        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
-          <span className="text-[0.8rem] text-text-dim font-bold">
-            Batch Action ({selectedIds.length} selected):
-          </span>
-          <div className="w-[180px]">
-            <GlassSelect
-              value={batchStatus}
-              onChange={(val) => setBatchStatus(val)}
-              options={[
-                { value: '', label: 'Select Status...' },
-                { value: 'Preparing Order', label: 'Preparing Order' },
-                { value: 'In Transit', label: 'In Transit' },
-                { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
-                { value: 'Order Delivered', label: 'Order Delivered' }
-              ]}
-            />
+          {/* Batch operations desk */}
+          <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
+            <span className="text-[0.8rem] text-text-dim font-bold">
+              Batch Action ({selectedIds.length} selected):
+            </span>
+            <div className="w-[180px]">
+              <GlassSelect
+                value={batchStatus}
+                onChange={(val) => setBatchStatus(val)}
+                options={[
+                  { value: '', label: 'Select Status...' },
+                  { value: 'Preparing Order', label: 'Preparing Order' },
+                  { value: 'In Transit', label: 'In Transit' },
+                  { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
+                  { value: 'Order Delivered', label: 'Order Delivered' }
+                ]}
+              />
+            </div>
+            <button
+              onClick={handleBatchStatusApply}
+              className="bg-primary text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-primary-light transition-all cursor-pointer border-none"
+            >
+              Apply Change
+            </button>
           </div>
-          <button
-            onClick={handleBatchStatusApply}
-            className="bg-primary text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-primary-light transition-all cursor-pointer border-none"
-          >
-            Apply Change
-          </button>
-        </div>
 
-        {isSyncing && orders.length === 0 ? (
-          <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
-            <TableSkeleton rows={5} cols={7} />
-          </div>
-        ) : (
-          <div className="glass-table-container max-[1100px]:hidden">
-            <table className="glass-table">
-              <thead>
-                <tr>
-                  <th className="glass-th w-[45px] text-center">
-                    <input
-                      type="checkbox"
-                      checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
-                      onChange={toggleSelectAll}
-                      className="cursor-pointer"
-                    />
-                  </th>
-                  <th className="glass-th text-left">Order ID</th>
-                  <th className="glass-th text-left">Client & Date</th>
-                  <th className="glass-th text-left">Items / Custom Design</th>
-                  <th className="glass-th text-left">Amount</th>
-                  <th className="glass-th text-left">Status</th>
-                  <th className="glass-th text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeOrders.length === 0 ? (
-                  <tr className="glass-tr">
-                    <td colSpan={7} className="glass-td text-center text-text-dim">
-                      No active orders found.
-                    </td>
+          {isSyncing && orders.length === 0 ? (
+            <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
+              <TableSkeleton rows={5} cols={7} />
+            </div>
+          ) : (
+            <div className="glass-table-container max-[1100px]:hidden">
+              <table className="glass-table">
+                <thead>
+                  <tr>
+                    <th className="glass-th w-[45px] text-center">
+                      <input
+                        type="checkbox"
+                        checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
+                        onChange={toggleSelectAll}
+                        className="cursor-pointer"
+                      />
+                    </th>
+                    <th className="glass-th text-left">Order ID</th>
+                    <th className="glass-th text-left">Client & Date</th>
+                    <th className="glass-th text-left">Items / Custom Design</th>
+                    <th className="glass-th text-left">Amount</th>
+                    <th className="glass-th text-left">Status</th>
+                    <th className="glass-th text-right">Actions</th>
                   </tr>
-                ) : (
-                  activeOrders.map((o) => {
-                  const id = o.id || o._id;
-                  const isChecked = selectedIds.includes(id);
-                  return (
-                    <tr
-                      key={id}
-                      className="glass-tr hover:bg-white/5 transition-all cursor-pointer"
-                      onClick={() => viewReceipt(o)}
-                    >
-                      <td className="glass-td text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelect(id)}
-                          className="cursor-pointer"
-                        />
-                      </td>
-                      <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
-                        {o.orderId}
-                      </td>
-                      <td className="glass-td text-left text-sm">
-                        <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
-                        <div className="text-[0.75rem] text-text-dim mt-0.5">
-                          {new Date(o.date || o.createdAt).toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="glass-td text-left text-sm">
-                        {o.items && Array.isArray(o.items) ? (
-                          <div className="flex flex-col gap-0.5 max-w-[250px] truncate">
-                            {o.items.map((item: any, idx: number) => (
-                              <span key={idx} className="truncate">
-                                {item.quantity}x {item.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span>{o.design || 'Embroidery Design'}</span>
-                        )}
-                      </td>
-                      <td className="glass-td text-left font-mono font-bold text-sm text-primary">
-                        ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
-                      </td>
-                      <td className="glass-td text-left">
-                        <span
-                          className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                            ${o.status === 'Preparing Order'
-                              ? 'bg-primary/20 text-primary border border-primary/30'
-                              : o.status === 'In Transit'
-                                ? 'bg-warning/20 text-warning border border-warning/30'
-                                : o.status === 'Ready For Pick Up'
-                                  ? 'bg-success/20 text-success border border-success/30'
-                                  : 'bg-white/10 text-text-dim border border-white/20'
-                            }
-                          `}
-                        >
-                          {o.status}
-                        </span>
-                      </td>
-                      <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => {
-                              setEditingOrder(o);
-                              setEditStatus(o.status);
-                            }}
-                            className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                          >
-                            Update
-                          </button>
-                        </div>
+                </thead>
+                <tbody>
+                  {activeOrders.length === 0 ? (
+                    <tr className="glass-tr">
+                      <td colSpan={7} className="glass-td text-center text-text-dim">
+                        No active orders found.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        )}
-
-        {/* Mobile Grid layout */}
-        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-          {isSyncing && orders.length === 0 ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))
-          ) : activeOrders.length === 0 ? (
-            <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
-          ) : (
-            activeOrders.map((o) => {
-            const id = o.id || o._id;
-            const isChecked = selectedIds.includes(id);
-            return (
-              <div
-                key={id}
-                onClick={() => viewReceipt(o)}
-                className={`bg-bg-card backdrop-blur-[12px] border rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-[0_4px_15px_rgba(99,102,241,0.2)]' : 'border-border-glass'
-                  }`}
-              >
-                {/* Select Toggle Box */}
-                <div
-                  className="absolute top-4 right-4 z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleSelect(id)}
-                    className="w-5 h-5 cursor-pointer rounded border-border-glass bg-transparent"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
-                  {/* Left Column */}
-                  <div className="flex flex-col gap-2.5 text-left justify-between h-full">
-                    <span
-                      className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
-                        ${o.status === 'Preparing Order'
-                          ? 'bg-primary/20 text-primary border border-primary/30'
-                          : o.status === 'In Transit'
-                            ? 'bg-warning/20 text-warning border border-warning/30'
-                            : o.status === 'Ready For Pick Up'
-                              ? 'bg-success/20 text-success border border-success/30'
-                              : 'bg-white/10 text-text-dim border border-white/20'
-                        }
-                      `}
-                    >
-                      {o.status}
-                    </span>
-
-                    <div className="flex flex-col">
-                      <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">
-                        {o.orderId}
-                      </span>
-                      <span className="text-[0.65rem] text-text-dim mt-0.5">
-                        {new Date(o.date || o.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col text-left">
-                      <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">
-                        Client
-                      </span>
-                      <span className="font-bold text-text-main truncate max-w-[140px]">
-                        {o.client || 'Valued Customer'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
-                    <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">
-                      Items
-                    </span>
-                    <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
-                      {o.items && Array.isArray(o.items) ? (
-                        o.items.map((item: any, idx: number) => (
-                          <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
-                            {item.quantity}x {item.name}
+                  ) : (
+                    activeOrders.map((o) => {
+                    const id = o.id || o._id;
+                    const isChecked = selectedIds.includes(id);
+                    return (
+                      <tr
+                        key={id}
+                        className="glass-tr hover:bg-white/5 transition-all cursor-pointer"
+                        onClick={() => viewReceipt(o)}
+                      >
+                        <td className="glass-td text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(id)}
+                            className="cursor-pointer"
+                          />
+                        </td>
+                        <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
+                          {o.orderId}
+                        </td>
+                        <td className="glass-td text-left text-sm">
+                          <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
+                          <div className="text-[0.75rem] text-text-dim mt-0.5">
+                            {new Date(o.date || o.createdAt).toLocaleString()}
                           </div>
-                        ))
-                      ) : (
-                        <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
-                      )}
+                        </td>
+                        <td className="glass-td text-left text-sm">
+                          {o.items && Array.isArray(o.items) ? (
+                            <div className="flex flex-col gap-0.5 max-w-[250px] truncate">
+                              {o.items.map((item: any, idx: number) => (
+                                <span key={idx} className="truncate">
+                                  {item.quantity}x {item.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span>{o.design || 'Embroidery Design'}</span>
+                          )}
+                        </td>
+                        <td className="glass-td text-left font-mono font-bold text-sm text-primary">
+                          ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                        </td>
+                        <td className="glass-td text-left">
+                          <span
+                            className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                              ${o.status === 'Preparing Order'
+                                ? 'bg-primary/20 text-primary border border-primary/30'
+                                : o.status === 'In Transit'
+                                  ? 'bg-warning/20 text-warning border border-warning/30'
+                                  : o.status === 'Ready For Pick Up'
+                                    ? 'bg-success/20 text-success border border-success/30'
+                                    : 'bg-white/10 text-text-dim border border-white/20'
+                              }
+                            `}
+                          >
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => {
+                                setEditingOrder(o);
+                                setEditStatus(o.status);
+                              }}
+                              className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                            >
+                              Update
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          )}
+
+          {/* Mobile Grid layout */}
+          <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+            {isSyncing && orders.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))
+            ) : activeOrders.length === 0 ? (
+              <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
+            ) : (
+              activeOrders.map((o) => {
+              const id = o.id || o._id;
+              const isChecked = selectedIds.includes(id);
+              return (
+                <div
+                  key={id}
+                  onClick={() => viewReceipt(o)}
+                  className={`bg-bg-card backdrop-blur-[12px] border rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-[0_4px_15px_rgba(99,102,241,0.2)]' : 'border-border-glass'
+                    }`}
+                >
+                  {/* Select Toggle Box */}
+                  <div
+                    className="absolute top-4 right-4 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleSelect(id)}
+                      className="w-5 h-5 cursor-pointer rounded border-border-glass bg-transparent"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
+                    {/* Left Column */}
+                    <div className="flex flex-col gap-2.5 text-left justify-between h-full">
+                      <span
+                        className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
+                          ${o.status === 'Preparing Order'
+                            ? 'bg-primary/20 text-primary border border-primary/30'
+                            : o.status === 'In Transit'
+                              ? 'bg-warning/20 text-warning border border-warning/30'
+                              : o.status === 'Ready For Pick Up'
+                                ? 'bg-success/20 text-success border border-success/30'
+                                : 'bg-white/10 text-text-dim border border-white/20'
+                          }
+                        `}
+                      >
+                        {o.status}
+                      </span>
+
+                      <div className="flex flex-col">
+                        <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">
+                          {o.orderId}
+                        </span>
+                        <span className="text-[0.65rem] text-text-dim mt-0.5">
+                          {new Date(o.date || o.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col text-left">
+                        <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">
+                          Client
+                        </span>
+                        <span className="font-bold text-text-main truncate max-w-[140px]">
+                          {o.client || 'Valued Customer'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left">
-                      ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+
+                    {/* Right Column */}
+                    <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
+                      <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">
+                        Items
+                      </span>
+                      <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
+                        {o.items && Array.isArray(o.items) ? (
+                          o.items.map((item: any, idx: number) => (
+                            <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
+                              {item.quantity}x {item.name}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
+                        )}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left">
+                        ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Edit Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingOrder(o);
-                    setEditStatus(o.status);
-                  }}
-                  className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
-                >
-                  Edit Status Panel
-                </button>
+                  {/* Edit Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingOrder(o);
+                      setEditStatus(o.status);
+                    }}
+                    className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
+                  >
+                    Edit Status Panel
+                  </button>
+                </div>
+              );
+            })
+          )}
+          </div>
+        </div>
+
+        {/* Right Column: Queue distribution donut chart (30%) */}
+        <div className="glass-card w-full lg:w-[350px] shrink-0 p-5 flex flex-col relative overflow-hidden text-left min-h-[350px] border border-border-glass rounded-[24px]">
+          <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-secondary/5 rounded-full blur-[50px] pointer-events-none"></div>
+          <h3 className="text-xs font-bold text-text-dim uppercase tracking-wider mb-4">Queue Distribution</h3>
+          {pendingOrders.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-text-dim text-xs italic">
+              ✨ Queue is clear! All orders fulfilled.
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="w-full h-[180px] text-xs font-medium">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || '#a855f7'} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }: any) => {
+                        if (active && payload && payload.length) {
+                          const p = payload[0];
+                          return (
+                            <div className="bg-[#1e293b]/90 backdrop-blur-[12px] border border-border-glass px-2.5 py-1.5 rounded-lg shadow-md text-xs font-bold">
+                              <span className="text-white">{p.name}: {p.value} order(s)</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            );
-          })
-        )}
+
+              {/* Status Labels Legend */}
+              <div className="w-full flex flex-col gap-1.5 mt-3 pt-3 border-t border-border-glass/40">
+                {pieData.map((entry, idx) => {
+                  const color = STATUS_COLORS[entry.name] || '#a855f7';
+                  const pct = ((entry.value / pendingOrders.length) * 100).toFixed(0);
+                  return (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2 text-text-main font-semibold font-sans">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="truncate max-w-[180px]">{entry.name}</span>
+                      </div>
+                      <span className="font-mono text-text-dim font-bold">{entry.value} ({pct}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
 
       {/* Modal: View Receipt Details */}
       <GlassModal
