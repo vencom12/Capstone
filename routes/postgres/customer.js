@@ -47,6 +47,8 @@ router.get('/dashboard-state', (req, res, next) => {
 
 router.get('/capacity', customerController.getCapacity);
 router.get('/settings', customerController.getPublicSettings);
+router.get('/manifest.json', customerController.getManifest);
+router.get('/favicon.ico', customerController.getFavicon);
 
 // All routes below require authentication
 router.post('/wallet/topup', auth(), customerController.topupWallet);

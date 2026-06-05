@@ -36,10 +36,10 @@ export const metadata: Metadata = {
     description: 'Custom embroidery designs & personalized monogramming for towels, fans, and more.',
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: '/api/customer/favicon.ico',
+    apple: '/api/customer/favicon.ico',
   },
-  manifest: '/site.webmanifest',
+  manifest: '/api/customer/manifest.json',
 };
 
 export default function RootLayout({

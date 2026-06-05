@@ -406,6 +406,46 @@ exports.getPublicSettings = async (req, res) => {
     }
 };
 
+exports.getManifest = async (req, res) => {
+    try {
+        let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let logoUrl = settings?.businessLogoUrl || '/fallback-icon.png';
+        
+        res.json({
+            name: settings?.businessName || "Stitch-Opt | Premium Embroidery Designs",
+            short_name: "Stitch-Opt",
+            start_url: "/",
+            display: "standalone",
+            background_color: "#0f172a",
+            theme_color: "#6366f1",
+            icons: [
+                {
+                    src: logoUrl,
+                    sizes: "192x192 512x512",
+                    type: "image/png"
+                }
+            ]
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getFavicon = async (req, res) => {
+    try {
+        let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let logoUrl = settings?.businessLogoUrl;
+        if (logoUrl) {
+            return res.redirect(logoUrl);
+        } else {
+            // Send empty or fallback, 204 No Content is safe for favicon
+            return res.status(204).end();
+        }
+    } catch (err) {
+        res.status(500).send('Error');
+    }
+};
+
 const PDFDocument = require('pdfkit');
 
 const https = require('https');
