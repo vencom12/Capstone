@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 
 interface PanelSettingsProps {
@@ -27,8 +27,19 @@ export default function PanelSettings({
   const [aiProviderUrl, setAiProviderUrl] = useState('https://api.groq.com/openai/v1/chat/completions');
   const [minConfidenceScore, setMinConfidenceScore] = useState(75); // displayed as percentage (0-100)
   
+  // Business Profile Settings State
+  const [businessName, setBusinessName] = useState('STITCH-OPT DESIGNS');
+  const [receiptTagline, setReceiptTagline] = useState('Premium Embroidery Services');
+  const [businessAddress, setBusinessAddress] = useState('123 Digital Thread Lane, Manila');
+  const [businessContact, setBusinessContact] = useState('+63 (02) 888-THREAD');
+  const [businessEmail, setBusinessEmail] = useState('contact@stitch-opt.com');
+  const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingBiz, setIsSavingBiz] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Suggested Options
   const chatModelSuggestions = [
@@ -53,6 +64,13 @@ export default function PanelSettings({
         if (res.minConfidenceScore !== undefined) {
           setMinConfidenceScore(Math.round(res.minConfidenceScore * 100));
         }
+        if (res.businessName) setBusinessName(res.businessName);
+        if (res.receiptTagline) setReceiptTagline(res.receiptTagline);
+        if (res.businessAddress) setBusinessAddress(res.businessAddress);
+        if (res.businessContact) setBusinessContact(res.businessContact);
+        if (res.businessEmail) setBusinessEmail(res.businessEmail);
+        if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
+        if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -91,6 +109,53 @@ export default function PanelSettings({
     setMinConfidenceScore(75);
     setPingResult(null);
     showToast('AI controls reset to defaults. Remember to click Save!', 'info');
+  };
+
+  const handleSaveBizSettings = async () => {
+    setIsSavingBiz(true);
+    try {
+      await api.put('/api/admin/settings', {
+        businessName: businessName.trim(),
+        receiptTagline: receiptTagline.trim(),
+        businessAddress: businessAddress.trim(),
+        businessContact: businessContact.trim(),
+        businessEmail: businessEmail.trim(),
+        businessWebsite: businessWebsite.trim(),
+        businessLogoUrl: businessLogoUrl || null
+      });
+      showToast('Business profile & receipt settings applied successfully!', 'success');
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to save business settings', 'error');
+    } finally {
+      setIsSavingBiz(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      const res = await apiFetch<any>('/api/admin/settings/logo', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res && res.businessLogoUrl) {
+        setBusinessLogoUrl(res.businessLogoUrl);
+        showToast('Logo uploaded successfully!', 'success');
+      }
+    } catch (error: any) {
+      console.error(error);
+      showToast(error.message || 'Failed to upload logo', 'error');
+    } finally {
+      setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
+    }
   };
 
   const [isTestingPing, setIsTestingPing] = useState(false);
@@ -158,6 +223,175 @@ export default function PanelSettings({
         </div>
       ) : (
         <div className="flex flex-col gap-6 pr-2">
+          {/* Business Profile & Printed Receipts */}
+          <div className="glass-card p-6 border border-border-glass rounded-[24px]">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold">
+                🏢
+              </div>
+              <h3 className="text-xl font-bold m-0 text-text-main">Business Profile & Printed Receipts</h3>
+            </div>
+            
+            <p className="text-xs text-text-dim leading-relaxed mb-6">
+              Customize the branding and details printed on generated customer receipts and restock shopping lists. Changes are stored in the global system context and take effect immediately.
+            </p>
+
+            <div className="flex flex-col gap-5">
+              {/* Business Name */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Business Name</span>
+                  <span className="text-xs text-text-dim mt-1">The primary name printed at the top of the receipt layout.</span>
+                </div>
+                <input
+                  type="text"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="STITCH-OPT DESIGNS"
+                />
+              </div>
+
+              {/* Receipt Tagline */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Receipt Tagline</span>
+                  <span className="text-xs text-text-dim mt-1">A short brand motto printed directly under the business name.</span>
+                </div>
+                <input
+                  type="text"
+                  value={receiptTagline}
+                  onChange={(e) => setReceiptTagline(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="Premium Embroidery Services"
+                />
+              </div>
+
+              {/* Business Address */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Business Address</span>
+                  <span className="text-xs text-text-dim mt-1">The physical address listed on all transaction invoices.</span>
+                </div>
+                <input
+                  type="text"
+                  value={businessAddress}
+                  onChange={(e) => setBusinessAddress(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="123 Digital Thread Lane, Manila"
+                />
+              </div>
+
+              {/* Business Contact */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Contact Number</span>
+                  <span className="text-xs text-text-dim mt-1">The store telephone or mobile number for customer queries.</span>
+                </div>
+                <input
+                  type="text"
+                  value={businessContact}
+                  onChange={(e) => setBusinessContact(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="+63 (02) 888-THREAD"
+                />
+              </div>
+
+              {/* Business Email */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Support Email Address</span>
+                  <span className="text-xs text-text-dim mt-1">Email address printed on the footer of all receipts.</span>
+                </div>
+                <input
+                  type="email"
+                  value={businessEmail}
+                  onChange={(e) => setBusinessEmail(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="contact@stitch-opt.com"
+                />
+              </div>
+
+              {/* Business Website URL */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Business Website URL</span>
+                  <span className="text-xs text-text-dim mt-1">Website URL printed on the footer of all receipts.</span>
+                </div>
+                <input
+                  type="text"
+                  value={businessWebsite}
+                  onChange={(e) => setBusinessWebsite(e.target.value)}
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  placeholder="www.stitch-opt.com"
+                />
+              </div>
+
+              {/* Business Logo Upload */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">Business Logo</span>
+                  <span className="text-xs text-text-dim mt-1">Upload a custom logo for receipts and the website favicon.</span>
+                </div>
+                <div className="flex items-center gap-4 flex-1 justify-end">
+                  {businessLogoUrl && (
+                    <div className="relative group">
+                      <img src={businessLogoUrl} alt="Logo" className="w-10 h-10 object-contain bg-white/10 rounded" />
+                      <button 
+                        onClick={() => setBusinessLogoUrl('')}
+                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] cursor-pointer"
+                        title="Remove Logo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    disabled={isUploadingLogo}
+                    className="text-xs text-text-dim file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer w-full max-w-[250px]"
+                  />
+                  {isUploadingLogo && <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6 border-t border-border-glass pt-5">
+              <button
+                onClick={() => {
+                  setBusinessName('STITCH-OPT DESIGNS');
+                  setReceiptTagline('Premium Embroidery Services');
+                  setBusinessAddress('123 Digital Thread Lane, Manila');
+                  setBusinessContact('+63 (02) 888-THREAD');
+                  setBusinessEmail('contact@stitch-opt.com');
+                  setBusinessWebsite('www.stitch-opt.com');
+                  setBusinessLogoUrl('');
+                  showToast('Receipt details reset to defaults. Click Save!', 'info');
+                }}
+                disabled={isSavingBiz}
+                className="bg-transparent hover:bg-white/5 border border-border-glass text-text-main text-xs font-bold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95 duration-200"
+              >
+                Reset to Defaults
+              </button>
+              <button
+                onClick={handleSaveBizSettings}
+                disabled={isSavingBiz}
+                className="bg-purple-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-purple-600/90 cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 flex items-center gap-2 border-none shadow-[0_4px_15px_rgba(168,85,247,0.25)]"
+              >
+                {isSavingBiz ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    Applying Changes...
+                  </>
+                ) : (
+                  'Save Profile'
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Dynamic AI Configuration */}
           <div className="glass-card p-6 border border-border-glass rounded-[24px]">
             <div className="flex items-center gap-2.5 mb-4">

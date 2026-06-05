@@ -13,6 +13,15 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+
+  useEffect(() => {
+    import('@/lib/api').then(({ api }) => {
+      api.get<any>('/api/customer/settings').then(res => {
+        if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+      }).catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
     if (isOpen && transactionId) {
@@ -48,8 +57,11 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
       ) : data ? (
         <div className="modal-stack">
           <div className="modal-box !p-4">
-             <div className="flex justify-between border-b border-border-glass pb-3 mb-3">
-                <span className="modal-label">Transaction ID</span>
+             <div className="flex justify-between items-center border-b border-border-glass pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  {businessLogoUrl && <img src={businessLogoUrl} alt="Logo" className="w-5 h-5 object-contain rounded" />}
+                  <span className="modal-label">Transaction ID</span>
+                </div>
                 <span className="font-mono text-primary font-bold text-sm">{data.transactionID}</span>
              </div>
              <div className="flex justify-between mb-2 text-xs">

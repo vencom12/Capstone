@@ -15,6 +15,15 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+
+  useEffect(() => {
+    import('@/lib/api').then(({ api }) => {
+      api.get<any>('/api/customer/settings').then(res => {
+        if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+      }).catch(() => {});
+    });
+  }, []);
 
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -140,12 +149,12 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
     <>
       {/* Mobile Backdrop Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 z-[1999] hidden max-[650px]:block backdrop-blur-sm transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <aside 
+      <aside
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -155,67 +164,71 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
         max-[650px]:fixed max-[650px]:left-0 max-[650px]:top-0
         ${isSidebarOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
       `}>
-      {/* Header / Logo */}
-      <div className="p-4 pt-5 pb-2">
-        <Link href="/admin" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
-          <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-          </div>
-          <span className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight max-[1100px]:hidden max-[650px]:inline">
-            Stitch-Opt
-          </span>
-        </Link>
-      </div>
+        {/* Header / Logo */}
+        <div className="p-4 pt-5 pb-2">
+          <Link href="/admin" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
+            {businessLogoUrl ? (
+              <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
+            ) : (
+              <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              </div>
+            )}
+            <span className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight max-[1100px]:hidden max-[650px]:inline">
+              Stitch-Opt
+            </span>
+          </Link>
+        </div>
 
-      {/* Navigation */}
-      <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <li key={item.id}>
-            <button
-              onClick={() => {
-                setActiveTab(item.id);
-                if (window.innerWidth <= 650) setSidebarOpen(false);
-              }}
-              className={`
+        {/* Navigation */}
+        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1 overflow-y-auto">
+          {navItems.map((item) => (
+            <li key={item.id}>
+              <button
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth <= 650) setSidebarOpen(false);
+                }}
+                className={`
                 w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer
                 transition-all duration-300 border font-medium text-[0.95rem]
                 max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
-                ${activeTab === item.id 
-                  ? 'bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-[0_4px_15px_rgba(99,102,241,0.3)]' 
-                  : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
+                ${activeTab === item.id
+                    ? 'bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                    : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
               `}
-              title={item.label}
-            >
-              <div className="shrink-0">{item.icon}</div>
-              <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap">{item.label}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+                title={item.label}
+              >
+                <div className="shrink-0">{item.icon}</div>
+                <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap">{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
 
-      {/* User Profile */}
-      <div className="mt-auto p-3 pb-10 border-t border-border-glass">
-        <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-border-glass max-[1100px]:justify-center max-[650px]:justify-start">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0">
-            {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+        {/* User Profile */}
+        <div className="mt-auto p-3 pb-10 border-t border-border-glass">
+          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-border-glass max-[1100px]:justify-center max-[650px]:justify-start">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0">
+              {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+            </div>
+            <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-[650px]:flex text-left">
+              <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate">{user?.username || 'Administrator'}</span>
+              <span className="text-[0.75rem] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full w-fit mt-0.5">
+                {user?.role || 'admin'}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-[650px]:flex text-left">
-            <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate">{user?.username || 'Administrator'}</span>
-            <span className="text-[0.75rem] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full w-fit mt-0.5">
-              {user?.role || 'admin'}
-            </span>
-          </div>
+
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start border-none bg-transparent"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
+          </button>
         </div>
-        
-        <button 
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start border-none bg-transparent"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }

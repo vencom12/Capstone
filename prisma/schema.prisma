@@ -273,6 +273,15 @@ model SystemSettings {
   aiProviderUrl      String @default("https://api.groq.com/openai/v1/chat/completions")
   minConfidenceScore Float  @default(0.75)
 
+  // Dynamic Business Profile & Printed Receipts
+  businessName    String @default("STITCH-OPT DESIGNS")
+  receiptTagline  String @default("Premium Embroidery Services")
+  businessAddress String @default("123 Digital Thread Lane, Manila")
+  businessContact String @default("+63 (02) 888-THREAD")
+  businessEmail   String @default("contact@stitch-opt.com")
+  businessWebsite String @default("www.stitch-opt.com")
+  businessLogoUrl String?
+
   tenantId String? @unique
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 

@@ -312,7 +312,7 @@ exports.getReceipt = async (req, res) => {
         if (receiptData) {
             tx = await prisma.transaction.findFirst({
                 where: { orderID: receiptData.orderID },
-                include: { order: true, user: true }
+                include: { Order: true, user: true }
             });
         } else {
             // 2. Try finding by transactionID or id (UUID)
@@ -323,7 +323,7 @@ exports.getReceipt = async (req, res) => {
                         { id: id }
                     ]
                 },
-                include: { order: true, user: true }
+                include: { Order: true, user: true }
             });
 
             // 3. Try finding by orderId
@@ -341,6 +341,10 @@ exports.getReceipt = async (req, res) => {
         }
 
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+        
+        if (tx.Order) {
+            tx.order = tx.Order;
+        }
         
         // Check authorization if it's a customer
         if (req.user.role === 'customer' && tx.userId !== req.user.id) {
@@ -393,13 +397,18 @@ exports.getCapacity = async (req, res) => {
 exports.getPublicSettings = async (req, res) => {
     try {
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        res.json({ giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00 });
+        res.json({ 
+            giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
+            businessLogoUrl: settings?.businessLogoUrl || null
+        });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching public settings' });
     }
 };
 
 const PDFDocument = require('pdfkit');
+
+const https = require('https');
 
 exports.downloadReceipt = async (req, res) => {
     try {
@@ -413,7 +422,7 @@ exports.downloadReceipt = async (req, res) => {
                     { id: id }
                 ]
             },
-            include: { order: true, user: true }
+            include: { Order: true, user: true }
         });
 
         if (!tx) {
@@ -421,12 +430,16 @@ exports.downloadReceipt = async (req, res) => {
             if (receiptRecord) {
                 tx = await prisma.transaction.findFirst({
                     where: { orderID: receiptRecord.orderID },
-                    include: { order: true, user: true }
+                    include: { Order: true, user: true }
                 });
             }
         }
 
         if (!tx) return res.status(404).send('Receipt not found');
+
+        if (tx.Order) {
+            tx.order = tx.Order;
+        }
 
         const date = new Date(tx.timestamp);
         const dateStr = date.toLocaleDateString();
@@ -435,6 +448,14 @@ exports.downloadReceipt = async (req, res) => {
         const subtotal = parseFloat(tx.amount);
         const tax = subtotal * 0.12; 
         const total = subtotal + tax;
+
+        // Fetch dynamic business settings
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const bizName = settings?.businessName || 'STITCH-OPT DESIGNS';
+        const bizTagline = settings?.receiptTagline || 'Premium Embroidery Services';
+        const bizAddress = settings?.businessAddress || '123 Digital Thread Lane, Manila';
+        const bizContact = settings?.businessContact || '+63 (02) 888-THREAD';
+        const bizWebsite = settings?.businessWebsite || 'www.stitch-opt.com';
 
         // Create PDF
         const doc = new PDFDocument({ size: [300, 600], margin: 20 });
@@ -449,10 +470,31 @@ exports.downloadReceipt = async (req, res) => {
         const contentWidth = pageWidth - (margin * 2);
 
         // Header
-        doc.font('Helvetica-Bold').fontSize(16).text('STITCH-OPT DESIGNS', { align: 'center' });
-        doc.font('Helvetica').fontSize(9).text('Premium Embroidery Services', { align: 'center' });
-        doc.text('123 Digital Thread Lane, Manila', { align: 'center' });
-        doc.text('Contact: +63 (02) 888-THREAD', { align: 'center' });
+        const logoUrl = settings?.businessLogoUrl;
+        if (logoUrl && logoUrl.startsWith('https')) {
+            try {
+                const buffer = await new Promise((resolve, reject) => {
+                    https.get(logoUrl, (response) => {
+                        if (response.statusCode !== 200) return reject(new Error('Failed to fetch image'));
+                        const data = [];
+                        response.on('data', (chunk) => data.push(chunk));
+                        response.on('end', () => resolve(Buffer.concat(data)));
+                    }).on('error', reject);
+                });
+                // Image dimensions and centering
+                const logoWidth = 40;
+                doc.image(buffer, (pageWidth - logoWidth) / 2, doc.y, { fit: [logoWidth, 60] });
+                doc.y += 65; // Push text down so it doesn't overlap with the absolutely positioned image
+                doc.moveDown(0.5);
+            } catch (err) {
+                console.error('Failed to load logo for PDF:', err);
+            }
+        }
+
+        doc.font('Helvetica-Bold').fontSize(16).text(bizName, { align: 'center' });
+        doc.font('Helvetica').fontSize(9).text(bizTagline, { align: 'center' });
+        doc.text(bizAddress, { align: 'center' });
+        doc.text(bizContact.toLowerCase().startsWith('contact') ? bizContact : `Contact: ${bizContact}`, { align: 'center' });
         doc.moveDown(0.5);
         doc.text('------------------------------------------', { align: 'center' });
         doc.moveDown(0.5);
@@ -511,7 +553,7 @@ exports.downloadReceipt = async (req, res) => {
         doc.moveDown(1);
         doc.font('Helvetica-Bold').fontSize(10).text('Thank you for choosing us!', { align: 'center' });
         doc.font('Helvetica').fontSize(8).text('Visit again for more designs!', { align: 'center' });
-        doc.fillColor('blue').text('www.stitch-opt.com', { align: 'center' });
+        doc.fillColor('blue').text(bizWebsite, { align: 'center' });
 
         doc.end();
 

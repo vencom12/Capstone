@@ -405,10 +405,14 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
         const prisma = require('./utils/prisma');
         const tx = await prisma.transaction.findUnique({
             where: { transactionID: req.params.transactionID },
-            include: { order: true, user: true }
+            include: { Order: true, user: true }
         });
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
         
+        if (tx.Order) {
+            tx.order = tx.Order;
+        }
+
         if (tx.userId !== req.user.id && req.user.role === 'customer') {
             return res.status(403).json({ message: 'Unauthorized' });
         }

@@ -19,10 +19,9 @@ export default function Sidebar() {
           className={`
             w-full flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer
             transition-all duration-300 text-[0.9rem] font-bold border
-            ${
-              isBasketOpen
-                ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
-                : 'bg-white/5 border-border-glass text-text-main hover:bg-white/10'
+            ${isBasketOpen
+              ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+              : 'bg-white/5 border-border-glass text-text-main hover:bg-white/10'
             }
           `}
         >
@@ -61,10 +60,9 @@ export default function Sidebar() {
                   className={`
                     w-full flex items-center px-4 py-2.5 rounded-xl cursor-pointer
                     transition-all duration-300 text-left text-[0.85rem] border
-                    ${
-                      selectedCategory === category
-                        ? 'bg-gradient-to-r from-primary to-secondary border-transparent text-white font-semibold shadow-[0_10px_20px_-5px_rgba(99,102,241,0.5)]'
-                        : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
+                    ${selectedCategory === category
+                      ? 'bg-gradient-to-r from-primary to-secondary border-transparent text-white font-semibold shadow-[0_10px_20px_-5px_rgba(99,102,241,0.5)]'
+                      : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
                     }
                   `}
                 >

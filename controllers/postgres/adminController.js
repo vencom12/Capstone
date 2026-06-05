@@ -714,7 +714,10 @@ exports.downloadShoppingListPdf = async (req, res) => {
         doc.pipe(res);
 
         // Header
-        doc.font('Helvetica-Bold').fontSize(14).text('STITCH-OPT DESIGNS', { align: 'center' });
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const bizName = settings?.businessName || 'STITCH-OPT DESIGNS';
+
+        doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
         doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });
         doc.moveDown(0.2);
         doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
@@ -768,5 +771,26 @@ exports.downloadShoppingListPdf = async (req, res) => {
     } catch (err) {
         console.error('downloadShoppingListPdf error:', err);
         res.status(500).send('Error generating PDF');
+    }
+};
+
+exports.uploadBusinessLogo = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No image provided' });
+        }
+        
+        const logoUrl = req.file.path;
+
+        const updated = await prisma.systemSettings.upsert({
+            where: { id: 'global' },
+            update: { businessLogoUrl: logoUrl },
+            create: { id: 'global', businessLogoUrl: logoUrl }
+        });
+
+        res.json({ message: 'Logo updated successfully', businessLogoUrl: logoUrl, settings: updated });
+    } catch (err) {
+        console.error('uploadBusinessLogo error:', err);
+        res.status(500).json({ message: 'Error uploading logo' });
     }
 };

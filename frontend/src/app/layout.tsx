@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import ToastContainer from '@/components/ui/Toast';
+import DynamicFavicon from '@/components/ui/DynamicFavicon';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/favicon.ico',
   },
-  manifest: '/site.webmanifest',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -50,6 +51,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
+        <DynamicFavicon />
         <ToastContainer />
       </body>
     </html>

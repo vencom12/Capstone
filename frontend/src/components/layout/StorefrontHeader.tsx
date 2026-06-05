@@ -17,10 +17,16 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const { isAuthenticated, user, logout } = useAuthStore();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const categories = getCategories();
 
   useEffect(() => {
     setMounted(true);
+    import('@/lib/api').then(({ api }) => {
+      api.get<any>('/api/customer/settings').then(res => {
+        if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+      }).catch(() => {});
+    });
   }, []);
 
   // Close dropdown when clicking outside
@@ -37,13 +43,17 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   return (
     <header className="sticky top-0 w-full shrink-0 h-[var(--header-height)] z-[2000] flex items-center justify-between px-10 bg-bg-header backdrop-blur-[15px] border-b border-border-glass transition-all duration-300
       max-[1250px]:grid max-[1250px]:grid-cols-2 max-[1250px]:h-auto max-[1250px]:px-4 max-[1250px]:py-4 max-[1250px]:gap-y-4">
-      
+
       {/* Brand & Hamburger Area - Stays Top Left */}
       <div className="flex items-center gap-3 max-[1250px]:justify-start">
         <Link href="/" className="flex items-center gap-3 no-underline">
-          <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-          </div>
+          {businessLogoUrl ? (
+            <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
+          ) : (
+            <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+            </div>
+          )}
           <h1 className="font-extrabold text-xl bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight m-0 max-[400px]:hidden">
             Stitch-Opt
           </h1>
@@ -53,20 +63,20 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       {/* Middle: Search Bar (Desktop) / Second Row (Tablet) */}
       <div className="flex-1 max-w-[500px] mx-10 relative flex items-center gap-2 
         max-[1250px]:col-span-2 max-[1250px]:max-w-none max-[1250px]:mx-0 max-[1250px]:order-3">
-        
+
         {/* Animated Custom Category Dropdown (Visible on Mobile only) */}
         <div className="hidden max-[650px]:block shrink-0 relative category-dropdown-container">
-          <button 
+          <button
             suppressHydrationWarning
             onClick={() => setIsCategoryOpen(!isCategoryOpen)}
             className="flex items-center gap-2 bg-bg-surface border border-border-glass text-text-main px-4 py-3 rounded-xl text-sm font-bold outline-none cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
           >
             {selectedCategory === 'All' ? 'All Designs' : selectedCategory}
-            <svg 
+            <svg
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               className={`transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`}
             >
-              <path d="m6 9 6 6 6-6"/>
+              <path d="m6 9 6 6 6-6" />
             </svg>
           </button>
 
@@ -135,14 +145,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </div>
         ) : (
           <div className="flex gap-2">
-            <button 
+            <button
               suppressHydrationWarning
               onClick={() => useUIStore.getState().setAuthOpen(true, 'login')}
               className="px-4 py-2 rounded-xl text-text-dim font-bold text-xs hover:bg-white/5 no-underline whitespace-nowrap bg-transparent border-none cursor-pointer"
             >
               Login
             </button>
-            <button 
+            <button
               suppressHydrationWarning
               onClick={() => useUIStore.getState().setAuthOpen(true, 'register')}
               className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity"
