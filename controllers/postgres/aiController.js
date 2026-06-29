@@ -649,7 +649,8 @@ exports.chat = async (req, res) => {
             name: p.name,
             price: dbUser.role === 'admin' ? p.price : undefined,
             tag: p.tag,
-            description: p.description
+            description: p.description,
+            imageUrl: p.imageUrl
         }));
 
         // Fetch active recommendations
@@ -1025,18 +1026,26 @@ exports.chat = async (req, res) => {
         // Mode B: Fallback XML-like function parsing (when Llama generates pseudo-XML in plain text)
         else if (data.choices && data.choices[0] && data.choices[0].message.content) {
             const rawContent = data.choices[0].message.content;
-            const funcRegex = /<function\((\w+)\)\s*=\s*({.*?})\s*><\/function>/g;
-            let match;
             const results = [];
             const matches = [];
 
-            funcRegex.lastIndex = 0;
-            while ((match = funcRegex.exec(rawContent)) !== null) {
-                matches.push({
-                    fullMatch: match[0],
-                    name: match[1],
-                    argsStr: match[2]
-                });
+            // Pattern 1: <function(funcName) = {args}></function>
+            const regex1 = /<function\((\w+)\)\s*=\s*({.*?})\s*><\/function>/g;
+            let match;
+            while ((match = regex1.exec(rawContent)) !== null) {
+                matches.push({ fullMatch: match[0], name: match[1], argsStr: match[2] });
+            }
+
+            // Pattern 2: <function=funcName>{args}</function>
+            const regex2 = /<function=(\w+)>\s*({.*?})\s*<\/function>/g;
+            while ((match = regex2.exec(rawContent)) !== null) {
+                matches.push({ fullMatch: match[0], name: match[1], argsStr: match[2] });
+            }
+
+            // Pattern 3: <function name="funcName">{args}</function>
+            const regex3 = /<function\s+name=["'](\w+)["']>\s*({.*?})\s*<\/function>/g;
+            while ((match = regex3.exec(rawContent)) !== null) {
+                matches.push({ fullMatch: match[0], name: match[1], argsStr: match[2] });
             }
 
             if (matches.length > 0) {

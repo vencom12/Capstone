@@ -305,3 +305,4 @@
 {"timestamp":"2026-06-29T01:01:16.243Z","event":"dataChanged","sizeBytes":576,"entity":"PRODUCT","action":"CREATE"}
 {"timestamp":"2026-06-29T01:01:16.291Z","event":"dataChanged","sizeBytes":585,"entity":"PRODUCT","action":"CREATE"}
 {"timestamp":"2026-06-29T01:01:16.351Z","event":"dataChanged","sizeBytes":579,"entity":"PRODUCT","action":"CREATE"}
+{"timestamp":"2026-06-29T01:32:49.947Z","event":"dataChanged","sizeBytes":153,"entity":"PRODUCT","action":"DELETE"}
