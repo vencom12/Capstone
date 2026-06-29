@@ -57,6 +57,7 @@ const executeAction = async (functionName, args, req) => {
             'createProduct',
             'deleteProduct',
             'updateProduct',
+            'bulkCreateProducts',
             'getSystemAnalytics',
             'getMachineFleetStatus',
             'getAuditLogs',
@@ -176,6 +177,62 @@ const executeAction = async (functionName, args, req) => {
             logAiChange(username, 'Create Product Catalog', `Created product "${args.name}" at price $${args.price}`);
         }
     } 
+    else if (functionName === "bulkCreateProducts") {
+        const productsData = args.products || [];
+        if (productsData.length === 0) {
+            actionResult = `No products provided for bulk creation.`;
+        } else {
+            const createdProducts = [];
+            const failures = [];
+
+            for (const prod of productsData) {
+                try {
+                    const priceVal = parseFloat(prod.price);
+                    if (isNaN(priceVal) || priceVal < 0) {
+                        failures.push(`Invalid price for product "${prod.name || 'Unnamed'}"`);
+                        continue;
+                    }
+                    const created = await prisma.product.create({
+                        data: {
+                            name: prod.name || 'Unnamed Product',
+                            price: priceVal,
+                            tag: prod.tag || 'General',
+                            description: prod.description || '',
+                            imageUrl: prod.imageUrl || 'https://via.placeholder.com/200'
+                        }
+                    });
+                    if (created) {
+                        createdProducts.push(created);
+                    } else {
+                        failures.push(`Failed to create product "${prod.name || 'Unnamed'}"`);
+                    }
+                } catch (err) {
+                    failures.push(`Error creating product "${prod.name || 'Unnamed'}": ${err.message}`);
+                }
+            }
+
+            if (createdProducts.length > 0) {
+                const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+                const enrichedCreated = await enrichProductsWithStock(createdProducts);
+                
+                const io = req.app.get('io');
+                for (const enriched of enrichedCreated) {
+                    socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.PRODUCT, enriched);
+                }
+
+                const namesList = createdProducts.map(p => `"${p.name}" ($${p.price})`).join(', ');
+                logAiChange(username, 'Bulk Create Products', `Created ${createdProducts.length} products: ${namesList}`);
+            }
+
+            const successMsg = createdProducts.length > 0 
+                ? `Successfully created ${createdProducts.length} catalog products.` 
+                : ``;
+            const failureMsg = failures.length > 0 
+                ? ` Failures: ${failures.join('; ')}` 
+                : ``;
+            actionResult = `${successMsg}${failureMsg}`.trim();
+        }
+    }
     else if (functionName === "deleteProduct") {
         const deleted = await prisma.product.delete({
             where: { id: args.productId }
@@ -690,10 +747,16 @@ exports.chat = async (req, res) => {
         - Always use uppercase status identifiers in tables/lists so the UI highlights them as premium colored pills (e.g., 'LOW_STOCK', 'HEALTHY', 'CRITICAL', 'WARNING', 'DELIVERED', 'PREPARING', 'IN QUEUE', 'PENDING PAYMENT', 'CANCELED').
         - Provide strategic advice, analysis, strategies, and tactics for the business based on inventory counts and order trends.
         - Every time you modify the database, the system will automatically record it in the change logs.
+        - CRITICAL COMMAND & BATCH INSTRUCTION COMPLIANCE:
+          1. Follow user instructions thoroughly and completely. Never skip or ignore requested items.
+          2. If the user instructs you to create MULTIPLE products (or spools, items, tasks), you MUST call the corresponding bulk or multiple tools to perform the actions.
+          3. For multiple products creation, call the "bulkCreateProducts" tool with the exact list of products, making sure to capture all attributes specified by the user (such as custom name, price, tag, description, or imageUrl). If attributes are labeled or structured in the prompt, map them exactly.
         
         CRITICAL TOOL USE CONSTRAINTS:
         1. Do NOT call any database mutation functions/tools unless the user explicitly requests an action or modification to the database. For informational queries, brainstorming, or suggestions, do NOT call any tools; reply strictly with text.
-        2. If you decide to call a tool, you MUST ONLY generate the tool call itself. Do NOT output any markdown, conversational text, explanations, or thoughts before or after the tool call, as this will crash the API client. You will have a chance to explain or confirm the action in the subsequent chat turn once the system provides the tool execution result.`;
+        2. If you decide to call a tool, you MUST ONLY generate the tool call itself. Do NOT output any markdown, conversational text, explanations, or thoughts before or after the tool call, as this will crash the API client. You will have a chance to explain or confirm the action in the subsequent chat turn once the system provides the tool execution result.
+        3. XML FALLBACK FORMAT FOR MULTIPLE TOOL CALLS: In case you are in a fallback XML parsing environment, you can chain multiple function tags sequentially. Example:
+           <function(createProduct) = {"name":"Prod 1","price":"10.00"}></function> <function(createProduct) = {"name":"Prod 2","price":"15.00"}></function>`;
 
         const tools = [
             {
@@ -775,6 +838,34 @@ exports.chat = async (req, res) => {
                             description: { type: "string", description: "Visual description details" }
                         },
                         required: ["name", "price"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "bulkCreateProducts",
+                    description: "Add multiple new embroidery design catalog products in a single operation",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            products: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        name: { type: "string", description: "Catalog display name of product" },
+                                        price: { type: "string", description: "Product pricing in USD (e.g. 19.99)" },
+                                        tag: { type: "string", description: "Tag category (e.g. Hoodies, Caps)" },
+                                        description: { type: "string", description: "Visual description details" },
+                                        imageUrl: { type: "string", description: "Optional image URL (default: placeholder)" }
+                                    },
+                                    required: ["name", "price"]
+                                },
+                                description: "List of products to create"
+                            }
+                        },
+                        required: ["products"]
                     }
                 }
             },

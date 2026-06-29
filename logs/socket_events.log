@@ -302,3 +302,6 @@
 {"timestamp":"2026-06-04T10:55:18.705Z","event":"dataChanged","sizeBytes":1541,"entity":"ORDER","action":"UPDATE"}
 {"timestamp":"2026-06-04T10:55:18.770Z","event":"dataChanged","sizeBytes":941,"entity":"INVENTORY","action":"UPDATE"}
 {"timestamp":"2026-06-04T10:55:19.489Z","event":"dataChanged","sizeBytes":2621,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-06-29T01:01:16.243Z","event":"dataChanged","sizeBytes":576,"entity":"PRODUCT","action":"CREATE"}
+{"timestamp":"2026-06-29T01:01:16.291Z","event":"dataChanged","sizeBytes":585,"entity":"PRODUCT","action":"CREATE"}
+{"timestamp":"2026-06-29T01:01:16.351Z","event":"dataChanged","sizeBytes":579,"entity":"PRODUCT","action":"CREATE"}
