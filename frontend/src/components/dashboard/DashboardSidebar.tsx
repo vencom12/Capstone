@@ -112,7 +112,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
         </div>
 
         {/* Navigation */}
-        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1 overflow-y-auto">
+        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1">
           {/* Basket Toggle */}
           <li className="mb-2">
             <button

@@ -53,14 +53,15 @@ export default function GlassModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-[8px]"
+      className="fixed inset-0 z-[99999] overflow-y-auto p-3 sm:p-6 flex min-h-full items-center justify-center bg-black/70 backdrop-blur-[8px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         className={`
-          relative w-[95%] ${maxWidth} max-h-[90vh]
+          relative w-full ${maxWidth} my-auto
+          flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]
           bg-bg-card backdrop-blur-[12px]
           border border-border-glass
           rounded-xl overflow-hidden
@@ -76,7 +77,8 @@ export default function GlassModal({
             bg-black/30 border border-border-glass text-white
             flex items-center justify-center cursor-pointer
             transition-all duration-200
-            hover:bg-danger/10 hover:text-danger hover:rotate-90"
+            hover:bg-danger/10 hover:text-danger hover:rotate-90 shrink-0"
+          aria-label="Close modal"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -85,12 +87,12 @@ export default function GlassModal({
         </button>
 
         {title && (
-          <div className="px-6 pt-6 pb-3 border-b border-border-glass">
-            <h2 className="text-lg font-bold text-text-main m-0">{title}</h2>
+          <div className="px-6 pt-6 pb-3 border-b border-border-glass shrink-0">
+            <h2 className="text-lg font-bold text-text-main m-0 pr-8">{title}</h2>
           </div>
         )}
 
-        <div className={`overflow-y-auto ${noPadding ? '' : (title ? 'p-6 pt-3' : 'p-6')}`}>
+        <div className={`flex-1 overflow-y-auto ${noPadding ? '' : (title ? 'p-6 pt-3' : 'p-6')}`}>
           {children}
         </div>
       </div>

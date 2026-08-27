@@ -61,7 +61,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
           </span>
         </div>
 
-        <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
+        <div className="flex flex-col gap-3">
           {!mounted || items.length === 0 ? (
             <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
@@ -117,7 +117,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
           <span className="text-text-dim text-[0.85rem]">Active Status</span>
         </div>
 
-        <div className="flex flex-col gap-3 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-3">
           {!mounted || activeOrders.length === 0 ? (
             <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>

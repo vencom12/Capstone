@@ -181,7 +181,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
         </div>
 
         {/* Navigation */}
-        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1 overflow-y-auto">
+        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1">
           {navItems.map((item) => (
             <li key={item.id}>
               <button

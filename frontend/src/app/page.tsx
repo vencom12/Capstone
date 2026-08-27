@@ -104,11 +104,11 @@ export default function StorefrontPage() {
       <StorefrontHeader />
 
       {/* Main Layout */}
-      <div className="flex-1 flex w-full overflow-hidden items-stretch max-[650px]:flex-col">
+      <div className="flex-1 flex w-full overflow-hidden items-stretch relative">
         <Sidebar />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-transparent max-[650px]:pt-0">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 max-[480px]:p-3 bg-transparent">
           <ProductGrid onQuickView={handleQuickView} />
         </main>
       </div>

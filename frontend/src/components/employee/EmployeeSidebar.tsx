@@ -106,7 +106,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className="w-[260px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 max-[1100px]:w-[80px] max-[650px]:w-[280px] shrink-0 group z-[2000]"
+        className="w-[260px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 max-[1100px]:w-[80px] max-[650px]:w-[280px] shrink-0 group z-[2000] overflow-y-auto"
       >
         {/* Header / Logo */}
         <div className="p-4 pt-5 pb-2">
@@ -125,7 +125,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
         </div>
 
         {/* Navigation */}
-        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1 overflow-y-auto">
+        <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1">
           {navItems.map((item) => (
             <li key={item.id}>
               <button

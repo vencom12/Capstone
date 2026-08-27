@@ -46,6 +46,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
       {/* Brand & Hamburger Area - Stays Top Left */}
       <div className="flex items-center gap-3 max-[1250px]:justify-start">
+        <button
+          onClick={() => useUIStore.getState().toggleSidebar()}
+          className="p-2 rounded-xl bg-white/5 border border-border-glass text-text-main hover:bg-white/10 transition-all cursor-pointer hidden max-[1024px]:flex items-center justify-center shrink-0"
+          aria-label="Toggle navigation menu"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
         <Link href="/" className="flex items-center gap-3 no-underline">
           {businessLogoUrl ? (
             <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
