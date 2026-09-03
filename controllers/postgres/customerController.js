@@ -33,6 +33,7 @@ exports.getDashboardState = async (req, res) => {
             favorites: enrichedFavorites,
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
+            preferredDeliveryTime: currentUser ? currentUser.preferredDeliveryTime : '',
             transactions,
             receipts
         });
@@ -185,7 +186,7 @@ exports.submitOrder = async (req, res) => {
                     paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
                     status: (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment',
                     address,
-                    deliveryTime,
+                    deliveryTime: deliveryTime || user.preferredDeliveryTime || 'As soon as possible',
                     notes,
                     progress: (paymentMethod === 'wallet') ? 5 : 0,
                     isByog: isByog || false,
@@ -399,7 +400,8 @@ exports.getPublicSettings = async (req, res) => {
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         res.json({ 
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
-            businessLogoUrl: settings?.businessLogoUrl || null
+            businessLogoUrl: settings?.businessLogoUrl || null,
+            gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
         });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching public settings' });
@@ -620,7 +622,7 @@ exports.validatePayment = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
-        const { username, email, address, phoneNumber, currentPassword, newPassword } = req.body;
+        const { username, email, address, phoneNumber, currentPassword, newPassword, preferredDeliveryTime } = req.body;
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -629,6 +631,7 @@ exports.updateSettings = async (req, res) => {
         if (email) updateData.email = email;
         if (address) updateData.address = address;
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
+        if (preferredDeliveryTime !== undefined) updateData.preferredDeliveryTime = preferredDeliveryTime;
 
         if (newPassword) {
             if (!currentPassword) return res.status(400).json({ message: 'Current password required to change password' });

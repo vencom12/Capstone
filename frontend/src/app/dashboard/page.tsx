@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [settingsEmail, setSettingsEmail] = useState('');
   const [settingsPhone, setSettingsPhone] = useState('');
   const [settingsAddress, setSettingsAddress] = useState('');
+  const [settingsPreferredDeliveryTime, setSettingsPreferredDeliveryTime] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Date Filters
@@ -51,6 +52,7 @@ export default function DashboardPage() {
       setSettingsEmail(user.email || '');
       setSettingsPhone(user.phoneNumber || '');
       setSettingsAddress(user.address || '');
+      setSettingsPreferredDeliveryTime((user as any).preferredDeliveryTime || '');
     }
   }, [user, isHydrated, activeTab]);
 
@@ -62,7 +64,8 @@ export default function DashboardPage() {
         username: settingsName,
         email: settingsEmail,
         phoneNumber: settingsPhone,
-        address: settingsAddress
+        address: settingsAddress,
+        preferredDeliveryTime: settingsPreferredDeliveryTime
       });
       await refreshUser();
       showToast('Profile updated successfully!', 'success');
@@ -107,6 +110,7 @@ export default function DashboardPage() {
       setSettingsEmail(user.email || '');
       setSettingsPhone(user.phoneNumber || '');
       setSettingsAddress(user.address || '');
+      setSettingsPreferredDeliveryTime((user as any).preferredDeliveryTime || '');
     }
   }, [user, isHydrated, activeTab]);
 
@@ -470,6 +474,11 @@ export default function DashboardPage() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Shipping Address</label>
                     <textarea value={settingsAddress} onChange={(e) => setSettingsAddress(e.target.value)} placeholder="Shipping Address" rows={3} className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary resize-none transition-all"></textarea>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Preferred Delivery Time</label>
+                    <input type="text" value={settingsPreferredDeliveryTime} onChange={(e) => setSettingsPreferredDeliveryTime(e.target.value)} placeholder="e.g. Weekdays 9AM-5PM" className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary transition-all" />
                   </div>
 
                   <button 

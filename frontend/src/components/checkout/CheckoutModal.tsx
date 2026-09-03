@@ -9,14 +9,13 @@ import { useProductStore } from '@/stores/useProductStore';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GCashPayment from './GCashPayment';
-import PayMayaPayment from './PayMayaPayment';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type PaymentMethod = 'wallet' | 'cash_at_counter' | 'gcash' | 'paymaya';
+type PaymentMethod = 'gcash';
 
 export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const { items, getTotal, clearBasket } = useBasketStore();
@@ -24,10 +23,8 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const { fetchDashboardState } = useProductStore();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [deliveryTime, setDeliveryTime] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet');
-  const [topUpAmount, setTopUpAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [paymentVerified, setPaymentVerified] = useState(false);
@@ -37,12 +34,18 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [giftPackaging, setGiftPackaging] = useState(false);
   const [calligraphyMessage, setCalligraphyMessage] = useState('');
   const [giftPackagingPrice, setGiftPackagingPrice] = useState(5.00);
+  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{giftPackagingPrice: number}>('/api/customer/settings')
-        .then(res => res && setGiftPackagingPrice(res.giftPackagingPrice))
+      api.get<{giftPackagingPrice: number, gcashQrCodeUrl: string}>('/api/customer/settings')
+        .then(res => {
+          if (res) {
+            setGiftPackagingPrice(res.giftPackagingPrice);
+            setGcashQrCodeUrl(res.gcashQrCodeUrl);
+          }
+        })
         .catch(console.error);
       api.get<{estimatedMinutes: number}>('/api/customer/capacity')
         .then(res => res && setEstimatedMinutes(res.estimatedMinutes))
@@ -51,25 +54,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   }, [isOpen]);
 
   const finalTotal = getTotal() + (giftPackaging ? giftPackagingPrice : 0);
-
-  const handleTopUp = async () => {
-    if (!topUpAmount || parseFloat(topUpAmount) <= 0) return;
-    
-    try {
-      const data = await api.post<{ walletBalance: number }>('/api/customer/wallet/topup', { 
-        amount: parseFloat(topUpAmount) 
-      });
-      
-      if (user) {
-        setUser({ ...user, walletBalance: data.walletBalance });
-      }
-      
-      showToast(`Successfully topped up $${parseFloat(topUpAmount).toFixed(2)}`, 'success');
-      setTopUpAmount('');
-    } catch (err) {
-      showToast('Failed to top up wallet', 'error');
-    }
-  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
@@ -102,7 +86,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         items,
         totalAmount: finalTotal,
         address: user?.address,
-        deliveryTime: deliveryTime || 'As soon as possible',
         notes,
         paymentMethod,
         receiptUrl: uploadData.url,
@@ -149,7 +132,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
   const handlePlaceOrder = async () => {
     // For e-wallet methods, the order is already placed during handleFileSelect
-    if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') {
+    if (paymentMethod === 'gcash') {
       if (!paymentVerified) {
         showToast('Please upload and verify your payment receipt', 'error');
       }
@@ -162,7 +145,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         items,
         totalAmount: finalTotal,
         address: user?.address,
-        deliveryTime: deliveryTime || 'As soon as possible',
         notes,
         paymentMethod,
         giftPackaging,
@@ -208,15 +190,8 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                     value={user?.address || 'No registered address'}
                     className="w-full bg-white/5 border border-border-glass p-2.5 max-[650px]:p-2 rounded-xl max-[650px]:rounded-lg text-text-dim text-[0.9rem] max-[650px]:text-[0.8rem] cursor-not-allowed"
                   />
-                  <p className="text-[0.7rem] text-text-dim ml-1 max-[650px]:hidden">To change address, please update your profile settings.</p>
+                  <p className="text-[0.7rem] text-text-dim ml-1 max-[650px]:hidden">To change address or delivery time, please update your profile settings.</p>
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Preferred Delivery Time (Optional)" 
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass p-2 max-[650px]:p-1.5 rounded-xl max-[650px]:rounded-lg text-text-main text-[0.85rem] max-[650px]:text-[0.75rem] outline-none focus:border-primary"
-                />
                 <textarea 
                   placeholder="Special notes to seller..." 
                   rows={1}
@@ -281,56 +256,16 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
               <h3 className="text-[1rem] max-[650px]:text-[0.9rem] font-bold m-0">Payment Method</h3>
               
               <div className="flex flex-col max-[650px]:flex-row gap-4 max-[650px]:gap-2 max-[650px]:items-stretch">
-                {/* Wallet Card */}
-                <div className="flex-[1.2] bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30 p-3 max-[650px]:p-2 rounded-xl max-[650px]:rounded-lg flex flex-col gap-2 max-[650px]:gap-1.5 max-[650px]:justify-center">
-                <div className="flex justify-between items-center">
-                  <span className="text-[0.75rem] max-[650px]:text-[0.65rem] text-text-dim">Wallet Balance</span>
-                  <span className="text-lg max-[650px]:text-base font-extrabold text-white font-mono">${user?.walletBalance?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="flex gap-2 max-[650px]:gap-1.5">
-                  <input 
-                    type="number" 
-                    placeholder="Add Amount" 
-                    value={topUpAmount}
-                    onChange={(e) => setTopUpAmount(e.target.value)}
-                    className="flex-1 bg-black/30 border border-white/10 p-2 max-[650px]:p-1.5 rounded-lg max-[650px]:rounded-md text-white text-[0.85rem] max-[650px]:text-[0.75rem] outline-none focus:border-primary"
-                  />
-                  <button 
-                    onClick={handleTopUp}
-                    className="bg-primary text-white px-3 py-2 max-[650px]:px-2.5 max-[650px]:py-1.5 rounded-lg max-[650px]:rounded-md text-[0.8rem] max-[650px]:text-[0.75rem] font-bold hover:bg-primary/80 transition-all"
-                  >
-                    Top Up
-                  </button>
-                </div>
-                </div>
-
-                {/* Payment Methods Grid */}
-                <div className="flex-1 grid grid-cols-2 max-[650px]:grid-cols-1 gap-3 max-[650px]:gap-1.5">
-                {[
-                  { id: 'wallet', label: 'Wallet Credits', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" /><path d="M4 6v12c0 1.1.9 2 2 2h14v-4" /><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" /></svg> },
-                  { id: 'cash_at_counter', label: 'Cash at Counter', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg> },
-                  { id: 'gcash', label: 'GCash', icon: <span className="text-[#007df2] font-bold">G</span> },
-                  { id: 'paymaya', label: 'PayMaya', icon: <span className="text-[#16a34a] font-bold">P</span> }
-                ].map((m) => (
+                <div className="flex-1">
                   <button
-                    key={m.id}
-                    onClick={() => {
-                      setPaymentMethod(m.id as PaymentMethod);
-                      setPaymentVerified(m.id === 'wallet' || m.id === 'cash_at_counter');
-                    }}
-                    className={`
-                      flex flex-col max-[650px]:flex-row items-center justify-center gap-2 max-[650px]:gap-1.5 p-3 max-[650px]:p-2 rounded-xl max-[650px]:rounded-lg border transition-all duration-200
-                      ${paymentMethod === m.id ? 'bg-primary/20 border-primary text-white shadow-lg' : 'bg-white/5 border-border-glass text-text-dim hover:bg-white/10 hover:text-text-main'}
-                    `}
+                    className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-xl border bg-primary/20 border-primary text-white shadow-lg transition-all duration-200"
                   >
-                    {m.icon}
-                    <span className="text-[0.8rem] max-[650px]:text-[0.65rem] font-bold">{m.label}</span>
+                    <span className="text-[#007df2] font-bold text-xl">G</span>
+                    <span className="text-[0.85rem] font-bold">GCash</span>
                   </button>
-                ))}
                 </div>
               </div>
 
-              {/* Receipt Upload (for e-wallets) */}
               {paymentMethod === 'gcash' && (
                 <GCashPayment
                   receiptFile={receiptFile}
@@ -338,15 +273,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   aiVerificationResult={aiVerificationResult}
                   paymentVerified={paymentVerified}
                   onFileSelect={handleFileSelect}
-                />
-              )}
-              {paymentMethod === 'paymaya' && (
-                <PayMayaPayment
-                  receiptFile={receiptFile}
-                  aiAnalyzing={aiAnalyzing}
-                  aiVerificationResult={aiVerificationResult}
-                  paymentVerified={paymentVerified}
-                  onFileSelect={handleFileSelect}
+                  qrCodeUrl={gcashQrCodeUrl}
                 />
               )}
 

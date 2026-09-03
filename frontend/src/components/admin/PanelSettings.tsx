@@ -35,11 +35,13 @@ export default function PanelSettings({
   const [businessEmail, setBusinessEmail] = useState('contact@stitch-opt.com');
   const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingBiz, setIsSavingBiz] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
 
   // Suggested Options
   const chatModelSuggestions = [
@@ -71,6 +73,7 @@ export default function PanelSettings({
         if (res.businessEmail) setBusinessEmail(res.businessEmail);
         if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
         if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -154,6 +157,32 @@ export default function PanelSettings({
       showToast(error.message || 'Failed to upload logo', 'error');
     } finally {
       setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingQr(true);
+    const formData = new FormData();
+    formData.append('qr', file);
+
+    try {
+      const res = await apiFetch<any>('/api/admin/settings/gcash-qr', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res && res.gcashQrCodeUrl) {
+        setGcashQrCodeUrl(res.gcashQrCodeUrl);
+        showToast('GCash QR uploaded successfully!', 'success');
+      }
+    } catch (error: any) {
+      console.error(error);
+      showToast(error.message || 'Failed to upload GCash QR', 'error');
+    } finally {
+      setIsUploadingQr(false);
       if (e.target) e.target.value = '';
     }
   };
@@ -354,6 +383,29 @@ export default function PanelSettings({
                     className="text-xs text-text-dim file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer w-full max-w-[250px]"
                   />
                   {isUploadingLogo && <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>}
+                </div>
+              </div>
+
+              {/* GCash QR Code Upload */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                <div className="flex flex-col max-w-[350px]">
+                  <span className="font-bold text-sm text-white">GCash QR Code</span>
+                  <span className="text-xs text-text-dim mt-1">Upload a GCash QR code image to display to customers during checkout.</span>
+                </div>
+                <div className="flex items-center gap-4 flex-1 justify-end">
+                  {gcashQrCodeUrl && (
+                    <div className="relative group bg-white/10 p-1 rounded">
+                      <img src={gcashQrCodeUrl} alt="GCash QR Code" className="w-12 h-12 object-contain rounded" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleQrUpload}
+                    disabled={isUploadingQr}
+                    className="text-xs text-text-dim file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#007df2]/10 file:text-[#007df2] hover:file:bg-[#007df2]/20 cursor-pointer w-full max-w-[250px]"
+                  />
+                  {isUploadingQr && <div className="w-4 h-4 border-2 border-[#007df2]/20 border-t-[#007df2] rounded-full animate-spin"></div>}
                 </div>
               </div>
             </div>
