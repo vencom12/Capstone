@@ -16,9 +16,9 @@ exports.register = async (req, res) => {
         logErr('Postgres Register attempt: ' + JSON.stringify(safeBody));
         const { username, email, password, phoneNumber, address } = req.body;
         
-        if (!phoneNumber || !address) {
-            return res.status(400).json({ message: 'Phone number and address are required' });
-        }
+        // Optional phone and address fallback for frictionless signup
+        const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
+        const cleanAddress = address ? address.trim() : '';
 
         // Check if user exists
         const existingUser = await prisma.user.findFirst({
@@ -51,8 +51,8 @@ exports.register = async (req, res) => {
                 email,
                 password: hashedPassword,
                 role: 'customer',
-                phoneNumber,
-                address,
+                phoneNumber: cleanPhone,
+                address: cleanAddress,
                 tenantId: targetTenantId
             }
         });

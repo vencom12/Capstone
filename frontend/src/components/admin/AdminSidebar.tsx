@@ -58,7 +58,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
     },
     {
       id: 'products',
-      label: 'Manage Designs',
+      label: 'Products',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -69,7 +69,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
     },
     {
       id: 'materials',
-      label: 'Raw Materials',
+      label: 'Materials',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
@@ -80,7 +80,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
     },
     {
       id: 'production',
-      label: 'Live Production',
+      label: 'Live Production & Fleet',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2v20"></path>
@@ -91,18 +91,8 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
       )
     },
     {
-      id: 'fleet',
-      label: 'Fleet Management',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="6" width="20" height="12" rx="2" />
-          <path d="M12 12v.01M16 12v.01M8 12v.01" />
-        </svg>
-      )
-    },
-    {
       id: 'staffing',
-      label: 'Staffing',
+      label: 'Personnel',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -205,29 +195,6 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
             </li>
           ))}
         </ul>
-
-        {/* User Profile */}
-        <div className="mt-auto p-3 pb-10 border-t border-border-glass">
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-border-glass max-[1100px]:justify-center max-[650px]:justify-start">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0">
-              {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
-            </div>
-            <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-[650px]:flex text-left">
-              <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate">{user?.username || 'Administrator'}</span>
-              <span className="text-[0.75rem] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full w-fit mt-0.5">
-                {user?.role || 'admin'}
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start border-none bg-transparent"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
-          </button>
-        </div>
       </aside>
     </>
   );

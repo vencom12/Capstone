@@ -138,11 +138,6 @@ console.log('>>> STITCH-OPT SERVER INITIALIZING <<<');
 // Enable Gzip/Brotli compression for all responses
 app.use(compression());
 
-// Health Check Endpoint for UptimeRobot (Keeps Render Free Tier Awake)
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date() });
-});
-
 // Initialize Automated Background Tasks
 const { initCronJobs } = require('./utils/cronJobs');
 initCronJobs();
@@ -359,7 +354,7 @@ app.get('/api/health', async (req, res) => {
     res.json({ 
         status: 'ok', 
         database: dbStatus,
-        dbType: 'postgres',
+        dbType: 'supabase',
         timestamp: new Date().toISOString()
     });
 });

@@ -5,6 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface PanelStaffingProps {
   users: any[];
@@ -19,11 +20,13 @@ export default function PanelStaffing({
   isSyncing,
   refreshData
 }: PanelStaffingProps) {
+  const { user: currentAdmin } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
   const [isOpen, setIsOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any>(null);
+  const [disablingUser, setDisablingUser] = useState<any>(null);
 
   // Form Fields
   const [username, setUsername] = useState('');
@@ -32,6 +35,12 @@ export default function PanelStaffing({
   const [role, setRole] = useState('employee');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+
+  // Security Helper Rules
+  const isTargetAdmin = (u: any) => u?.role === 'admin';
+  const isCurrentAdmin = (u: any) => Boolean(u && currentAdmin?.id && (u.id || u._id) === currentAdmin.id);
+  const isFellowAdmin = (u: any) => isTargetAdmin(u) && !isCurrentAdmin(u);
+  const isCustomer = (u: any) => u?.role === 'customer';
 
   // 1. Filter Personnel list
   const filteredUsers = users.filter((u) => {
@@ -47,6 +56,10 @@ export default function PanelStaffing({
   // 2. Open Modal
   const openModal = (staff?: any) => {
     if (staff) {
+      if (isFellowAdmin(staff)) {
+        showToast('Security Alert: You cannot modify credentials of another administrator', 'error');
+        return;
+      }
       setEditingStaff(staff);
       setUsername(staff.username || '');
       setEmail(staff.email || '');
@@ -69,6 +82,11 @@ export default function PanelStaffing({
   // 3. Submit Create or Edit Personnel
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (editingStaff && isFellowAdmin(editingStaff)) {
+      showToast('Action forbidden: Fellow administrator accounts are protected', 'error');
+      return;
+    }
 
     if (!username.trim()) return showToast('Username is required', 'error');
     if (!email.trim()) return showToast('Email is required', 'error');
@@ -98,7 +116,7 @@ export default function PanelStaffing({
       }
 
       showToast(
-        editingStaff ? 'Personnel details adjusted' : 'New staff credentials established successfully',
+        editingStaff ? 'Personnel details updated' : 'New staff credentials established successfully',
         'success'
       );
       setIsOpen(false);
@@ -109,15 +127,24 @@ export default function PanelStaffing({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently disable this personnel account?')) return;
+  const confirmDisable = async () => {
+    if (!disablingUser) return;
+    const id = disablingUser.id || disablingUser._id;
+
+    if (isFellowAdmin(disablingUser)) {
+      showToast('Security Violation: You cannot disable fellow administrator accounts', 'error');
+      setDisablingUser(null);
+      return;
+    }
+
     try {
       await api.delete(`/api/admin/users/${id}`);
-      showToast('Staff credentials disabled successfully', 'success');
+      showToast(`Account "${disablingUser.username}" disabled successfully`, 'success');
+      setDisablingUser(null);
       refreshData();
     } catch (err) {
       console.error(err);
-      showToast('Failed to delete staff credentials', 'error');
+      showToast('Failed to disable user account', 'error');
     }
   };
 
@@ -140,7 +167,7 @@ export default function PanelStaffing({
             onClick={() => openModal()}
             className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer whitespace-nowrap border-none"
           >
-            + Add Staff User
+            + Add Staff
           </button>
         </div>
       </header>
@@ -171,12 +198,15 @@ export default function PanelStaffing({
                 {filteredUsers.length === 0 ? (
                   <tr className="glass-tr">
                     <td colSpan={7} className="glass-td text-center text-text-dim">
-                      No active staff credentials cataloged.
+                      No personnel accounts found.
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((u) => {
                   const id = u.id || u._id;
+                  const fellowAdmin = isFellowAdmin(u);
+                  const customer = isCustomer(u);
+
                   return (
                     <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
                       <td className="glass-td font-bold text-sm text-text-main text-left">
@@ -212,6 +242,8 @@ export default function PanelStaffing({
                           className={`inline-block text-[0.7rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider
                             ${u.role === 'admin'
                               ? 'bg-secondary/20 text-secondary border border-secondary/30'
+                              : u.role === 'customer'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                               : 'bg-primary/20 text-primary border border-primary/30'
                             }
                           `}
@@ -220,19 +252,42 @@ export default function PanelStaffing({
                         </span>
                       </td>
                       <td className="glass-td text-right">
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => openModal(u)}
-                            className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(id)}
-                            className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer"
-                          >
-                            Disable
-                          </button>
+                        <div className="flex gap-2 justify-end items-center">
+                          {fellowAdmin ? (
+                            <span
+                              className="text-[0.68rem] text-text-dim/70 italic font-mono px-2 py-1 bg-white/5 rounded-lg border border-border-glass select-none"
+                              title="Administrator accounts cannot be modified or disabled by fellow admins"
+                            >
+                              🔒 Protected Admin
+                            </span>
+                          ) : customer ? (
+                            <>
+                              <span className="text-[0.68rem] text-text-dim italic px-1" title="Customer credentials are self-managed">
+                                Self-Managed
+                              </span>
+                              <button
+                                onClick={() => setDisablingUser(u)}
+                                className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
+                              >
+                                Disable
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => openModal(u)}
+                                className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer border-none"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => setDisablingUser(u)}
+                                className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
+                              >
+                                Disable
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -251,10 +306,13 @@ export default function PanelStaffing({
               <CardSkeleton key={i} />
             ))
           ) : filteredUsers.length === 0 ? (
-            <div className="glass-card p-6 text-center text-text-dim">No active staff credentials cataloged.</div>
+            <div className="glass-card p-6 text-center text-text-dim">No personnel accounts found.</div>
           ) : (
             filteredUsers.map((u) => {
             const id = u.id || u._id;
+            const fellowAdmin = isFellowAdmin(u);
+            const customer = isCustomer(u);
+
             return (
               <div
                 key={id}
@@ -266,6 +324,8 @@ export default function PanelStaffing({
                     className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
                       ${u.role === 'admin'
                         ? 'bg-secondary/20 text-secondary border border-secondary/30'
+                        : u.role === 'customer'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-primary/20 text-primary border border-primary/30'
                       }
                     `}
@@ -295,18 +355,33 @@ export default function PanelStaffing({
                 </div>
 
                 <div className="flex gap-2 w-full mt-2">
-                  <button
-                    onClick={() => openModal(u)}
-                    className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(id)}
-                    className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer"
-                  >
-                    Disable
-                  </button>
+                  {fellowAdmin ? (
+                    <span className="w-full text-center text-xs text-text-dim/70 italic font-mono py-2 bg-white/5 rounded-xl border border-border-glass">
+                      🔒 Protected Admin
+                    </span>
+                  ) : customer ? (
+                    <button
+                      onClick={() => setDisablingUser(u)}
+                      className="w-full bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
+                    >
+                      Disable Customer Account
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => openModal(u)}
+                        className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer border-none"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDisablingUser(u)}
+                        className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
+                      >
+                        Disable
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -315,11 +390,11 @@ export default function PanelStaffing({
       </div>
     </div>
 
-      {/* Modal Wizard Account Details */}
+      {/* Modal: Create or Edit Staff Account */}
       <GlassModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title={editingStaff ? 'Edit Account Details' : 'Create Staff Account'}
+        title={editingStaff ? 'Edit Personnel Details' : 'Add Staff Member'}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
           <div className="modal-section">
@@ -399,9 +474,43 @@ export default function PanelStaffing({
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
           >
-            {editingStaff ? 'Update Personnel Account' : 'Establish Personnel Account'}
+            {editingStaff ? 'Save Personnel Details' : 'Add Staff'}
           </button>
         </form>
+      </GlassModal>
+
+      {/* Delete / Disable Confirmation Glass Modal */}
+      <GlassModal
+        isOpen={!!disablingUser}
+        onClose={() => setDisablingUser(null)}
+        title={isCustomer(disablingUser) ? 'Confirm Disable Customer Account' : 'Confirm Disable Staff Account'}
+      >
+        <div className="modal-stack text-left">
+          <p className="text-sm text-text-main m-0 leading-relaxed">
+            Are you sure you want to disable account <b className="text-danger font-bold">"{disablingUser?.username}"</b>?
+          </p>
+          <p className="text-xs text-text-dim m-0">
+            {isCustomer(disablingUser)
+              ? 'Warning: Customer credentials should remain self-managed. Disabling this customer will revoke their storefront checkout access. Use only for explicit policy violations.'
+              : 'This will revoke all active operational access for this personnel account.'}
+          </p>
+          <div className="flex gap-3 justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => setDisablingUser(null)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDisable}
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+            >
+              Disable Account
+            </button>
+          </div>
+        </div>
       </GlassModal>
     </section>
   );

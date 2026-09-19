@@ -19,7 +19,7 @@ interface PanelOverviewProps {
   orders: any[];
   isSyncing: boolean;
   refreshData: () => Promise<void>;
-  dbType: 'mongodb' | 'postgres';
+  dbType?: string;
 }
 
 export default function PanelOverview({
@@ -156,23 +156,22 @@ export default function PanelOverview({
     }
   };
 
-  // 3. Batch Status Apply
-  const handleBatchStatusApply = async () => {
+  // 3. Batch Status Apply (Auto-triggered upon dropdown selection)
+  const handleBatchStatusApply = async (statusOverride?: string) => {
+    const targetStatus = statusOverride || batchStatus;
     if (selectedIds.length === 0) {
-      showToast('Select orders first for batch actions', 'error');
+      showToast('Select orders first from the queue checkbox', 'error');
+      setBatchStatus('');
       return;
     }
-    if (!batchStatus) {
-      showToast('Please select a target status', 'error');
-      return;
-    }
+    if (!targetStatus) return;
 
     try {
       await api.post('/api/admin/orders/batch-status', {
         ids: selectedIds,
-        status: batchStatus
+        status: targetStatus
       });
-      showToast(`Batch updated ${selectedIds.length} orders successfully`, 'success');
+      showToast(`Batch updated ${selectedIds.length} orders to "${targetStatus}"`, 'success');
       setSelectedIds([]);
       setBatchStatus('');
       refreshData();
@@ -235,42 +234,31 @@ export default function PanelOverview({
         {/* insights card container */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-1.5" id="ai-insights-container">
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Queued Revenue</span>
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Predicted Revenue</span>
             <span className="text-lg font-extrabold text-success mt-1">${queuedRevenue.toFixed(2)}</span>
           </div>
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Realized Revenue</span>
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Actual Revenue</span>
             <span className="text-lg font-extrabold text-primary mt-1">${realizedRevenue.toFixed(2)}</span>
           </div>
-          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Catalog Velocity</span>
+          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all relative group">
+            <div className="flex items-center justify-between">
+              <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Catalog Velocity</span>
+              <span
+                className="text-text-dim/70 hover:text-white cursor-help text-xs font-bold"
+                title="Catalog Velocity measures active orders currently being processed in the system. High velocity indicates fast product turnover and active customer demand."
+              >
+                ℹ️
+              </span>
+            </div>
             <span className="text-lg font-extrabold text-white mt-1">{pendingOrders.length} active</span>
+            <span className="text-[0.65rem] text-text-dim/80 mt-0.5">Order fulfillment queue</span>
           </div>
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Order Load</span>
+            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Orders</span>
             <span className="text-lg font-extrabold text-secondary mt-1">{orders.length} total</span>
           </div>
         </div>
-
-        {/* Revenue Progression Bar */}
-        {totalProjected > 0 && (
-          <div className="mt-2 pt-4 border-t border-border-glass/30 text-left">
-            <div className="flex justify-between items-center text-xs font-semibold mb-2">
-              <span className="text-text-dim uppercase tracking-wider">Revenue Realization Progress</span>
-              <span className="text-primary font-bold">{progressPercent.toFixed(1)}% Realized</span>
-            </div>
-            <div className="w-full h-2.5 bg-black/45 rounded-full overflow-hidden border border-white/5 relative">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-success rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)] transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between items-center text-[0.7rem] text-text-dim mt-1.5 font-medium">
-              <span>Paid: ${realizedRevenue.toFixed(2)}</span>
-              <span>Projected Target: ${totalProjected.toFixed(2)}</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Main split grid */}
@@ -295,17 +283,22 @@ export default function PanelOverview({
             </div>
           </div>
 
-          {/* Batch operations desk */}
+          {/* Batch operations desk (auto-applies when a status is selected) */}
           <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
             <span className="text-[0.8rem] text-text-dim font-bold">
               Batch Action ({selectedIds.length} selected):
             </span>
-            <div className="w-[180px]">
+            <div className="w-[200px]">
               <GlassSelect
                 value={batchStatus}
-                onChange={(val) => setBatchStatus(val)}
+                onChange={(val) => {
+                  setBatchStatus(val);
+                  if (val) {
+                    handleBatchStatusApply(val);
+                  }
+                }}
                 options={[
-                  { value: '', label: 'Select Status...' },
+                  { value: '', label: 'Select Status to Apply...' },
                   { value: 'Preparing Order', label: 'Preparing Order' },
                   { value: 'In Transit', label: 'In Transit' },
                   { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
@@ -313,12 +306,11 @@ export default function PanelOverview({
                 ]}
               />
             </div>
-            <button
-              onClick={handleBatchStatusApply}
-              className="bg-primary text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-primary-light transition-all cursor-pointer border-none"
-            >
-              Apply Change
-            </button>
+            {selectedIds.length > 0 && (
+              <span className="text-xs text-primary font-medium animate-fade">
+                Selecting a status applies immediately to {selectedIds.length} order(s)
+              </span>
+            )}
           </div>
 
           {isSyncing && orders.length === 0 ? (

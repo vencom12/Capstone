@@ -290,11 +290,17 @@ export default function PanelRawMaterials({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Form Fields
-  const [itemName, setItemName] = useState('');
+  // Smart Material Form Fields
+  const [materialCategory, setMaterialCategory] = useState('Thread Spool');
+  const [spoolColor, setSpoolColor] = useState('Black');
+  const [customColor, setCustomColor] = useState('');
+  const [customName, setCustomName] = useState('');
   const [itemCount, setItemCount] = useState('');
-  const [itemUnit, setItemUnit] = useState('Cones');
+  const [itemUnit, setItemUnit] = useState('PCs');
   const [itemThreshold, setItemThreshold] = useState('10');
+
+  // Delete modal state
+  const [deletingMaterial, setDeletingMaterial] = useState<any>(null);
 
   // Patch Quantity Fields
   const [patchAction, setPatchAction] = useState<'Add' | 'Deduct'>('Add');
@@ -336,44 +342,59 @@ export default function PanelRawMaterials({
     return !searchQuery || i.item?.toLowerCase().includes(query) || i.unit?.toLowerCase().includes(query);
   });
 
+  const getComputedItemName = () => {
+    if (materialCategory === 'Thread Spool') {
+      const color = spoolColor === 'Custom' ? customColor.trim() : spoolColor;
+      return color ? `Thread Spool (${color})` : 'Thread Spool';
+    }
+    if (materialCategory === 'Custom') {
+      return customName.trim();
+    }
+    return materialCategory;
+  };
+
   // 3. Create New Material
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemName.trim()) return showToast('Material item name is required', 'error');
+    const resolvedName = getComputedItemName();
+    if (!resolvedName) return showToast('Material item name is required', 'error');
 
     try {
       await api.post('/api/admin/inventory', {
-        item: itemName.trim(),
+        item: resolvedName,
         count: parseInt(itemCount) || 0,
         unit: itemUnit,
         minThreshold: parseInt(itemThreshold) || 10
       });
-      showToast('New thread spool cataloged successfully', 'success');
+      showToast(`Material "${resolvedName}" cataloged successfully`, 'success');
       setIsAddOpen(false);
-      setItemName('');
+      setMaterialCategory('Thread Spool');
+      setSpoolColor('Black');
+      setCustomColor('');
+      setCustomName('');
       setItemCount('');
-      setItemUnit('Cones');
+      setItemUnit('PCs');
       setItemThreshold('10');
       refreshData();
       fetchAuditLogs();
     } catch (err) {
       console.error(err);
-      showToast('Failed to create material spool', 'error');
+      showToast('Failed to create material', 'error');
     }
   };
 
-
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this thread material from stockpile?')) return;
+  const confirmDeleteMaterial = async () => {
+    if (!deletingMaterial) return;
+    const id = deletingMaterial.id || deletingMaterial._id;
     try {
       await api.delete(`/api/admin/inventory/${id}`);
-      showToast('Material deleted from stockpile', 'success');
+      showToast('Material deleted from inventory', 'success');
+      setDeletingMaterial(null);
       refreshData();
       fetchAuditLogs();
     } catch (err) {
       console.error(err);
-      showToast('Failed to delete material spool', 'error');
+      showToast('Failed to delete material', 'error');
     }
   };
 
@@ -423,13 +444,13 @@ export default function PanelRawMaterials({
     <section className="animate-fade flex flex-col min-h-full text-left">
       <header className="dash-header flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="dash-title">Materials Stockpile</h1>
-          <p className="dash-subtitle">Stock stockpile management and audit logs.</p>
+          <h1 className="dash-title">Materials Inventory</h1>
+          <p className="dash-subtitle">Raw material supplies, spool stock, packaging, and audit trail logs.</p>
         </div>
         <div className="flex gap-3 items-center">
           <input
             type="text"
-            placeholder="Search spools..."
+            placeholder="Search materials..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
@@ -437,13 +458,13 @@ export default function PanelRawMaterials({
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-main hover:bg-white/5 cursor-pointer"
-            title=" stockpile Settings"
+            title="Inventory Settings"
           >
             ⚙️
           </button>
           <button
             onClick={() => setIsAddOpen(true)}
-            className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none"
+            className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-[0_0_15px_rgba(99,102,241,0.4)]"
           >
             + Add Material
           </button>
@@ -452,9 +473,9 @@ export default function PanelRawMaterials({
 
       {/* Main split dashboard panels */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start pr-2">
-        {/* Left side: Materials stockpile card with alert and table */}
+        {/* Left side: Materials inventory card with alert and table */}
         <div className="xl:col-span-2 glass-card">
-          <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Materials Stockpile</h3>
+          <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Materials Registry</h3>
 
           {/* Smart Purchase Requisition Alert Banner */}
           {lowStockItems.length > 0 ? (
@@ -464,7 +485,7 @@ export default function PanelRawMaterials({
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-danger">Stock Alert: Restock Recommended!</span>
                   <span className="text-xs text-text-dim mt-0.5">
-                    {lowStockItems.length} thread colors are currently below their safety safety thresholds.
+                    {lowStockItems.length} materials are currently below their low stock thresholds.
                   </span>
                 </div>
               </div>
@@ -478,7 +499,7 @@ export default function PanelRawMaterials({
           ) : (
             <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-5 text-left animate-fade">
               <span className="text-base">🎉</span>
-              <span className="text-xs font-bold text-success">Stockpile Healthy! All thread spools are above safety margins.</span>
+              <span className="text-xs font-bold text-success">Stock Healthy! All inventory materials are above safety margins.</span>
             </div>
           )}
 
@@ -491,7 +512,7 @@ export default function PanelRawMaterials({
               <table className="glass-table">
                 <thead>
                   <tr>
-                    <th className="glass-th text-left">Material Spool</th>
+                    <th className="glass-th text-left">Material Name</th>
                     <th className="glass-th text-left">Current Count</th>
                     <th className="glass-th text-left">Low Warning</th>
                     <th className="glass-th text-left">Status</th>
@@ -502,7 +523,7 @@ export default function PanelRawMaterials({
                   {filteredInventory.length === 0 ? (
                     <tr className="glass-tr">
                       <td colSpan={5} className="glass-td text-center text-text-dim">
-                        No stockpile thread spools cataloged.
+                        No materials cataloged yet.
                       </td>
                     </tr>
                   ) : (
@@ -515,11 +536,11 @@ export default function PanelRawMaterials({
                           {i.item}
                         </td>
                         <td className="glass-td text-left">
-                          <InlineStockAdjuster
-                            material={i}
-                            refreshData={refreshData}
-                            fetchAuditLogs={fetchAuditLogs}
-                          />
+                          {/* Read-only Current Count display */}
+                          <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none" title="Current Count (Read-only)">
+                            <span>{i.count}</span>
+                            <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                          </div>
                         </td>
                         <td className="glass-td text-left">
                           <InlineThresholdAdjuster
@@ -543,7 +564,7 @@ export default function PanelRawMaterials({
                         <td className="glass-td text-right">
                           <div className="flex gap-2 justify-end">
                             <button
-                              onClick={() => handleDelete(id)}
+                              onClick={() => setDeletingMaterial(i)}
                               className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
                             >
                               Delete
@@ -566,7 +587,7 @@ export default function PanelRawMaterials({
                 <CardSkeleton key={i} />
               ))
             ) : filteredInventory.length === 0 ? (
-              <div className="glass-card p-6 text-center text-text-dim col-span-full">No stockpile thread spools cataloged.</div>
+              <div className="glass-card p-6 text-center text-text-dim col-span-full">No materials cataloged.</div>
             ) : (
               filteredInventory.map((i) => {
                 const id = i.id || i._id;
@@ -593,11 +614,11 @@ export default function PanelRawMaterials({
                     <div className="flex flex-col gap-2.5 text-xs font-medium">
                       <div>
                         <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
-                        <InlineStockAdjuster
-                          material={i}
-                          refreshData={refreshData}
-                          fetchAuditLogs={fetchAuditLogs}
-                        />
+                        {/* Read-only Current Count display */}
+                        <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none">
+                          <span>{i.count}</span>
+                          <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                        </div>
                       </div>
                       <div>
                         <span className="text-[0.65rem] text-text-dim block mb-1">Low Warning Limit</span>
@@ -611,7 +632,7 @@ export default function PanelRawMaterials({
 
                     <div className="flex gap-2 w-full mt-2">
                       <button
-                        onClick={() => handleDelete(id)}
+                        onClick={() => setDeletingMaterial(i)}
                         className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
                       >
                         Delete Material
@@ -624,7 +645,7 @@ export default function PanelRawMaterials({
           </div>
         </div>
 
-        {/* Right side: Stockpile audit logs trail */}
+        {/* Right side: Stock audit logs trail */}
         <div className="glass-card w-full">
           <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Audit Trail Feed</h3>
           <div className="flex flex-col gap-3 max-h-[580px] overflow-y-auto pr-1">
@@ -660,24 +681,81 @@ export default function PanelRawMaterials({
         </div>
       </div>
 
-      {/* Modal: Add spool */}
-      <GlassModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Create stockpile Thread Spool">
+      {/* Modal: Add Material */}
+      <GlassModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Material">
         <form onSubmit={handleCreateSubmit} className="modal-stack text-left">
+          {/* Material Category Selector */}
           <div className="modal-section">
-            <label className="modal-label">Thread Color / Item Name</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Metallic Gold"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
-            />
+            <label className="modal-label">Material Name / Category</label>
+            <select
+              value={materialCategory}
+              onChange={(e) => setMaterialCategory(e.target.value)}
+              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+            >
+              <option value="Thread Spool">Thread Spool</option>
+              <option value="Pillion / Pillow Insert">Pillion / Pillow Insert</option>
+              <option value="Machine Oil">Machine Oil</option>
+              <option value="Paper Bag">Paper Bag</option>
+              <option value="Gift Bag">Gift Bag</option>
+              <option value="Eco Bag">Eco Bag</option>
+              <option value="Custom">Custom Material...</option>
+            </select>
           </div>
+
+          {/* Conditional Color Selector for Thread Spool */}
+          {materialCategory === 'Thread Spool' && (
+            <div className="modal-section animate-fade">
+              <label className="modal-label">Thread Color</label>
+              <select
+                value={spoolColor}
+                onChange={(e) => setSpoolColor(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+              >
+                <option value="Black">Black</option>
+                <option value="White">White</option>
+                <option value="Red">Red</option>
+                <option value="Blue">Blue</option>
+                <option value="Navy">Navy</option>
+                <option value="Gold">Metallic Gold</option>
+                <option value="Silver">Silver</option>
+                <option value="Green">Green</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Pink">Pink</option>
+                <option value="Purple">Purple</option>
+                <option value="Custom">Custom Color...</option>
+              </select>
+
+              {spoolColor === 'Custom' && (
+                <input
+                  type="text"
+                  required
+                  placeholder="Specify custom thread color (e.g. Lavender, Emerald)"
+                  value={customColor}
+                  onChange={(e) => setCustomColor(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans mt-2 animate-fade"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Custom Material Name if Custom is chosen */}
+          {materialCategory === 'Custom' && (
+            <div className="modal-section animate-fade">
+              <label className="modal-label">Custom Material Name</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Backing Paper, Needles #14"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
-              <label className="modal-label">Initial Stock stockpile</label>
+              <label className="modal-label">Amount</label>
               <input
                 type="number"
                 placeholder="e.g. 50"
@@ -693,17 +771,14 @@ export default function PanelRawMaterials({
                 onChange={(e) => setItemUnit(e.target.value)}
                 className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
               >
-                <option value="Cones">Cones</option>
-                <option value="Spools">Spools</option>
-                <option value="Meters">Meters</option>
-                <option value="Yards">Yards</option>
-                <option value="Units">Units</option>
+                <option value="PCs">PCs</option>
+                <option value="Ea">Ea</option>
               </select>
             </div>
           </div>
 
           <div className="modal-section">
-            <label className="modal-label">Low Warning Limit</label>
+            <label className="modal-label">Low Stock Threshold</label>
             <input
               type="number"
               value={itemThreshold}
@@ -716,15 +791,45 @@ export default function PanelRawMaterials({
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
           >
-            Establish Material Spool
+            Add Material
           </button>
         </form>
       </GlassModal>
 
+      {/* Delete Confirmation Glass Modal */}
+      <GlassModal
+        isOpen={!!deletingMaterial}
+        onClose={() => setDeletingMaterial(null)}
+        title="Confirm Delete Material"
+      >
+        <div className="modal-stack text-left">
+          <p className="text-sm text-text-main m-0 leading-relaxed">
+            Are you sure you want to permanently delete the material <b className="text-danger font-bold">"{deletingMaterial?.item}"</b>?
+          </p>
+          <p className="text-xs text-text-dim m-0">
+            This action cannot be undone. Any inventory tracking records for this material will be cleared.
+          </p>
+          <div className="flex gap-3 justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => setDeletingMaterial(null)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteMaterial}
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+            >
+              Delete Material
+            </button>
+          </div>
+        </div>
+      </GlassModal>
 
-
-      {/* Modal: Global settings stockpile config */}
-      <GlassModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Stockpile Parameters">
+      {/* Modal: Global settings inventory config */}
+      <GlassModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Inventory Parameters">
         <form onSubmit={handleSettingsSubmit} className="modal-stack text-left">
           <div className="modal-section">
             <label className="modal-label">Global Low Stock Threshold</label>
@@ -740,7 +845,7 @@ export default function PanelRawMaterials({
           <div className="modal-box flex items-center justify-between mt-2">
             <div className="flex flex-col text-left">
               <span className="modal-label text-text-main">Audit trail logs registry</span>
-              <span className="text-[0.65rem] text-text-dim mt-0.5">Records thread stock adjustments in DB logs</span>
+              <span className="text-[0.65rem] text-text-dim mt-0.5">Records material stock adjustments in DB logs</span>
             </div>
             <input
               type="checkbox"

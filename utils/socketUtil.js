@@ -3,6 +3,7 @@ const { ENTITIES } = require('./apiConstants');
 
 const socketUtil = {
     emitDataChanged: (io, action, entity, payload, rooms = null) => {
+        if (!io) return;
         (async () => {
             let processedPayload = payload;
             if (entity === ENTITIES.PRODUCT) {

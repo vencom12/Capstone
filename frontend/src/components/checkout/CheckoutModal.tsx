@@ -130,6 +130,33 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }
   };
 
+  const handleTestPlaceOrder = async () => {
+    setIsProcessing(true);
+    try {
+      await api.post('/api/customer/order/submit', {
+        items,
+        totalAmount: finalTotal,
+        address: user?.address,
+        notes,
+        paymentMethod: 'test_mode',
+        bypassVerification: true,
+        giftPackaging,
+        calligraphyMessage
+      });
+      
+      showToast('Test order placed successfully (Bypassed AI Verification)!', 'success');
+      await refreshUser();
+      await fetchDashboardState();
+      clearBasket();
+      onClose();
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to place test order';
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     // For e-wallet methods, the order is already placed during handleFileSelect
     if (paymentMethod === 'gcash') {
@@ -236,7 +263,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
               </div>
 
               {/* Delivery ETA */}
-              {estimatedMinutes !== null && (
+              {giftPackaging && estimatedMinutes !== null && (
                  <div className="flex justify-between items-center px-2 mt-1 text-[0.8rem] text-text-dim">
                     <span>Estimated Completion:</span>
                     <span className="font-bold text-white">~{Math.max(1, Math.ceil(estimatedMinutes / 60))} Hours</span>
@@ -287,7 +314,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                 </span>
               </div>
 
-              <div className="mt-4 max-[650px]:mt-2">
+              <div className="mt-4 max-[650px]:mt-2 flex flex-col gap-2">
                 <GlassButton
                   variant="primary"
                   size="lg"
@@ -298,6 +325,15 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                 >
                   {isProcessing ? 'Processing Order...' : 'Place Order'}
                 </GlassButton>
+
+                <button
+                  type="button"
+                  onClick={handleTestPlaceOrder}
+                  disabled={isProcessing}
+                  className="text-[0.75rem] text-primary hover:text-white underline cursor-pointer transition-all bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-xl border border-primary/30 w-full font-bold flex items-center justify-center gap-1.5"
+                >
+                  <span>⚡</span> Test Checkout (Skip GCash Verification)
+                </button>
               </div>
             </div>
           </div>

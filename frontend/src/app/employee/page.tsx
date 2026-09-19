@@ -33,7 +33,7 @@ export default function EmployeePage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
-  const [dbType, setDbType] = useState<'mongodb' | 'postgres'>('mongodb');
+  const [dbType, setDbType] = useState<string>('supabase');
   const [isSyncing, setIsSyncing] = useState(false);
   const [shiftStatus, setShiftStatus] = useState('offline');
 

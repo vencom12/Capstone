@@ -160,15 +160,20 @@ export default function PanelManageDesigns({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this custom design?')) return;
+  // Delete confirmation modal state
+  const [deletingProduct, setDeletingProduct] = useState<any>(null);
+
+  const confirmDelete = async () => {
+    if (!deletingProduct) return;
+    const id = deletingProduct.id || deletingProduct._id;
     try {
       await api.delete(`/api/admin/products/${id}`);
-      showToast('Storefront design deleted successfully', 'success');
+      showToast('Product deleted successfully', 'success');
+      setDeletingProduct(null);
       refreshData();
     } catch (err) {
       console.error(err);
-      showToast('Failed to delete custom design', 'error');
+      showToast('Failed to delete product', 'error');
     }
   };
 
@@ -176,13 +181,13 @@ export default function PanelManageDesigns({
     <section className="animate-fade flex flex-col min-h-full text-left">
       <header className="dash-header flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="dash-title">Manage Designs</h1>
-          <p className="dash-subtitle">Publish new custom products or edit existing recipes.</p>
+          <h1 className="dash-title">Products</h1>
+          <p className="dash-subtitle">Manage catalog products, categories, pricing, and inventory stock levels.</p>
         </div>
         <div className="flex gap-3 items-center">
           <input
             type="text"
-            placeholder="Search catalog designs..."
+            placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
@@ -191,12 +196,12 @@ export default function PanelManageDesigns({
             onClick={() => openModal()}
             className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer whitespace-nowrap border-none"
           >
-            + Publish Design
+            + New Product
           </button>
         </div>
       </header>
 
-      {/* Design card grid layout */}
+      {/* Product card grid layout */}
       <div className="w-full pr-2 flex-1">
         {isSyncing && products.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -206,7 +211,7 @@ export default function PanelManageDesigns({
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="glass-card text-center text-text-dim py-12">
-            No catalog designs found. Create one to begin.
+            No products found. Click "+ New Product" to create one.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -272,7 +277,7 @@ export default function PanelManageDesigns({
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(id)}
+                      onClick={() => setDeletingProduct(p)}
                       className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2 rounded-lg text-[0.8rem] font-bold hover:bg-danger/20 transition-all cursor-pointer"
                     >
                       Delete
@@ -285,19 +290,19 @@ export default function PanelManageDesigns({
         )}
       </div>
 
-      {/* Modal Creator Form */}
+      {/* Modal: Create / Edit Product Form */}
       <GlassModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title={editingDesign ? 'Edit Design Details' : 'Publish New Storefront Design'}
+        title={editingDesign ? 'Edit Product Details' : 'Create New Product'}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
           <div className="modal-section">
-            <label className="modal-label">Design Name</label>
+            <label className="modal-label">Product Name</label>
             <input
               type="text"
               required
-              placeholder="e.g. Elegant Towel"
+              placeholder="e.g. Premium Embroidered Towel"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
@@ -318,7 +323,7 @@ export default function PanelManageDesigns({
               />
             </div>
             <div className="modal-section">
-              <label className="modal-label">Design Tag Category</label>
+              <label className="modal-label">Product Categories</label>
               <select
                 value={tag}
                 onChange={(e) => setTag(e.target.value)}
@@ -346,7 +351,7 @@ export default function PanelManageDesigns({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
-              <label className="modal-label">Physical Stock (Blank Garments)</label>
+              <label className="modal-label">Stocks</label>
               <input
                 type="number"
                 required
@@ -357,7 +362,7 @@ export default function PanelManageDesigns({
               />
             </div>
             <div className="modal-section">
-              <label className="modal-label">Min Safety Threshold (Alert Level)</label>
+              <label className="modal-label">Low Stock Threshold</label>
               <input
                 type="number"
                 required
@@ -383,82 +388,45 @@ export default function PanelManageDesigns({
             />
           </div>
 
-          {/* Recipe Constructor */}
-          <div className="border-t border-border-glass pt-4 mt-1 modal-section">
-            <span className="modal-label block text-text-main font-bold">
-              Thread Recipe Ingredients
-            </span>
-
-            {/* Selector block */}
-            <div className="flex gap-2 mb-3 items-end">
-              <div className="flex-1 flex flex-col gap-1.5 text-left">
-                <label className="text-[0.65rem] font-bold text-text-dim uppercase">Real Stock Materials</label>
-                <select
-                  value={selectedMaterialId}
-                  onChange={(e) => setSelectedMaterialId(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs cursor-pointer w-full"
-                >
-                  <option value="">Choose thread spool...</option>
-                  {inventory.map((i) => (
-                    <option key={i.id || i._id} value={i.id || i._id}>
-                      {i.item} ({i.count} {i.unit} left)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="w-[100px] flex flex-col gap-1.5 text-left">
-                <label className="text-[0.65rem] font-bold text-text-dim uppercase">Qty Needed</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 1"
-                  value={materialQty}
-                  onChange={(e) => setMaterialQty(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full font-mono"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={addRecipeItem}
-                className="bg-primary/20 text-primary border border-primary/30 py-2.5 px-3.5 rounded-xl text-xs font-bold hover:bg-primary/30 transition-all cursor-pointer shrink-0"
-              >
-                Add
-              </button>
-            </div>
-
-            {/* List container */}
-            <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto mt-2">
-              {recipe.length === 0 ? (
-                <p className="text-[0.8rem] text-text-dim italic m-0">No threads cataloged in recipe yet.</p>
-              ) : (
-                recipe.map((r, idx) => (
-                  <div
-                    key={idx}
-                    className="modal-box flex justify-between items-center text-xs"
-                  >
-                    <span className="font-semibold text-text-main">
-                      {r.name} <b className="text-primary ml-1">x{r.quantity}</b>
-                    </span>
-                    <span
-                      onClick={() => removeRecipeItem(idx)}
-                      className="cursor-pointer text-danger font-bold hover:text-danger-light text-[0.95rem] p-1"
-                    >
-                      ✕
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
           <button
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
           >
-            {editingDesign ? 'Save Catalog Updates' : 'Publish Storefront Catalog'}
+            {editingDesign ? 'Save Product Details' : 'Create Product'}
           </button>
         </form>
+      </GlassModal>
+
+      {/* Delete Confirmation Glass Modal */}
+      <GlassModal
+        isOpen={!!deletingProduct}
+        onClose={() => setDeletingProduct(null)}
+        title="Confirm Delete Product"
+      >
+        <div className="modal-stack text-left">
+          <p className="text-sm text-text-main m-0 leading-relaxed">
+            Are you sure you want to permanently delete the product <b className="text-danger font-bold">"{deletingProduct?.name}"</b>?
+          </p>
+          <p className="text-xs text-text-dim m-0">
+            This action cannot be undone. Any storefront listings associated with this product will be removed.
+          </p>
+          <div className="flex gap-3 justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => setDeletingProduct(null)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+            >
+              Delete Product
+            </button>
+          </div>
+        </div>
       </GlassModal>
     </section>
   );

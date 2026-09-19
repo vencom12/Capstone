@@ -120,11 +120,14 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this machine from the fleet?')) return;
+  const [deletingMachine, setDeletingMachine] = useState<any>(null);
+
+  const confirmDelete = async () => {
+    if (!deletingMachine) return;
     try {
-      await api.delete(`/api/machines/${id}`);
-      showToast('Machine removed', 'success');
+      await api.delete(`/api/machines/${deletingMachine.id}`);
+      showToast('Machine removed from fleet', 'success');
+      setDeletingMachine(null);
       fetchMachines();
     } catch (err) {
       showToast('Error removing machine', 'error');
@@ -135,8 +138,8 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
     <section className="animate-fade flex flex-col min-h-full text-left">
       <header className="dash-header flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="dash-title">Fleet Management</h1>
-          <p className="dash-subtitle">Manage physical embroidery machines, assign operators, and track statuses.</p>
+          <h1 className="dash-title">Live Production & Fleet</h1>
+          <p className="dash-subtitle">Monitor physical embroidery machines, assign operators, and track equipment health and active lines.</p>
         </div>
         <button
           onClick={() => openModal()}
@@ -184,7 +187,7 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
                 
                 <div className="flex gap-2 mt-6">
                   <button onClick={() => openModal(m)} className="flex-1 bg-primary/10 text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer border-none">Edit</button>
-                  <button onClick={() => handleDelete(m.id)} className="flex-1 bg-danger/10 text-danger py-2 rounded-lg text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none">Remove</button>
+                  <button onClick={() => setDeletingMachine(m)} className="flex-1 bg-danger/10 text-danger py-2 rounded-lg text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none">Remove</button>
                 </div>
               </div>
             ))
@@ -223,6 +226,38 @@ export default function PanelFleetManagement({ users = [] }: PanelFleetManagemen
           )}
           <button type="submit" className="bg-primary text-white font-bold py-3.5 rounded-xl w-full mt-4 cursor-pointer border-none hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all text-sm font-sans">{editingMachine ? 'Update Machine' : 'Add to Fleet'}</button>
         </form>
+      </GlassModal>
+
+      {/* Delete Confirmation Glass Modal */}
+      <GlassModal
+        isOpen={!!deletingMachine}
+        onClose={() => setDeletingMachine(null)}
+        title="Confirm Remove Machine"
+      >
+        <div className="modal-stack text-left">
+          <p className="text-sm text-text-main m-0 leading-relaxed">
+            Are you sure you want to remove machine <b className="text-danger font-bold">"{deletingMachine?.name}"</b> from the operational fleet?
+          </p>
+          <p className="text-xs text-text-dim m-0">
+            Any current operator assignments and active production line links will be unassigned.
+          </p>
+          <div className="flex gap-3 justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => setDeletingMachine(null)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+            >
+              Remove Machine
+            </button>
+          </div>
+        </div>
       </GlassModal>
     </section>
   );
