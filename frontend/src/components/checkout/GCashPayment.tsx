@@ -8,6 +8,7 @@ interface GCashPaymentProps {
   aiVerificationResult: string | null;
   paymentVerified: boolean;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  qrCodeUrl?: string | null;
 }
 
 export default function GCashPayment({
@@ -15,7 +16,8 @@ export default function GCashPayment({
   aiAnalyzing,
   aiVerificationResult,
   paymentVerified,
-  onFileSelect
+  onFileSelect,
+  qrCodeUrl
 }: GCashPaymentProps) {
   return (
     <div className="flex flex-col gap-4 border-t border-border-glass pt-4 mt-2 animate-[fadeIn_0.3s_ease-out]">
@@ -36,6 +38,11 @@ export default function GCashPayment({
           <span className="text-text-dim">Account Name:</span>
           <span className="text-white font-bold">STITCH-OPT CORP</span>
         </div>
+        {qrCodeUrl && (
+          <div className="mt-2 flex justify-center bg-white p-2 rounded-xl">
+            <img src={qrCodeUrl} alt="GCash QR Code" className="max-h-48 object-contain" />
+          </div>
+        )}
       </div>
 
       {/* Upload Zone */}

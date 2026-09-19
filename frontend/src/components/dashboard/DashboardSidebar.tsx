@@ -68,11 +68,6 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
       id: 'favs', label: 'My Favorites', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
       )
-    },
-    {
-      id: 'settings', label: 'Settings', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      )
     }
   ];
 
@@ -163,17 +158,34 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
 
         {/* User Profile */}
         <div className="mt-auto p-3 pb-10 border-t border-border-glass">
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-border-glass max-[1100px]:justify-center max-[650px]:justify-start">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0">
+          <button
+            onClick={() => {
+              setActiveTab('settings');
+              if (window.innerWidth <= 650) setSidebarOpen(false);
+            }}
+            className={`
+              w-full flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all duration-300
+              max-[1100px]:justify-center max-[650px]:justify-start
+              ${activeTab === 'settings'
+                ? 'bg-primary/20 border-primary shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                : 'bg-white/5 border-border-glass hover:bg-white/10'}
+            `}
+            title="Account Settings"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0 relative">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-bg-sidebar border-2 border-bg-sidebar flex items-center justify-center">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
             </div>
             <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-[650px]:flex">
-              <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate">{user?.username || 'User'}</span>
-              <span className="text-[0.75rem] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full w-fit mt-0.5">
-                ${(user?.walletBalance || 0).toFixed(2)}
-              </span>
+              <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate text-left">{user?.username || 'User'}</span>
+              <span className="text-[0.7rem] text-text-dim text-left">Account Settings</span>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={logout}

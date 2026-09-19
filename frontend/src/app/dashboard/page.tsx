@@ -15,6 +15,7 @@ import ReceiptModal from '@/components/dashboard/ReceiptModal';
 import type { Product, Order } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
+import AddressSelect from '@/components/ui/AddressSelect';
 import { TableSkeleton, CardSkeleton, ProductCardSkeleton } from '@/components/ui/Skeletons';
 
 export default function DashboardPage() {
@@ -34,38 +35,48 @@ export default function DashboardPage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   
-  // Settings State
-  const [settingsName, setSettingsName] = useState('');
-  const [settingsEmail, setSettingsEmail] = useState('');
-  const [settingsPhone, setSettingsPhone] = useState('');
-  const [settingsAddress, setSettingsAddress] = useState('');
+  // Settings State — inline edit one field at a time
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Date Filters
   const [ordersDateFilter, setOrdersDateFilter] = useState('');
   const [txDateFilter, setTxDateFilter] = useState('');
 
-  useEffect(() => {
-    if (user && isHydrated) {
-      setSettingsName(user.username || '');
-      setSettingsEmail(user.email || '');
-      setSettingsPhone(user.phoneNumber || '');
-      setSettingsAddress(user.address || '');
+  const getFieldValue = (fieldKey: string): string => {
+    switch (fieldKey) {
+      case 'username': return user?.username || '';
+      case 'email': return user?.email || '';
+      case 'phoneNumber': return user?.phoneNumber || '';
+      case 'address': return user?.address || '';
+      case 'preferredDeliveryTime': return (user as any)?.preferredDeliveryTime || '';
+      default: return '';
     }
-  }, [user, isHydrated, activeTab]);
+  };
 
-  const handleUpdateProfile = async () => {
+  const startEditing = (fieldKey: string) => {
+    setEditingField(fieldKey);
+    setEditValue(getFieldValue(fieldKey));
+  };
+
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const handleSaveField = async () => {
+    if (!editingField) return;
     setIsUpdating(true);
     try {
       const { api } = await import('@/lib/api');
       await api.patch('/api/customer/settings', {
-        username: settingsName,
-        email: settingsEmail,
-        phoneNumber: settingsPhone,
-        address: settingsAddress
+        [editingField]: editValue
       });
       await refreshUser();
       showToast('Profile updated successfully!', 'success');
+      setEditingField(null);
+      setEditValue('');
     } catch (err) {
       showToast('Failed to update profile', 'error');
     } finally {
@@ -100,15 +111,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [isHydrated, isAuthenticated, checkAccess, router, fetchDashboardState]);
 
-  useEffect(() => {
-    // Synchronize settings form with user data
-    if (user && isHydrated) {
-      setSettingsName(user.username || '');
-      setSettingsEmail(user.email || '');
-      setSettingsPhone(user.phoneNumber || '');
-      setSettingsAddress(user.address || '');
-    }
-  }, [user, isHydrated, activeTab]);
+
 
   useEffect(() => {
     if (isHydrated) {
@@ -438,51 +441,125 @@ export default function DashboardPage() {
         );
       }
 
-      case 'settings':
+      case 'settings': {
+        const profileFields = [
+          { key: 'username', label: 'Display Name', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>), type: 'text' as const },
+          { key: 'email', label: 'Email Address', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>), type: 'email' as const },
+          { key: 'phoneNumber', label: 'Phone Number', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>), type: 'text' as const },
+          { key: 'address', label: 'Shipping Address', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>), type: 'textarea' as const },
+          { key: 'preferredDeliveryTime', label: 'Preferred Delivery Time', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>), type: 'text' as const },
+        ];
+
         return (
           <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4">
               <h1 className="text-xl font-bold mb-0.5">Account Settings</h1>
-              <p className="text-text-dim text-[0.85rem] m-0">Profile and notification preferences.</p>
+              <p className="text-text-dim text-[0.85rem] m-0">Tap the edit icon to update any field individually.</p>
             </header>
             <div className="flex-1 overflow-y-auto pr-2 pb-6">
-              {/* Account Settings Panel styled like Modal Panel */}
+              {/* Profile Card */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)] flex flex-col">
-                <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
-                  <h3 className="text-base font-bold text-text-main m-0">Update Profile</h3>
+                {/* Avatar Header */}
+                <div className="px-6 py-5 border-b border-border-glass/50 bg-black/10 flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-text-main m-0">{user?.username || 'User'}</h3>
+                    <p className="text-[0.8rem] text-text-dim m-0 mt-0.5">{user?.email || 'No email set'}</p>
+                  </div>
                 </div>
-                <div className="p-6 flex flex-col gap-4.5">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Display Name</label>
-                    <input type="text" value={settingsName} onChange={(e) => setSettingsName(e.target.value)} placeholder="Display Name" className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary transition-all" />
-                  </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Email Address</label>
-                    <input type="email" value={settingsEmail} onChange={(e) => setSettingsEmail(e.target.value)} placeholder="Email Address" className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary transition-all" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Phone Number</label>
-                    <input type="text" value={settingsPhone} onChange={(e) => setSettingsPhone(e.target.value)} placeholder="Phone Number" className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary transition-all" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.75rem] font-bold text-text-dim uppercase tracking-wider ml-1">Shipping Address</label>
-                    <textarea value={settingsAddress} onChange={(e) => setSettingsAddress(e.target.value)} placeholder="Shipping Address" rows={3} className="w-full bg-bg-surface border border-border-glass p-3.5 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary resize-none transition-all"></textarea>
-                  </div>
-
-                  <button 
-                    onClick={handleUpdateProfile}
-                    disabled={isUpdating}
-                    className="bg-primary text-white font-bold px-10 py-3.5 rounded-xl mt-2 self-start hover:shadow-[0_10px_30px_rgba(99,102,241,0.4)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    {isUpdating ? 'Saving Changes...' : 'Update Profile'}
-                  </button>
+                {/* Inline Edit Fields */}
+                <div className="flex flex-col">
+                  {profileFields.map((field, idx) => {
+                    const currentValue = getFieldValue(field.key);
+                    const isEditing = editingField === field.key;
+                    return (
+                      <div key={field.key} className={`px-6 py-4 flex flex-col gap-2 transition-all duration-300 ${idx < profileFields.length - 1 ? 'border-b border-border-glass/30' : ''} ${isEditing ? 'bg-primary/5' : 'hover:bg-white/3'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="text-text-dim shrink-0">{field.icon}</div>
+                            <div className="flex flex-col">
+                              <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">{field.label}</span>
+                              {!isEditing && (
+                                <span className="text-[0.95rem] text-text-main mt-0.5">{currentValue || <span className="italic text-text-dim/50">Not set</span>}</span>
+                              )}
+                            </div>
+                          </div>
+                          {!isEditing && (
+                            <button
+                              onClick={() => startEditing(field.key)}
+                              disabled={editingField !== null && editingField !== field.key}
+                              className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer border-none ${editingField !== null && editingField !== field.key ? 'opacity-30 cursor-not-allowed bg-transparent' : 'bg-white/5 hover:bg-primary/20 text-text-dim hover:text-primary'}`}
+                              title={`Edit ${field.label}`}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <div className="flex flex-col gap-2.5 ml-[30px] animate-[fadeIn_0.2s_ease-out]">
+                            {field.key === 'address' ? (
+                              <AddressSelect
+                                value={editValue}
+                                onChange={(val) => setEditValue(val)}
+                              />
+                            ) : field.key === 'preferredDeliveryTime' ? (
+                              <select
+                                value={editValue || '⚡ As soon as possible (Express)'}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                autoFocus
+                                className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary cursor-pointer transition-all shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                              >
+                                <option value="⚡ As soon as possible (Express)" className="bg-bg-dark text-white">⚡ As soon as possible (Express)</option>
+                                <option value="🌅 Morning (8:00 AM - 12:00 PM)" className="bg-bg-dark text-white">🌅 Morning (8:00 AM - 12:00 PM)</option>
+                                <option value="☀️ Afternoon (1:00 PM - 5:00 PM)" className="bg-bg-dark text-white">☀️ Afternoon (1:00 PM - 5:00 PM)</option>
+                                <option value="🌙 Evening (5:00 PM - 8:00 PM)" className="bg-bg-dark text-white">🌙 Evening (5:00 PM - 8:00 PM)</option>
+                              </select>
+                            ) : field.type === 'textarea' ? (
+                              <textarea
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                rows={2}
+                                autoFocus
+                                className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary resize-none transition-all shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                              />
+                            ) : (
+                              <input
+                                type={field.type}
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveField(); if (e.key === 'Escape') cancelEditing(); }}
+                                className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary transition-all shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                              />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleSaveField}
+                                disabled={isUpdating}
+                                className="bg-primary text-white font-bold px-5 py-2 rounded-lg text-[0.8rem] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none"
+                              >
+                                {isUpdating ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                onClick={cancelEditing}
+                                disabled={isUpdating}
+                                className="bg-transparent border border-border-glass text-text-dim font-bold px-5 py-2 rounded-lg text-[0.8rem] hover:bg-white/5 active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Preferences / Theme Panel styled like Modal Panel */}
+              {/* Preferences / Theme Panel */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)] flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
                   <h3 className="text-base font-bold text-text-main m-0">Preferences</h3>
@@ -511,6 +588,7 @@ export default function DashboardPage() {
             </div>
           </section>
         );
+      }
 
       default:
         return null;

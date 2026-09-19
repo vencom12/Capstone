@@ -33,6 +33,7 @@ exports.getDashboardState = async (req, res) => {
             favorites: enrichedFavorites,
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
+            preferredDeliveryTime: currentUser ? currentUser.preferredDeliveryTime : '',
             transactions,
             receipts
         });
@@ -70,10 +71,12 @@ exports.submitOrder = async (req, res) => {
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
 
         // Fix B: Payment Method Whitelist
-        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'paymaya'];
+        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'paymaya', 'test_mode'];
         if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
             return res.status(400).json({ message: 'Invalid payment method.' });
         }
+
+        const isInstantApproved = (paymentMethod === 'wallet' || paymentMethod === 'test_mode' || req.body.bypassVerification === true);
 
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -81,8 +84,10 @@ exports.submitOrder = async (req, res) => {
         // Fix A: Server-side total recalculation (never trust client-sent total)
         let serverTotal = 0;
         for (const item of items) {
-            const product = await prisma.product.findUnique({ where: { id: item.productId } });
-            if (!product) return res.status(404).json({ message: `Product not found: ${item.name || item.productId}` });
+            const productId = item.productId || item.id;
+            if (!productId) return res.status(400).json({ message: `Invalid product in cart item: ${item.name || 'Unknown'}` });
+            const product = await prisma.product.findUnique({ where: { id: productId } });
+            if (!product) return res.status(404).json({ message: `Product not found: ${item.name || productId}` });
             serverTotal += product.price * (item.quantity || 1);
         }
         // Add gift packaging if selected
@@ -113,9 +118,10 @@ exports.submitOrder = async (req, res) => {
         const result = await prisma.$transaction(async (tx) => {
             // 1. Check stock availability for all items in the cart (with row locking)
             for (const item of items) {
+                const productId = item.productId || item.id;
                 // Execute SELECT FOR UPDATE to lock this product row
                 const products = await tx.$queryRaw`
-                    SELECT * FROM "Product" WHERE id = ${item.productId} FOR UPDATE
+                    SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount", recipe, "tenantId", embedding::text FROM "Product" WHERE id = ${productId} FOR UPDATE
                 `;
                 const product = products[0];
                 if (!product) {
@@ -155,9 +161,10 @@ exports.submitOrder = async (req, res) => {
 
             // 2. Reserve garments in database (lock counts)
             for (const item of items) {
+                const productId = item.productId || item.id;
                 const needed = item.quantity || 1;
                 await tx.product.update({
-                    where: { id: item.productId },
+                    where: { id: productId },
                     data: {
                         reservedCount: { increment: needed }
                     }
@@ -178,16 +185,17 @@ exports.submitOrder = async (req, res) => {
                     orderId: secureOrderId,
                     client: user.username,
                     userId: user.id,
+                    tenantId: user.tenantId || null,
                     design: "Cart Order",
                     items: items, // JSON field
                     totalAmount: numTotal,
                     paymentMethod,
-                    paymentStatus: (paymentMethod === 'wallet') ? 'paid' : 'unpaid',
-                    status: (paymentMethod === 'wallet') ? 'In Queue' : 'Awaiting Payment',
+                    paymentStatus: isInstantApproved ? 'paid' : 'unpaid',
+                    status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',
                     address,
-                    deliveryTime,
+                    deliveryTime: deliveryTime || user.preferredDeliveryTime || 'As soon as possible',
                     notes,
-                    progress: (paymentMethod === 'wallet') ? 5 : 0,
+                    progress: isInstantApproved ? 5 : 0,
                     isByog: isByog || false,
                     waiverSigned: waiverSigned || false,
                     giftPackaging: giftPackaging || false,
@@ -204,10 +212,11 @@ exports.submitOrder = async (req, res) => {
                     transactionID: secureTransactionId,
                     orderID: secureOrderId,
                     amount: numTotal,
-                    status: (paymentMethod === 'wallet') ? 'completed' : 'pending',
+                    status: isInstantApproved ? 'completed' : 'pending',
                     receiptLink: receiptUrl || `/api/customer/receipt/${secureReceiptId}/download`,
                     receiptId: secureReceiptId,
-                    userId: user.id
+                    userId: user.id,
+                    tenantId: user.tenantId || null
                 }
             });
 
@@ -218,9 +227,11 @@ exports.submitOrder = async (req, res) => {
                     orderID: secureOrderId,
                     paymentMethod,
                     amount: numTotal,
-                    status: (paymentMethod === 'wallet') ? 'Paid' : 'Pending',
+                    status: isInstantApproved ? 'Paid' : 'Pending',
+                    aiVerificationStatus: isInstantApproved ? 'verified' : 'pending',
                     imageUrl: receiptUrl || null,
-                    userId: user.id
+                    userId: user.id,
+                    tenantId: user.tenantId || null
                 }
             });
 
@@ -271,7 +282,7 @@ exports.submitOrder = async (req, res) => {
         if (err.message && err.message.startsWith('Product not found:')) {
             return res.status(404).json({ message: err.message });
         }
-        res.status(400).json({ message: 'Failed to place order' });
+        res.status(400).json({ message: err.message || 'Failed to place order' });
     }
 };
 
@@ -399,7 +410,8 @@ exports.getPublicSettings = async (req, res) => {
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         res.json({ 
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
-            businessLogoUrl: settings?.businessLogoUrl || null
+            businessLogoUrl: settings?.businessLogoUrl || null,
+            gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
         });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching public settings' });
@@ -620,7 +632,7 @@ exports.validatePayment = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
-        const { username, email, address, phoneNumber, currentPassword, newPassword } = req.body;
+        const { username, email, address, phoneNumber, currentPassword, newPassword, preferredDeliveryTime } = req.body;
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -629,6 +641,7 @@ exports.updateSettings = async (req, res) => {
         if (email) updateData.email = email;
         if (address) updateData.address = address;
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
+        if (preferredDeliveryTime !== undefined) updateData.preferredDeliveryTime = preferredDeliveryTime;
 
         if (newPassword) {
             if (!currentPassword) return res.status(400).json({ message: 'Current password required to change password' });

@@ -2,6 +2,10 @@ const fetch = global.fetch || require('node-fetch');
 
 const fetchGroqChatWithFallback = async (apiKey, url, initialModel, payloadWithoutModel) => {
     const chatFallbackChain = [
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+        'groq/compound-mini',
+        'qwen/qwen3.6-27b',
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant'
     ];
@@ -64,8 +68,9 @@ const fetchGroqChatWithFallback = async (apiKey, url, initialModel, payloadWitho
 const fetchGroqVisionWithFallback = async (apiKey, url, initialModel, payloadWithoutModel) => {
     // Implement proper fallback sequence for vision models
     const visionFallbackChain = [
-        'llama-3.2-11b-vision-preview',
-        'llama-3.2-90b-vision-preview'
+        'qwen/qwen3.6-27b',
+        'openai/gpt-oss-120b',
+        'llama-3.2-11b-vision-preview'
     ];
     
     const modelsToTry = [initialModel];

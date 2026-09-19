@@ -33,6 +33,7 @@ router.get('/settings', adminAuth(), adminController.getSettings);
 router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.post('/settings/logo', adminAuth(), upload.single('logo'), auditLogger('Settings', 'UPLOAD_LOGO'), adminController.uploadBusinessLogo);
+router.post('/settings/gcash-qr', adminAuth(), upload.single('qr'), auditLogger('Settings', 'UPLOAD_GCASH_QR'), adminController.uploadGCashQr);
 router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
 router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);

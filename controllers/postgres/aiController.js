@@ -15,16 +15,16 @@ const getAISettings = async () => {
             settings = await prisma.systemSettings.create({ data: { id: 'global' } });
         }
         return {
-            aiChatModel: settings.aiChatModel || 'llama-3.3-70b-versatile',
-            aiVisionModel: settings.aiVisionModel || 'llama-3.2-11b-vision-preview',
+            aiChatModel: settings.aiChatModel || 'openai/gpt-oss-120b',
+            aiVisionModel: settings.aiVisionModel || 'qwen/qwen3.6-27b',
             aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.75
         };
     } catch (e) {
         console.error('Failed to fetch dynamic AI settings, using defaults:', e);
         return {
-            aiChatModel: 'llama-3.3-70b-versatile',
-            aiVisionModel: 'llama-3.2-11b-vision-preview',
+            aiChatModel: 'openai/gpt-oss-120b',
+            aiVisionModel: 'qwen/qwen3.6-27b',
             aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: 0.75
         };

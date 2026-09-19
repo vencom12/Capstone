@@ -54,6 +54,7 @@ model User {
   walletBalance Float    @default(0)
   phoneNumber   String?
   address       String?
+  preferredDeliveryTime String?
   tokenVersion  Int      @default(0)
   createdAt     DateTime @default(now())
   shiftStatus   String   @default("offline") // clocked_in, offline
@@ -281,6 +282,7 @@ model SystemSettings {
   businessEmail   String @default("contact@stitch-opt.com")
   businessWebsite String @default("www.stitch-opt.com")
   businessLogoUrl String?
+  gcashQrCodeUrl  String?
 
   tenantId String? @unique
   tenant   Tenant? @relation(fields: [tenantId], references: [id])

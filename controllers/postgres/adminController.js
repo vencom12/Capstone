@@ -794,3 +794,24 @@ exports.uploadBusinessLogo = async (req, res) => {
         res.status(500).json({ message: 'Error uploading logo' });
     }
 };
+
+exports.uploadGCashQr = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No image provided' });
+        }
+        
+        const qrUrl = req.file.path;
+
+        const updated = await prisma.systemSettings.upsert({
+            where: { id: 'global' },
+            update: { gcashQrCodeUrl: qrUrl },
+            create: { id: 'global', gcashQrCodeUrl: qrUrl }
+        });
+
+        res.json({ message: 'GCash QR Code updated successfully', gcashQrCodeUrl: qrUrl, settings: updated });
+    } catch (err) {
+        console.error('uploadGCashQr error:', err);
+        res.status(500).json({ message: 'Error uploading GCash QR code' });
+    }
+};

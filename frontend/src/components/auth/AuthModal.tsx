@@ -144,7 +144,7 @@ export default function AuthModal() {
           {mode === 'register' && (
             <div className="grid grid-cols-2 gap-3 max-[650px]:grid-cols-1">
               <div className="flex flex-col gap-1">
-                <label className="modal-label ml-1">Username</label>
+                <label className="modal-label ml-1">Username *</label>
                 <input 
                   type="text" 
                   required 
@@ -155,13 +155,25 @@ export default function AuthModal() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="modal-label ml-1">Phone</label>
+                <div className="flex justify-between items-center ml-1">
+                  <label className="modal-label">Phone Number</label>
+                  <span className="text-[0.65rem] text-text-dim">PH Format (09XX / +63)</span>
+                </div>
                 <input 
                   type="tel" 
-                  required 
-                  placeholder="+63..."
+                  placeholder="0917 123 4567 or +63 917..."
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    // Format Philippine numbers nicely as user types
+                    let formatted = raw;
+                    if (raw.startsWith('09') && raw.length === 11) {
+                      formatted = `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`;
+                    } else if (raw.startsWith('639') && raw.length === 12) {
+                      formatted = `+${raw.slice(0, 2)} ${raw.slice(2, 5)} ${raw.slice(5, 8)} ${raw.slice(8)}`;
+                    }
+                    setPhoneNumber(formatted);
+                  }}
                   className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
                 />
               </div>
@@ -176,7 +188,7 @@ export default function AuthModal() {
                   : selectedRole === 'admin' 
                     ? 'Admin ID / Email' 
                     : 'Username / Email'
-                : 'Email Address'}
+                : 'Email Address *'}
             </label>
             <input 
               type={mode === 'login' ? 'text' : 'email'} 
@@ -197,7 +209,7 @@ export default function AuthModal() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="modal-label ml-1">Password</label>
+            <label className="modal-label ml-1">Password *</label>
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
@@ -231,13 +243,15 @@ export default function AuthModal() {
 
           {mode === 'register' && (
             <div className="flex flex-col gap-1">
-              <label className="modal-label ml-1">Full Address</label>
+              <div className="flex justify-between items-center ml-1">
+                <label className="modal-label">Delivery Address</label>
+                <span className="text-[0.65rem] text-primary">Optional (can add during checkout)</span>
+              </div>
               <textarea 
-                required 
-                placeholder="123 Street, City, ZIP"
+                placeholder="123 Street, City, Province, ZIP (Optional)"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all min-h-[60px] resize-none"
+                className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all min-h-[50px] resize-none"
               />
             </div>
           )}

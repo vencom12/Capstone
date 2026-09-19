@@ -28,12 +28,24 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 
 export default function AdminPage() {
   const router = useRouter();
-  const { isAuthenticated, checkAccess } = useAuthStore();
+  const { isAuthenticated, checkAccess, user, logout } = useAuthStore();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isHydrated, setIsHydrated] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  const tabTitles: Record<string, string> = {
+    overview: 'Overview',
+    products: 'Products',
+    materials: 'Materials',
+    production: 'Live Production & Fleet',
+    fleet: 'Live Production & Fleet',
+    staffing: 'Personnel',
+    analytics: 'Analytics',
+    history: 'Order History',
+    settings: 'Settings'
+  };
 
   // Sync theme state on mount
   useEffect(() => {
@@ -56,7 +68,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [dbType, setDbType] = useState<'mongodb' | 'postgres'>('mongodb');
+  const [dbType, setDbType] = useState<string>('supabase');
 
   // Order History Panel specific filters
   const [historySearch, setHistorySearch] = useState('');
@@ -327,6 +339,7 @@ export default function AdminPage() {
             refreshData={fetchAdminData}
           />
         );
+      case 'production':
       case 'fleet':
         return <PanelFleetManagement users={users} />;
       case 'staffing':
@@ -340,50 +353,6 @@ export default function AdminPage() {
         );
       case 'analytics':
         return <PanelAnalytics orders={orders} />;
-
-      case 'production':
-        // Renders active operational machinery spools & maintenance logs
-        return (
-          <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans">
-            <header className="mb-6 flex flex-col">
-              <h1 className="text-3xl font-extrabold mb-1">Live Production Spools</h1>
-              <p className="text-text-dim text-[0.95rem] m-0">Monitor active embroidery spools and machinery health dials.</p>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 pr-2">
-              <div className="bg-bg-card border border-border-glass p-5 rounded-[20px] flex items-center gap-4 text-left">
-                <div className="w-3.5 h-3.5 rounded-full bg-success shadow-[0_0_12px_rgba(34,197,94,0.6)]"></div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-md text-white">Embroidery Machine M#1 Happy</span>
-                  <span className="text-text-dim text-xs mt-1">Stitching Swoosh_Gold_v2.dst • Running at 850 RPM</span>
-                </div>
-              </div>
-
-              <div className="bg-bg-card border border-border-glass p-5 rounded-[20px] flex items-center gap-4 text-left">
-                <div className="w-3.5 h-3.5 rounded-full bg-warning shadow-[0_0_12px_rgba(251,191,36,0.6)]"></div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-md text-white">Embroidery Machine M#2 Brother</span>
-                  <span className="text-text-dim text-xs mt-1">Idle • Ready for custom thread spool dropoff</span>
-                </div>
-              </div>
-
-              <div className="bg-bg-card border border-border-glass p-5 rounded-[20px] flex items-center gap-4 text-left">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#3b82f6] shadow-[0_0_12px_rgba(59,130,246,0.6)]"></div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-md text-white">Manual Stitched Station B</span>
-                  <span className="text-text-dim text-xs mt-1">Active • Artisan Alice processing order #ST-9024</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card p-5 border border-border-glass rounded-[24px] text-left pr-2">
-              <h3 className="text-xl font-bold m-0 mb-3 text-text-main">Hardware Spool Dials</h3>
-              <p className="text-xs text-text-dim leading-relaxed mb-4">
-                Operational note: The business coordinates manual stitched towel/fan and customized clothing items under manual hardware configurations. No direct IoT hardware telemetry endpoints exist. Staff members must adjust spools count manually under stockpile logs.
-              </p>
-            </div>
-          </section>
-        );
 
       case 'history':
         // Renders complete database logs for delivered tickets
@@ -627,19 +596,58 @@ export default function AdminPage() {
 
       {/* Main viewport */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full">
-        {/* Sticky Mobile header container */}
-        <header className="min-[651px]:hidden bg-bg-sidebar/95 backdrop-blur-[12px] border-b border-border-glass p-4 flex items-center justify-between sticky top-0 z-[1900] shrink-0">
-          <button
-            onClick={() => setSidebarOpen(!isSidebarOpen)}
-            className="w-10 h-10 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-white cursor-pointer hover:bg-white/10"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-          </button>
-          <span className="font-extrabold text-[1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight">
-            Stitch-Opt Admin
-          </span>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs">
-            AD
+        {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
+        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!isSidebarOpen)}
+              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-white cursor-pointer hover:bg-white/10"
+              aria-label="Toggle navigation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Admin</span>
+              <span className="text-text-dim/40 hidden sm:inline">/</span>
+              <span className="font-bold text-text-main text-base tracking-tight">
+                {tabTitles[activeTab] || 'Dashboard'}
+              </span>
+            </div>
+          </div>
+
+          {/* Top-Right User Profile & Quick Actions */}
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+              <span className="font-medium capitalize">
+                {dbType === 'postgres' || dbType === 'supabase' ? 'Supabase' : dbType}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+                  {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+                </div>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-xs font-bold text-text-main leading-tight truncate max-w-[120px]">
+                    {user?.username || 'Administrator'}
+                  </span>
+                  <span className="text-[0.62rem] text-primary font-bold uppercase tracking-wider">
+                    {user?.role || 'admin'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={logout}
+                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
+                title="Log out of session"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span className="hidden sm:inline text-[0.75rem]">Logout</span>
+              </button>
+            </div>
           </div>
         </header>
 
