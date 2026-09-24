@@ -212,13 +212,15 @@ async function reconcileReservedCounts(tx = prisma) {
         }
     }
 
-    const allProducts = await tx.product.findMany({ select: { id: true } });
+    const allProducts = await tx.product.findMany({ select: { id: true, reservedCount: true } });
     for (const product of allProducts) {
         const expectedReserved = reservedGarments[product.id] || 0;
-        await tx.product.update({
-            where: { id: product.id },
-            data: { reservedCount: expectedReserved }
-        });
+        if (product.reservedCount !== expectedReserved) {
+            await tx.product.update({
+                where: { id: product.id },
+                data: { reservedCount: expectedReserved }
+            });
+        }
     }
 }
 

@@ -39,6 +39,12 @@ export default function PanelManageDesigns({
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [materialQty, setMaterialQty] = useState('');
 
+  // Variant Builder Fields
+  const [variants, setVariants] = useState<{ name: string; color: string; priceOverride?: string }[]>([]);
+  const [variantName, setVariantName] = useState('');
+  const [variantColor, setVariantColor] = useState('#6366f1');
+  const [variantPrice, setVariantPrice] = useState('');
+
   // 1. Filtering Designs
   const filteredProducts = products.filter((p) => {
     const query = searchQuery.toLowerCase();
@@ -59,6 +65,7 @@ export default function PanelManageDesigns({
       setTag(design.tag || 'towel');
       setDescription(design.description || '');
       setRecipe(design.recipe || []);
+      setVariants(design.variants || []);
       setCount(design.count?.toString() || '0');
       setMinThreshold(design.minThreshold?.toString() || '5');
     } else {
@@ -68,13 +75,43 @@ export default function PanelManageDesigns({
       setTag('towel');
       setDescription('');
       setRecipe([]);
+      setVariants([]);
       setCount('0');
       setMinThreshold('5');
     }
     setImageFile(null);
     setSelectedMaterialId('');
     setMaterialQty('');
+    setVariantName('');
+    setVariantColor('#6366f1');
+    setVariantPrice('');
     setIsOpen(true);
+  };
+
+  // Add Variant
+  const addVariantItem = () => {
+    if (!variantName.trim()) {
+      showToast('Variant name is required', 'error');
+      return;
+    }
+    if (variants.some((v) => v.name.toLowerCase() === variantName.trim().toLowerCase())) {
+      showToast('Variant name already added', 'error');
+      return;
+    }
+    setVariants((prev) => [
+      ...prev,
+      {
+        name: variantName.trim(),
+        color: variantColor,
+        priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined
+      }
+    ]);
+    setVariantName('');
+    setVariantPrice('');
+  };
+
+  const removeVariantItem = (index: number) => {
+    setVariants((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   // 3. Add Material to Recipe
@@ -121,12 +158,19 @@ export default function PanelManageDesigns({
     if (!name.trim()) return showToast('Design name is required', 'error');
     if (!price.trim() || isNaN(parseFloat(price))) return showToast('Valid price is required', 'error');
 
+    const formattedVariants = variants.map((v) => ({
+      name: v.name,
+      color: v.color,
+      priceOverride: v.priceOverride ? parseFloat(v.priceOverride) : undefined
+    }));
+
     const formData = new FormData();
     formData.append('name', name.trim());
     formData.append('price', price.trim());
     formData.append('tag', tag);
     formData.append('description', description.trim());
     formData.append('recipe', JSON.stringify(recipe));
+    formData.append('variants', JSON.stringify(formattedVariants));
     formData.append('count', count.trim());
     formData.append('minThreshold', minThreshold.trim());
 
@@ -372,6 +416,76 @@ export default function PanelManageDesigns({
                 className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
               />
             </div>
+          </div>
+
+          {/* Product Variants / Color Options Builder */}
+          <div className="modal-section border border-border-glass p-3 rounded-xl bg-white/5">
+            <label className="modal-label text-primary font-bold flex justify-between items-center">
+              <span>Product Variants / Colors</span>
+              <span className="text-[0.7rem] text-text-dim font-normal">Optional</span>
+            </label>
+            <p className="text-xs text-text-dim mb-3">Add color options or variants for customers to select when ordering.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+              <input
+                type="text"
+                placeholder="Variant Name (e.g. Red, Blue)"
+                value={variantName}
+                onChange={(e) => setVariantName(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2 rounded-lg text-text-main text-xs outline-none"
+              />
+              <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-lg">
+                <input
+                  type="color"
+                  value={variantColor}
+                  onChange={(e) => setVariantColor(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                />
+                <span className="text-xs font-mono text-text-dim">{variantColor}</span>
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Price Override ($)"
+                value={variantPrice}
+                onChange={(e) => setVariantPrice(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2 rounded-lg text-text-main text-xs outline-none font-mono"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addVariantItem}
+              className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-xs py-1.5 px-3 rounded-lg cursor-pointer transition-all w-full mb-3"
+            >
+              + Add Variant Option
+            </button>
+
+            {variants.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                {variants.map((v, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-bg-surface border border-border-glass px-2.5 py-1 rounded-full text-xs"
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/20 inline-block"
+                      style={{ backgroundColor: v.color || '#6366f1' }}
+                    />
+                    <span className="font-semibold text-text-main">{v.name}</span>
+                    {v.priceOverride && (
+                      <span className="text-primary font-mono text-[0.7rem]">${parseFloat(v.priceOverride as any).toFixed(2)}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeVariantItem(idx)}
+                      className="text-text-dim hover:text-danger ml-1 font-bold border-0 bg-transparent cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="modal-section">

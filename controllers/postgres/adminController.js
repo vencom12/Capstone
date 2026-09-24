@@ -206,28 +206,38 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
+const formatCategoryTag = (tag) => {
+    if (!tag) return 'General';
+    return tag
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 exports.createProduct = async (req, res) => {
     try {
         const { name, price, tag, description, count, minThreshold } = req.body;
+        const formattedTag = formatCategoryTag(tag);
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
 
         if (req.file) {
             imageUrl = req.file.path;
         }
 
-        const recipe = req.body.recipe ? JSON.parse(req.body.recipe) : [];
+        const recipe = req.body.recipe ? (typeof req.body.recipe === 'string' ? JSON.parse(req.body.recipe) : req.body.recipe) : [];
+        const variants = req.body.variants ? (typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants) : [];
 
         const { generateEmbedding } = require('../../utils/embeddingClient');
-        const embedding = await generateEmbedding(`${name} ${tag} ${description || ''}`);
+        const embedding = await generateEmbedding(`${name} ${formattedTag} ${description || ''}`);
 
         const newProduct = await prisma.product.create({
             data: { 
                 name, 
                 price: parseFloat(price), 
-                tag, 
+                tag: formattedTag, 
                 description, 
                 imageUrl, 
                 recipe,
+                variants,
                 count: count !== undefined ? parseInt(count) : 0,
                 minThreshold: minThreshold !== undefined ? parseInt(minThreshold) : 5
             }
@@ -255,7 +265,7 @@ exports.updateProduct = async (req, res) => {
         
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = parseFloat(price);
-        if (tag !== undefined) updateData.tag = tag;
+        if (tag !== undefined) updateData.tag = formatCategoryTag(tag);
         if (description !== undefined) updateData.description = description;
 
         if (req.file) {
@@ -265,7 +275,11 @@ exports.updateProduct = async (req, res) => {
         }
 
         if (req.body.recipe) {
-            updateData.recipe = JSON.parse(req.body.recipe);
+            updateData.recipe = typeof req.body.recipe === 'string' ? JSON.parse(req.body.recipe) : req.body.recipe;
+        }
+
+        if (req.body.variants !== undefined) {
+            updateData.variants = typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants;
         }
 
         // Safeguard: Prevent manual stock reductions below active order commitments

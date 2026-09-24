@@ -23,28 +23,6 @@ enum OrderStatus {
   Cancelled
 }
 
-model Tenant {
-  id               String   @id @default(uuid())
-  name             String
-  subdomain        String?  @unique
-  subscriptionTier String   @default("free") // free, pro, enterprise
-  createdAt        DateTime @default(now())
-
-  users          User[]
-  products       Product[]
-  orders         Order[]
-  inventory      Inventory[]
-  machines       Machine[]
-  systemSettings SystemSettings?
-  auditLogs      GlobalAuditLog[]
-  declinedRecs   DeclinedRecommendation[]
-  Transaction    Transaction[]
-  Receipt        Receipt[]
-  SiteTraffic    SiteTraffic[]
-  InventoryLog   InventoryLog[]
-  purchaseOrders PurchaseOrder[]
-}
-
 model User {
   id            String   @id @default(uuid())
   username      String   @unique
@@ -64,11 +42,6 @@ model User {
   receipts     Receipt[]
   favorites    Product[]     @relation("UserFavorites")
   machines     Machine[]
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
 }
 
 model Product {
@@ -80,6 +53,7 @@ model Product {
   description   String?
   imageUrl      String                      @default("https://via.placeholder.com/200")
   recipe        Json? // Array of { inventoryId, name, quantity }
+  variants      Json? // Array of { name, color, imageUrl?, priceOverride? }
   embedding     Unsupported("vector(384)")? // RAG Semantic Search
   views         Int                         @default(0)
   count         Int                         @default(0)
@@ -98,11 +72,7 @@ model Product {
 
   favoritedBy User[] @relation("UserFavorites")
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([createdAt])
-  @@index([tenantId])
 }
 
 model Order {
@@ -147,15 +117,11 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([userId])
   @@index([machineId])
   @@index([status])
   @@index([createdAt])
   @@index([date])
-  @@index([tenantId])
 }
 
 model Inventory {
@@ -169,11 +135,6 @@ model Inventory {
 
   logs           InventoryLog[]
   purchaseOrders PurchaseOrder[]
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
 }
 
 model InventoryLog {
@@ -186,12 +147,8 @@ model InventoryLog {
   userId      String // Who made the change (username or ID)
   timestamp   DateTime  @default(now())
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([inventoryId])
   @@index([timestamp])
-  @@index([tenantId])
 }
 
 model Transaction {
@@ -206,13 +163,9 @@ model Transaction {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-  Order    Order?
+  Order  Order?
 
   @@index([userId])
-  @@index([tenantId])
 }
 
 model Receipt {
@@ -238,15 +191,11 @@ model Receipt {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-  Order    Order?
+  Order  Order?
 
   @@index([userId])
   @@index([orderID])
   @@index([aiVerificationStatus])
-  @@index([tenantId])
 }
 
 model SiteTraffic {
@@ -256,11 +205,7 @@ model SiteTraffic {
   userAgent String?
   isUnique  Boolean  @default(true)
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([timestamp])
-  @@index([tenantId])
 }
 
 model SystemSettings {
@@ -283,11 +228,6 @@ model SystemSettings {
   businessWebsite String @default("www.stitch-opt.com")
   businessLogoUrl String?
   gcashQrCodeUrl  String?
-
-  tenantId String? @unique
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
 }
 
 model GlobalAuditLog {
@@ -301,12 +241,8 @@ model GlobalAuditLog {
   ipAddress String?
   diff      Json?
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([timestamp])
   @@index([userId])
-  @@index([tenantId])
 }
 
 model Machine {
@@ -321,23 +257,14 @@ model Machine {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
   @@index([assignedUserId])
   @@index([status])
-  @@index([tenantId])
 }
 
 model DeclinedRecommendation {
   id         String   @id @default(uuid())
   sugId      String   @unique
   declinedAt DateTime @default(now())
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
 }
 
 model PurchaseOrder {
@@ -349,9 +276,4 @@ model PurchaseOrder {
   estimatedCost Float?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
-
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
-  @@index([tenantId])
 }

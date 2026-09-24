@@ -1479,21 +1479,18 @@ exports.storefrontChat = async (req, res) => {
         // Generate semantic embedding for the user's message
         const { generateEmbedding } = require('../../utils/embeddingClient');
         const queryEmbedding = await generateEmbedding(message);
-        const tenantStorage = require('../../utils/tenantContext');
-        const currentTenantId = tenantStorage.getStore();
 
         let rawProducts = [];
-        if (queryEmbedding && currentTenantId) {
+        if (queryEmbedding) {
             // Perform RAG Vector Search using pgvector cosine distance (<=>)
             rawProducts = await prisma.$queryRaw`
                 SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount"
                 FROM "Product"
-                WHERE "tenantId" = ${currentTenantId}
                 ORDER BY embedding <=> ${queryEmbedding}::vector
                 LIMIT 10
             `;
         } else {
-            // Fallback to recent products if embedding fails or no tenant
+            // Fallback to recent products if embedding fails
             rawProducts = await prisma.product.findMany({ 
                 take: 10,
                 orderBy: { createdAt: 'desc' } 

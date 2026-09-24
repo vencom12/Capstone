@@ -638,6 +638,7 @@ export default function DashboardPage() {
         product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onBuyNow={() => setIsCheckoutOpen(true)}
       />
 
       {/* Checkout Modal */}

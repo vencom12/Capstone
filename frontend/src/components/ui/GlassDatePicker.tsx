@@ -7,21 +7,57 @@ interface GlassDatePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   align?: 'left' | 'right';
+  className?: string;
 }
 
 export default function GlassDatePicker({ 
   value, 
   onChange, 
   placeholder = 'Select date...',
-  align = 'right'
+  align = 'right',
+  className = ''
 }: GlassDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [placementY, setPlacementY] = useState<'top' | 'bottom'>('bottom');
+  const [placementX, setPlacementX] = useState<'left' | 'right'>(align);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Parse current value or default to current date
   const parsedDate = value ? new Date(value) : new Date();
   const [currentYear, setCurrentYear] = useState(parsedDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(parsedDate.getMonth());
+
+  // Check screen width for mobile vs desktop layout
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Compute viewport collision detection whenever opening on desktop/tablet
+  useEffect(() => {
+    if (isOpen && containerRef.current && !isMobile) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceRight = window.innerWidth - rect.left;
+
+      if (spaceBelow < 370 && rect.top > 370) {
+        setPlacementY('top');
+      } else {
+        setPlacementY('bottom');
+      }
+
+      if (spaceRight < 300) {
+        setPlacementX('right');
+      } else {
+        setPlacementX(align);
+      }
+    }
+  }, [isOpen, isMobile, align]);
 
   // Click outside handler to dismiss popover
   useEffect(() => {
@@ -150,17 +186,109 @@ export default function GlassDatePicker({
     if (!dateString) return placeholder;
     const parts = dateString.split('-');
     if (parts.length !== 3) return placeholder;
-    // Format as MM/DD/YYYY directly using string split to avoid timezone offsets
     return `${parts[1]}/${parts[2]}/${parts[0]}`;
   };
 
+  const renderCalendarContent = () => (
+    <div className="w-[285px] max-w-full bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-4 shadow-[0_25px_60px_rgba(0,0,0,0.6)] animate-[fadeIn_0.15s_ease-out]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="font-bold text-[0.95rem] text-text-main">
+          {months[currentMonth]} {currentYear}
+        </span>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            suppressHydrationWarning
+            onClick={handlePrevMonth}
+            className="w-7.5 h-7.5 flex items-center justify-center rounded-lg bg-white/5 border border-border-glass hover:bg-white/10 text-text-main transition-colors cursor-pointer"
+            aria-label="Previous month"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <button
+            type="button"
+            suppressHydrationWarning
+            onClick={handleNextMonth}
+            className="w-7.5 h-7.5 flex items-center justify-center rounded-lg bg-white/5 border border-border-glass hover:bg-white/10 text-text-main transition-colors cursor-pointer"
+            aria-label="Next month"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Days of Week Header */}
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {daysOfWeek.map((day) => (
+          <span key={day} className="text-[0.75rem] font-bold text-text-dim">
+            {day}
+          </span>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {daysGrid.map((item, index) => {
+          const isSelected = value === item.dateString;
+          const isToday = (() => {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = (today.getMonth() + 1).toString().padStart(2, '0');
+            const d = today.getDate().toString().padStart(2, '0');
+            return item.dateString === `${y}-${m}-${d}`;
+          })();
+
+          return (
+            <button
+              key={index}
+              type="button"
+              suppressHydrationWarning
+              onClick={() => handleDateSelect(item.dateString)}
+              className={`
+                w-8.5 h-8.5 flex items-center justify-center text-[0.8rem] rounded-lg transition-all cursor-pointer font-medium
+                ${!item.isCurrentMonth ? 'text-text-dim/30 hover:bg-white/5' : ''}
+                ${item.isCurrentMonth && !isSelected && !isToday ? 'text-text-main hover:bg-white/5 hover:text-white' : ''}
+                ${isToday && !isSelected ? 'border border-primary text-primary font-bold bg-primary/5 shadow-[0_0_8px_rgba(99,102,241,0.2)]' : ''}
+                ${isSelected ? 'bg-primary text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.5)]' : ''}
+              `}
+            >
+              {item.day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Action Footer */}
+      <div className="flex justify-between border-t border-border-glass mt-4 pt-3.5">
+        <button
+          type="button"
+          suppressHydrationWarning
+          onClick={handleClear}
+          className="text-[0.75rem] font-bold text-danger hover:text-danger-light transition-colors cursor-pointer bg-transparent border-none p-1.5"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          suppressHydrationWarning
+          onClick={handleToday}
+          className="text-[0.75rem] font-bold text-primary hover:text-primary-light transition-colors cursor-pointer bg-transparent border-none p-1.5"
+        >
+          Today
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="relative inline-block text-left font-sans" ref={containerRef}>
+    <div className={`relative inline-block text-left font-sans ${className}`} ref={containerRef}>
       {/* Date Toggle Button */}
       <button
         type="button"
+        suppressHydrationWarning
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary hover:shadow-[0_0_12px_rgba(99,102,241,0.1)] transition-all"
+        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary hover:shadow-[0_0_12px_rgba(99,102,241,0.15)] transition-all"
       >
         <span className="font-sans text-text-main font-medium">{formatDateDisplay(value)}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-dim shrink-0">
@@ -171,92 +299,28 @@ export default function GlassDatePicker({
         </svg>
       </button>
 
-      {/* Popover Calendar */}
+      {/* Popover / Modal Calendar */}
       {isOpen && (
-        <div className={`absolute mt-2 w-[285px] bg-bg-card/95 backdrop-blur-[20px] border border-border-glass rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[999] animate-[fadeIn_0.15s_ease-out] ${
-          align === 'left' ? 'left-0' : 'right-0'
-        }`}>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="font-bold text-[0.95rem] text-text-main">
-              {months[currentMonth]} {currentYear}
-            </span>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="w-7.5 h-7.5 flex items-center justify-center rounded-lg bg-white/5 border border-border-glass hover:bg-white/10 text-text-main transition-colors cursor-pointer"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
-              </button>
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="w-7.5 h-7.5 flex items-center justify-center rounded-lg bg-white/5 border border-border-glass hover:bg-white/10 text-text-main transition-colors cursor-pointer"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-              </button>
+        isMobile ? (
+          /* Mobile Viewport Modal Overlay */
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
+            onClick={() => setIsOpen(false)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              {renderCalendarContent()}
             </div>
           </div>
-
-          {/* Days of Week Header */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {daysOfWeek.map((day) => (
-              <span key={day} className="text-[0.75rem] font-bold text-text-dim">
-                {day}
-              </span>
-            ))}
+        ) : (
+          /* Desktop / Tablet Viewport-Clamped Popover */
+          <div className={`absolute z-[999] max-h-[calc(100vh-32px)] overflow-y-auto ${
+            placementY === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+          } ${
+            placementX === 'right' ? 'right-0' : 'left-0'
+          }`}>
+            {renderCalendarContent()}
           </div>
-
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {daysGrid.map((item, index) => {
-              const isSelected = value === item.dateString;
-              const isToday = (() => {
-                const today = new Date();
-                const y = today.getFullYear();
-                const m = (today.getMonth() + 1).toString().padStart(2, '0');
-                const d = today.getDate().toString().padStart(2, '0');
-                return item.dateString === `${y}-${m}-${d}`;
-              })();
-
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleDateSelect(item.dateString)}
-                  className={`
-                    w-8.5 h-8.5 flex items-center justify-center text-[0.8rem] rounded-lg transition-all cursor-pointer font-medium
-                    ${!item.isCurrentMonth ? 'text-text-dim/30 hover:bg-white/5' : ''}
-                    ${item.isCurrentMonth && !isSelected && !isToday ? 'text-text-main hover:bg-white/5 hover:text-white' : ''}
-                    ${isToday && !isSelected ? 'border border-primary text-primary font-bold bg-primary/5 shadow-[0_0_8px_rgba(99,102,241,0.2)]' : ''}
-                    ${isSelected ? 'bg-primary text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.5)]' : ''}
-                  `}
-                >
-                  {item.day}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Action Footer */}
-          <div className="flex justify-between border-t border-border-glass mt-4 pt-3.5">
-            <button
-              type="button"
-              onClick={handleClear}
-              className="text-[0.75rem] font-bold text-danger hover:text-danger-light transition-colors cursor-pointer bg-transparent border-none p-1.5"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={handleToday}
-              className="text-[0.75rem] font-bold text-primary hover:text-primary-light transition-colors cursor-pointer bg-transparent border-none p-1.5"
-            >
-              Today
-            </button>
-          </div>
-        </div>
+        )
       )}
     </div>
   );

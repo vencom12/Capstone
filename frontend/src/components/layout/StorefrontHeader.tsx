@@ -47,6 +47,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       {/* Brand & Hamburger Area - Stays Top Left */}
       <div className="flex items-center gap-3 max-[1250px]:justify-start">
         <button
+          suppressHydrationWarning
           onClick={() => useUIStore.getState().toggleSidebar()}
           className="p-2 rounded-xl bg-white/5 border border-border-glass text-text-main hover:bg-white/10 transition-all cursor-pointer hidden max-[1024px]:flex items-center justify-center shrink-0"
           aria-label="Toggle navigation menu"
@@ -94,7 +95,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
           {/* Animated Options Menu */}
           <div className={`
-            absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden z-[3000] shadow-[0_20px_40px_rgba(0,0,0,0.4)]
+            absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-1.5 z-[3000] shadow-[0_20px_50px_rgba(0,0,0,0.5)] max-h-[250px] overflow-y-auto
             transition-all duration-300 origin-top-left
             ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible'}
           `}>
@@ -107,8 +108,8 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   setIsCategoryOpen(false);
                 }}
                 className={`
-                  w-full text-left px-4 py-3 text-sm font-medium transition-all hover:bg-white/10
-                  ${selectedCategory === c ? 'text-primary bg-primary/10' : 'text-text-dim'}
+                  w-full text-left px-3 py-2 text-xs font-medium rounded-xl transition-all hover:bg-white/10 cursor-pointer border-none bg-transparent block truncate
+                  ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-[0_0_12px_rgba(99,102,241,0.35)]' : 'text-text-main hover:text-white'}
                 `}
               >
                 {c === 'All' ? 'All Designs' : c}

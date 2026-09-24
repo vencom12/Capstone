@@ -20,11 +20,13 @@ export const useBasketStore = create<BasketState>()(
 
       addItem: (item) => {
         set((state) => {
-          const existing = state.items.find((i) => i.productId === item.productId);
+          const existing = state.items.find(
+            (i) => i.productId === item.productId && i.selectedVariant === item.selectedVariant
+          );
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId
+                i.productId === item.productId && i.selectedVariant === item.selectedVariant
                   ? { ...i, quantity: i.quantity + (item.quantity || 1) }
                   : i
               ),
@@ -40,22 +42,26 @@ export const useBasketStore = create<BasketState>()(
                 price: item.price,
                 imageUrl: item.imageUrl,
                 quantity: item.quantity || 1,
+                selectedVariant: item.selectedVariant,
+                selectedColor: item.selectedColor,
               },
             ],
           };
         });
       },
 
-      removeItem: (productId) => {
+      removeItem: (idOrProductId) => {
         set((state) => ({
-          items: state.items.filter((i) => i.productId !== productId),
+          items: state.items.filter((i) => i.id !== idOrProductId && i.productId !== idOrProductId),
         }));
       },
 
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (idOrProductId, quantity) => {
         set((state) => ({
           items: state.items.map((i) =>
-            i.productId === productId ? { ...i, quantity: Math.max(1, quantity) } : i
+            i.id === idOrProductId || i.productId === idOrProductId
+              ? { ...i, quantity: Math.max(1, quantity) }
+              : i
           ),
         }));
       },

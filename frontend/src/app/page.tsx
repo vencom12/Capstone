@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import RightPanel from '@/components/dashboard/RightPanel';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
+import { API_BASE } from '@/lib/api';
 import type { Product } from '@/lib/types';
 
 export default function StorefrontPage() {
@@ -48,7 +49,6 @@ export default function StorefrontPage() {
   // Real-time socket updates for Storefront
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     let activeSocket: any = null;
     let isCancelled = false;
 
@@ -118,6 +118,7 @@ export default function StorefrontPage() {
         product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onBuyNow={() => setIsCheckoutOpen(true)}
       />
 
       <Suspense fallback={null}>
