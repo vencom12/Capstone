@@ -111,19 +111,54 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           <h3 className="font-semibold text-sm md:text-base line-clamp-1">{product.name}</h3>
           <span className="text-primary font-bold text-sm md:text-lg">${product.price.toFixed(2)}</span>
         </div>
-        <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-4 line-clamp-2">
+        <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-2 line-clamp-2">
           {product.description || 'Professional embroidery design.'}
         </p>
-        <GlassButton
-          variant={isOutOfStock ? "secondary" : "primary"}
-          fullWidth
-          size="md"
-          onClick={handleAddToBasket}
-          className="mt-auto"
-          disabled={isOutOfStock}
-        >
-          {isOutOfStock ? "Out of Stock" : "Add to Basket"}
-        </GlassButton>
+
+        {/* Variant color dots hint */}
+        {product.variants && product.variants.length > 0 && (
+          <div className="flex items-center gap-1.5 my-1.5">
+            <span className="text-[10px] text-text-dim font-bold uppercase tracking-wider mr-1">Options:</span>
+            {product.variants.slice(0, 5).map((v, i) => (
+              <span
+                key={i}
+                className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
+                style={{ backgroundColor: v.color || '#6366f1' }}
+                title={v.name}
+              />
+            ))}
+            {product.variants.length > 5 && (
+              <span className="text-[10px] text-text-dim font-bold">+{product.variants.length - 5}</span>
+            )}
+          </div>
+        )}
+        <div className="flex gap-2 mt-auto pt-2">
+          <GlassButton
+            variant="secondary"
+            fullWidth
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickView(product);
+            }}
+            disabled={isOutOfStock}
+          >
+            Add to Basket
+          </GlassButton>
+          <GlassButton
+            variant="primary"
+            fullWidth
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickView(product);
+            }}
+            disabled={isOutOfStock}
+            className="font-bold shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
+          >
+            ⚡ Buy Now
+          </GlassButton>
+        </div>
       </div>
     </div>
   );

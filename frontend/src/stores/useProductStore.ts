@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { api } from '@/lib/api';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
 
+export const formatCategoryName = (str?: string) => {
+  if (!str) return 'General';
+  if (str === 'All') return 'All';
+  return str
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 interface ProductStoreState {
   products: Product[];
   orders: Order[];
@@ -114,14 +122,16 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
         !searchQuery ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || p.tag === selectedCategory;
+      const pTagFormatted = formatCategoryName(p.tag);
+      const matchesCategory = selectedCategory === 'All' || pTagFormatted === selectedCategory || p.tag === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   },
 
   getCategories: () => {
     const { products } = get();
-    const tags = [...new Set(products.map((p) => p.tag).filter(Boolean))];
+    const formattedTags = products.map((p) => formatCategoryName(p.tag)).filter(Boolean);
+    const tags = [...new Set(formattedTags)];
     return ['All', ...tags];
   },
 }));

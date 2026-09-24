@@ -202,34 +202,6 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'stitch_dev_secret'));
 
-// Tenant Storage Middleware
-const tenantStorage = require('./utils/tenantContext');
-app.use((req, res, next) => {
-    let tenantId = null;
-    const token = req.cookies.token || req.cookies.customer_token || req.cookies.admin_token || req.cookies.employee_token;
-    if (token) {
-        try {
-            const decoded = jwt.decode(token);
-            if (decoded && decoded.tenantId) {
-                tenantId = decoded.tenantId;
-            }
-        } catch (e) {}
-    }
-    if (!tenantId && req.headers['x-tenant-id']) {
-        tenantId = req.headers['x-tenant-id'];
-    }
-    if (tenantId) {
-        tenantStorage.run(tenantId, () => {
-            next();
-        });
-    } else {
-        // Unauthenticated or system requests
-        tenantStorage.run(null, () => {
-            next();
-        });
-    }
-});
-
 // CSRF Protection: Issue a token to the client
 app.get('/api/auth/csrf-token', (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');

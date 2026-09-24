@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import { useUIStore } from '@/stores/useUIStore';
@@ -14,9 +13,8 @@ export default function AuthModal() {
   const searchParams = useSearchParams();
   const authParam = searchParams.get('auth'); // 'login' or 'register'
   
-  // Subscribe to Zustand UI Store for instant rendering
   const { isAuthOpen, authMode, setAuthOpen } = useUIStore();
-  const mode = authMode; // elegant map to preserve JSX references
+  const mode = authMode;
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +46,7 @@ export default function AuthModal() {
     }
   }, [authMode]);
 
-  // Listen to deep links (e.g. visiting /?auth=login directly from bookmarks)
+  // Listen to deep links
   useEffect(() => {
     if (authParam === 'login' || authParam === 'register') {
       if (isAuthenticated) {
@@ -62,7 +60,7 @@ export default function AuthModal() {
   const handleClose = () => {
     setAuthOpen(false);
     if (authParam) {
-      router.replace('/'); // clear query param
+      router.replace('/');
     }
   };
 
@@ -74,7 +72,7 @@ export default function AuthModal() {
       if (mode === 'login') {
         const res = await login(email, password, rememberMe, selectedRole);
         if (res.success) {
-          showToast('Logged in successfully!', 'success');
+          showToast('Signed in successfully!', 'success');
           handleClose();
           if (selectedRole === 'admin') {
             window.location.href = '/admin';
@@ -84,13 +82,13 @@ export default function AuthModal() {
             window.location.reload();
           }
         } else {
-          showToast(res.message || 'Login failed', 'error');
+          showToast(res.message || 'Authentication failed', 'error');
         }
       } else {
         const res = await register(username, email, password, phoneNumber, address);
         
         if (res.success) {
-          showToast('Registration successful!', 'success');
+          showToast('Account created successfully!', 'success');
           handleClose();
           window.location.reload();
         } else {
@@ -105,67 +103,69 @@ export default function AuthModal() {
   };
 
   return (
-    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth={mode === 'register' ? 'max-w-[550px]' : 'max-w-[400px]'}>
-      <div className="modal-stack">
-        <div className="text-center mb-2">
-          <h2 className="modal-title-sm">
-            {mode === 'login' ? 'Secure Access' : 'Join Stitch-Opt'}
+    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth={mode === 'register' ? 'max-w-[520px]' : 'max-w-[420px]'}>
+      <div className="flex flex-col gap-4 font-sans text-left">
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="text-xl font-extrabold text-text-main m-0 tracking-tight">
+            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
-          <p className="text-text-dim mt-1 text-xs">
+          <p className="text-text-dim text-xs mt-1 m-0">
             {mode === 'login' 
-              ? 'Enter your details to access your account.' 
-              : 'Sign up to purchase premium designs.'}
+              ? 'Select your access level and sign in to continue' 
+              : 'Join Stitch-Opt to browse & order custom designs'}
           </p>
         </div>
 
-        {/* Role Segmented Tabs (only in Login mode) */}
+        {/* Role Segmented Switcher (Login mode only) */}
         {mode === 'login' && (
-          <div className="bg-white/[0.05] border border-border-glass rounded-xl p-1 flex gap-1 mb-2">
+          <div className="bg-bg-surface border border-border-glass rounded-2xl p-1 flex gap-1 shadow-inner">
             {(['customer', 'employee', 'admin'] as const).map((role) => (
               <button
                 key={role}
                 type="button"
+                suppressHydrationWarning
                 onClick={() => setSelectedRole(role)}
                 className={`
-                  flex-1 py-1.5 rounded-lg text-[0.75rem] font-bold transition-all border-none cursor-pointer text-center capitalize
+                  flex-1 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer text-center capitalize
                   ${selectedRole === role
-                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(99,102,241,0.3)] font-extrabold'
+                    ? 'bg-primary text-white shadow-[0_4px_14px_rgba(99,102,241,0.4)] font-bold scale-[1.02]'
                     : 'bg-transparent text-text-dim hover:text-text-main hover:bg-white/5'
                   }
                 `}
               >
-                {role}
+                {role === 'employee' ? 'Staff' : role}
               </button>
             ))}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {/* Form Fields */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           {mode === 'register' && (
             <div className="grid grid-cols-2 gap-3 max-[650px]:grid-cols-1">
               <div className="flex flex-col gap-1">
-                <label className="modal-label ml-1">Username *</label>
+                <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username *</label>
                 <input 
                   type="text" 
                   required 
-                  placeholder="johndoe"
+                  placeholder="e.g. johndoe"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
+                  className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-center ml-1">
-                  <label className="modal-label">Phone Number</label>
-                  <span className="text-[0.65rem] text-text-dim">PH Format (09XX / +63)</span>
+                  <label className="text-[0.75rem] font-bold text-text-dim">Phone Number</label>
+                  <span className="text-[0.65rem] text-text-dim/80">(PH Format)</span>
                 </div>
                 <input 
                   type="tel" 
-                  placeholder="0917 123 4567 or +63 917..."
+                  placeholder="0917 123 4567"
                   value={phoneNumber}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    // Format Philippine numbers nicely as user types
                     let formatted = raw;
                     if (raw.startsWith('09') && raw.length === 11) {
                       formatted = `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`;
@@ -174,17 +174,17 @@ export default function AuthModal() {
                     }
                     setPhoneNumber(formatted);
                   }}
-                  className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
+                  className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all"
                 />
               </div>
             </div>
           )}
           
           <div className="flex flex-col gap-1">
-            <label className="modal-label ml-1">
+            <label className="text-[0.75rem] font-bold text-text-dim ml-1">
               {mode === 'login' 
                 ? selectedRole === 'employee' 
-                  ? 'Staff ID / Email' 
+                  ? 'Staff Username / Email' 
                   : selectedRole === 'admin' 
                     ? 'Admin ID / Email' 
                     : 'Username / Email'
@@ -196,34 +196,36 @@ export default function AuthModal() {
               placeholder={
                 mode === 'login' 
                   ? selectedRole === 'employee' 
-                    ? 'e.g. EMP-001' 
+                    ? 'e.g. EMP-001 or email' 
                     : selectedRole === 'admin' 
-                      ? 'Admin ID' 
+                      ? 'e.g. admin or email' 
                       : 'e.g. johndoe'
                   : 'you@example.com'
               }
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
+              className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="modal-label ml-1">Password *</label>
+            <label className="text-[0.75rem] font-bold text-text-dim ml-1">Password *</label>
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
                 required 
-                minLength={8}
+                minLength={6}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-3 py-2 pr-10 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all"
+                className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 pr-10 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all"
               />
               <button 
                 type="button"
+                suppressHydrationWarning
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1 transition-colors"
+                aria-label="Toggle password visibility"
               >
                 {showPassword ? (
                   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none">
@@ -244,28 +246,29 @@ export default function AuthModal() {
           {mode === 'register' && (
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center ml-1">
-                <label className="modal-label">Delivery Address</label>
-                <span className="text-[0.65rem] text-primary">Optional (can add during checkout)</span>
+                <label className="text-[0.75rem] font-bold text-text-dim">Delivery Address</label>
+                <span className="text-[0.65rem] text-primary">Optional</span>
               </div>
               <textarea 
-                placeholder="123 Street, City, Province, ZIP (Optional)"
+                placeholder="Street address, City, Province, ZIP"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-sm outline-none focus:border-primary transition-all min-h-[50px] resize-none"
+                className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all min-h-[50px] resize-none"
               />
             </div>
           )}
 
           {mode === 'login' && (
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="login-remember"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-3.5 h-3.5 cursor-pointer accent-primary" 
-              />
-              <label htmlFor="login-remember" className="text-[0.8rem] text-text-dim cursor-pointer m-0">Stay logged in</label>
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-text-dim hover:text-text-main transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer accent-primary rounded" 
+                />
+                <span>Remember me on this device</span>
+              </label>
             </div>
           )}
 
@@ -273,44 +276,30 @@ export default function AuthModal() {
             type="submit" 
             variant="primary" 
             fullWidth 
-            className="mt-2 py-2"
+            size="lg"
+            className="mt-1 font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(99,102,241,0.35)]"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Processing...' : (mode === 'login' ? 'Establish Link' : 'Secure Registration')}
+            {isSubmitting 
+              ? 'Authenticating...' 
+              : (mode === 'login' ? `Sign In as ${selectedRole === 'customer' ? 'Customer' : selectedRole === 'employee' ? 'Staff' : 'Admin'}` : 'Create Account')}
           </GlassButton>
         </form>
 
-        <div className="text-center">
-          <span className="text-text-dim text-[0.8rem]">
-            {mode === 'login' ? "No account? " : "Already have an account? "}
+        {/* Toggle between Login and Register */}
+        <div className="text-center pt-2 border-t border-border-glass flex items-center justify-center gap-1.5">
+          <span className="text-text-dim text-xs">
+            {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
           </span>
           <button 
+            type="button"
+            suppressHydrationWarning
             onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login')}
-            className="bg-transparent border-none text-primary font-bold text-[0.8rem] hover:text-white cursor-pointer transition-colors"
+            className="bg-transparent border-none text-primary font-bold text-xs hover:text-white cursor-pointer transition-colors underline"
           >
-            {mode === 'login' ? "Create one here" : "Sign In"}
+            {mode === 'login' ? "Register Now" : "Sign In"}
           </button>
         </div>
-
-        {mode === 'login' && (
-          <div className="pt-4 border-t border-border-glass flex justify-around text-[0.75rem]">
-            <span className="text-text-dim font-bold">Staff Access:</span>
-            <button 
-              type="button" 
-              onClick={() => setSelectedRole('admin')}
-              className="bg-transparent border-none text-primary font-bold hover:text-white cursor-pointer transition-colors text-[0.75rem]"
-            >
-              Admin Panel
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setSelectedRole('employee')}
-              className="bg-transparent border-none text-primary font-bold hover:text-white cursor-pointer transition-colors text-[0.75rem]"
-            >
-              Staff Terminal
-            </button>
-          </div>
-        )}
       </div>
     </GlassModal>
   );

@@ -77,14 +77,22 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
                 )}
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="font-semibold text-[0.9rem] truncate">{item.name}</span>
+                  {item.selectedVariant && (
+                    <span className="text-[0.7rem] text-primary flex items-center gap-1 font-medium -mt-0.5 mb-0.5">
+                      {item.selectedColor && (
+                        <span className="w-2 h-2 rounded-full inline-block border border-white/20" style={{ backgroundColor: item.selectedColor }} />
+                      )}
+                      {item.selectedVariant}
+                    </span>
+                  )}
                   <span className="text-primary font-bold text-[0.85rem]">${item.price.toFixed(2)}</span>
                   <div className="flex items-center justify-between mt-1.5">
                     <div className="flex items-center gap-2 bg-black/20 rounded-md px-1.5 py-0.5">
-                      <button onClick={() => handleQuantityChange(item.productId, item.quantity - 1)} className="text-text-dim hover:text-white bg-transparent border-none cursor-pointer px-1">-</button>
+                      <button onClick={() => handleQuantityChange(item.id || item.productId, item.quantity - 1)} className="text-text-dim hover:text-white bg-transparent border-none cursor-pointer px-1">-</button>
                       <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
-                      <button onClick={() => handleQuantityChange(item.productId, item.quantity + 1)} className="text-text-dim hover:text-white bg-transparent border-none cursor-pointer px-1">+</button>
+                      <button onClick={() => handleQuantityChange(item.id || item.productId, item.quantity + 1)} className="text-text-dim hover:text-white bg-transparent border-none cursor-pointer px-1">+</button>
                     </div>
-                    <button onClick={() => removeItem(item.productId)} className="text-danger hover:text-white bg-transparent border-none cursor-pointer p-1">
+                    <button onClick={() => removeItem(item.id)} className="text-danger hover:text-white bg-transparent border-none cursor-pointer p-1">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                   </div>

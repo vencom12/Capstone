@@ -12,6 +12,13 @@ export interface User {
   createdAt: string;
 }
 
+export interface ProductVariant {
+  name: string;
+  color?: string;
+  imageUrl?: string;
+  priceOverride?: number;
+}
+
 export interface Product {
   id: string;
   _id?: string; // MongoDB compatibility
@@ -22,6 +29,7 @@ export interface Product {
   description?: string;
   imageUrl: string;
   recipe?: RecipeItem[];
+  variants?: ProductVariant[];
   views?: number;
   count?: number;
   reservedCount?: number;
@@ -43,6 +51,8 @@ export interface OrderItem {
   price: number;
   quantity: number;
   imageUrl?: string;
+  selectedVariant?: string;
+  selectedColor?: string;
 }
 
 export interface Order {
@@ -103,6 +113,8 @@ export interface BasketItem {
   price: number;
   imageUrl?: string;
   quantity: number;
+  selectedVariant?: string;
+  selectedColor?: string;
 }
 
 export interface DashboardState {

@@ -121,7 +121,7 @@ exports.submitOrder = async (req, res) => {
                 const productId = item.productId || item.id;
                 // Execute SELECT FOR UPDATE to lock this product row
                 const products = await tx.$queryRaw`
-                    SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount", recipe, "tenantId", embedding::text FROM "Product" WHERE id = ${productId} FOR UPDATE
+                    SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount", recipe, embedding::text FROM "Product" WHERE id = ${productId} FOR UPDATE
                 `;
                 const product = products[0];
                 if (!product) {
@@ -185,7 +185,6 @@ exports.submitOrder = async (req, res) => {
                     orderId: secureOrderId,
                     client: user.username,
                     userId: user.id,
-                    tenantId: user.tenantId || null,
                     design: "Cart Order",
                     items: items, // JSON field
                     totalAmount: numTotal,
@@ -215,8 +214,7 @@ exports.submitOrder = async (req, res) => {
                     status: isInstantApproved ? 'completed' : 'pending',
                     receiptLink: receiptUrl || `/api/customer/receipt/${secureReceiptId}/download`,
                     receiptId: secureReceiptId,
-                    userId: user.id,
-                    tenantId: user.tenantId || null
+                    userId: user.id
                 }
             });
 
@@ -230,8 +228,7 @@ exports.submitOrder = async (req, res) => {
                     status: isInstantApproved ? 'Paid' : 'Pending',
                     aiVerificationStatus: isInstantApproved ? 'verified' : 'pending',
                     imageUrl: receiptUrl || null,
-                    userId: user.id,
-                    tenantId: user.tenantId || null
+                    userId: user.id
                 }
             });
 
@@ -241,12 +238,12 @@ exports.submitOrder = async (req, res) => {
                 data: { transactionId: transaction.id, receiptId: receipt.id }
             });
 
-            // 8. Reconcile reserved counts to ensure DB columns are clean
-            const { reconcileReservedCounts } = require('../../utils/inventoryManager');
-            await reconcileReservedCounts(tx);
-
             return updatedOrder;
         });
+
+        // 8. Reconcile reserved counts asynchronously outside transaction
+        const { reconcileReservedCounts } = require('../../utils/inventoryManager');
+        reconcileReservedCounts(prisma).catch(err => console.error('reconcileReservedCounts background error:', err));
 
         // Socket notifications
         const updatedUser = await prisma.user.findUnique({ where: { id: userId } });

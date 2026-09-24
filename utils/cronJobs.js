@@ -1,5 +1,6 @@
 const prisma = require('./prisma');
-
+// the cronjobs has different version thats why it is not being read by the system 
+// cuz the system is using the newer version of the react framework
 // Cleans up old logs to keep the Supabase 500MB Free Tier from filling up
 const runDatabaseCleanup = async () => {
     try {

@@ -5,15 +5,19 @@
 
 const getApiBase = () => {
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' && window.location.port === '3000') {
-      return 'http://localhost:5001';
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost && window.location.port === '3000') {
+      return `${window.location.protocol}//${window.location.hostname}:5001`;
+    }
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL;
     }
     return window.location.origin;
   }
-  return '';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 };
 
-export const API_BASE = typeof window !== 'undefined' ? getApiBase() : (process.env.NEXT_PUBLIC_API_URL || '');
+export const API_BASE = typeof window !== 'undefined' ? getApiBase() : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001');
 
 let _csrfToken: string | null = null;
 
@@ -87,7 +91,8 @@ export async function apiFetch<T = unknown>(
     throw e;
   }
 }
-
+// There is an error here and it needs to fixed, there is a problem with the fetch api, 
+// there is a reason why the system is not switching to the mongodb if the system is opened offline
 // Convenience methods
 export const api = {
   get: <T = unknown>(url: string) => apiFetch<T>(url),
