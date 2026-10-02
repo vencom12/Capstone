@@ -661,7 +661,7 @@ export default function PanelSettings({
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">₱</span>
                   <input 
                     type="number" 
                     value={giftPrice}

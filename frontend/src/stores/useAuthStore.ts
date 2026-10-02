@@ -13,6 +13,12 @@ interface AuthState {
 
   login: (email: string, password: string, rememberMe?: boolean, role?: 'customer' | 'employee' | 'admin') => Promise<AuthResponse>;
   register: (username: string, email: string, password: string, phoneNumber?: string, address?: string) => Promise<AuthResponse>;
+  sendPhoneOtp: (username: string, email: string, phoneNumber: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
+  resendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
+  registerWithOtp: (data: { username: string; email: string; password: string; phoneNumber: string; address?: string; code: string }) => Promise<AuthResponse>;
+  resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
+  checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
+  verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;
@@ -77,6 +83,66 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      sendPhoneOtp: async (username, email, phoneNumber) => {
+        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
+          '/api/auth/phone/send-otp',
+          { username, email, phoneNumber }
+        );
+      },
+
+      resendPhoneOtp: async (phoneNumber) => {
+        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
+          '/api/auth/phone/resend-otp',
+          { phoneNumber }
+        );
+      },
+
+      registerWithOtp: async (payload) => {
+        set({ isLoading: true });
+        try {
+          const data = await api.post<{ user: User }>('/api/auth/register-with-otp', payload);
+          set({ user: data.user, isAuthenticated: true, isLoading: false });
+          return { success: true, user: data.user };
+        } catch (err) {
+          set({ isLoading: false });
+          return { success: false, message: err instanceof Error ? err.message : 'Verification failed' };
+        }
+      },
+
+      resendEmailVerification: async () => {
+        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
+          '/api/auth/email/resend',
+          {}
+        );
+      },
+
+      checkEmailStatus: async () => {
+        const data = await api.get<{ success: boolean; isEmailVerified: boolean; email: string }>(
+          '/api/auth/email/status'
+        );
+        // Update the local user state if verified
+        const currentUser = get().user;
+        if (currentUser && data.isEmailVerified && !currentUser.isEmailVerified) {
+          set({ user: { ...currentUser, isEmailVerified: true } });
+        }
+        return { isEmailVerified: data.isEmailVerified, email: data.email };
+      },
+
+      verifyEmailToken: async (token: string) => {
+        const data = await api.post<{ success: boolean; message: string }>(
+          '/api/auth/email/verify',
+          { token }
+        );
+        // Update local user state on successful verification
+        if (data.success) {
+          const currentUser = get().user;
+          if (currentUser) {
+            set({ user: { ...currentUser, isEmailVerified: true } });
+          }
+        }
+        return data;
+      },
+
       logout: async () => {
         try {
           // Clear other stores first to ensure UI updates immediately
@@ -105,7 +171,8 @@ export const useAuthStore = create<AuthState>()(
               user: { 
                 ...get().user!, 
                 walletBalance: data.walletBalance,
-                address: data.address 
+                address: data.address,
+                isEmailVerified: data.isEmailVerified ?? get().user!.isEmailVerified,
               } 
             });
           }

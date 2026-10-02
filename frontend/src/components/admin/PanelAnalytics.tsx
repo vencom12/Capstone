@@ -236,7 +236,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
           <p className="text-xs text-text-dim m-0 font-semibold mb-1">{label}</p>
           {payload.map((p: any, idx: number) => {
             const isRev = p.name?.toLowerCase().includes('revenue');
-            const val = isRev ? `$${parseFloat(p.value).toFixed(2)}` : p.value;
+            const val = isRev ? `₱${parseFloat(p.value).toFixed(2)}` : p.value;
             return (
               <p key={idx} className="text-sm font-bold m-0" style={{ color: p.color || '#6366f1' }}>
                 {p.name}: {val}
@@ -284,7 +284,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
             <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">Projected 7-Day Revenue</span>
             <span className="text-xl font-extrabold text-success mt-1.5">
               {biData?.projections?.forecast?.revenue 
-                ? `$${biData.projections.forecast.revenue.reduce((a: number, b: number) => a + b, 0).toFixed(2)}` 
+                ? `₱${biData.projections.forecast.revenue.reduce((a: number, b: number) => a + b, 0).toFixed(2)}` 
                 : 'Projecting...'}
             </span>
             <span className="text-[0.65rem] text-text-dim mt-0.5">Estimated revenue for upcoming week</span>
@@ -410,7 +410,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
         <div className="glass-card flex flex-col text-left">
           <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Average Order Value</span>
           <span className="text-2xl font-bold text-primary mt-1.5">
-            ${avgOrderValue.toFixed(2)}
+            ₱{avgOrderValue.toFixed(2)}
           </span>
           <span className="text-xs text-primary font-semibold mt-1">Calculated from total realized sales</span>
         </div>

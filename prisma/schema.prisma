@@ -31,6 +31,8 @@ model User {
   role          Role     @default(customer)
   walletBalance Float    @default(0)
   phoneNumber   String?
+  isPhoneVerified Boolean @default(false)
+  isEmailVerified Boolean @default(false)
   address       String?
   preferredDeliveryTime String?
   tokenVersion  Int      @default(0)
@@ -277,3 +279,28 @@ model PurchaseOrder {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 }
+
+model PhoneVerification {
+  id          String   @id @default(uuid())
+  phoneNumber String   @unique
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  lastSentAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([phoneNumber, expiresAt])
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+

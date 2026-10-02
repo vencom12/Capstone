@@ -829,3 +829,70 @@ exports.uploadGCashQr = async (req, res) => {
         res.status(500).json({ message: 'Error uploading GCash QR code' });
     }
 };
+
+exports.getGlobalAuditLogs = async (req, res) => {
+    try {
+        const { entity, action, search, limit = 100, page = 1 } = req.query;
+        const take = Math.min(parseInt(limit) || 100, 200);
+        const skip = (Math.max(parseInt(page) || 1, 1) - 1) * take;
+
+        const where = {};
+        if (entity && entity !== 'All') {
+            where.entity = entity;
+        }
+        if (action && action !== 'All') {
+            where.action = action;
+        }
+        if (search) {
+            where.OR = [
+                { action: { contains: search, mode: 'insensitive' } },
+                { entity: { contains: search, mode: 'insensitive' } },
+                { entityId: { contains: search, mode: 'insensitive' } },
+                { ipAddress: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        const [totalCount, logs] = await Promise.all([
+            prisma.globalAuditLog.count({ where }),
+            prisma.globalAuditLog.findMany({
+                where,
+                orderBy: { timestamp: 'desc' },
+                take,
+                skip
+            })
+        ]);
+
+        // Enrich with user names
+        const userIds = [...new Set(logs.map(l => l.userId).filter(Boolean))];
+        let userMap = {};
+        if (userIds.length > 0) {
+            const users = await prisma.user.findMany({
+                where: { id: { in: userIds } },
+                select: { id: true, username: true, email: true, role: true }
+            });
+            userMap = users.reduce((acc, u) => {
+                acc[u.id] = u;
+                return acc;
+            }, {});
+        }
+
+        const enrichedLogs = logs.map(l => ({
+            ...l,
+            user: l.userId ? (userMap[l.userId] || { username: 'Unknown User', role: l.userRole }) : null
+        }));
+
+        res.json({
+            logs: enrichedLogs,
+            pagination: {
+                totalCount,
+                currentPage: parseInt(page) || 1,
+                totalPages: Math.ceil(totalCount / take) || 1,
+                limit: take
+            }
+        });
+    } catch (err) {
+        console.error('getGlobalAuditLogs error:', err);
+        res.status(500).json({ message: 'Error fetching global audit logs' });
+    }
+};
+

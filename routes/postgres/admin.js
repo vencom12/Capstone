@@ -28,6 +28,7 @@ router.get('/users', adminAuth(), adminController.getAllUsers);
 router.post('/users', adminAuth(), auditLogger('User', 'CREATE_USER'), adminController.createUser);
 router.put('/users/:id', adminAuth(), auditLogger('User', 'UPDATE_USER'), adminController.updateUser);
 router.delete('/users/:id', adminAuth(), auditLogger('User', 'DELETE_USER'), adminController.deleteUser);
+router.get('/audit-logs', adminAuth(), adminController.getGlobalAuditLogs);
 router.get('/analytics', adminAuth(), adminController.getAnalytics);
 router.get('/settings', adminAuth(), adminController.getSettings);
 router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);

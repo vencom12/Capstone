@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import type { Product } from '@/lib/types';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -109,7 +109,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         </span>
         <div className="flex justify-between items-baseline mb-1">
           <h3 className="font-semibold text-sm md:text-base line-clamp-1">{product.name}</h3>
-          <span className="text-primary font-bold text-sm md:text-lg">${product.price.toFixed(2)}</span>
+          <span className="text-primary font-bold text-sm md:text-lg">₱{product.price.toFixed(2)}</span>
         </div>
         <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-2 line-clamp-2">
           {product.description || 'Professional embroidery design.'}

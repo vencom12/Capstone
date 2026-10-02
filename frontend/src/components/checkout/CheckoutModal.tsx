@@ -109,7 +109,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       if (verifyRes.success) {
         setPaymentVerified(true);
         const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
-        setAiVerificationResult(`✅ Verified${conf ? ` (${conf} confidence)` : ''} — Amount: $${verifyRes.aiResult?.extractedAmount?.toFixed(2) || '?'}`);
+        setAiVerificationResult(`✅ Verified${conf ? ` (${conf} confidence)` : ''} — Amount: ₱${verifyRes.aiResult?.extractedAmount?.toFixed(2) || '?'}`);
         showToast('StitchMaster AI: Payment verified! Your order is now in the queue.', 'success');
         await refreshUser();
         await fetchDashboardState();
@@ -232,21 +232,32 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             <div className="flex flex-col gap-3 border-t border-border-glass pt-5 max-[650px]:pt-3 max-[650px]:gap-2">
               <h3 className="text-[0.9rem] font-bold m-0">Order Summary</h3>
               <div className="max-h-[200px] max-[650px]:max-h-[120px] overflow-y-auto pr-2 flex flex-col gap-2">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center p-3 bg-white/5 border border-border-glass/50 rounded-xl">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-[0.85rem]">{item.name}</span>
-                      <span className="text-[0.75rem] text-text-dim">Qty: {item.quantity}</span>
+                {items.map((item) => {
+                  const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                  return (
+                    <div key={item.id} className="flex justify-between items-start p-3 bg-white/5 border border-border-glass/50 rounded-xl">
+                      <div className="flex flex-col text-left">
+                        <span className="font-bold text-[0.85rem]">{item.name}</span>
+                        <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5">
+                          {item.selectedColor && (
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0" 
+                              style={{ backgroundColor: item.selectedColor }} 
+                            />
+                          )}
+                          <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono font-bold text-[0.9rem]">₱{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
-                    <span className="font-mono font-bold text-[0.9rem]">${(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {/* Gift Suite Upsell */}
               <div className="flex flex-col gap-2 mt-2 bg-primary/10 border border-primary/20 p-3 rounded-xl transition-all">
                  <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={giftPackaging} onChange={(e) => setGiftPackaging(e.target.checked)} className="accent-primary w-4 h-4" />
-                    <span className="text-[0.85rem] font-bold text-primary">Add Luxury Gift Suite (+${giftPackagingPrice.toFixed(2)})</span>
+                    <span className="text-[0.85rem] font-bold text-primary">Add Luxury Gift Suite (+₱{giftPackagingPrice.toFixed(2)})</span>
                  </label>
                  {giftPackaging && (
                     <div className="flex flex-col animate-[fadeIn_0.3s_ease-out]">
@@ -272,7 +283,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
               <div className="flex justify-between items-center px-2 mt-1">
                 <span className="font-bold text-base">Total Amount:</span>
-                <span className="text-xl font-extrabold text-primary font-mono">${finalTotal.toFixed(2)}</span>
+                <span className="text-xl font-extrabold text-primary font-mono">₱{finalTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>

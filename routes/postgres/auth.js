@@ -33,6 +33,12 @@ const profileValidation = [
 ];
 
 router.post('/register', registerValidation, authController.register);
+router.post('/phone/send-otp', authController.sendRegistrationOtp);
+router.post('/phone/resend-otp', authController.resendPhoneOtp);
+router.post('/register-with-otp', authController.registerWithPhoneOtp);
+router.post('/email/verify', authController.verifyEmail);
+router.post('/email/resend', auth(), authController.resendVerificationEmail);
+router.get('/email/status', auth(), authController.emailVerificationStatus);
 router.post('/login', loginValidation, authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', auth(), authController.me);

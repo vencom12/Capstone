@@ -33,6 +33,7 @@ export default function PanelOverview({
   const [dateFilter, setDateFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState('');
+  const [queueTab, setQueueTab] = useState<string>('all');
 
   // Receipt Modal State
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
@@ -59,7 +60,9 @@ export default function PanelOverview({
       !dateFilter ||
       new Date(o.date || o.createdAt).toISOString().split('T')[0] === dateFilter;
 
-    return matchesSearch && matchesDate;
+    const matchesTab = queueTab === 'all' || o.status === queueTab;
+
+    return matchesSearch && matchesDate && matchesTab;
   });
 
   // Calculate Queued and Realized Revenue
@@ -235,11 +238,11 @@ export default function PanelOverview({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-1.5" id="ai-insights-container">
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
             <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Predicted Revenue</span>
-            <span className="text-lg font-extrabold text-success mt-1">${queuedRevenue.toFixed(2)}</span>
+            <span className="text-lg font-extrabold text-success mt-1">₱{queuedRevenue.toFixed(2)}</span>
           </div>
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
             <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Actual Revenue</span>
-            <span className="text-lg font-extrabold text-primary mt-1">${realizedRevenue.toFixed(2)}</span>
+            <span className="text-lg font-extrabold text-primary mt-1">₱{realizedRevenue.toFixed(2)}</span>
           </div>
           <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all relative group">
             <div className="flex items-center justify-between">
@@ -282,6 +285,38 @@ export default function PanelOverview({
               />
             </div>
           </div>
+
+          {/* Status Tab Navigation */}
+          {(() => {
+            const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
+            const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+            const tabs = [
+              { key: 'all', label: 'All Active', count: allActiveOrders.length },
+              ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
+            ];
+            return (
+              <div className="flex gap-2 flex-wrap mb-3 border-b border-border-glass/30 pb-3">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setQueueTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      queueTab === tab.key
+                        ? 'bg-primary text-white border-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                        : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
+                      queueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Batch operations desk (auto-applies when a status is selected) */}
           <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
@@ -374,19 +409,26 @@ export default function PanelOverview({
                         </td>
                         <td className="glass-td text-left text-sm">
                           {o.items && Array.isArray(o.items) ? (
-                            <div className="flex flex-col gap-0.5 max-w-[250px] truncate">
-                              {o.items.map((item: any, idx: number) => (
-                                <span key={idx} className="truncate">
-                                  {item.quantity}x {item.name}
-                                </span>
-                              ))}
+                            <div className="flex flex-col gap-1 max-w-[250px]">
+                              {o.items.map((item: any, idx: number) => {
+                                const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                return (
+                                  <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
+                                    {item.selectedColor && (
+                                      <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                    )}
+                                    <span className="font-medium">{item.quantity}x {item.name}</span>
+                                    {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <span>{o.design || 'Embroidery Design'}</span>
                           )}
                         </td>
                         <td className="glass-td text-left font-mono font-bold text-sm text-primary">
-                          ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                          ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
                         </td>
                         <td className="glass-td text-left">
                           <span
@@ -502,17 +544,26 @@ export default function PanelOverview({
                       </span>
                       <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
                         {o.items && Array.isArray(o.items) ? (
-                          o.items.map((item: any, idx: number) => (
-                            <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
-                              {item.quantity}x {item.name}
-                            </div>
-                          ))
+                          o.items.map((item: any, idx: number) => {
+                            const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                            return (
+                              <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {item.selectedColor && (
+                                    <span className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                  )}
+                                  <span className="truncate">{item.quantity}x {item.name}</span>
+                                </div>
+                                {variantText && <span className="text-text-dim text-[0.7rem] shrink-0 font-sans">({variantText})</span>}
+                              </div>
+                            );
+                          })
                         ) : (
                           <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
                         )}
                       </div>
                       <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left">
-                        ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                        ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -640,7 +691,7 @@ export default function PanelOverview({
               <div className="modal-box">
                 <span className="modal-label block">Total Paid</span>
                 <span className="modal-text-sm font-extrabold text-primary font-mono">
-                  ${parseFloat(receiptDetails.amount || 0).toFixed(2)}
+                  ₱{parseFloat(receiptDetails.amount || 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -658,7 +709,7 @@ export default function PanelOverview({
                         {item.name} <b className="text-primary ml-1">x{item.quantity}</b>
                       </span>
                       <span className="font-mono text-text-dim font-bold">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ₱{(item.price * item.quantity).toFixed(2)}
                       </span>
                     </div>
                   ))

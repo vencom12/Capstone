@@ -21,12 +21,12 @@ export const useBasketStore = create<BasketState>()(
       addItem: (item) => {
         set((state) => {
           const existing = state.items.find(
-            (i) => i.productId === item.productId && i.selectedVariant === item.selectedVariant
+            (i) => i.productId === item.productId && i.selectedVariant === item.selectedVariant && i.selectedSize === item.selectedSize
           );
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId && i.selectedVariant === item.selectedVariant
+                i.productId === item.productId && i.selectedVariant === item.selectedVariant && i.selectedSize === item.selectedSize
                   ? { ...i, quantity: i.quantity + (item.quantity || 1) }
                   : i
               ),
@@ -44,6 +44,7 @@ export const useBasketStore = create<BasketState>()(
                 quantity: item.quantity || 1,
                 selectedVariant: item.selectedVariant,
                 selectedColor: item.selectedColor,
+                selectedSize: item.selectedSize,
               },
             ],
           };

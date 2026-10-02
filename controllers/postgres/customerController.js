@@ -573,9 +573,11 @@ exports.downloadReceipt = async (req, res) => {
 
         // Items
         items.forEach(item => {
-            const name = (item.name || 'Design').substring(0, 17).padEnd(18);
-            const qty = '1'.padEnd(6);
-            const price = `$${parseFloat(item.price).toFixed(2)}`.padStart(8);
+            const variantInfo = [item.selectedVariant, item.selectedSize ? `Size:${item.selectedSize}` : ''].filter(Boolean).join(' ');
+            const displayName = variantInfo ? `${item.name || 'Design'} (${variantInfo})` : (item.name || 'Design');
+            const name = displayName.substring(0, 20).padEnd(20);
+            const qty = String(item.quantity || 1).padEnd(4);
+            const price = `$${(parseFloat(item.price || 0) * (item.quantity || 1)).toFixed(2)}`.padStart(8);
             doc.text(name + qty + price, { align: 'center' });
             doc.moveDown(0.2);
         });

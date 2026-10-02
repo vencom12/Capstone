@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import type { Product, ProductVariant } from '@/lib/types';
@@ -177,8 +177,8 @@ export default function ProductModal({
 
           <div className="flex justify-between items-center">
             <div className="text-2xl font-extrabold text-primary font-mono max-[650px]:text-xl">
-              ${(effectivePrice * quantity).toFixed(2)}
-              {quantity > 1 && <span className="text-xs text-text-dim font-sans ml-2">(${effectivePrice.toFixed(2)} each)</span>}
+              ₱{(effectivePrice * quantity).toFixed(2)}
+              {quantity > 1 && <span className="text-xs text-text-dim font-sans ml-2">(₱{effectivePrice.toFixed(2)} each)</span>}
             </div>
             <span className="text-xs text-text-dim font-medium">Stock: {availableStock} units</span>
           </div>
