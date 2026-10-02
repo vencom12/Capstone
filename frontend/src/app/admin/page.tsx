@@ -11,9 +11,9 @@ import PanelOverview from '@/components/admin/PanelOverview';
 import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
-import PanelFleetManagement from '@/components/admin/PanelFleetManagement';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
 import PanelSettings from '@/components/admin/PanelSettings';
+import PanelAuditTrail from '@/components/admin/PanelAuditTrail';
 
 // Common Components
 import dynamic from 'next/dynamic';
@@ -39,11 +39,10 @@ export default function AdminPage() {
     overview: 'Overview',
     products: 'Products',
     materials: 'Materials',
-    production: 'Live Production & Fleet',
-    fleet: 'Live Production & Fleet',
     staffing: 'Personnel',
     analytics: 'Analytics',
     history: 'Order History',
+    audit: 'Audit Trail',
     settings: 'Settings'
   };
 
@@ -339,9 +338,6 @@ export default function AdminPage() {
             refreshData={fetchAdminData}
           />
         );
-      case 'production':
-      case 'fleet':
-        return <PanelFleetManagement users={users} />;
       case 'staffing':
         return (
           <PanelStaffing
@@ -416,18 +412,25 @@ export default function AdminPage() {
                             <td className="glass-td text-left text-sm">
                               {o.items && Array.isArray(o.items) ? (
                                 <div className="flex flex-col gap-0.5 truncate max-w-[250px]">
-                                  {o.items.map((item: any, idx: number) => (
-                                    <span key={idx} className="truncate">
-                                      {item.quantity}x {item.name}
-                                    </span>
-                                  ))}
+                                  {o.items.map((item: any, idx: number) => {
+                                    const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                    return (
+                                      <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
+                                        {item.selectedColor && (
+                                          <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                        )}
+                                        <span className="font-medium">{item.quantity}x {item.name}</span>
+                                        {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <span>{o.design || 'Embroidery Design'}</span>
                               )}
                             </td>
                             <td className="glass-td font-mono text-sm font-bold text-primary text-left">
-                              ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                              ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
                             </td>
                             <td className="glass-td text-right">
                               <div className="flex gap-2 justify-end">
@@ -474,7 +477,7 @@ export default function AdminPage() {
                         <div>
                           <span className="text-[0.65rem] text-text-dim block mb-0.5">Paid Total</span>
                           <span className="font-mono text-primary font-bold text-sm">
-                            ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                            ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -537,7 +540,7 @@ export default function AdminPage() {
                     <div>
                       <span className="text-xs text-text-dim block">Total Paid</span>
                       <span className="font-bold text-primary font-mono">
-                        ${parseFloat(historyReceiptDetails.amount || 0).toFixed(2)}
+                        ₱{parseFloat(historyReceiptDetails.amount || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -555,7 +558,7 @@ export default function AdminPage() {
                               {item.name} <b className="text-primary ml-1">x{item.quantity}</b>
                             </span>
                             <span className="font-mono text-text-dim">
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ₱{(item.price * item.quantity).toFixed(2)}
                             </span>
                           </div>
                         ))
@@ -571,6 +574,9 @@ export default function AdminPage() {
             </GlassModal>
           </section>
         );
+
+      case 'audit':
+        return <PanelAuditTrail />;
 
       case 'settings':
         return (

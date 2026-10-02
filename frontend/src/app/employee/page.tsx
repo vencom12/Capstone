@@ -42,6 +42,7 @@ export default function EmployeePage() {
   const [ordersDateFilter, setOrdersDateFilter] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState('');
+  const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
 
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
@@ -421,7 +422,9 @@ export default function EmployeePage() {
       new Date(o.date || o.createdAt).toISOString().split('T')[0] === ordersDateFilter
     );
 
-    return matchesSearch && matchesDate;
+    const matchesTab = ordersQueueTab === 'all' || o.status === ordersQueueTab;
+
+    return matchesSearch && matchesDate && matchesTab;
   });
 
   const historyOrders = orders.filter(o => {
@@ -673,6 +676,39 @@ export default function EmployeePage() {
                  
               </div>
             </header>
+
+            {/* Status Tab Navigation */}
+            {(() => {
+              const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
+              const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+              const tabs = [
+                { key: 'all', label: 'All Active', count: allActiveOrders.length },
+                ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
+              ];
+              return (
+                <div className="flex gap-2 flex-wrap mb-4 border-b border-border-glass/30 pb-3">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setOrdersQueueTab(tab.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                        ordersQueueTab === tab.key
+                          ? 'bg-primary text-white border-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                      }`}
+                    >
+                      {tab.label}
+                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
+                        ordersQueueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
             {isSyncing && orders.length === 0 ? (
                <div className="max-[1100px]:hidden mb-4 w-full">
                  <TableSkeleton rows={5} cols={6} />
@@ -747,11 +783,18 @@ export default function EmployeePage() {
                              <td className="glass-td text-text-main text-sm text-left">
                                {o.items && Array.isArray(o.items) ? (
                                  <div className="flex flex-col gap-0.5">
-                                   {o.items.map((item: any, idx: number) => (
-                                     <span key={idx} className="line-clamp-1">
-                                       {item.quantity}x {item.name}
-                                     </span>
-                                   ))}
+                                   {o.items.map((item: any, idx: number) => {
+                                     const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                     return (
+                                       <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
+                                         {item.selectedColor && (
+                                           <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                         )}
+                                         <span className="font-medium">{item.quantity}x {item.name}</span>
+                                         {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                       </div>
+                                     );
+                                   })}
                                  </div>
                                ) : (
                                  <span className="font-semibold">{o.design || 'Embroidery Design'}</span>
@@ -765,7 +808,7 @@ export default function EmployeePage() {
                                )}
                              </td>
                              <td className="glass-td text-primary font-mono font-bold text-sm text-left">
-                               ${parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                               ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
                              </td>
                              <td className="glass-td text-right">
                                <div className="flex gap-2 justify-end">
@@ -857,11 +900,20 @@ export default function EmployeePage() {
                           <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">Orders / Items</span>
                           <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
                             {o.items && Array.isArray(o.items) ? (
-                              o.items.map((item: any, idx: number) => (
-                                <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
-                                  {item.quantity}x {item.name}
-                                </div>
-                              ))
+                              o.items.map((item: any, idx: number) => {
+                                const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                return (
+                                  <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      {item.selectedColor && (
+                                        <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                      )}
+                                      <span className="truncate">{item.quantity}x {item.name}</span>
+                                    </div>
+                                    {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
+                                  </div>
+                                );
+                              })
                             ) : (
                               <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
                             )}
@@ -1347,13 +1399,13 @@ export default function EmployeePage() {
                   viewingReceiptOrder.items.map((item: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
                       <span className="text-text-main font-medium">{item.quantity}x {item.name}</span>
-                      <span className="font-mono text-text-main font-bold">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                      <span className="font-mono text-text-main font-bold">₱{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
                     </div>
                   ))
                 ) : (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-text-main font-medium">{viewingReceiptOrder.design || 'Custom Embroidery'}</span>
-                    <span className="font-mono text-text-main font-bold">${parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
+                    <span className="font-mono text-text-main font-bold">₱{parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -1361,7 +1413,7 @@ export default function EmployeePage() {
 
             <div className="flex justify-between items-center font-mono py-2">
               <span className="text-base font-bold text-text-main">TOTAL AMOUNT:</span>
-              <span className="text-lg font-extrabold text-primary">${parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
+              <span className="text-lg font-extrabold text-primary">₱{parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
             </div>
 
             <div className="flex gap-3 mt-4">
@@ -1390,3 +1442,4 @@ export default function EmployeePage() {
     </div>
   );
 }
+

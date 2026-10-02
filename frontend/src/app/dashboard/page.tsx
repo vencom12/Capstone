@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                     <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
                       <div className="text-[0.8rem]">
                         <span className="text-text-dim">Total: </span>
-                        <span className="font-bold text-text-main">${order.totalAmount.toFixed(2)}</span>
+                        <span className="font-bold text-text-main">₱{order.totalAmount.toFixed(2)}</span>
                       </div>
                       <button 
                         onClick={() => {
@@ -402,7 +402,7 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
                         <div className="text-[0.85rem]">
                           <span className="text-text-dim">Amount: </span>
-                          <span className="font-bold text-text-main">${tx.amount.toFixed(2)}</span>
+                          <span className="font-bold text-text-main">₱{tx.amount.toFixed(2)}</span>
                         </div>
                         <div className="flex gap-4 items-center">
                           <button 

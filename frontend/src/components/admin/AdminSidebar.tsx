@@ -79,18 +79,6 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
       )
     },
     {
-      id: 'production',
-      label: 'Live Production & Fleet',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2v20"></path>
-          <path d="m4.93 4.93 14.14 14.14"></path>
-          <path d="M2 12h20"></path>
-          <path d="m19.07 4.93-14.14 14.14"></path>
-        </svg>
-      )
-    },
-    {
       id: 'staffing',
       label: 'Personnel',
       icon: (
@@ -120,6 +108,16 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 3v18h18" />
           <path d="M18 9l-5 5-4-4-4 4" />
+        </svg>
+      )
+    },
+    {
+      id: 'audit',
+      label: 'Audit Trail',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="M9 12l2 2 4-4" />
         </svg>
       )
     },

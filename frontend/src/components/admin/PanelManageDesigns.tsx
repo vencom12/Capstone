@@ -164,10 +164,14 @@ export default function PanelManageDesigns({
       priceOverride: v.priceOverride ? parseFloat(v.priceOverride) : undefined
     }));
 
+    // Auto-capitalize first letter of name and tag
+    const capitalizedName = name.trim().charAt(0).toUpperCase() + name.trim().slice(1);
+    const capitalizedTag = tag.trim().charAt(0).toUpperCase() + tag.trim().slice(1);
+
     const formData = new FormData();
-    formData.append('name', name.trim());
+    formData.append('name', capitalizedName);
     formData.append('price', price.trim());
-    formData.append('tag', tag);
+    formData.append('tag', capitalizedTag);
     formData.append('description', description.trim());
     formData.append('recipe', JSON.stringify(recipe));
     formData.append('variants', JSON.stringify(formattedVariants));
@@ -280,13 +284,32 @@ export default function PanelManageDesigns({
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-bold text-[1rem] m-0 text-text-main line-clamp-1">{p.name}</h4>
                       <span className="font-mono text-primary font-bold text-[0.95rem]">
-                        ${parseFloat(p.price || 0).toFixed(2)}
+                        ₱{parseFloat(p.price || 0).toFixed(2)}
                       </span>
                     </div>
                     {p.description && (
                       <p className="text-[0.8rem] text-text-dim m-0 line-clamp-2 leading-relaxed mt-1">
                         {p.description}
                       </p>
+                    )}
+
+                    {/* Variants / Color Swatches */}
+                    {p.variants && p.variants.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {p.variants.map((v: any, vi: number) => (
+                          <div
+                            key={vi}
+                            title={v.name + (v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : '')}
+                            className="flex items-center gap-1 bg-white/5 border border-border-glass/50 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold text-text-dim"
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 inline-block"
+                              style={{ backgroundColor: v.color || '#6366f1' }}
+                            />
+                            {v.name}
+                          </div>
+                        ))}
+                      </div>
                     )}
                     
                     {/* Visual Stock Indicators */}
@@ -355,7 +378,7 @@ export default function PanelManageDesigns({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
-              <label className="modal-label">Price ($)</label>
+              <label className="modal-label">Price (₱)</label>
               <input
                 type="number"
                 step="0.01"
@@ -446,7 +469,7 @@ export default function PanelManageDesigns({
               <input
                 type="number"
                 step="0.01"
-                placeholder="Price Override ($)"
+                placeholder="Price Override (₱)"
                 value={variantPrice}
                 onChange={(e) => setVariantPrice(e.target.value)}
                 className="bg-bg-surface border border-border-glass p-2 rounded-lg text-text-main text-xs outline-none font-mono"
@@ -473,7 +496,7 @@ export default function PanelManageDesigns({
                     />
                     <span className="font-semibold text-text-main">{v.name}</span>
                     {v.priceOverride && (
-                      <span className="text-primary font-mono text-[0.7rem]">${parseFloat(v.priceOverride as any).toFixed(2)}</span>
+                      <span className="text-primary font-mono text-[0.7rem]">₱{parseFloat(v.priceOverride as any).toFixed(2)}</span>
                     )}
                     <button
                       type="button"

@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import AuthModal from '@/components/auth/AuthModal';
+import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner';
 import dynamic from 'next/dynamic';
 
 const AiAttendant = dynamic(() => import('@/components/products/AiAttendant'), {
@@ -102,6 +103,7 @@ export default function StorefrontPage() {
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-transparent">
       <StorefrontHeader />
+      <EmailVerificationBanner />
 
       {/* Main Layout */}
       <div className="flex-1 flex w-full overflow-hidden items-stretch relative">

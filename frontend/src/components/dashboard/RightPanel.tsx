@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -85,7 +85,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
                       {item.selectedVariant}
                     </span>
                   )}
-                  <span className="text-primary font-bold text-[0.85rem]">${item.price.toFixed(2)}</span>
+                  <span className="text-primary font-bold text-[0.85rem]">₱{item.price.toFixed(2)}</span>
                   <div className="flex items-center justify-between mt-1.5">
                     <div className="flex items-center gap-2 bg-black/20 rounded-md px-1.5 py-0.5">
                       <button onClick={() => handleQuantityChange(item.id || item.productId, item.quantity - 1)} className="text-text-dim hover:text-white bg-transparent border-none cursor-pointer px-1">-</button>
@@ -105,7 +105,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
         <div className="mt-5">
           <div className="flex justify-between items-center mb-4">
             <span className="font-bold text-[1.1rem]">Total:</span>
-            <span className="font-extrabold text-[1.2rem] text-primary">${mounted ? basketTotal.toFixed(2) : '0.00'}</span>
+            <span className="font-extrabold text-[1.2rem] text-primary">₱{mounted ? basketTotal.toFixed(2) : '0.00'}</span>
           </div>
           <GlassButton
             variant="primary"

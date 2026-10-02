@@ -8,6 +8,8 @@ export interface User {
   role: 'admin' | 'employee' | 'customer';
   walletBalance: number;
   phoneNumber?: string;
+  isPhoneVerified?: boolean;
+  isEmailVerified?: boolean;
   address?: string;
   createdAt: string;
 }
@@ -15,6 +17,7 @@ export interface User {
 export interface ProductVariant {
   name: string;
   color?: string;
+  size?: string;
   imageUrl?: string;
   priceOverride?: number;
 }
@@ -53,6 +56,7 @@ export interface OrderItem {
   imageUrl?: string;
   selectedVariant?: string;
   selectedColor?: string;
+  selectedSize?: string;
 }
 
 export interface Order {
@@ -115,6 +119,7 @@ export interface BasketItem {
   quantity: number;
   selectedVariant?: string;
   selectedColor?: string;
+  selectedSize?: string;
 }
 
 export interface DashboardState {

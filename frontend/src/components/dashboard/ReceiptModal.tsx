@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
@@ -78,14 +78,31 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
              </div>
 
              <div className="mt-4">
-                <h4 className="modal-label mb-2">Items</h4>
-                <div className="flex flex-col gap-1.5">
-                   {data.items && data.items.length > 0 ? data.items.map((item: any, idx: number) => (
-                     <div key={idx} className="flex justify-between text-[0.8rem]">
-                        <span>{item.name} x{item.quantity}</span>
-                        <span className="font-mono">${(item.price * item.quantity).toFixed(2)}</span>
-                     </div>
-                   )) : (
+                <h4 className="modal-label mb-2">Stitched Items</h4>
+                <div className="flex flex-col gap-2">
+                   {data.items && data.items.length > 0 ? data.items.map((item: any, idx: number) => {
+                     const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                     return (
+                      <div key={idx} className="flex justify-between items-start text-[0.82rem] p-2.5 bg-white/5 border border-border-glass/50 rounded-xl">
+                         <div className="flex flex-col text-left">
+                            <span className="font-bold text-text-main">{item.name} <span className="text-primary font-bold">x{item.quantity}</span></span>
+                            {(variantText || item.selectedColor) && (
+                              <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5 font-medium">
+                                {item.selectedColor && (
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0 shadow-sm" 
+                                    style={{ backgroundColor: item.selectedColor }} 
+                                    title={item.selectedColor}
+                                  />
+                                )}
+                                {variantText && <span>{variantText}</span>}
+                              </div>
+                            )}
+                         </div>
+                         <span className="font-mono font-bold text-[0.85rem]">₱{((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                      </div>
+                     );
+                   }) : (
                      <p className="text-[0.7rem] text-text-dim italic">Top-up or Legacy Order</p>
                    )}
                 </div>
@@ -93,7 +110,7 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
 
              <div className="mt-4 pt-3 border-t border-border-glass flex justify-between items-center">
                 <span className="text-base font-bold">Total Amount</span>
-                <span className="text-xl font-extrabold text-primary">${parseFloat(data.amount || 0).toFixed(2)}</span>
+                <span className="text-xl font-extrabold text-primary">₱{parseFloat(data.amount || 0).toFixed(2)}</span>
              </div>
           </div>
 

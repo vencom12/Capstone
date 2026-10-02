@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import GlassModal from '@/components/ui/GlassModal';
 import type { Order } from '@/lib/types';
@@ -34,17 +34,28 @@ export default function OrderDetailsModal({ order, isOpen, onClose }: OrderDetai
         <div className="modal-section">
           <h4 className="modal-label">Items Ordered</h4>
           <div className="flex flex-col gap-2">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="modal-box flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="font-bold text-[0.85rem] text-text-main">{item.name}</span>
-                  <span className="text-[0.7rem] text-text-dim">Quantity: {item.quantity}</span>
+            {order.items.map((item, idx) => {
+              const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+              return (
+                <div key={idx} className="modal-box flex justify-between items-start">
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold text-[0.85rem] text-text-main">{item.name}</span>
+                    <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5 font-medium">
+                      {item.selectedColor && (
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0 shadow-sm" 
+                          style={{ backgroundColor: item.selectedColor }} 
+                        />
+                      )}
+                      <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-[0.85rem] text-text-main">
+                    ₱{(item.price * item.quantity).toFixed(2)}
+                  </span>
                 </div>
-                <span className="font-mono font-bold text-[0.85rem] text-text-main">
-                  ${(item.price * item.quantity).toFixed(2)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -60,7 +71,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose }: OrderDetai
           </div>
           <div className="flex justify-between text-base pt-2 border-t border-border-glass/50">
             <span className="font-bold">Total Amount</span>
-            <span className="font-extrabold text-primary">${order.totalAmount.toFixed(2)}</span>
+            <span className="font-extrabold text-primary">₱{order.totalAmount.toFixed(2)}</span>
           </div>
         </div>
 

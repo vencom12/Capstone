@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
@@ -676,7 +676,7 @@ export default function AiAttendant() {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-text-main m-0 truncate">{product.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-primary font-bold text-xs">${product.price.toFixed(2)}</span>
+                              <span className="text-primary font-bold text-xs">₱{product.price.toFixed(2)}</span>
                               <span className="text-[0.6rem] text-text-dim px-1.5 py-0.5 bg-primary/10 rounded-full">{product.tag}</span>
                             </div>
                           </div>
