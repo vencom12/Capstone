@@ -27,6 +27,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAccess, refreshUser } = useAuthStore();
+  const basketCount = useBasketStore((s) => s.getCount());
   const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories, isSyncing } = useProductStore();
   const { isBasketOpen, setBasketOpen, toggleBasket, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
 
@@ -728,13 +729,22 @@ export default function DashboardPage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main">
       {/* Mobile Top Bar */}
-      <div className="hidden max-[650px]:flex items-center justify-between w-full h-[60px] px-4 border-b border-border-glass bg-bg-header backdrop-blur-md fixed top-0 left-0 z-[1000]">
-         <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1">
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      <div className="hidden max-[650px]:flex items-center justify-between w-full h-[60px] px-3.5 border-b border-border-glass bg-bg-header/90 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
+         <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all" title="Toggle Navigation Menu">
+           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
-         <div className="font-black text-[1.1rem] text-text-main">Stitch-Opt</div>
-         <button onClick={toggleBasket} className="bg-transparent border-none text-text-main cursor-pointer p-1">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+         <div className="font-black text-[1.05rem] text-text-main tracking-tight truncate max-w-[200px]">Eds Towels & Caps</div>
+         <button
+           onClick={() => setActiveTab('basket')}
+           className="bg-transparent border-none text-text-main cursor-pointer p-1.5 relative flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all"
+           title="View My Basket"
+         >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+            {isHydrated && basketCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-white text-[0.6rem] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm">
+                {basketCount}
+              </span>
+            )}
          </button>
       </div>
 

@@ -30,7 +30,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
   return (
     <article className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
       <div className="flex items-start gap-3">
-        <div className="w-14 h-14 rounded-xl bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center text-xl">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center text-lg sm:text-xl">
           {thumb ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb} alt={title} className="w-full h-full object-cover" />

@@ -110,7 +110,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
       </div>
 
       {/* Details */}
-      <div className="p-4 md:p-6 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 md:p-5 flex flex-col flex-1">
         <span className="inline-block w-fit px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
           {product.tag || 'Design'}
         </span>
@@ -139,7 +139,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             )}
           </div>
         )}
-        <div className="flex gap-2 mt-auto pt-2">
+        <div className="flex gap-1.5 sm:gap-2 mt-auto pt-2">
           <GlassButton
             variant="secondary"
             fullWidth
@@ -154,7 +154,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             }}
             disabled={isOutOfStock}
           >
-            Add to Basket
+            <span className="truncate">Add to Bag</span>
           </GlassButton>
           <GlassButton
             variant="primary"

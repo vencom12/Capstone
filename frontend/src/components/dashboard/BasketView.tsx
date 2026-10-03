@@ -180,7 +180,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       </header>
 
       {/* Main 2-Column Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 pb-6 items-start">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 pb-24 lg:pb-6 items-start">
         {/* Left Column: Itemized Cards (8 of 12 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col gap-4">
           {/* Select All Controls Bar */}
@@ -229,7 +229,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -458,6 +458,27 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Floating Bottom Bar for Mobile Screen Checkout */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-surface/95 backdrop-blur-xl border-t border-border-glass p-3 px-4 z-40 flex items-center justify-between gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+        <div className="flex flex-col">
+          <span className="text-[0.68rem] text-text-dim uppercase tracking-wider font-semibold">
+            Total ({selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'})
+          </span>
+          <span className="text-lg font-mono font-black text-primary leading-tight">
+            ₱{selectedTotal.toFixed(2)}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCheckout}
+          disabled={selectedItems.length === 0}
+          className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-light text-white font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer border-none flex items-center gap-1.5 disabled:opacity-40"
+        >
+          <span>GCash Checkout</span>
+          <span className="font-bold">→</span>
+        </button>
       </div>
     </section>
   );
