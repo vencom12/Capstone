@@ -53,7 +53,7 @@ export default function GlassModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] overflow-y-auto p-3 sm:p-6 flex min-h-full items-center justify-center bg-black/50 backdrop-blur-md"
+      className="fixed inset-0 z-[99999] overflow-y-auto p-2 sm:p-6 flex min-h-full items-center justify-center bg-black/60 backdrop-blur-md touch-scroll"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -61,11 +61,11 @@ export default function GlassModal({
       <div
         className={`
           relative w-full ${maxWidth} my-auto
-          flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]
-          bg-bg-card backdrop-blur-[12px]
+          flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100vh-3rem)]
+          bg-bg-card backdrop-blur-[16px]
           border border-border-glass
-          rounded-xl overflow-hidden
-          shadow-xl border border-border-glass
+          rounded-2xl sm:rounded-xl overflow-hidden
+          shadow-2xl
           animate-[modalScaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]
           ${className}
         `}
@@ -87,12 +87,12 @@ export default function GlassModal({
         </button>
 
         {title && (
-          <div className="px-6 pt-6 pb-3 border-b border-border-glass shrink-0">
-            <h2 className="text-lg font-bold text-text-main m-0 pr-8">{title}</h2>
+          <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-border-glass shrink-0">
+            <h2 className="text-base sm:text-lg font-bold text-text-main m-0 pr-8">{title}</h2>
           </div>
         )}
 
-        <div className={`flex-1 overflow-y-auto ${noPadding ? '' : (title ? 'p-6 pt-3' : 'p-6')}`}>
+        <div className={`flex-1 overflow-y-auto touch-scroll overscroll-contain ${noPadding ? '' : (title ? 'p-4 sm:p-6 pt-3' : 'p-4 sm:p-6')}`}>
           {children}
         </div>
       </div>

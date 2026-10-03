@@ -23,13 +23,16 @@ import AddressBookModal from '@/components/dashboard/AddressBookModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import BasketView from '@/components/dashboard/BasketView';
 import { useBasketStore } from '@/stores/useBasketStore';
+import { getOrderStage } from '@/lib/orderStatus';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAccess, refreshUser } = useAuthStore();
   const basketCount = useBasketStore((s) => s.getCount());
+
   const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories, isSyncing } = useProductStore();
   const { isBasketOpen, setBasketOpen, toggleBasket, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
+  const activeOrdersCount = (orders || []).filter((o) => getOrderStage(o).isActive).length;
 
   const [activeTab, setActiveTab] = useState<string>('shop');
   const [isHydrated, setIsHydrated] = useState(false);
@@ -239,7 +242,7 @@ export default function DashboardPage() {
 
       case 'shop':
         return (
-          <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <OrderMilestoneHero 
               orders={orders} 
               onViewDetails={(ord, tab) => {
@@ -305,7 +308,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
               <ProductGrid onQuickView={handleQuickView} />
             </div>
           </section>
@@ -322,7 +325,7 @@ export default function DashboardPage() {
         });
 
         return (
-          <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
              <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
               <div className="max-[1100px]:w-full">
                 <h1 className="text-xl font-bold mb-0.5">Order Tracking</h1>
@@ -337,7 +340,7 @@ export default function DashboardPage() {
                 />
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
             
             {isSyncing && orders.length === 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
@@ -366,12 +369,12 @@ export default function DashboardPage() {
 
       case 'favs':
         return (
-          <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4">
               <h1 className="text-xl font-bold mb-0.5">My Favorites</h1>
               <p className="text-text-dim text-[0.85rem] m-0">Designs you've saved for later.</p>
             </header>
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
             {isSyncing && favorites.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -408,7 +411,7 @@ export default function DashboardPage() {
         });
 
         return (
-          <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
               <div className="max-[1100px]:w-full">
                 <h1 className="text-xl font-bold mb-0.5">My Transactions</h1>
@@ -423,7 +426,7 @@ export default function DashboardPage() {
                 />
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
             
             {isSyncing && transactions.length === 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
@@ -516,12 +519,12 @@ export default function DashboardPage() {
         ];
 
         return (
-          <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4">
               <h1 className="text-xl font-bold mb-0.5">Account Settings</h1>
               <p className="text-text-dim text-[0.85rem] m-0">Tap the edit icon to update any field individually.</p>
             </header>
-            <div className="flex-1 overflow-y-auto pr-2 pb-6">
+            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2 pb-8">
               {/* Profile Card */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col">
                 {/* Avatar Header */}
@@ -731,7 +734,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main">
+    <div className="flex min-h-dvh md:h-screen w-full overflow-x-hidden md:overflow-hidden bg-transparent text-text-main flex-col md:flex-row">
       {/* Mobile Top Bar */}
       <div className="hidden max-md:flex items-center justify-between w-full h-[60px] px-3.5 border-b border-border-glass bg-bg-header/90 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
          <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all" title="Toggle Navigation Menu">
@@ -754,17 +757,99 @@ export default function DashboardPage() {
 
       <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6 lg:p-8 pt-[76px] md:pt-6 lg:pt-8 pb-32 md:pb-8 overscroll-y-contain touch-scroll">
+      <main className="flex-1 w-full min-h-0 md:h-full overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pt-[72px] md:pt-6 lg:pt-8 pb-28 md:pb-8 overscroll-y-contain touch-scroll">
         {renderTabContent()}
       </main>
 
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1900]"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Phone-Centric Bottom Navigation Dock */}
+      <nav 
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-bg-card/95 backdrop-blur-2xl border-t border-border-glass px-2 py-1 flex items-center justify-around shadow-2xl safe-area-bottom"
+        aria-label="Mobile Navigation"
+      >
+        {[
+          {
+            id: 'shop',
+            label: 'Catalog',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            ),
+          },
+          {
+            id: 'tracking',
+            label: 'Tracking',
+            badge: activeOrdersCount > 0 ? activeOrdersCount : undefined,
+            badgeColor: 'bg-primary text-white',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            ),
+          },
+          {
+            id: 'basket',
+            label: 'Basket',
+            badge: isHydrated && basketCount > 0 ? basketCount : undefined,
+            badgeColor: 'bg-primary text-white',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+            ),
+          },
+          {
+            id: 'history',
+            label: 'Receipts',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            ),
+          },
+          {
+            id: 'settings',
+            label: 'Account',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            ),
+          },
+        ].map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                const mainEl = document.querySelector('main');
+                if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 cursor-pointer border-none bg-transparent ${
+                isActive
+                  ? 'text-primary scale-105'
+                  : 'text-text-dim hover:text-text-main'
+              }`}
+            >
+              <div className="relative">
+                {item.icon}
+                {item.badge !== undefined && (
+                  <span className={`absolute -top-1.5 -right-2.5 text-[0.6rem] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-md ${item.badgeColor}`}>
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <span className={`text-[0.66rem] mt-0.5 font-semibold tracking-tight ${isActive ? 'text-primary font-bold' : 'text-text-dim'}`}>
+                {item.label}
+              </span>
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-primary mt-0.5 shadow-sm" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Product Quick-View Modal */}
       <ProductModal

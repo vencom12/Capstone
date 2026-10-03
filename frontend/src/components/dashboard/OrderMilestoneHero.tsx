@@ -28,7 +28,8 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
 
   const order = active[0];
   const stage = getOrderStage(order);
-  const others = active.length - 1;
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
+  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
   return (
     <div className="mb-5 bg-bg-card/90 border border-border-glass backdrop-blur-xl rounded-2xl p-4 shadow-sm animate-[fadeIn_0.3s_ease-out]">
@@ -59,7 +60,7 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
             onClick={() => onViewDetails(order, 'tracking')}
             className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
           >
-            Track Delivery
+            {isPickup ? 'Track Pick-up' : 'Track Delivery'}
           </button>
         </div>
       </div>

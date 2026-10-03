@@ -151,7 +151,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
   // 2. ACTIVE 2-COLUMN BASKET
   return (
-    <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+    <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
       {/* Header */}
       <header className="mb-5 flex justify-between items-end flex-wrap gap-4">
         <div>

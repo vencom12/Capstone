@@ -73,7 +73,7 @@
 html {
   background-color: var(--color-bg-dark);
   min-height: 100%;
-  height: 100%;
+  min-height: 100dvh;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -83,7 +83,7 @@ body {
   background-color: var(--color-bg-dark);
   color: var(--color-text-main);
   min-height: 100%;
-  height: 100%;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -94,6 +94,15 @@ body {
 main {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+/* Safe area insets for mobile notched screens and gesture homebars */
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
+}
+
+.safe-area-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0.5rem));
 }
 
 /* Scrollbar */

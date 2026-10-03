@@ -114,7 +114,7 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
   const visible = tab === 'active' ? active : past;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-8">
       <div className="flex gap-2" role="tablist" aria-label="Order status">
         {([
           { id: 'active', label: 'In progress', count: active.length },
