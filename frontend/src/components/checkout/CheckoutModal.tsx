@@ -16,12 +16,14 @@ import type { SavedAddress } from '@/lib/types';
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  checkoutItems?: BasketItem[];
 }
 
 type PaymentMethod = 'gcash';
 
-export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
-  const { items, getTotal, clearBasket } = useBasketStore();
+export default function CheckoutModal({ isOpen, onClose, checkoutItems }: CheckoutModalProps) {
+  const { items: allBasketItems, removeItem, clearBasket } = useBasketStore();
+  const items = checkoutItems && checkoutItems.length > 0 ? checkoutItems : allBasketItems;
   const { user, setUser, refreshUser } = useAuthStore();
   const { fetchDashboardState } = useProductStore();
   
@@ -77,7 +79,16 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }
   }, [isOpen]);
 
-  const finalTotal = getTotal() + (giftPackaging ? giftPackagingPrice : 0);
+  const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const finalTotal = itemsTotal + (giftPackaging ? giftPackagingPrice : 0);
+
+  const handleClearProcessedItems = () => {
+    if (checkoutItems && checkoutItems.length > 0 && checkoutItems.length < allBasketItems.length) {
+      checkoutItems.forEach(i => removeItem(i.id));
+    } else {
+      handleClearProcessedItems();
+    }
+  };
 
   const handleSaveDeliveryInfo = async () => {
     const cleanAddr = deliveryAddress.trim();
@@ -199,7 +210,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
           showToast('Payment verified! Your order is now in the workshop queue.', 'success');
           await refreshUser();
           await fetchDashboardState();
-          clearBasket();
+          handleClearProcessedItems();
           onClose();
         }
       } else {
@@ -229,7 +240,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     showToast('Payment confirmed! Your order is now placed in the queue.', 'success');
     await refreshUser();
     await fetchDashboardState();
-    clearBasket();
+    handleClearProcessedItems();
     onClose();
   };
 
@@ -241,7 +252,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     showToast('Order confirmed! We have received your order.', 'success');
     await refreshUser();
     await fetchDashboardState();
-    clearBasket();
+    handleClearProcessedItems();
     onClose();
   };
 

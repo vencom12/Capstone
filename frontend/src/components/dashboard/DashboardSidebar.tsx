@@ -55,6 +55,11 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
       )
     },
     {
+      id: 'basket', label: 'My Basket', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+      )
+    },
+    {
       id: 'tracking', label: 'Order Tracking', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
       )
@@ -108,31 +113,6 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
 
         {/* Navigation */}
         <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1">
-          {/* Basket Toggle */}
-          <li className="mb-2">
-            <button
-              onClick={toggleBasket}
-              className={`
-              w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer
-              transition-all duration-300 border font-bold text-[0.95rem]
-              max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
-              ${isBasketOpen
-                  ? 'bg-primary/20 text-white border-primary shadow-sm'
-                  : 'bg-white/5 text-text-main border-border-glass hover:bg-white/10'}
-            `}
-            >
-              <div className="shrink-0 relative">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-                {mounted && basketCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-[0.6rem] text-white w-4 h-4 rounded-full flex items-center justify-center border border-bg-sidebar">
-                    {basketCount}
-                  </span>
-                )}
-              </div>
-              <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap">My Basket</span>
-            </button>
-          </li>
-
           {navItems.map((item) => (
             <li key={item.id}>
               <button
@@ -149,8 +129,22 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
                     : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
               `}
               >
-                <div className="shrink-0">{item.icon}</div>
-                <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap">{item.label}</span>
+                <div className="shrink-0 relative">
+                  {item.icon}
+                  {item.id === 'basket' && mounted && basketCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-primary text-[0.6rem] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold border border-bg-sidebar shadow-sm">
+                      {basketCount}
+                    </span>
+                  )}
+                </div>
+                <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap flex-1 text-left">{item.label}</span>
+                {item.id === 'basket' && mounted && basketCount > 0 && (
+                  <span className={`max-[1100px]:hidden max-[650px]:inline text-[0.7rem] px-2 py-0.5 rounded-full font-bold ${
+                    activeTab === 'basket' ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary border border-primary/30'
+                  }`}>
+                    {basketCount}
+                  </span>
+                )}
               </button>
             </li>
           ))}

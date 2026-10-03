@@ -12,7 +12,7 @@ import ProductModal from '@/components/products/ProductModal';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
 import OrderDetailsModal from '@/components/dashboard/OrderDetailsModal';
 import ReceiptModal from '@/components/dashboard/ReceiptModal';
-import type { Product, Order } from '@/lib/types';
+import type { Product, Order, BasketItem } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import AddressSelect from '@/components/ui/AddressSelect';
@@ -21,6 +21,7 @@ import OrderMilestoneHero from '@/components/dashboard/OrderMilestoneHero';
 import OrderList from '@/components/dashboard/OrderList';
 import AddressBookModal from '@/components/dashboard/AddressBookModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
+import BasketView from '@/components/dashboard/BasketView';
 import { useBasketStore } from '@/stores/useBasketStore';
 
 export default function DashboardPage() {
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [orderDetailsTab, setOrderDetailsTab] = useState<'summary' | 'tracking'>('summary');
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [selectedCheckoutItems, setSelectedCheckoutItems] = useState<BasketItem[] | undefined>(undefined);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
@@ -219,6 +221,17 @@ export default function DashboardPage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'basket':
+        return (
+          <BasketView
+            onGoToShop={() => setActiveTab('shop')}
+            onOpenCheckout={(items) => {
+              setSelectedCheckoutItems(items);
+              setIsCheckoutOpen(true);
+            }}
+          />
+        );
+
       case 'shop':
         return (
           <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
@@ -731,22 +744,11 @@ export default function DashboardPage() {
         {renderTabContent()}
       </main>
 
-      {/* Right Panel / Drawer */}
-      <div className={`
-        fixed top-0 right-0 h-full z-[2000] transition-transform duration-300
-        ${isBasketOpen ? 'translate-x-0' : 'translate-x-full'}
-      `}>
-        <RightPanel onCheckout={() => setIsCheckoutOpen(true)} onCloseMobile={() => setBasketOpen(false)} />
-      </div>
- 
-      {/* Mobile Overlays */}
-      {(isBasketOpen || isSidebarOpen) && (
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1900]"
-          onClick={() => {
-            setBasketOpen(false);
-            setSidebarOpen(false);
-          }}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
