@@ -23,13 +23,14 @@ export default function GlobalAuthListener() {
           return;
         }
 
-        console.log('[Google Auth] Redirect result received:', user.email);
+        console.log('[Google Auth] Redirect result received:', user.email, user.displayName, user.phoneNumber);
         showToast('Completing Google Sign-In...', 'info');
 
         const res = await loginWithGoogle({
           email: user.email,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber || '',
           uid: user.uid,
         });
 
@@ -37,7 +38,7 @@ export default function GlobalAuthListener() {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('stitch-session-active', 'true');
           }
-          showToast('Signed in with Google successfully!', 'success');
+          showToast(`Welcome back, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
         } else {
           console.error('[Google Auth] Backend login error:', res.message);
           showToast(res.message || 'Google sign-in failed on server.', 'error');

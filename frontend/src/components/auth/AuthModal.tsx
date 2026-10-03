@@ -65,6 +65,7 @@ export default function AuthModal() {
         email: user.email,
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
+        phoneNumber: user.phoneNumber || '',
         uid: user.uid
       });
 

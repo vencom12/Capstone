@@ -19,7 +19,7 @@ interface AuthState {
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
-  loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; uid: string }) => Promise<AuthResponse>;
+  loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;

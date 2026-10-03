@@ -671,7 +671,7 @@ exports.emailVerificationStatus = async (req, res) => {
  */
 exports.googleAuth = async (req, res) => {
     try {
-        const { email, displayName, photoURL, uid } = req.body;
+        const { email, displayName, photoURL, phoneNumber, uid } = req.body;
         if (!email) {
             return res.status(400).json({ success: false, message: 'Google account email is required.' });
         }
@@ -687,32 +687,43 @@ exports.googleAuth = async (req, res) => {
         });
 
         if (!user) {
-            // Create user automatically with Google verified state
-            const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
-            const uniqueUsername = `${baseUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+            // Pick a clean, friendly username from Google displayName if available, fallback to email prefix
+            let desiredName = displayName 
+                ? displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '') 
+                : email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+            if (!desiredName) desiredName = `User_${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // Check if username is already taken
+            const existingWithName = await prisma.user.findUnique({ where: { username: desiredName } });
+            const finalUsername = existingWithName ? `${desiredName}_${Math.floor(100 + Math.random() * 900)}` : desiredName;
+
             const randomPassword = await bcrypt.hash(`google_${uid}_${Date.now()}`, 10);
 
             user = await prisma.user.create({
                 data: {
-                    username: uniqueUsername,
+                    username: finalUsername,
                     email: email,
                     password: randomPassword,
+                    phoneNumber: phoneNumber || null,
                     role: 'customer',
                     isEmailVerified: true, // Google accounts have pre-verified email addresses
-                    isPhoneVerified: false,
+                    isPhoneVerified: !!phoneNumber,
                     walletBalance: 0
                 }
             });
 
-            console.log(`[Google Auth] Created new customer account ${user.username} (${user.email})`);
+            console.log(`[Google Auth] Created new customer account ${user.username} (${user.email}, phone: ${user.phoneNumber || 'none'})`);
         } else {
-            // Auto-mark email as verified since authenticated by Google
-            if (!user.isEmailVerified) {
-                user = await prisma.user.update({
-                    where: { id: user.id },
-                    data: { isEmailVerified: true }
-                });
+            // Update email verification and phone number if Google provided one and account has none
+            const updateData = { isEmailVerified: true };
+            if (phoneNumber && !user.phoneNumber) {
+                updateData.phoneNumber = phoneNumber;
+                updateData.isPhoneVerified = true;
             }
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: updateData
+            });
         }
 
         const token = jwt.sign(
