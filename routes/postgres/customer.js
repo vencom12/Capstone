@@ -63,6 +63,7 @@ router.post('/upload-receipt', auth(), upload.single('receipt'), (req, res) => {
 router.get('/receipt/:id', auth(), customerController.getReceipt);
 router.get('/receipt/:id/download', auth(), customerController.downloadReceipt);
 router.patch('/settings', auth(), customerController.updateSettings);
+router.patch('/orders/:id/location', customerController.updateOrderLocation);
 
 const forecastingController = require('../../controllers/postgres/forecastingController');
 router.post('/products/:id/track-view', forecastingController.trackProductView);

@@ -366,6 +366,7 @@ app.use('/api/employee', employeeRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/machines', require('./routes/postgres/machine'));
+app.patch('/api/orders/:id/location', require('./controllers/postgres/customerController').updateOrderLocation);
 
 // --- Development Tools (Only in Dev) ---
 if (process.env.NODE_ENV === 'development') {

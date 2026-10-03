@@ -671,3 +671,56 @@ exports.updateSettings = async (req, res) => {
         res.status(500).json({ message: 'Error updating settings' });
     }
 };
+
+exports.updateOrderLocation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { lat, lng, courierName, courierPhone, courierVehicle, progress, status } = req.body;
+
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [{ id }, { orderId: id }]
+            }
+        });
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const updateData = {};
+        if (progress !== undefined) updateData.progress = parseInt(progress, 10);
+        if (status) updateData.status = status;
+
+        const currentPersonalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
+        if (lat !== undefined && lng !== undefined) {
+            currentPersonalization.courierLocation = {
+                lat: parseFloat(lat),
+                lng: parseFloat(lng),
+                courierName: courierName || 'Mark Anthony R.',
+                courierPhone: courierPhone || '0917 882 1490',
+                courierVehicle: courierVehicle || 'Honda Click 125',
+                timestamp: new Date().toISOString()
+            };
+            updateData.personalization = currentPersonalization;
+        }
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: updateData
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user:${order.userId}`).to('staff').emit('order:location_updated', {
+                orderId: order.orderId,
+                lat,
+                lng,
+                status: updatedOrder.status,
+                progress: updatedOrder.progress
+            });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (err) {
+        console.error('updateOrderLocation error:', err);
+        res.status(500).json({ message: 'Error updating order location' });
+    }
+};
