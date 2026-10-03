@@ -284,7 +284,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden">
                         <div 
-                          className="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-1000"
+                          className="bg-primary h-full rounded-full transition-all duration-1000"
                           style={{ width: `${order.progress}%` }}
                         ></div>
                       </div>
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                           }}
                           className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
                         >
-                          <span>🚚 Track Live GPS</span>
+                          <span>Track Live GPS</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
                         </button>
                         <button 
@@ -483,7 +483,7 @@ export default function DashboardPage() {
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)] flex flex-col">
                 {/* Avatar Header */}
                 <div className="px-6 py-5 border-b border-border-glass/50 bg-black/10 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                  <div className="w-14 h-14 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-xl font-bold shrink-0 shadow-sm">
                     {user?.username?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <div>
@@ -529,15 +529,15 @@ export default function DashboardPage() {
                               />
                             ) : field.key === 'preferredDeliveryTime' ? (
                               <select
-                                value={editValue || '⚡ As soon as possible (Express)'}
+                                value={editValue || 'Express (Earliest available dispatch)'}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 autoFocus
-                                className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary cursor-pointer transition-all shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                                className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary cursor-pointer transition-all shadow-sm"
                               >
-                                <option value="⚡ As soon as possible (Express)" className="bg-bg-dark text-white">⚡ As soon as possible (Express)</option>
-                                <option value="🌅 Morning (8:00 AM - 12:00 PM)" className="bg-bg-dark text-white">🌅 Morning (8:00 AM - 12:00 PM)</option>
-                                <option value="☀️ Afternoon (1:00 PM - 5:00 PM)" className="bg-bg-dark text-white">☀️ Afternoon (1:00 PM - 5:00 PM)</option>
-                                <option value="🌙 Evening (5:00 PM - 8:00 PM)" className="bg-bg-dark text-white">🌙 Evening (5:00 PM - 8:00 PM)</option>
+                                <option value="Express (Earliest available dispatch)" className="bg-bg-dark text-white">Express (Earliest available dispatch)</option>
+                                <option value="Morning (8:00 AM - 12:00 PM)" className="bg-bg-dark text-white">Morning (8:00 AM - 12:00 PM)</option>
+                                <option value="Afternoon (1:00 PM - 5:00 PM)" className="bg-bg-dark text-white">Afternoon (1:00 PM - 5:00 PM)</option>
+                                <option value="Evening (5:00 PM - 8:00 PM)" className="bg-bg-dark text-white">Evening (5:00 PM - 8:00 PM)</option>
                               </select>
                             ) : field.type === 'textarea' ? (
                               <textarea
@@ -624,7 +624,7 @@ export default function DashboardPage() {
          <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
-         <div className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">Stitch-Opt</div>
+         <div className="font-black text-[1.1rem] text-text-main">Stitch-Opt</div>
          <button onClick={toggleBasket} className="bg-transparent border-none text-text-main cursor-pointer p-1">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
          </button>

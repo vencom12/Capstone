@@ -256,8 +256,7 @@ export default function PanelSettings({
           <div className="glass-card p-6 border border-border-glass rounded-[24px]">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold">
-                🏢
-              </div>
+                </div>
               <h3 className="text-xl font-bold m-0 text-text-main">Business Profile & Printed Receipts</h3>
             </div>
             
@@ -448,8 +447,7 @@ export default function PanelSettings({
           <div className="glass-card p-6 border border-border-glass rounded-[24px]">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
-                🤖
-              </div>
+                </div>
               <h3 className="text-xl font-bold m-0 text-text-main">Dynamic AI Automation Engine</h3>
             </div>
             
@@ -579,7 +577,7 @@ export default function PanelSettings({
                         </>
                       ) : (
                         <>
-                          ⚡ Test Live Connection
+                          Test Live Connection
                         </>
                       )}
                     </button>
@@ -645,8 +643,7 @@ export default function PanelSettings({
           <div className="glass-card p-6 border border-border-glass rounded-[24px]">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary font-bold">
-                💰
-              </div>
+                </div>
               <h3 className="text-xl font-bold m-0 text-text-main">Business Solutions Pricing</h3>
             </div>
 
@@ -686,8 +683,7 @@ export default function PanelSettings({
           <div className="glass-card p-6 border border-border-glass rounded-[24px]">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass flex items-center justify-center text-text-main font-bold">
-                🎨
-              </div>
+                </div>
               <h3 className="text-xl font-bold m-0 text-text-main">Visual Display Parameters</h3>
             </div>
 

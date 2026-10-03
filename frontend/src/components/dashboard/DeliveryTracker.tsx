@@ -126,7 +126,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           {/* Animated Connecting Line */}
           <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-primary via-secondary to-success transition-all duration-1000"
+              className="h-full bg-primary transition-all duration-1000"
               style={{ width: `${riderProgress}%` }}
             ></div>
           </div>

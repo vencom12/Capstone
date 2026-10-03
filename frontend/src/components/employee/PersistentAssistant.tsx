@@ -290,28 +290,28 @@ export default function PersistentAssistant() {
     const upper = trimmed.toUpperCase();
     
     if (upper === 'LOW_STOCK' || upper === 'LOW STOCK') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">⚠️ Low Stock</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">🟢 {trimmed}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">{trimmed}</span>;
     }
     if (upper === 'CRITICAL') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">🔴 Critical</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">Critical</span>;
     }
     if (upper === 'WARNING') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🟡 Warning</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Warning</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">✓ Delivered</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Delivered</span>;
     }
     if (['PREPARING ORDER', 'PREPARING'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">⚙ Preparing</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Preparing</span>;
     }
     if (upper === 'IN QUEUE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">📥 In Queue</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">In Queue</span>;
     }
     if (['ORDER CANCELED', 'CANCELED', 'CANCELLED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">✕ Canceled</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Canceled</span>;
     }
     if (upper === 'PENDING PAYMENT') {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">⏱ Pending Pay</span>;
@@ -527,7 +527,7 @@ export default function PersistentAssistant() {
           <div 
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className="bg-gradient-to-r from-primary to-secondary p-4 flex justify-between items-center text-white cursor-grab select-none shrink-0"
+            className="bg-bg-surface border-b border-border-glass p-4 flex justify-between items-center text-text-main cursor-grab select-none shrink-0"
           >
             <div className="flex items-center gap-2">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" /><circle cx="17" cy="7" r="5" /></svg>
@@ -540,7 +540,7 @@ export default function PersistentAssistant() {
                 onClick={() => setViewMode(viewMode === 'chat' ? 'logs' : 'chat')} 
                 className="text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors text-white"
               >
-                {viewMode === 'chat' ? '📋 Audit Logs' : '💬 Chat Assistant'}
+                {viewMode === 'chat' ? 'Audit Logs' : 'Chat Assistant'}
               </button>
               
               {/* Maximize / Restore Button */}

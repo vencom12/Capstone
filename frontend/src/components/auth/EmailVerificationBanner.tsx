@@ -46,7 +46,7 @@ export default function EmailVerificationBanner() {
   };
 
   return (
-    <div className="w-full bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-b border-amber-500/20 backdrop-blur-md">
+    <div className="w-full bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-amber-400 text-base">⚠️</span>

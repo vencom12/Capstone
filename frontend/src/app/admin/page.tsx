@@ -640,7 +640,7 @@ export default function AdminPage() {
 
             <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
                   {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">

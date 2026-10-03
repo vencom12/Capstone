@@ -68,7 +68,7 @@ function VerifyEmailContent() {
         <button
           onClick={() => router.push('/')}
           className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
-            bg-gradient-to-r from-primary to-purple-500 
+            bg-primary text-white 
             shadow-[0_4px_16px_rgba(99,102,241,0.35)] 
             hover:shadow-[0_6px_24px_rgba(99,102,241,0.5)] 
             transition-all border-none"
@@ -82,7 +82,7 @@ function VerifyEmailContent() {
           <button
             onClick={() => router.push('/')}
             className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
-              bg-gradient-to-r from-primary to-purple-500 
+              bg-primary text-white 
               shadow-[0_4px_16px_rgba(99,102,241,0.35)] 
               transition-all border-none"
           >

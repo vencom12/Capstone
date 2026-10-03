@@ -63,11 +63,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           {businessLogoUrl ? (
             <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
           ) : (
-            <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0">
+            <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
             </div>
           )}
-          <h1 className="font-extrabold text-xl bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight m-0 max-[400px]:hidden">
+          <h1 className="font-black text-xl text-text-main tracking-tight m-0 max-[400px]:hidden">
             Stitch-Opt
           </h1>
         </Link>
@@ -151,7 +151,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         {isAuthenticated ? (
           <div className="flex items-center gap-3">
             <Link href={user?.role === 'admin' ? '/admin' : user?.role === 'employee' ? '/employee' : '/dashboard'} className="p-1 rounded-full border border-primary/30">
-              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs">
+              <span className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
                 {user?.username?.charAt(0).toUpperCase()}
               </span>
             </Link>

@@ -139,7 +139,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
                   <span className="text-[0.7rem] bg-white/10 px-2 py-0.5 rounded-full">{order.status}</span>
                 </div>
                 <div className="w-full bg-black/30 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div className="bg-gradient-to-r from-primary to-secondary h-full rounded-full" style={{ width: `${order.progress}%` }}></div>
+                  <div className="bg-primary h-full rounded-full" style={{ width: `${order.progress}%` }}></div>
                 </div>
                 <div className="flex justify-between text-[0.75rem] text-text-dim">
                   <span>{order.items.length} items</span>

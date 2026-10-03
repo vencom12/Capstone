@@ -164,11 +164,11 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
-              <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold">
+              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold shadow-sm">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
             )}
-            <span className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight max-[1100px]:hidden max-[650px]:inline">
+            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-[650px]:inline">
               Stitch-Opt
             </span>
           </Link>
@@ -188,7 +188,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
                 transition-all duration-300 border font-medium text-[0.95rem]
                 max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
                 ${activeTab === item.id
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                    ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
                     : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
               `}
                 title={item.label}

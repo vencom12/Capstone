@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import type { Product, ProductVariant } from '@/lib/types';
@@ -298,10 +298,10 @@ export default function ProductModal({
             <GlassButton
               variant="primary"
               onClick={handleBuyNow}
-              className="flex-1 py-3 font-bold shadow-[0_4px_16px_rgba(99,102,241,0.4)]"
+              className="flex-1 py-3 font-bold shadow-sm"
               disabled={isOutOfStock}
             >
-              ⚡ Buy Now
+              Buy Now
             </GlassButton>
           </div>
         </div>

@@ -96,11 +96,11 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
-              <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0">
+              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold shadow-sm">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
             )}
-            <span className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight max-[1100px]:hidden max-[650px]:inline">
+            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-[650px]:inline">
               Stitch-Opt
             </span>
           </Link>
@@ -117,7 +117,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
               transition-all duration-300 border font-bold text-[0.95rem]
               max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
               ${isBasketOpen
-                  ? 'bg-primary/20 text-white border-primary shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                  ? 'bg-primary/20 text-white border-primary shadow-sm'
                   : 'bg-white/5 text-text-main border-border-glass hover:bg-white/10'}
             `}
             >
@@ -145,7 +145,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
                 transition-all duration-300 border font-medium text-[0.95rem]
                 max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
                 ${activeTab === item.id
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                    ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
                     : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
               `}
               >
@@ -167,12 +167,12 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
               w-full flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all duration-300
               max-[1100px]:justify-center max-[650px]:justify-start
               ${activeTab === 'settings'
-                ? 'bg-primary/20 border-primary shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                ? 'bg-primary/20 border-primary shadow-sm'
                 : 'bg-white/5 border-border-glass hover:bg-white/10'}
             `}
             title="Account Settings"
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shrink-0 relative">
+            <div className="w-10 h-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold shrink-0 relative">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
               <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-bg-sidebar border-2 border-bg-sidebar flex items-center justify-center">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

@@ -306,7 +306,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   </div>
                   {user.phoneNumber && (
                     <div className="flex items-center gap-2 text-text-dim text-[0.75rem] ml-5">
-                      <span>📞 {user.phoneNumber}</span>
+                      <span>{user.phoneNumber}</span>
                     </div>
                   )}
                 </div>

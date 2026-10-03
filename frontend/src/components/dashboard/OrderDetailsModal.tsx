@@ -57,18 +57,18 @@ export default function OrderDetailsModal({
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            📋 Order Items & Receipt
+            Order Items & Receipt
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('tracking')}
             className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-none flex items-center gap-1.5 ${
               activeTab === 'tracking'
-                ? '!border-b-2 !border-secondary text-secondary'
+                ? '!border-b-2 !border-primary text-primary'
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            <span>🚚 Live Geolocation Tracking</span>
+            <span>Live Geolocation Tracking</span>
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
           </button>
         </div>
@@ -167,7 +167,7 @@ export default function OrderDetailsModal({
           {order.status === 'Completed' && (
             <button 
               type="button"
-              className="flex-1 bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(99,102,241,0.4)] cursor-pointer"
+              className="flex-1 bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
             >
               Reorder
             </button>

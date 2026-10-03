@@ -261,11 +261,11 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
         
         <div className="flex items-center gap-3 mb-4">
-          <div className="bg-gradient-to-br from-primary to-secondary w-9 h-9 rounded-xl flex items-center justify-center text-white text-lg font-bold">
-            🧠
+          <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
           </div>
           <div>
-            <h2 className="text-lg font-extrabold text-white m-0">Stitch-Opt Strategic Intelligence Hub</h2>
+            <h2 className="text-lg font-extrabold text-text-main m-0">Stitch-Opt Strategic Intelligence Hub</h2>
             <p className="text-xs text-text-dim m-0 mt-0.5">Automated recommendations and foresight modeling parsed by StitchMaster AI.</p>
           </div>
         </div>

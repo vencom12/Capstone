@@ -108,7 +108,7 @@ export default function GCashPayment({
             >
               <img src={qrCodeUrl} alt="GCash QR Code" className="max-h-36 object-contain rounded-lg" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
-                <span className="text-white font-bold text-[0.75rem] bg-black/60 px-3 py-1 rounded-full">Tap to Enlarge 🔍</span>
+                <span className="text-white font-bold text-[0.75rem] bg-black/60 px-3 py-1 rounded-full">Tap to Enlarge</span>
               </div>
             </div>
             <span className="text-[0.7rem] text-text-dim mt-1.5">Tap QR image to scan full screen</span>
@@ -129,7 +129,7 @@ export default function GCashPayment({
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
           {receiptFile ? (
             <div className="flex items-center justify-center gap-2">
-              <span className="text-[0.85rem] text-[#007df2] font-bold">📄 {receiptFile.name}</span>
+              <span className="text-[0.85rem] text-[#007df2] font-bold">{receiptFile.name}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1">

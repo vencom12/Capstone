@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import type { Product } from '@/lib/types';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -154,9 +154,9 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               onQuickView(product);
             }}
             disabled={isOutOfStock}
-            className="font-bold shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
+            className="font-bold shadow-sm"
           >
-            ⚡ Buy Now
+            Buy Now
           </GlassButton>
         </div>
       </div>

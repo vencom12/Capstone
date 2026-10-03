@@ -315,28 +315,28 @@ export default function AiAttendant() {
     const upper = trimmed.toUpperCase();
     
     if (upper === 'LOW_STOCK' || upper === 'LOW STOCK') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">⚠️ Low Stock</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">🟢 {trimmed}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">{trimmed}</span>;
     }
     if (upper === 'CRITICAL') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">🔴 Critical</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">Critical</span>;
     }
     if (upper === 'WARNING') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🟡 Warning</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Warning</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">✓ Delivered</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Delivered</span>;
     }
     if (['PREPARING ORDER', 'PREPARING'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">⚙ Preparing</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Preparing</span>;
     }
     if (upper === 'IN QUEUE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">📥 In Queue</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">In Queue</span>;
     }
     if (['ORDER CANCELED', 'CANCELED', 'CANCELLED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">✕ Canceled</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Canceled</span>;
     }
     if (upper === 'PENDING PAYMENT') {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">⏱ Pending Pay</span>;
@@ -534,7 +534,7 @@ export default function AiAttendant() {
           shadow-[0_8px_32px_rgba(99,102,241,0.4)]
           ${isOpen
             ? 'bg-white/10 backdrop-blur-xl border border-border-glass rotate-0 scale-95'
-            : 'bg-gradient-to-br from-primary to-secondary hover:scale-110 hover:shadow-[0_12px_40px_rgba(99,102,241,0.6)]'
+            : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-primary/25 hover:scale-105'
           }
         `}
         aria-label="Toggle AI Store Attendant"
@@ -587,9 +587,9 @@ export default function AiAttendant() {
           <div 
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-gradient-to-r from-primary/10 to-secondary/10 cursor-grab select-none"
+            className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-bg-surface cursor-grab select-none"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0 font-bold">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
               </svg>

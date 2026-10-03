@@ -263,7 +263,7 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs }: Inli
       className="bg-transparent hover:bg-white/5 border-none px-2 py-1 rounded font-mono text-xs text-text-dim cursor-pointer transition-all flex items-center gap-1"
       title="Click to edit safety safety threshold"
     >
-      {material.minThreshold || 10} <span className="text-[0.65rem] text-text-dim/60">⚙️</span>
+      {material.minThreshold || 10} 
     </button>
   );
 }
@@ -493,12 +493,12 @@ export default function PanelRawMaterials({
                 onClick={handleDownloadRestockList}
                 className="bg-primary border border-primary/30 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary-light transition-all cursor-pointer flex items-center gap-1 shadow-[0_4px_15px_rgba(99,102,241,0.2)]"
               >
-                📥 Download Shopping List
+                Download Shopping List
               </button>
             </div>
           ) : (
             <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-5 text-left animate-fade">
-              <span className="text-base">🎉</span>
+              
               <span className="text-xs font-bold text-success">Stock Healthy! All inventory materials are above safety margins.</span>
             </div>
           )}

@@ -765,7 +765,7 @@ export default function EmployeePage() {
                                    )}
                                  </div>
                                  <span className="text-[0.75rem] text-text-dim mt-0.5">
-                                   🕒 Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
+                                   Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
                                  </span>
                                </div>
                              </td>
@@ -776,7 +776,7 @@ export default function EmployeePage() {
                                </div>
                                {o.dueDate && (
                                  <div className={`text-[0.7rem] font-extrabold mt-1 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
-                                   📅 {getRelativeTime(o.dueDate)}
+                                   {getRelativeTime(o.dueDate)}
                                  </div>
                                )}
                              </td>
@@ -801,8 +801,8 @@ export default function EmployeePage() {
                                )}
                                {isBatchMatched && (
                                  <div className="mt-1">
-                                   <span className="inline-flex items-center gap-0.5 text-[0.65rem] bg-secondary/25 text-secondary border border-secondary/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                     ⚡ Batch Match
+                                   <span className="inline-flex items-center gap-0.5 text-[0.65rem] bg-primary/10 text-primary border border-primary/25 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                     Batch Matched
                                    </span>
                                  </div>
                                )}
@@ -879,11 +879,11 @@ export default function EmployeePage() {
                               )}
                             </div>
                             <span className="text-[0.65rem] text-text-dim mt-0.5">
-                              🕒 Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
+                              Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
                             </span>
                             {o.dueDate && (
                               <span className={`text-[0.65rem] font-bold mt-0.5 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
-                                📅 {getRelativeTime(o.dueDate)}
+                                {getRelativeTime(o.dueDate)}
                               </span>
                             )}
                           </div>
@@ -919,8 +919,8 @@ export default function EmployeePage() {
                             )}
                           </div>
                           {o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim()) && (
-                            <span className="inline-flex items-center justify-center gap-0.5 text-[0.6rem] bg-secondary/25 text-secondary border border-secondary/30 font-extrabold px-1 py-0.5 rounded uppercase tracking-wider w-full mt-1">
-                              ⚡ Batch Match
+                            <span className="inline-flex items-center justify-center gap-1 text-[0.6rem] bg-primary/15 text-primary border border-primary/30 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider w-full mt-1">
+                              Batch Matched
                             </span>
                           )}
                         </div>
@@ -1229,7 +1229,7 @@ export default function EmployeePage() {
          <button onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)} className="bg-transparent border-none text-text-main cursor-pointer p-1">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
-         <div className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">Stitch-Opt</div>
+         <div className="font-black text-[1.1rem] text-text-main tracking-tight">Stitch-Opt</div>
          <div className="w-[32px]"></div> {/* Spacer */}
       </div>
 
@@ -1369,7 +1369,7 @@ export default function EmployeePage() {
         {viewingReceiptOrder && (
           <div className="flex flex-col gap-4 text-left font-sans">
             <div className="flex flex-col items-center border-b border-border-glass pb-4 mb-2">
-              <span className="text-[1.8rem] font-extrabold tracking-wider bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">STITCH-OPT</span>
+              <span className="text-[1.8rem] font-black tracking-wider text-text-main">STITCH-OPT</span>
               <span className="text-xs text-text-dim font-mono mt-1">RECEIPT ID: {viewingReceiptOrder.receiptID || viewingReceiptOrder.receiptId || viewingReceiptOrder.receiptRef || 'N/A'}</span>
             </div>
 

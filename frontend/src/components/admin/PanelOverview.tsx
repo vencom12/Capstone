@@ -225,8 +225,8 @@ export default function PanelOverview({
       <div className="glass-card mb-5 relative overflow-hidden flex flex-col gap-3 shrink-0 border border-border-glass p-5 rounded-[24px]">
         <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-primary to-secondary w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 text-base font-bold shadow-md">
-            🤖
+          <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
           </div>
           <div className="flex flex-col text-left">
             <span className="font-extrabold text-[0.95rem] text-text-main leading-tight">StitchMaster AI Production Insights</span>

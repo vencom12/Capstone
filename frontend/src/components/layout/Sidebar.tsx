@@ -82,11 +82,11 @@ export default function Sidebar() {
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
-              <div className="bg-gradient-to-br from-primary to-secondary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold">
+              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold shadow-sm">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
             )}
-            <span className="font-extrabold text-[1.1rem] bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight">
+            <span className="font-black text-[1.1rem] text-text-main tracking-tight">
               Stitch-Opt
             </span>
           </Link>
@@ -109,7 +109,7 @@ export default function Sidebar() {
               w-full flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer
               transition-all duration-300 text-[0.88rem] font-bold border
               ${isBasketOpen
-                ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+                ? 'bg-primary/20 border-primary text-white shadow-sm'
                 : 'bg-white/5 border-border-glass text-text-main hover:bg-white/10'
               }
             `}
@@ -118,7 +118,7 @@ export default function Sidebar() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
               <span>My Basket</span>
             </div>
-            {isBasketOpen && <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />}
+            {isBasketOpen && <div className="w-2 h-2 bg-primary rounded-full" />}
           </button>
         </div>
 
@@ -150,7 +150,7 @@ export default function Sidebar() {
                       w-full flex items-center px-3.5 py-2.5 rounded-xl cursor-pointer
                       transition-all duration-300 text-left text-[0.85rem] border
                       ${selectedCategory === category
-                        ? 'bg-gradient-to-r from-primary to-secondary border-transparent text-white font-semibold shadow-[0_10px_20px_-5px_rgba(99,102,241,0.5)]'
+                        ? 'bg-primary border-primary/40 text-white font-semibold shadow-sm'
                         : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
                       }
                     `}

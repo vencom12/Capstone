@@ -258,7 +258,7 @@ export default function PanelStaffing({
                               className="text-[0.68rem] text-text-dim/70 italic font-mono px-2 py-1 bg-white/5 rounded-lg border border-border-glass select-none"
                               title="Administrator accounts cannot be modified or disabled by fellow admins"
                             >
-                              🔒 Protected Admin
+                              Protected Admin
                             </span>
                           ) : customer ? (
                             <>
@@ -357,7 +357,7 @@ export default function PanelStaffing({
                 <div className="flex gap-2 w-full mt-2">
                   {fellowAdmin ? (
                     <span className="w-full text-center text-xs text-text-dim/70 italic font-mono py-2 bg-white/5 rounded-xl border border-border-glass">
-                      🔒 Protected Admin
+                      Protected Admin
                     </span>
                   ) : customer ? (
                     <button
