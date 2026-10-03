@@ -25,7 +25,7 @@ interface ProductStoreState {
   setSearchQuery: (query: string) => void;
   setSelectedCategory: (category: string) => void;
   fetchProducts: () => Promise<void>;
-  fetchDashboardState: () => Promise<void>;
+  fetchDashboardState: (silent?: boolean) => Promise<void>;
   toggleFavorite: (productId: string) => Promise<void>;
   clearState: () => void;
 
@@ -59,8 +59,11 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
     }
   },
 
-  fetchDashboardState: async () => {
-    set({ isSyncing: true });
+  fetchDashboardState: async (silent = false) => {
+    // Only flash sync/skeleton state if products list is currently empty
+    if (!silent && get().products.length === 0) {
+      set({ isSyncing: true });
+    }
     try {
       const data = await api.get<DashboardState>('/api/customer/dashboard-state');
       set({

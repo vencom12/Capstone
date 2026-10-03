@@ -111,9 +111,9 @@ export default function DashboardPage() {
     // 3. Initial Data Fetch
     fetchDashboardState();
 
-    // 4. Real-time Polling (15s interval)
+    // 4. Real-time Polling (15s interval - silent in background)
     const interval = setInterval(() => {
-      fetchDashboardState();
+      fetchDashboardState(true);
     }, 15000);
 
     return () => clearInterval(interval);
@@ -344,8 +344,15 @@ export default function DashboardPage() {
               </div>
             ) : favorites.length === 0 ? (
               <div className="border-2 border-dashed border-border-glass rounded-3xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
-                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 text-accent"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                 <p className="text-lg font-medium m-0">You haven't favorited any designs yet.</p>
+                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-primary opacity-60"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                 <p className="text-base font-bold text-text-main m-0">You haven't favorited any designs yet</p>
+                 <p className="text-xs text-text-dim mt-1 max-w-xs">Heart any embroidery design from our catalog to save it for quick ordering anytime.</p>
+                 <button 
+                   onClick={() => setActiveTab('shop')} 
+                   className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                 >
+                   Explore Catalog →
+                 </button>
               </div>
             ) : (
               <ProductGrid products={favorites} onQuickView={handleQuickView} />
