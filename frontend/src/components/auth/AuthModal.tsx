@@ -14,10 +14,9 @@ export default function AuthModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authParam = searchParams.get('auth'); // 'login' or 'register'
-  const roleParam = searchParams.get('role'); // 'admin' or 'employee'
   
   const { isAuthOpen, authMode, setAuthOpen } = useUIStore();
-  const mode = roleParam ? 'login' : authMode;
+  const mode = authMode;
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +29,7 @@ export default function AuthModal() {
 
   const { login, register, loginWithGoogle, isAuthenticated } = useAuthStore();
 
-  // Listen to deep links (?auth=login or ?auth=register, and ?role=admin/employee)
+  // Listen to deep links (?auth=login or ?auth=register)
   useEffect(() => {
     if (authParam === 'login' || authParam === 'register') {
       if (isAuthenticated) {
@@ -43,12 +42,12 @@ export default function AuthModal() {
 
   const handleClose = () => {
     setAuthOpen(false);
-    if (authParam || roleParam) {
+    if (authParam) {
       router.replace('/');
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up (Customer only)
+  // Handle 1-Click Google Sign-In & Sign-Up
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     try {
@@ -76,7 +75,8 @@ export default function AuthModal() {
         } else if (res.user?.role === 'employee') {
           router.replace('/employee');
         } else {
-          router.replace('/dashboard');
+          router.replace('/');
+          router.refresh();
         }
       } else {
         showToast(res.message || 'Google sign-in failed on server.', 'error');
@@ -133,7 +133,7 @@ export default function AuthModal() {
     }
   };
 
-  // Smart Unified Login: Server verifies cryptographic credentials & determines role automatically
+  // Smart Unified Login: Single clean toast, automatic role-based routing
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -155,13 +155,8 @@ export default function AuthModal() {
         } else if (res.user?.role === 'employee') {
           router.replace('/employee');
         } else {
-          // If a customer was trying to access a restricted staff route
-          if (roleParam === 'admin' || roleParam === 'employee') {
-            showToast('Access restricted: your account does not have staff permissions.', 'info');
-            router.replace('/dashboard');
-          } else {
-            router.refresh();
-          }
+          router.replace('/');
+          router.refresh();
         }
       } else {
         showToast(res.message || 'Invalid username or password.', 'error');
@@ -183,23 +178,11 @@ export default function AuthModal() {
         
         {/* Header & Subtitle */}
         <div className="text-center">
-          {roleParam && (
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                {roleParam === 'admin' ? 'Administrator Authorization Required' : 'Staff Authorization Required'}
-              </span>
-            </div>
-          )}
-
           <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">
             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
           <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
-            {roleParam === 'admin'
-              ? 'Sign in with administrative credentials to access management controls'
-              : roleParam === 'employee'
-              ? 'Sign in with operator credentials to manage production queues'
-              : mode === 'login' 
+            {mode === 'login' 
               ? 'Sign in to access your orders, designs & custom projects' 
               : 'Join Stitch-Opt for custom embroidery orders & tracking'}
           </p>
@@ -207,7 +190,7 @@ export default function AuthModal() {
 
         {/* Credentials Form */}
         <form onSubmit={mode === 'login' ? handleLoginSubmit : handleRegisterSubmit} className="flex flex-col gap-3.5">
-          {!roleParam && mode === 'register' && (
+          {mode === 'register' && (
             <div className="flex flex-col gap-1">
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username *</label>
               <input 
@@ -235,7 +218,7 @@ export default function AuthModal() {
             />
           </div>
 
-          {!roleParam && mode === 'register' && (
+          {mode === 'register' && (
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-[0.75rem] font-bold text-text-dim">Mobile Number</label>
@@ -255,7 +238,7 @@ export default function AuthModal() {
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-center ml-1">
               <label className="text-[0.75rem] font-bold text-text-dim">Password *</label>
-              {mode === 'login' && !roleParam && (
+              {mode === 'login' && (
                 <button
                   type="button"
                   onClick={handleForgotPassword}
@@ -284,13 +267,13 @@ export default function AuthModal() {
               >
                 {showPassword ? (
                   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                     <line x1="3" y1="3" x2="21" y2="21"></line>
                   </svg>
                 ) : (
                   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
                 )}
@@ -322,46 +305,42 @@ export default function AuthModal() {
           </GlassButton>
         </form>
 
-        {/* 1-Click Google Sign-In (For Customers) */}
-        {!roleParam && (
-          <>
-            <div className="relative flex items-center justify-center my-0.5">
-              <div className="border-t border-border-glass w-full" />
-              <span className="bg-bg-card px-3 text-[0.7rem] font-bold text-text-dim uppercase tracking-wider shrink-0">
-                or continue with
-              </span>
-              <div className="border-t border-border-glass w-full" />
-            </div>
+        {/* 1-Click Google Sign-In */}
+        <div className="relative flex items-center justify-center my-0.5">
+          <div className="border-t border-border-glass w-full" />
+          <span className="bg-bg-card px-3 text-[0.7rem] font-bold text-text-dim uppercase tracking-wider shrink-0">
+            or continue with
+          </span>
+          <div className="border-t border-border-glass w-full" />
+        </div>
 
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={isSubmitting}
+          className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z" />
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15Z" />
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z" />
+          </svg>
+          <span>{mode === 'login' ? 'Continue with Google' : 'Sign Up with Google'}</span>
+        </button>
+
+        <div className="text-center pt-1 border-t border-border-glass flex flex-col gap-2">
+          <p className="text-xs text-text-dim m-0">
+            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isSubmitting}
-              className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
+              onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login')}
+              className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
-                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z" />
-                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15Z" />
-                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z" />
-              </svg>
-              <span>{mode === 'login' ? 'Continue with Google' : 'Sign Up with Google'}</span>
+              {mode === 'login' ? 'Create an Account' : 'Sign In'}
             </button>
-
-            <div className="text-center pt-1 border-t border-border-glass flex flex-col gap-2">
-              <p className="text-xs text-text-dim m-0">
-                {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                <button
-                  type="button"
-                  onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login')}
-                  className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs"
-                >
-                  {mode === 'login' ? 'Create an Account' : 'Sign In'}
-                </button>
-              </p>
-            </div>
-          </>
-        )}
+          </p>
+        </div>
 
       </div>
     </GlassModal>

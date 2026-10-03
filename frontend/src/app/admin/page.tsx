@@ -236,8 +236,11 @@ export default function AdminPage() {
   // client-side redirect gate if unauthenticated or not admin
   useEffect(() => {
     if (isHydrated) {
-      if (!isAuthenticated || !checkAccess('admin')) {
-        router.replace('/?auth=login&role=admin');
+      if (!isAuthenticated) {
+        router.replace('/?auth=login');
+      } else if (!checkAccess('admin')) {
+        showToast('Administrator privileges required.', 'error');
+        router.replace('/');
       }
     }
   }, [isHydrated, isAuthenticated, checkAccess, router]);

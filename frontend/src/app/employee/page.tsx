@@ -226,8 +226,11 @@ export default function EmployeePage() {
   // client-side redirect gate if unauthenticated or not employee
   useEffect(() => {
     if (isHydrated) {
-      if (!isAuthenticated || !checkAccess('employee')) {
-        router.replace('/?auth=login&role=employee');
+      if (!isAuthenticated) {
+        router.replace('/?auth=login');
+      } else if (!checkAccess('employee')) {
+        showToast('Staff privileges required.', 'error');
+        router.replace('/');
       }
     }
   }, [isHydrated, isAuthenticated, checkAccess, router]);
