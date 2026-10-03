@@ -99,7 +99,7 @@ export default function GCashPayment({
 
         <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
           <span className="text-text-dim">Account Name:</span>
-          <span className="text-white font-bold text-[0.8rem]">STITCH-OPT (PACIFIC MALL)</span>
+          <span className="text-white font-bold text-[0.8rem]">Eds Towels and Caps Embroidery</span>
         </div>
 
         {activeQrCodeUrl && (

@@ -12,6 +12,7 @@ Traditional Philippine e-commerce platforms struggle with customized apparel bec
 
 * **Official Business Facility:** Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301
 * **Customer Service & Operations Hotline:** **0928 810 3928**
+* **Official GCash Account Name:** **Eds Towels and Caps Embroidery**
 * **Primary 3PL Logistics Partner:** J&T Express Philippines (Lucena Distribution Center)
 
 ```mermaid
