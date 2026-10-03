@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import AddressSelect from '@/components/ui/AddressSelect';
 import { auth, googleProvider } from '@/lib/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, getRedirectResult, type ConfirmationResult } from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from 'firebase/auth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -43,16 +43,6 @@ export default function AuthModal() {
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     try {
-      // In production or mobile browsers, signInWithPopup is often blocked by cross-origin privacy / third-party cookie restrictions.
-      // We attempt signInWithPopup, but fall back seamlessly to signInWithRedirect if blocked or closed.
-      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      
-      if (!isLocalhost) {
-        // Direct redirect on deployed production domain avoids popup cross-site cookie blocking
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
@@ -70,22 +60,22 @@ export default function AuthModal() {
       });
 
       if (res.success) {
-        showToast('Signed in with Google successfully!', 'success');
+        showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
         handleClose();
-        window.location.href = '/';
+        if (res.user?.role === 'admin') {
+          router.replace('/admin');
+        } else if (res.user?.role === 'employee') {
+          router.replace('/employee');
+        }
       } else {
         showToast(res.message || 'Google sign-in failed on server.', 'error');
       }
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-        // If popup was blocked or closed unexpectedly, initiate redirect instead
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirectErr: any) {
-          showToast(redirectErr.message || 'Failed to start Google sign-in.', 'error');
-        }
+      if (err.code === 'auth/popup-closed-by-user') {
+        showToast('Sign-in popup was closed.', 'info');
+      } else if (err.code === 'auth/popup-blocked') {
+        showToast('Sign-in popup was blocked by browser. Please allow popups.', 'error');
       } else if (err.code === 'auth/unauthorized-domain') {
         showToast('Domain is not authorized in Firebase Console.', 'error');
       } else {
