@@ -12,8 +12,9 @@ const crypto = require('crypto');
  * Falls back to console simulation if credentials are missing.
  */
 function createTransporter() {
-  const gmailUser = process.env.GMAIL_USER || process.env.EMAIL_USER;
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS;
+  const gmailUser = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
+  const rawPass = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || '';
+  const gmailAppPassword = rawPass.replace(/\s+/g, '');
 
   if (!gmailUser || !gmailAppPassword) {
     return null; // Will use simulation mode
