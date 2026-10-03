@@ -81,6 +81,10 @@ exports.submitOrder = async (req, res) => {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
+        if (!user.isEmailVerified) {
+            return res.status(403).json({ message: 'Please verify your email address before placing an order.' });
+        }
+
         // Fix A: Server-side total recalculation (never trust client-sent total)
         let serverTotal = 0;
         for (const item of items) {

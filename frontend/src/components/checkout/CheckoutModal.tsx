@@ -58,6 +58,12 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
+
+    if (user && !user.isEmailVerified) {
+      showToast('Please verify your email address before placing an order.', 'error');
+      return;
+    }
+
     const file = e.target.files[0];
     setReceiptFile(file);
     setAiAnalyzing(true);
