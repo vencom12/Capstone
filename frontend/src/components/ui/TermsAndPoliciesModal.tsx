@@ -3,6 +3,33 @@
 import React, { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 
+/**
+ * =========================================================================
+ * STUDIO BUSINESS SAFEGUARDS & COMMERCIAL TERMS CONFIGURATION
+ * =========================================================================
+ * You can edit any of the values below to customize your business details,
+ * store locations, phone numbers, warranty windows, and storage limits.
+ */
+export const STUDIO_BUSINESS_SAFEGUARDS = {
+  studioName: 'Eds Towels & Caps',
+  legalEntity: 'Eds Towels & Caps Embroidery Studio',
+  storeAddress: 'Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301',
+  operatingHours: 'Open Daily: 10:00 AM – 8:00 PM (Following official Pacific Mall hours)',
+  phone: '0928 810 3928',
+  gcashAccountName: 'Eds Towels and Caps Embroidery',
+  gcashAccountNumber: '0928 810 3928',
+  freePickupStorageDays: 30,
+  maxArchiveStorageDays: 60,
+  errorGuaranteeDays: 7,
+  threadStandards: 'Madeira Polyneon & Isacord 40wt Industrial Thread',
+  courierPartner: 'J&T Express',
+  governingLaws: {
+    consumerAct: 'Republic Act No. 7394 (Consumer Act of the Philippines)',
+    dataPrivacy: 'Republic Act No. 10173 (Data Privacy Act of 2012)',
+    ipCode: 'Republic Act No. 8293 (Intellectual Property Code of the Philippines)',
+  },
+};
+
 interface TermsAndPoliciesModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +42,7 @@ export default function TermsAndPoliciesModal({
   initialTab = 'refunds',
 }: TermsAndPoliciesModalProps) {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const cfg = STUDIO_BUSINESS_SAFEGUARDS;
 
   const sections = [
     {
