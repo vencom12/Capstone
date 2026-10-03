@@ -514,9 +514,22 @@ export default function DashboardPage() {
           { key: 'username', label: 'Display Name', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>), type: 'text' as const },
           { key: 'email', label: 'Email Address', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>), type: 'email' as const },
           { key: 'phoneNumber', label: 'Phone Number', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>), type: 'text' as const },
-          { key: 'address', label: 'Shipping Address', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>), type: 'textarea' as const },
+
           { key: 'preferredDeliveryTime', label: 'Preferred Delivery Time', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>), type: 'text' as const },
         ];
+
+        // Unify address sources: if savedAddresses is not yet populated, use profile address as initial default
+        const effectiveSavedAddresses: SavedAddress[] = (user?.savedAddresses && user.savedAddresses.length > 0)
+          ? user.savedAddresses
+          : (user?.address ? [{
+              id: 'addr_default_profile',
+              recipientName: user.username || 'Customer',
+              phoneNumber: user.phoneNumber || '',
+              streetAddress: user.address,
+              fullAddress: user.address,
+              label: 'Home',
+              isDefault: true,
+            }] : []);
 
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
@@ -643,8 +656,8 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <div className="p-6 flex flex-col gap-3">
-                  {user?.savedAddresses && user.savedAddresses.length > 0 ? (
-                    user.savedAddresses.slice(0, 3).map((addr) => (
+                  {effectiveSavedAddresses.length > 0 ? (
+                    effectiveSavedAddresses.slice(0, 3).map((addr) => (
                       <div
                         key={addr.id}
                         onClick={() => setIsAddressBookOpen(true)}
@@ -686,12 +699,12 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {user?.savedAddresses && user.savedAddresses.length > 3 && (
+                  {effectiveSavedAddresses.length > 3 && (
                     <button
                       onClick={() => setIsAddressBookOpen(true)}
                       className="text-xs text-center text-primary font-bold hover:underline bg-transparent border-none cursor-pointer py-1"
                     >
-                      View all {user.savedAddresses.length} addresses ›
+                      View all {effectiveSavedAddresses.length} addresses ›
                     </button>
                   )}
                 </div>
