@@ -67,20 +67,33 @@
    ======================================== */
 * {
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 html {
   background-color: var(--color-bg-dark);
-  overflow: hidden;
+  min-height: 100%;
   height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   font-family: var(--font-outfit), 'Inter', sans-serif;
   background-color: var(--color-bg-dark);
   color: var(--color-text-main);
+  min-height: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch momentum scrolling for all mobile containers */
+.touch-scroll,
+main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* Scrollbar */

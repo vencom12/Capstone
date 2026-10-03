@@ -249,15 +249,15 @@ export default function DashboardPage() {
               }} 
               onViewAll={() => setActiveTab('tracking')}
             />
-            <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-[650px]:mb-3">
+            <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-md:mb-3">
               <div className="max-[1100px]:w-full">
-                <h1 className="text-xl font-bold mb-0.5 max-[650px]:text-lg">Design Catalog</h1>
-                <p className="text-text-dim text-[0.85rem] m-0 max-[650px]:text-[0.75rem]">Select a professional design for your next project.</p>
+                <h1 className="text-xl font-bold mb-0.5 max-md:text-lg">Design Catalog</h1>
+                <p className="text-text-dim text-[0.85rem] m-0 max-md:text-[0.75rem]">Select a professional design for your next project.</p>
               </div>
               
               <div className="flex gap-3 w-full max-w-[400px] max-[1100px]:max-w-none max-[1100px]:order-2">
                 {/* Animated Custom Category Dropdown (Visible on Mobile only) */}
-                <div className="hidden max-[650px]:block shrink-0 relative category-dropdown-container">
+                <div className="hidden max-md:block shrink-0 relative category-dropdown-container">
                   <button 
                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                     className="flex items-center gap-2 bg-bg-surface border border-border-glass text-text-main px-4 py-2.5 rounded-xl text-[0.9rem] font-bold outline-none cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
@@ -328,8 +328,8 @@ export default function DashboardPage() {
                 <h1 className="text-xl font-bold mb-0.5">Order Tracking</h1>
                 <p className="text-text-dim text-[0.85rem] m-0">Monitor your active and recent projects in real-time.</p>
               </div>
-              <div className="shrink-0 flex items-center gap-2 max-[650px]:w-full">
-                <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-[650px]:hidden">Filter by date:</span>
+              <div className="shrink-0 flex items-center gap-2 max-md:w-full">
+                <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-md:hidden">Filter by date:</span>
                 <GlassDatePicker 
                   value={ordersDateFilter}
                   onChange={(val) => setOrdersDateFilter(val)}
@@ -414,8 +414,8 @@ export default function DashboardPage() {
                 <h1 className="text-xl font-bold mb-0.5">My Transactions</h1>
                 <p className="text-text-dim text-[0.85rem] m-0">Your payment history and digital receipts.</p>
               </div>
-              <div className="shrink-0 flex items-center gap-2 max-[650px]:w-full">
-                <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-[650px]:hidden">Filter by date:</span>
+              <div className="shrink-0 flex items-center gap-2 max-md:w-full">
+                <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-md:hidden">Filter by date:</span>
                 <GlassDatePicker 
                   value={txDateFilter}
                   onChange={(val) => setTxDateFilter(val)}
@@ -733,7 +733,7 @@ export default function DashboardPage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main">
       {/* Mobile Top Bar */}
-      <div className="hidden max-[650px]:flex items-center justify-between w-full h-[60px] px-3.5 border-b border-border-glass bg-bg-header/90 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
+      <div className="hidden max-md:flex items-center justify-between w-full h-[60px] px-3.5 border-b border-border-glass bg-bg-header/90 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
          <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all" title="Toggle Navigation Menu">
            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
@@ -754,7 +754,7 @@ export default function DashboardPage() {
 
       <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 h-full overflow-hidden p-8 max-[650px]:p-4 max-[650px]:pt-[80px]">
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6 lg:p-8 pt-[76px] md:pt-6 lg:pt-8 pb-32 md:pb-8 overscroll-y-contain touch-scroll">
         {renderTabContent()}
       </main>
 

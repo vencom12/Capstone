@@ -343,17 +343,17 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[780px]" noPadding>
-      <div className="p-6 max-[650px]:p-4 flex flex-col">
-        <div className="flex justify-between items-center mb-5 max-[650px]:mb-3">
-          <h2 className="text-xl max-[650px]:text-lg font-bold m-0 flex items-center gap-3 max-[650px]:gap-2">
+      <div className="p-6 max-md:p-4 flex flex-col">
+        <div className="flex justify-between items-center mb-5 max-md:mb-3">
+          <h2 className="text-xl max-md:text-lg font-bold m-0 flex items-center gap-3 max-md:gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="max-[650px]:w-5 max-[650px]:h-5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
             Secure Checkout
           </h2>
         </div>
 
-        <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-[650px]:grid-cols-1 max-[650px]:gap-4">
+        <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-md:grid-cols-1 max-md:gap-4">
           {/* Left: Delivery & Summary */}
-          <div className="flex flex-col gap-5 max-[650px]:gap-3">
+          <div className="flex flex-col gap-5 max-md:gap-3">
             {/* Fulfillment Method Toggle */}
             <div className="flex flex-col gap-1.5">
               <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
@@ -525,7 +525,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               </div>
             )}
 
-            <div className="flex flex-col gap-3 border-t border-border-glass pt-4 max-[650px]:pt-3 max-[650px]:gap-2">
+            <div className="flex flex-col gap-3 border-t border-border-glass pt-4 max-[650px]:pt-3 max-md:gap-2">
               <h3 className="text-[0.9rem] font-bold m-0">Order Summary</h3>
               <div className="max-h-[180px] max-[650px]:max-h-[120px] overflow-y-auto pr-2 flex flex-col gap-2">
                 {items.map((item) => {
@@ -586,7 +586,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           </div>
 
           {/* Right: Payment & Receipt AI Verification */}
-          <div className="flex flex-col gap-5 border-l border-border-glass pl-7 max-[650px]:border-l-0 max-[650px]:pl-0 max-[650px]:pt-3 max-[650px]:border-t max-[650px]:gap-3">
+          <div className="flex flex-col gap-5 border-l border-border-glass pl-7 max-md:border-l-0 max-md:pl-0 max-md:pt-4 max-md:border-t max-md:gap-3">
              <GCashPayment 
                finalTotal={finalTotal}
                totalAmount={finalTotal} 

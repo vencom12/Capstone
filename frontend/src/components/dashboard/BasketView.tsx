@@ -103,7 +103,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   // 1. EMPTY STATE
   if (items.length === 0) {
     return (
-      <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+      <section className="flex flex-col min-h-full animate-[fadeIn_0.3s_ease-out]">
         <header className="mb-6">
           <h1 className="text-2xl font-black text-white m-0 tracking-tight flex items-center gap-3">
             <span>My Embroidery Basket</span>
@@ -183,7 +183,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       </header>
 
       {/* Main Grid: Clean & Well Proportioned */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24 lg:pb-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pb-36 lg:pb-8 items-start">
         {/* Left Column: Itemized List Container (7 of 12 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col gap-3">
           {/* Header Row / Select All Controls Bar */}
@@ -295,9 +295,9 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                       </div>
 
                       {/* Controls Row */}
-                      <div className="flex items-center justify-between gap-3 mt-3 pt-2.5 border-t border-white/5 flex-wrap">
+                      <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/5">
                         {/* Stepper */}
-                        <div className="flex items-center gap-1 bg-black/40 border border-border-glass rounded-xl p-0.5">
+                        <div className="flex items-center gap-1 bg-black/40 border border-border-glass rounded-xl p-0.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(item.id, item.productId, item.quantity - 1)}
@@ -306,7 +306,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           >
                             -
                           </button>
-                          <span className="w-8 text-center text-xs font-mono font-bold text-white select-none">
+                          <span className="w-7 text-center text-xs font-mono font-bold text-white select-none">
                             {item.quantity}
                           </span>
                           <button
@@ -319,11 +319,12 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleMoveToFavorites(item)}
-                            className="text-[0.72rem] text-text-dim hover:text-primary transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-dim hover:text-primary transition-all flex items-center gap-1.5 cursor-pointer border border-border-glass text-[0.72rem]"
+                            title="Save to Favorites"
                           >
                             <svg
                               width="13"
@@ -336,10 +337,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             >
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                             </svg>
-                            <span>Save for Later</span>
+                            <span className="hidden sm:inline">Save</span>
                           </button>
-
-                          <span className="text-white/10">|</span>
 
                           <button
                             type="button"
@@ -347,13 +346,14 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                               removeItem(item.id);
                               showToast(`Removed "${item.name}" from basket`, 'info');
                             }}
-                            className="text-[0.72rem] text-text-dim hover:text-danger transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-danger/15 text-text-dim hover:text-danger hover:border-danger/30 transition-all flex items-center gap-1.5 cursor-pointer border border-border-glass text-[0.72rem]"
+                            title="Remove from Basket"
                           >
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polyline points="3 6 5 6 21 6" />
                               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
-                            <span>Remove</span>
+                            <span className="hidden sm:inline">Remove</span>
                           </button>
                         </div>
                       </div>

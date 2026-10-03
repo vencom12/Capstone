@@ -43,7 +43,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > 50;
-    if (isLeftSwipe && window.innerWidth <= 650) {
+    if (isLeftSwipe && window.innerWidth <= 768) {
       setSidebarOpen(false);
     }
   };
@@ -81,7 +81,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
       {/* Mobile Backdrop Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-[1999] hidden max-[650px]:block backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/60 z-[1999] hidden max-md:block backdrop-blur-sm transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -91,13 +91,13 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
         onTouchEnd={onTouchEnd}
         className={`
         h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 shrink-0 z-[2000]
-        w-[260px] max-[1100px]:w-[80px] max-[650px]:w-[280px]
-        max-[650px]:fixed max-[650px]:left-0 max-[650px]:top-0
-        ${isSidebarOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
+        w-[260px] max-[1100px]:w-[80px] max-md:w-[280px]
+        max-md:fixed max-md:left-0 max-md:top-0
+        ${isSidebarOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full'}
       `}>
         {/* Header / Logo */}
         <div className="p-4 pt-5 pb-2">
-          <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start">
+          <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer max-[1100px]:justify-center max-md:justify-start">
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
@@ -105,7 +105,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
             )}
-            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-[650px]:inline">
+            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-md:inline">
               Stitch-Opt
             </span>
           </Link>
@@ -118,12 +118,12 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
               <button
                 onClick={() => {
                   setActiveTab(item.id);
-                  if (window.innerWidth <= 650) setSidebarOpen(false);
+                  if (window.innerWidth <= 768) setSidebarOpen(false);
                 }}
                 className={`
                 w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer
                 transition-all duration-300 border font-medium text-[0.95rem]
-                max-[1100px]:justify-center max-[1100px]:px-0 max-[650px]:justify-start max-[650px]:px-3
+                max-[1100px]:justify-center max-[1100px]:px-0 max-md:justify-start max-md:px-3
                 ${activeTab === item.id
                     ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
                     : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
@@ -137,9 +137,9 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
                     </span>
                   )}
                 </div>
-                <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap flex-1 text-left">{item.label}</span>
+                <span className="max-[1100px]:hidden max-md:inline whitespace-nowrap flex-1 text-left">{item.label}</span>
                 {item.id === 'basket' && mounted && basketCount > 0 && (
-                  <span className={`max-[1100px]:hidden max-[650px]:inline text-[0.7rem] px-2 py-0.5 rounded-full font-bold ${
+                  <span className={`max-[1100px]:hidden max-md:inline text-[0.7rem] px-2 py-0.5 rounded-full font-bold ${
                     activeTab === 'basket' ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary border border-primary/30'
                   }`}>
                     {basketCount}
@@ -155,11 +155,11 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
           <button
             onClick={() => {
               setActiveTab('settings');
-              if (window.innerWidth <= 650) setSidebarOpen(false);
+              if (window.innerWidth <= 768) setSidebarOpen(false);
             }}
             className={`
               w-full flex items-center gap-3 p-2 rounded-xl border cursor-pointer transition-all duration-300
-              max-[1100px]:justify-center max-[650px]:justify-start
+              max-[1100px]:justify-center max-md:justify-start
               ${activeTab === 'settings'
                 ? 'bg-primary/20 border-primary shadow-sm'
                 : 'bg-white/5 border-border-glass hover:bg-white/10'}
@@ -175,7 +175,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
                 </svg>
               </div>
             </div>
-            <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-[650px]:flex">
+            <div className="flex flex-col overflow-hidden max-[1100px]:hidden max-md:flex">
               <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate text-left">{user?.username || 'User'}</span>
               <span className="text-[0.7rem] text-text-dim text-left">Account Settings</span>
             </div>
@@ -183,10 +183,10 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
 
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-[650px]:justify-start"
+            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-md:justify-start"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            <span className="max-[1100px]:hidden max-[650px]:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
+            <span className="max-[1100px]:hidden max-md:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
           </button>
         </div>
       </aside>

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import ToastContainer from '@/components/ui/Toast';
@@ -10,6 +10,14 @@ const outfit = Outfit({
   weight: ['300', '400', '600', '700', '800'],
   variable: '--font-outfit',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+  themeColor: '#090d16',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://capstone-btr7.onrender.com'),
