@@ -208,8 +208,8 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== 'undefined' && state) {
           const isSessionActive = sessionStorage.getItem('stitch-session-active');
           
-          // If NOT remembered AND no active session flag, clear the store
-          if (!state.rememberMe && !isSessionActive && state.isAuthenticated) {
+          // Only force logout if rememberMe is explicitly false AND there is no active session flag
+          if (state.rememberMe === false && !isSessionActive && state.isAuthenticated) {
             state.logout();
           }
         }

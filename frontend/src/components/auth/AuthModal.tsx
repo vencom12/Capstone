@@ -95,42 +95,7 @@ export default function AuthModal() {
     }
   };
 
-  // Check for returning from signInWithRedirect
-  useEffect(() => {
-    let isMounted = true;
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!isMounted || !result || !result.user) return;
-        const user = result.user;
-        if (!user.email) {
-          showToast('No email associated with this Google account.', 'error');
-          return;
-        }
-        const res = await loginWithGoogle({
-          email: user.email,
-          displayName: user.displayName || '',
-          photoURL: user.photoURL || '',
-          uid: user.uid
-        });
-        if (res.success) {
-          showToast('Signed in with Google successfully!', 'success');
-          handleClose();
-          window.location.href = '/';
-        } else {
-          showToast(res.message || 'Google sign-in failed on server.', 'error');
-        }
-      })
-      .catch((error) => {
-        if (error.code && error.code !== 'auth/null-user') {
-          console.error('Redirect sign-in error:', error);
-          showToast(error.message || 'Error completing Google sign-in.', 'error');
-        }
-      });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [loginWithGoogle]);
 
   const getRecaptchaVerifier = () => {
     if (typeof window === 'undefined') return null;

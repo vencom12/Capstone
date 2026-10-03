@@ -23,6 +23,7 @@ export default function GlobalAuthListener() {
           return;
         }
 
+        console.log('[Google Auth] Redirect result received:', user.email);
         showToast('Completing Google Sign-In...', 'info');
 
         const res = await loginWithGoogle({
@@ -33,18 +34,18 @@ export default function GlobalAuthListener() {
         });
 
         if (res.success) {
-          showToast('Signed in with Google successfully!', 'success');
-          // Clean up any redirect params and refresh to update session state
           if (typeof window !== 'undefined') {
-            window.location.href = '/';
+            sessionStorage.setItem('stitch-session-active', 'true');
           }
+          showToast('Signed in with Google successfully!', 'success');
         } else {
+          console.error('[Google Auth] Backend login error:', res.message);
           showToast(res.message || 'Google sign-in failed on server.', 'error');
         }
       })
       .catch((error) => {
         if (error.code && error.code !== 'auth/null-user') {
-          console.error('Google Redirect Auth Error:', error);
+          console.error('[Google Auth] Redirect Auth Error:', error);
           showToast(error.message || 'Error completing Google sign-in.', 'error');
         }
       });
