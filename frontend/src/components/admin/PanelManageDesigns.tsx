@@ -625,7 +625,7 @@ export default function PanelManageDesigns({
             {variants.length > 0 && (
               <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
                 <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
-                  Configured Variants ({variants.length}) — Click ✏️ to edit
+                  Configured Variants ({variants.length})
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {variants.map((v, idx) => (
@@ -648,24 +648,32 @@ export default function PanelManageDesigns({
                         </span>
                       )}
                       
-                      {/* Edit Button */}
+                      {/* Clean Line Pen Edit Button */}
                       <button
                         type="button"
                         onClick={() => handleStartEditVariant(idx)}
-                        className="text-text-dim hover:text-amber-400 p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1"
-                        title="Edit this variant"
+                        className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
+                        title="Edit variant"
+                        aria-label="Edit variant"
                       >
-                        ✏️
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                          <path d="m15 5 4 4"/>
+                        </svg>
                       </button>
 
-                      {/* Delete Button */}
+                      {/* Clean Line Cross Delete Button */}
                       <button
                         type="button"
                         onClick={() => removeVariantItem(idx)}
-                        className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all font-bold"
+                        className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
                         title="Remove variant"
+                        aria-label="Remove variant"
                       >
-                        ×
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/>
+                          <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
                       </button>
                     </div>
                   ))}
