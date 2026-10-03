@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google';
 import './globals.css';
 import ToastContainer from '@/components/ui/Toast';
 import DynamicFavicon from '@/components/ui/DynamicFavicon';
+import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -50,6 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
+        <GlobalAuthListener />
         {children}
         <DynamicFavicon />
         <ToastContainer />
