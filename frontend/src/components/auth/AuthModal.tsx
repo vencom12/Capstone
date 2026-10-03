@@ -45,8 +45,14 @@ export default function AuthModal() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      
+      if (!user.email) {
+        showToast('No email associated with this Google account.', 'error');
+        return;
+      }
+
       const res = await loginWithGoogle({
-        email: user.email || '',
+        email: user.email,
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
         uid: user.uid
@@ -55,13 +61,17 @@ export default function AuthModal() {
       if (res.success) {
         showToast('Signed in with Google successfully!', 'success');
         handleClose();
-        window.location.reload();
+        window.location.href = '/';
       } else {
-        showToast(res.message || 'Google sign-in failed.', 'error');
+        showToast(res.message || 'Google sign-in failed on server.', 'error');
       }
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
+      if (err.code === 'auth/popup-closed-by-user') {
+        showToast('Sign-in popup was closed.', 'info');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        showToast('Domain is not authorized in Firebase Console.', 'error');
+      } else {
         showToast(err.message || 'Failed to sign in with Google.', 'error');
       }
     } finally {
