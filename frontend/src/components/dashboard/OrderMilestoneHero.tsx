@@ -27,6 +27,7 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
   if (active.length === 0) return null;
 
   const order = active[0];
+  const others = active.length - 1;
   const stage = getOrderStage(order);
   const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));

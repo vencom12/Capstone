@@ -51,6 +51,15 @@ export default function DashboardPage() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [selectedInvoiceTx, setSelectedInvoiceTx] = useState<any | null>(null);
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+
+  useEffect(() => {
+    import('@/lib/api').then(({ api }) => {
+      api.get<any>('/api/customer/settings').then(res => {
+        if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+      }).catch(() => {});
+    });
+  }, []);
 
   // 1-Click Reorder Action
   const handleReorder = (order: Order) => {
@@ -749,23 +758,48 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-dvh md:h-screen w-full overflow-x-hidden md:overflow-hidden bg-transparent text-text-main flex-col md:flex-row">
       {/* Mobile Top Bar */}
-      <div className="hidden max-md:flex items-center justify-between w-full h-[60px] px-3.5 border-b border-border-glass bg-bg-header/90 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
-         <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all" title="Toggle Navigation Menu">
+      <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-3.5 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
+         <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0" title="Toggle Navigation Menu">
            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
-         <div className="font-black text-[1.05rem] text-text-main tracking-tight truncate max-w-[200px]">Eds Towels & Caps</div>
-         <button
-           onClick={() => setActiveTab('basket')}
-           className="bg-transparent border-none text-text-main cursor-pointer p-1.5 relative flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all"
-           title="View My Basket"
-         >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-            {isHydrated && basketCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-primary text-white text-[0.6rem] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm">
-                {basketCount}
-              </span>
-            )}
-         </button>
+
+         <div className="flex items-center gap-2 min-w-0 max-w-[210px] shrink">
+           {businessLogoUrl ? (
+             <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
+           ) : (
+             <div className="bg-primary w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+             </div>
+           )}
+           <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Eds Towels & Caps</span>
+         </div>
+
+         <div className="flex items-center gap-1.5 shrink-0">
+           <button
+             onClick={() => {
+               const html = document.documentElement;
+               const current = html.getAttribute('data-theme');
+               html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+             }}
+             className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
+             title="Toggle theme"
+           >
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+           </button>
+
+           <button
+             onClick={() => setActiveTab('basket')}
+             className="bg-transparent border-none text-text-main cursor-pointer p-1.5 relative flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
+             title="View My Basket"
+           >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              {isHydrated && basketCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-[0.6rem] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm">
+                  {basketCount}
+                </span>
+              )}
+           </button>
+         </div>
       </div>
 
       <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
