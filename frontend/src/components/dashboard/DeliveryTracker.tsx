@@ -230,12 +230,20 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       </div>
 
       {/* Destination Confirmation Card */}
-      <div className="bg-bg-surface border border-border-glass rounded-2xl p-3.5 flex items-start gap-2.5">
-        <span className="text-lg">📍</span>
-        <div className="text-xs leading-relaxed flex-1">
-          <span className="font-bold text-text-main block">Recipient Delivery Address:</span>
-          <span className="text-text-dim">{order.address || 'No specific delivery address recorded on file.'}</span>
+      <div className="bg-bg-surface border border-border-glass rounded-2xl p-3.5 flex flex-col gap-2">
+        <div className="flex items-start gap-2.5">
+          <span className="text-lg">📍</span>
+          <div className="text-xs leading-relaxed flex-1">
+            <span className="font-bold text-text-main block">Recipient Delivery Address:</span>
+            <span className="text-text-dim">{order.address || 'No specific delivery address recorded on file.'}</span>
+          </div>
         </div>
+        {order.address && order.address.includes('(Landmark:') && (
+          <div className="ml-7 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-xl text-[0.72rem] text-secondary flex items-center gap-2">
+            <span className="font-bold shrink-0">🚩 Rider House Guide:</span>
+            <span className="italic">{order.address.split('(Landmark:')[1]?.replace(')', '')?.trim()}</span>
+          </div>
+        )}
       </div>
     </div>
   );

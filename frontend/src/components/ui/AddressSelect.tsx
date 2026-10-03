@@ -11,19 +11,28 @@ interface AddressSelectProps {
 
 /**
  * Intelligent parser to split an existing combined address into:
- * [1] Street / House / Landmark
+ * [1] Street / House No.
  * [2] Barangay, City, Province
+ * [3] Landmark (if present)
  */
-function parseAddressString(full: string): { street: string; area: string } {
-  if (!full || !full.trim()) return { street: '', area: '' };
+function parseAddressString(full: string): { street: string; area: string; landmark: string } {
+  if (!full || !full.trim()) return { street: '', area: '', landmark: '' };
 
-  const trimmed = full.trim();
+  let trimmed = full.trim();
+  let landmark = '';
+
+  // Extract (Landmark: ...) or (Near ...) if previously formatted
+  const landmarkMatch = trimmed.match(/\s*\((?:Landmark|Near):\s*(.*?)\)\s*$/i);
+  if (landmarkMatch) {
+    landmark = landmarkMatch[1].trim();
+    trimmed = trimmed.replace(landmarkMatch[0], '').trim();
+  }
 
   // Pattern 1: Look for Brgy. / Barangay indicator as the split point
   const brgyRegex = /^(.*?),\s*(Brgy\.?.*|Barangay.*)$/i;
   const matchBrgy = trimmed.match(brgyRegex);
   if (matchBrgy) {
-    return { street: matchBrgy[1].trim(), area: matchBrgy[2].trim() };
+    return { street: matchBrgy[1].trim(), area: matchBrgy[2].trim(), landmark };
   }
 
   // Pattern 2: Comma separated - first part is street/house, rest is area
@@ -31,12 +40,13 @@ function parseAddressString(full: string): { street: string; area: string } {
   if (parts.length >= 2) {
     return {
       street: parts[0],
-      area: parts.slice(1).join(', ')
+      area: parts.slice(1).join(', '),
+      landmark
     };
   }
 
   // Fallback: If only 1 part exists, assign to street
-  return { street: trimmed, area: '' };
+  return { street: trimmed, area: '', landmark };
 }
 
 export default function AddressSelect({
@@ -45,9 +55,10 @@ export default function AddressSelect({
   className = '',
   required = false
 }: AddressSelectProps) {
-  // Local state for the two fields
+  // Local state for the 3 fields (Street, Area, Landmark)
   const [street, setStreet] = useState('');
   const [area, setArea] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
 
@@ -56,24 +67,34 @@ export default function AddressSelect({
     const parsed = parseAddressString(value || '');
     setStreet(parsed.street);
     setArea(parsed.area);
+    setLandmark(parsed.landmark);
   }, [value]);
 
-  const updateCombinedAddress = (newStreet: string, newArea: string) => {
+  const updateCombinedAddress = (newStreet: string, newArea: string, newLandmark: string) => {
     setStreet(newStreet);
     setArea(newArea);
+    setLandmark(newLandmark);
 
     const s = newStreet.trim();
     const a = newArea.trim();
+    const l = newLandmark.trim();
 
+    let combined = '';
     if (s && a) {
       if (s.toLowerCase().includes(a.toLowerCase())) {
-        onChange(s);
+        combined = s;
       } else {
-        onChange(`${s}, ${a}`);
+        combined = `${s}, ${a}`;
       }
     } else {
-      onChange(s || a);
+      combined = s || a;
     }
+
+    if (l) {
+      combined = combined ? `${combined} (Landmark: ${l})` : `(Landmark: ${l})`;
+    }
+
+    onChange(combined);
   };
 
   // Browser Geolocation API with Reverse Geocoding
@@ -127,14 +148,14 @@ export default function AddressSelect({
 
           setStreet(detectedStreet);
           setArea(detectedArea);
-          updateCombinedAddress(detectedStreet, detectedArea);
-          setLocationStatus('📍 Location detected successfully!');
-          setTimeout(() => setLocationStatus(null), 4000);
+          updateCombinedAddress(detectedStreet, detectedArea, landmark);
+          setLocationStatus('📍 Location detected! Please verify your house number & landmark below.');
+          setTimeout(() => setLocationStatus(null), 5000);
         } catch {
           // Fallback to coordinates
           const gpsString = `GPS (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
           setStreet(street || gpsString);
-          updateCombinedAddress(street || gpsString, area || 'Philippines');
+          updateCombinedAddress(street || gpsString, area || 'Philippines', landmark);
           setLocationStatus(`📍 Coordinates captured: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
           setTimeout(() => setLocationStatus(null), 4000);
         } finally {
@@ -144,9 +165,9 @@ export default function AddressSelect({
       (error) => {
         setIsDetectingLocation(false);
         if (error.code === error.PERMISSION_DENIED) {
-          setLocationStatus('Permission denied. Please type your address manually.');
+          setLocationStatus('Permission denied. Please enter your address manually.');
         } else {
-          setLocationStatus('Unable to retrieve location. Please type manually.');
+          setLocationStatus('Unable to retrieve GPS signal. Please type manually.');
         }
         setTimeout(() => setLocationStatus(null), 4000);
       },
@@ -156,7 +177,7 @@ export default function AddressSelect({
 
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
-      {/* Geolocation Quick Trigger */}
+      {/* Geolocation Quick Trigger Header */}
       <div className="flex items-center justify-between">
         <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
           Delivery Address (Nationwide PH)
@@ -196,15 +217,15 @@ export default function AddressSelect({
       {/* Field 1: Detailed Street / House / Unit / Landmark */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span>House / Unit No., Street Name, Landmark</span>
-          <span className="text-[0.65rem] text-text-dim/60 font-normal">e.g. Purok / Block / Subdivision</span>
+          <span>House / Unit No., Building, Street Name *</span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">e.g. Block & Lot / Floor</span>
         </label>
         <input
           type="text"
           required={required}
-          placeholder="e.g. Purok Matahimik, Door 2 JP Laurel Ave, or 142 Quezon Ave"
+          placeholder="e.g. House #142, Block 5 Lot 8, Purok Matahimik"
           value={street}
-          onChange={(e) => updateCombinedAddress(e.target.value, area)}
+          onChange={(e) => updateCombinedAddress(e.target.value, area, landmark)}
           className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
         />
       </div>
@@ -212,26 +233,52 @@ export default function AddressSelect({
       {/* Field 2: Barangay, City & Province */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span>Barangay, City / Municipality, Province & Postal Code</span>
+          <span>Barangay, City / Municipality & Province *</span>
           <span className="text-[0.65rem] text-text-dim/60 font-normal">Mindanao, Visayas & Luzon</span>
         </label>
         <input
           type="text"
           required={required}
-          placeholder="e.g. Brgy. Buhangin, Davao City, Davao del Sur 8000"
+          placeholder="e.g. Brgy. Cotta, Lucena City, Quezon or Brgy. Buhangin, Davao City"
           value={area}
-          onChange={(e) => updateCombinedAddress(street, e.target.value)}
+          onChange={(e) => updateCombinedAddress(street, e.target.value, landmark)}
           className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
         />
       </div>
 
-      {/* Clean Full Address Confirmation */}
-      {value && value.trim() && (
-        <div className="px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl text-[0.72rem] flex items-start gap-2">
-          <span className="text-primary font-bold shrink-0">📍 Delivery To:</span>
-          <span className="text-text-main font-medium leading-relaxed break-words">
-            {value}
+      {/* Field 3: Dedicated Landmark / House Description for Courier */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
+          <span className="flex items-center gap-1">
+            <span>🚩 Landmark / House Guide for Rider</span>
+            <span className="text-[0.65rem] text-secondary font-semibold">(Shopee/Lazada Style)</span>
           </span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">Gate color, store across, etc.</span>
+        </label>
+        <input
+          type="text"
+          placeholder="e.g. Tapat ng sari-sari store, kulay blue na gate, may pulang multicab sa tapat"
+          value={landmark}
+          onChange={(e) => updateCombinedAddress(street, area, e.target.value)}
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-secondary focus:shadow-[0_0_12px_rgba(236,72,153,0.2)] transition-all placeholder:text-text-dim/40"
+        />
+      </div>
+
+      {/* Delivery Confirmation Summary Card */}
+      {value && value.trim() && (
+        <div className="px-3.5 py-2.5 bg-primary/10 border border-primary/20 rounded-xl text-[0.72rem] flex flex-col gap-1">
+          <div className="flex items-start gap-2">
+            <span className="text-primary font-bold shrink-0">📍 Delivery To:</span>
+            <span className="text-text-main font-medium leading-relaxed break-words">
+              {[street, area].filter(Boolean).join(', ')}
+            </span>
+          </div>
+          {landmark && (
+            <div className="flex items-start gap-2 pl-4 text-secondary">
+              <span className="font-bold shrink-0">🚩 Rider Note:</span>
+              <span className="font-medium italic break-words">{landmark}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
