@@ -665,3 +665,91 @@ exports.emailVerificationStatus = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 };
+
+/**
+ * POST /auth/google — Authenticate or Register user with Google OAuth
+ */
+exports.googleAuth = async (req, res) => {
+    try {
+        const { email, displayName, photoURL, uid } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Google account email is required.' });
+        }
+
+        // Search for user by email or username
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: email },
+                    { username: email.split('@')[0] }
+                ]
+            }
+        });
+
+        if (!user) {
+            // Create user automatically with Google verified state
+            const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+            const uniqueUsername = `${baseUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+            const randomPassword = await bcrypt.hash(`google_${uid}_${Date.now()}`, 10);
+
+            user = await prisma.user.create({
+                data: {
+                    username: uniqueUsername,
+                    email: email,
+                    password: randomPassword,
+                    role: 'customer',
+                    isEmailVerified: true, // Google accounts have pre-verified email addresses
+                    isPhoneVerified: false,
+                    walletBalance: 0
+                }
+            });
+
+            console.log(`[Google Auth] Created new customer account ${user.username} (${user.email})`);
+        } else {
+            // Auto-mark email as verified since authenticated by Google
+            if (!user.isEmailVerified) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { isEmailVerified: true }
+                });
+            }
+        }
+
+        const token = jwt.sign(
+            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        };
+
+        res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
+
+        res.json({
+            success: true,
+            message: 'Signed in with Google successfully!',
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                email: user.email,
+                walletBalance: user.walletBalance || 0,
+                address: user.address || '',
+                phoneNumber: user.phoneNumber || '',
+                isPhoneVerified: user.isPhoneVerified || false,
+                isEmailVerified: true,
+                tenantId: user.tenantId
+            }
+        });
+    } catch (err) {
+        console.error('Google Auth Error:', err);
+        res.status(500).json({ success: false, message: 'Server error during Google authentication.' });
+    }
+};
+

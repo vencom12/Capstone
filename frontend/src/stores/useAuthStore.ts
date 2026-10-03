@@ -19,6 +19,7 @@ interface AuthState {
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; uid: string }) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;
@@ -141,6 +142,18 @@ export const useAuthStore = create<AuthState>()(
           }
         }
         return data;
+      },
+
+      loginWithGoogle: async (googleUserData) => {
+        set({ isLoading: true });
+        try {
+          const data = await api.post<AuthResponse>('/api/auth/google', googleUserData);
+          set({ user: data.user, isAuthenticated: true, isLoading: false, rememberMe: true });
+          return { success: true, user: data.user };
+        } catch (err) {
+          set({ isLoading: false });
+          return { success: false, message: err instanceof Error ? err.message : 'Google Sign-In failed' };
+        }
       },
 
       logout: async () => {

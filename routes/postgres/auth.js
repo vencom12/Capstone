@@ -39,6 +39,7 @@ router.post('/register-with-otp', authController.registerWithPhoneOtp);
 router.post('/email/verify', authController.verifyEmail);
 router.post('/email/resend', auth(), authController.resendVerificationEmail);
 router.get('/email/status', auth(), authController.emailVerificationStatus);
+router.post('/google', authController.googleAuth);
 router.post('/login', loginValidation, authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', auth(), authController.me);
