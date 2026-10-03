@@ -5,6 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
+import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
 
 interface InlineStockAdjusterProps {
   material: any;
@@ -336,10 +337,27 @@ export default function PanelRawMaterials({
       .catch((err) => console.error(err));
   }, []);
 
+  // Stock Level Filter State
+  const [stockTierFilter, setStockTierFilter] = useState<StockLevelTier>('all');
+
+  // Compute metrics across all 4 stock tiers
+  const inventoryMetrics = inventory.reduce(
+    (acc, i) => {
+      const level = computeStockLevel(i.count, i.minThreshold || 10);
+      acc[level.tier] = (acc[level.tier] || 0) + 1;
+      return acc;
+    },
+    { critical: 0, low: 0, moderate: 0, high: 0 } as Record<string, number>
+  );
+
   // 2. Filter Inventory list
   const filteredInventory = inventory.filter((i) => {
     const query = searchQuery.toLowerCase();
-    return !searchQuery || i.item?.toLowerCase().includes(query) || i.unit?.toLowerCase().includes(query);
+    const matchesQuery = !searchQuery || i.item?.toLowerCase().includes(query) || i.unit?.toLowerCase().includes(query);
+    if (!matchesQuery) return false;
+    if (stockTierFilter === 'all') return true;
+    const level = computeStockLevel(i.count, i.minThreshold || 10);
+    return level.tier === stockTierFilter;
   });
 
   const getComputedItemName = () => {
@@ -479,7 +497,7 @@ export default function PanelRawMaterials({
 
           {/* Smart Purchase Requisition Alert Banner */}
           {lowStockItems.length > 0 ? (
-            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3 mb-5 text-left animate-fade">
+            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
               <div className="flex items-center gap-3">
                 <span className="text-2xl animate-pulse">⚠️</span>
                 <div className="flex flex-col">
@@ -497,11 +515,38 @@ export default function PanelRawMaterials({
               </button>
             </div>
           ) : (
-            <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-5 text-left animate-fade">
-              
+            <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
               <span className="text-xs font-bold text-success">Stock Healthy! All inventory materials are above safety margins.</span>
             </div>
           )}
+
+          {/* Stock Level Filter Chips */}
+          <div className="flex items-center gap-2 flex-wrap mb-4 pb-3 border-b border-white/5">
+            <span className="text-xs text-text-dim font-medium mr-1">Stock Level:</span>
+            {[
+              { id: 'all', label: 'All Materials', count: inventory.length },
+              { id: 'critical', label: '🔴 Critical', count: inventoryMetrics.critical },
+              { id: 'low', label: '🟡 Low Stock', count: inventoryMetrics.low },
+              { id: 'moderate', label: '🔵 Moderate', count: inventoryMetrics.moderate },
+              { id: 'high', label: '🟢 High Stock', count: inventoryMetrics.high },
+            ].map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
+                  stockTierFilter === pill.id
+                    ? 'bg-primary text-white border-primary/40 shadow-sm'
+                    : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                }`}
+              >
+                <span>{pill.label}</span>
+                <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
+                  {pill.count}
+                </span>
+              </button>
+            ))}
+          </div>
 
           {isSyncing && inventory.length === 0 ? (
             <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
@@ -515,7 +560,7 @@ export default function PanelRawMaterials({
                     <th className="glass-th text-left">Material Name</th>
                     <th className="glass-th text-left">Current Count</th>
                     <th className="glass-th text-left">Low Warning</th>
-                    <th className="glass-th text-left">Status</th>
+                    <th className="glass-th text-left">Stock Level</th>
                     <th className="glass-th text-right">Actions</th>
                   </tr>
                 </thead>
@@ -523,23 +568,35 @@ export default function PanelRawMaterials({
                   {filteredInventory.length === 0 ? (
                     <tr className="glass-tr">
                       <td colSpan={5} className="glass-td text-center text-text-dim">
-                        No materials cataloged yet.
+                        No materials match the selected filters.
                       </td>
                     </tr>
                   ) : (
                     filteredInventory.map((i) => {
                     const id = i.id || i._id;
-                    const isLow = i.count <= (i.minThreshold || 10);
+                    const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
                     return (
                       <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
                         <td className="glass-td font-bold text-sm text-text-main text-left">
                           {i.item}
                         </td>
                         <td className="glass-td text-left">
-                          {/* Read-only Current Count display */}
-                          <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none" title="Current Count (Read-only)">
-                            <span>{i.count}</span>
-                            <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                          {/* Read-only Current Count display with stock progress gauge */}
+                          <div className="flex flex-col gap-1.5 w-fit">
+                            <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none" title="Current Count (Read-only)">
+                              <span>{i.count}</span>
+                              <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                            </div>
+                            {/* Micro gauge bar */}
+                            <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden" title={`${stockLevel.label} (${i.count} / ${i.minThreshold || 10})`}>
+                              <div 
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
+                                  backgroundColor: stockLevel.dotColor
+                                }}
+                              />
+                            </div>
                           </div>
                         </td>
                         <td className="glass-td text-left">
@@ -551,14 +608,11 @@ export default function PanelRawMaterials({
                         </td>
                         <td className="glass-td text-left">
                           <span
-                            className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                              ${isLow
-                                ? 'bg-danger/20 text-danger border border-danger/30 animate-pulse'
-                                : 'bg-success/20 text-success border border-success/30'
-                              }
-                            `}
+                            className={`inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider backdrop-blur-md ${stockLevel.badgeClass}`}
+                            title={stockLevel.description}
                           >
-                            {isLow ? 'Low Stock' : 'Healthy'}
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
+                            {stockLevel.label}
                           </span>
                         </td>
                         <td className="glass-td text-right">
@@ -591,33 +645,39 @@ export default function PanelRawMaterials({
             ) : (
               filteredInventory.map((i) => {
                 const id = i.id || i._id;
-                const isLow = i.count <= (i.minThreshold || 10);
+                const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
                 return (
                   <div
                     key={id}
                     className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative"
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="font-bold text-text-main text-sm">{i.item}</span>
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="font-bold text-text-main text-sm truncate">{i.item}</span>
                       <span
-                        className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                          ${isLow
-                            ? 'bg-danger/20 text-danger border border-danger/30'
-                            : 'bg-success/20 text-success border border-success/30'
-                          }
-                        `}
+                        className={`inline-flex items-center gap-1 text-[0.62rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 backdrop-blur-md ${stockLevel.badgeClass}`}
+                        title={stockLevel.description}
                       >
-                        {isLow ? 'Low Stock' : 'Healthy'}
+                        <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
+                        {stockLevel.label}
                       </span>
                     </div>
 
                     <div className="flex flex-col gap-2.5 text-xs font-medium">
                       <div>
                         <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
-                        {/* Read-only Current Count display */}
+                        {/* Read-only Current Count display with stock gauge */}
                         <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none">
                           <span>{i.count}</span>
                           <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                        </div>
+                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1.5">
+                          <div 
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
+                              backgroundColor: stockLevel.dotColor
+                            }}
+                          />
                         </div>
                       </div>
                       <div>

@@ -5,6 +5,8 @@ import GlassModal from '@/components/ui/GlassModal';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
+import { detectColorFromName } from '@/lib/colorUtils';
+import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -44,17 +46,39 @@ export default function PanelManageDesigns({
   const [variantName, setVariantName] = useState('');
   const [variantColor, setVariantColor] = useState('#6366f1');
   const [variantPrice, setVariantPrice] = useState('');
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
+  const [colorNotice, setColorNotice] = useState<string | null>(null);
+
+  // Stock Filter State
+  const [stockFilter, setStockFilter] = useState<StockLevelTier>('all');
 
   // 1. Filtering Designs
   const filteredProducts = products.filter((p) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesQuery = (
       !searchQuery ||
       p.name?.toLowerCase().includes(query) ||
       p.tag?.toLowerCase().includes(query) ||
       p.description?.toLowerCase().includes(query)
     );
+    if (!matchesQuery) return false;
+    if (stockFilter === 'all') return true;
+
+    const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
+    const levelInfo = computeStockLevel(availableStock, p.minThreshold || 5);
+    return levelInfo.tier === stockFilter;
   });
+
+  // Calculate stock metrics for all products
+  const productStockMetrics = products.reduce(
+    (acc, p) => {
+      const available = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
+      const info = computeStockLevel(available, p.minThreshold || 5);
+      acc[info.tier] = (acc[info.tier] || 0) + 1;
+      return acc;
+    },
+    { critical: 0, low: 0, moderate: 0, high: 0 } as Record<string, number>
+  );
 
   // 2. Open Modal
   const openModal = (design?: any) => {
@@ -82,35 +106,77 @@ export default function PanelManageDesigns({
     setImageFile(null);
     setSelectedMaterialId('');
     setMaterialQty('');
-    setVariantName('');
-    setVariantColor('#6366f1');
-    setVariantPrice('');
+    handleCancelVariantEdit();
     setIsOpen(true);
   };
 
-  // Add Variant
-  const addVariantItem = () => {
+  // Real-time automatic color detection when typing variant name
+  const handleVariantNameInput = (val: string) => {
+    setVariantName(val);
+    const detected = detectColorFromName(val);
+    if (detected) {
+      setVariantColor(detected.hex);
+      setColorNotice(`Switched color to ${detected.colorName} (${detected.hex})`);
+    } else {
+      setColorNotice(null);
+    }
+  };
+
+  // Add or Update Variant Option
+  const handleSaveVariant = () => {
     if (!variantName.trim()) {
       showToast('Variant name is required', 'error');
       return;
     }
-    if (variants.some((v) => v.name.toLowerCase() === variantName.trim().toLowerCase())) {
-      showToast('Variant name already added', 'error');
+
+    // Check duplicate variant names
+    const isDuplicate = variants.some((v, idx) => 
+      idx !== editingVariantIndex && v.name.toLowerCase() === variantName.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      showToast('Another variant already has this name', 'error');
       return;
     }
-    setVariants((prev) => [
-      ...prev,
-      {
-        name: variantName.trim(),
-        color: variantColor,
-        priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined
-      }
-    ]);
+
+    const updatedVariant = {
+      name: variantName.trim(),
+      color: variantColor,
+      priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined
+    };
+
+    if (editingVariantIndex !== null) {
+      setVariants((prev) => prev.map((v, idx) => (idx === editingVariantIndex ? updatedVariant : v)));
+      showToast(`Updated variant "${updatedVariant.name}"`, 'success');
+    } else {
+      setVariants((prev) => [...prev, updatedVariant]);
+      showToast(`Added variant "${updatedVariant.name}"`, 'success');
+    }
+
+    handleCancelVariantEdit();
+  };
+
+  const handleStartEditVariant = (index: number) => {
+    const v = variants[index];
+    if (!v) return;
+    setEditingVariantIndex(index);
+    setVariantName(v.name);
+    setVariantColor(v.color || '#6366f1');
+    setVariantPrice(v.priceOverride ? v.priceOverride.toString() : '');
+    setColorNotice(null);
+  };
+
+  const handleCancelVariantEdit = () => {
+    setEditingVariantIndex(null);
     setVariantName('');
+    setVariantColor('#6366f1');
     setVariantPrice('');
+    setColorNotice(null);
   };
 
   const removeVariantItem = (index: number) => {
+    if (editingVariantIndex === index) {
+      handleCancelVariantEdit();
+    }
     setVariants((prev) => prev.filter((_, idx) => idx !== index));
   };
 
@@ -249,6 +315,34 @@ export default function PanelManageDesigns({
         </div>
       </header>
 
+      {/* Stock Level Filter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 flex-wrap">
+        <span className="text-xs text-text-dim font-medium whitespace-nowrap mr-1">Stock Level:</span>
+        {[
+          { id: 'all', label: 'All Products', count: products.length },
+          { id: 'critical', label: '🔴 Critical', count: productStockMetrics.critical },
+          { id: 'low', label: '🟡 Low Stock', count: productStockMetrics.low },
+          { id: 'moderate', label: '🔵 Moderate', count: productStockMetrics.moderate },
+          { id: 'high', label: '🟢 High Stock', count: productStockMetrics.high },
+        ].map((tier) => (
+          <button
+            key={tier.id}
+            type="button"
+            onClick={() => setStockFilter(tier.id as StockLevelTier)}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
+              stockFilter === tier.id
+                ? 'bg-primary text-white border-primary/40 shadow-sm'
+                : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+            }`}
+          >
+            <span>{tier.label}</span>
+            <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
+              {tier.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Product card grid layout */}
       <div className="w-full pr-2 flex-1">
         {isSyncing && products.length === 0 ? (
@@ -259,7 +353,7 @@ export default function PanelManageDesigns({
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="glass-card text-center text-text-dim py-12">
-            No products found. Click "+ New Product" to create one.
+            No products match the selected filters. Click "+ New Product" to create one.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -267,7 +361,7 @@ export default function PanelManageDesigns({
               const id = p.id || p._id;
               const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
               const dynamicReserved = p.dynamicReserved !== undefined ? p.dynamicReserved : (p.reservedCount || 0);
-              const isLowStock = availableStock <= (p.minThreshold || 5);
+              const stockInfo = computeStockLevel(availableStock, p.minThreshold || 5);
               return (
                 <div
                   key={id}
@@ -322,19 +416,22 @@ export default function PanelManageDesigns({
                           </span>
                         )}
                       </span>
-                      <span className="text-text-dim">
-                        Available: <b className={isLowStock ? "text-danger font-bold" : "text-success font-bold"}>
+                      <span className="text-text-dim flex items-center gap-1">
+                        Available: <b style={{ color: stockInfo.dotColor }} className="font-mono font-bold">
                           {availableStock}
                         </b>
                       </span>
                     </div>
                   </div>
                   
-                  {isLowStock && (
-                    <span className="absolute top-2 right-2 bg-red-500/20 text-red-500 border border-red-500/30 text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-lg">
-                      Low Stock
-                    </span>
-                  )}
+                  {/* Stock Level Tier Pill Badge */}
+                  <span
+                    className={`absolute top-2 right-2 text-[0.65rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-lg flex items-center gap-1.5 backdrop-blur-md ${stockInfo.badgeClass}`}
+                    title={stockInfo.description}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stockInfo.dotColor }} />
+                    {stockInfo.label}
+                  </span>
                   
                   <div className="flex gap-2 w-full mt-auto pt-2">
                     <button
@@ -442,71 +539,137 @@ export default function PanelManageDesigns({
           </div>
 
           {/* Product Variants / Color Options Builder */}
-          <div className="modal-section border border-border-glass p-3 rounded-xl bg-white/5">
-            <label className="modal-label text-primary font-bold flex justify-between items-center">
-              <span>Product Variants / Colors</span>
+          <div className="modal-section border border-border-glass p-3.5 rounded-xl bg-white/5">
+            <label className="modal-label text-primary font-bold flex justify-between items-center mb-1">
+              <span className="flex items-center gap-2">
+                <span>🎨 Product Variants / Colors</span>
+                {editingVariantIndex !== null && (
+                  <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
+                    Editing Variant #{editingVariantIndex + 1}
+                  </span>
+                )}
+              </span>
               <span className="text-[0.7rem] text-text-dim font-normal">Optional</span>
             </label>
-            <p className="text-xs text-text-dim mb-3">Add color options or variants for customers to select when ordering.</p>
+            <p className="text-xs text-text-dim mb-2.5">
+              Add or edit color options. Typing color names (e.g., <i>"Blue"</i>, <i>"Navy"</i>, <i>"Emerald"</i>, <i>"Rose Gold"</i>) automatically switches the color swatch!
+            </p>
+
+            {/* Real-time Color Auto-Detection Toast/Banner */}
+            {colorNotice && (
+              <div className="mb-2 px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[0.75rem] font-medium flex items-center gap-2 animate-fade">
+                <span className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
+                <span>✨ {colorNotice}</span>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Variant Name (e.g. Red, Blue)"
-                value={variantName}
-                onChange={(e) => setVariantName(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-2 rounded-lg text-text-main text-xs outline-none"
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="Variant Name (e.g. Royal Blue)"
+                  value={variantName}
+                  onChange={(e) => handleVariantNameInput(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none w-full"
+                />
+              </div>
               <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-lg">
                 <input
                   type="color"
                   value={variantColor}
-                  onChange={(e) => setVariantColor(e.target.value)}
-                  className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                  onChange={(e) => {
+                    setVariantColor(e.target.value);
+                    setColorNotice(null);
+                  }}
+                  className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0"
+                  title="Choose exact color swatch"
                 />
-                <span className="text-xs font-mono text-text-dim">{variantColor}</span>
+                <span className="text-xs font-mono text-text-dim truncate">{variantColor}</span>
               </div>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Price Override (₱)"
-                value={variantPrice}
-                onChange={(e) => setVariantPrice(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-2 rounded-lg text-text-main text-xs outline-none font-mono"
-              />
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Price Override (₱)"
+                  value={variantPrice}
+                  onChange={(e) => setVariantPrice(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none font-mono w-full"
+                />
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={addVariantItem}
-              className="bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-xs py-1.5 px-3 rounded-lg cursor-pointer transition-all w-full mb-3"
-            >
-              + Add Variant Option
-            </button>
 
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                type="button"
+                onClick={handleSaveVariant}
+                className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg cursor-pointer transition-all border ${
+                  editingVariantIndex !== null
+                    ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
+                    : 'bg-primary/20 hover:bg-primary/30 border-primary/30 text-primary'
+                }`}
+              >
+                {editingVariantIndex !== null ? '✓ Save Changes to Variant' : '+ Add Variant Option'}
+              </button>
+              {editingVariantIndex !== null && (
+                <button
+                  type="button"
+                  onClick={handleCancelVariantEdit}
+                  className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs py-2 px-3 rounded-lg cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+
+            {/* Current Variants List with Edit and Delete actions */}
             {variants.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                {variants.map((v, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-bg-surface border border-border-glass px-2.5 py-1 rounded-full text-xs"
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full border border-white/20 inline-block"
-                      style={{ backgroundColor: v.color || '#6366f1' }}
-                    />
-                    <span className="font-semibold text-text-main">{v.name}</span>
-                    {v.priceOverride && (
-                      <span className="text-primary font-mono text-[0.7rem]">₱{parseFloat(v.priceOverride as any).toFixed(2)}</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeVariantItem(idx)}
-                      className="text-text-dim hover:text-danger ml-1 font-bold border-0 bg-transparent cursor-pointer"
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
+                <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
+                  Configured Variants ({variants.length}) — Click ✏️ to edit
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((v, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all ${
+                        editingVariantIndex === idx
+                          ? 'bg-primary/20 border-primary shadow-sm text-white'
+                          : 'bg-bg-surface border-border-glass text-text-main hover:border-white/20'
+                      }`}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0 inline-block shadow-sm"
+                        style={{ backgroundColor: v.color || '#6366f1' }}
+                      />
+                      <span className="font-bold">{v.name}</span>
+                      {v.priceOverride && (
+                        <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
+                          ₱{parseFloat(v.priceOverride as any).toFixed(2)}
+                        </span>
+                      )}
+                      
+                      {/* Edit Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditVariant(idx)}
+                        className="text-text-dim hover:text-amber-400 p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1"
+                        title="Edit this variant"
+                      >
+                        ✏️
+                      </button>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => removeVariantItem(idx)}
+                        className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all font-bold"
+                        title="Remove variant"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
