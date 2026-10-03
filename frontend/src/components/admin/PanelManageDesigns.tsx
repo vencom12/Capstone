@@ -48,6 +48,11 @@ export default function PanelManageDesigns({
   const [variantPrice, setVariantPrice] = useState('');
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
   const [colorNotice, setColorNotice] = useState<string | null>(null);
+  const [variantToDeleteIndex, setVariantToDeleteIndex] = useState<number | null>(null);
+  const [lastDeletedVariant, setLastDeletedVariant] = useState<{
+    variant: { name: string; color: string; priceOverride?: string };
+    index: number;
+  } | null>(null);
 
   // Stock Filter State
   const [stockFilter, setStockFilter] = useState<StockLevelTier>('all');
@@ -107,6 +112,8 @@ export default function PanelManageDesigns({
     setSelectedMaterialId('');
     setMaterialQty('');
     handleCancelVariantEdit();
+    setVariantToDeleteIndex(null);
+    setLastDeletedVariant(null);
     setIsOpen(true);
   };
 
@@ -158,6 +165,7 @@ export default function PanelManageDesigns({
   const handleStartEditVariant = (index: number) => {
     const v = variants[index];
     if (!v) return;
+    setVariantToDeleteIndex(null);
     setEditingVariantIndex(index);
     setVariantName(v.name);
     setVariantColor(v.color || '#6366f1');
@@ -173,11 +181,44 @@ export default function PanelManageDesigns({
     setColorNotice(null);
   };
 
-  const removeVariantItem = (index: number) => {
+  // Safe variant removal flow with confirmation, toast notification, and undo option
+  const handleInitiateDeleteVariant = (index: number) => {
+    setVariantToDeleteIndex(index);
+  };
+
+  const handleCancelDeleteVariant = () => {
+    setVariantToDeleteIndex(null);
+  };
+
+  const handleConfirmRemoveVariant = (index: number) => {
+    const targetVariant = variants[index];
+    if (!targetVariant) return;
+
     if (editingVariantIndex === index) {
       handleCancelVariantEdit();
+    } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      setEditingVariantIndex(editingVariantIndex - 1);
     }
+
+    setLastDeletedVariant({ variant: targetVariant, index });
     setVariants((prev) => prev.filter((_, idx) => idx !== index));
+    setVariantToDeleteIndex(null);
+
+    showToast(`Variant "${targetVariant.name}" removed`, 'info');
+  };
+
+  const handleUndoDeleteVariant = () => {
+    if (!lastDeletedVariant) return;
+    const { variant, index } = lastDeletedVariant;
+    setVariants((prev) => {
+      const copy = [...prev];
+      const insertIdx = Math.min(index, copy.length);
+      copy.splice(insertIdx, 0, variant);
+      return copy;
+    });
+    const restoredName = lastDeletedVariant.variant.name;
+    setLastDeletedVariant(null);
+    showToast(`Restored variant "${restoredName}"`, 'success');
   };
 
   // 3. Add Material to Recipe
@@ -457,7 +498,11 @@ export default function PanelManageDesigns({
       {/* Modal: Create / Edit Product Form */}
       <GlassModal
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={() => {
+          setIsOpen(false);
+          setVariantToDeleteIndex(null);
+          setLastDeletedVariant(null);
+        }}
         title={editingDesign ? 'Edit Product Details' : 'Create New Product'}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
@@ -621,7 +666,7 @@ export default function PanelManageDesigns({
               )}
             </div>
 
-            {/* Current Variants List with Edit and Delete actions */}
+            {/* Current Variants List with Edit and Safe Delete actions */}
             {variants.length > 0 && (
               <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
                 <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
@@ -629,55 +674,106 @@ export default function PanelManageDesigns({
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {variants.map((v, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all ${
-                        editingVariantIndex === idx
-                          ? 'bg-primary/20 border-primary shadow-sm text-white'
-                          : 'bg-bg-surface border-border-glass text-text-main hover:border-white/20'
-                      }`}
-                    >
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0 inline-block shadow-sm"
-                        style={{ backgroundColor: v.color || '#6366f1' }}
-                      />
-                      <span className="font-bold">{v.name}</span>
-                      {v.priceOverride && (
-                        <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
-                          ₱{parseFloat(v.priceOverride as any).toFixed(2)}
+                    variantToDeleteIndex === idx ? (
+                      /* Warning / Confirmation state before removal */
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border border-danger/60 bg-danger/15 text-text-main shadow-md animate-[fadeIn_0.2s_ease-out]"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-danger shrink-0 animate-ping" />
+                        <span className="font-semibold text-danger-light">
+                          Remove <strong className="text-white">"{v.name}"</strong>?
                         </span>
-                      )}
-                      
-                      {/* Clean Line Pen Edit Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleStartEditVariant(idx)}
-                        className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
-                        title="Edit variant"
-                        aria-label="Edit variant"
+                        <div className="flex items-center gap-1.5 ml-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmRemoveVariant(idx)}
+                            className="px-2.5 py-0.5 rounded-md bg-danger hover:bg-danger-light text-white font-bold text-[0.7rem] cursor-pointer transition-all border-0 shadow-sm"
+                          >
+                            Remove
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelDeleteVariant}
+                            className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-text-dim hover:text-white text-[0.7rem] cursor-pointer transition-all border-0"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Standard Variant Pill */
+                      <div
+                        key={idx}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all ${
+                          editingVariantIndex === idx
+                            ? 'bg-primary/20 border-primary shadow-sm text-white'
+                            : 'bg-bg-surface border-border-glass text-text-main hover:border-white/20'
+                        }`}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                          <path d="m15 5 4 4"/>
-                        </svg>
-                      </button>
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0 inline-block shadow-sm"
+                          style={{ backgroundColor: v.color || '#6366f1' }}
+                        />
+                        <span className="font-bold">{v.name}</span>
+                        {v.priceOverride && (
+                          <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
+                            ₱{parseFloat(v.priceOverride as any).toFixed(2)}
+                          </span>
+                        )}
+                        
+                        {/* Clean Line Pen Edit Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditVariant(idx)}
+                          className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
+                          title="Edit variant"
+                          aria-label="Edit variant"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                            <path d="m15 5 4 4"/>
+                          </svg>
+                        </button>
 
-                      {/* Clean Line Cross Delete Button */}
-                      <button
-                        type="button"
-                        onClick={() => removeVariantItem(idx)}
-                        className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
-                        title="Remove variant"
-                        aria-label="Remove variant"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"/>
-                          <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                      </button>
-                    </div>
+                        {/* Clean Line Cross Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateDeleteVariant(idx)}
+                          className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
+                          title="Remove variant"
+                          aria-label="Remove variant"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    )
                   ))}
                 </div>
+
+                {/* Inline Undo Notification Banner after removal */}
+                {lastDeletedVariant && (
+                  <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-text-dim animate-fadeIn mt-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                      Removed variant <strong className="text-text-main">"{lastDeletedVariant.variant.name}"</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUndoDeleteVariant}
+                      className="text-primary hover:text-primary-light font-bold cursor-pointer bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-md border border-primary/30 text-xs transition-all flex items-center gap-1"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 7v6h6" />
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                      </svg>
+                      Undo
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
