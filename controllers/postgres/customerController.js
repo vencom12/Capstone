@@ -73,10 +73,10 @@ exports.submitOrder = async (req, res) => {
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
 
-        // Fix B: Payment Method Whitelist
-        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'paymaya', 'test_mode'];
+        // Fix B: Payment Method Whitelist (Only GCash for digital wallet per store policy)
+        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'test_mode'];
         if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
-            return res.status(400).json({ message: 'Invalid payment method.' });
+            return res.status(400).json({ message: 'Invalid payment method. Only GCash, Store Wallet, or Cash at Counter are accepted.' });
         }
 
         const isInstantApproved = (paymentMethod === 'wallet' || paymentMethod === 'test_mode' || req.body.bypassVerification === true);
@@ -109,7 +109,7 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Fix D: For e-wallet payments, require a verified receipt
-        if (['gcash', 'paymaya'].includes(paymentMethod) && receiptUrl) {
+        if (paymentMethod === 'gcash' && receiptUrl) {
             const verifiedReceipt = await prisma.receipt.findFirst({
                 where: { imageUrl: receiptUrl, aiVerificationStatus: 'verified' }
             });
@@ -186,6 +186,25 @@ exports.submitOrder = async (req, res) => {
                 });
             }
 
+            // Clean tracking code derived from order ID
+            const cleanId = secureOrderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+            const initialTracking = `JNT-PH-78${cleanId}`;
+
+            const orderPersonalization = {
+                ...(personalization && typeof personalization === 'object' ? personalization : {}),
+                courier: 'J&T Express',
+                trackingNumber: initialTracking,
+                statusHistory: [
+                    {
+                        status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',
+                        timestamp: new Date().toISOString(),
+                        actor: 'Customer Checkout',
+                        hub: 'Eds Towels Pacific Mall Lucena Hub',
+                        note: isInstantApproved ? 'Payment confirmed; placed in embroidery queue.' : 'Order submitted, pending payment confirmation.'
+                    }
+                ]
+            };
+
             // 4. Create Order
             const order = await tx.order.create({
                 data: {
@@ -206,7 +225,7 @@ exports.submitOrder = async (req, res) => {
                     waiverSigned: waiverSigned || false,
                     giftPackaging: giftPackaging || false,
                     calligraphyMessage: calligraphyMessage || null,
-                    personalization: personalization || null,
+                    personalization: orderPersonalization,
                     isRush: isRush || false,
                     dueDate: dueDate ? new Date(dueDate) : null
                 }

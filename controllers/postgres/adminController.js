@@ -472,7 +472,7 @@ exports.getInventoryLogs = async (req, res) => {
 
 exports.updateOrdersStatus = async (req, res) => {
     try {
-        const { ids, status } = req.body;
+        const { ids, status, trackingNumber, hub, note, courier } = req.body;
         if (!ids || !status) return res.status(400).json({ message: 'Missing ids or status' });
 
         const results = [];
@@ -482,7 +482,7 @@ exports.updateOrdersStatus = async (req, res) => {
         for (const orderId of ids) {
             try {
                 const updated = await prisma.$transaction(async (tx) => {
-                    return await handleOrderStateTransition(tx, orderId, status, username);
+                    return await handleOrderStateTransition(tx, orderId, status, username, { trackingNumber, hub, note, courier });
                 });
                 results.push(updated);
             } catch (err) {

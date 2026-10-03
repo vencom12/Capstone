@@ -36,14 +36,14 @@ exports.getDashboardState = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
     try {
-        const { status, machineId } = req.body;
+        const { status, machineId, trackingNumber, hub, note, courier } = req.body;
         const orderId = req.params.id;
         const username = req.user?.username || 'Employee';
 
         let updatedOrder;
         try {
             updatedOrder = await prisma.$transaction(async (tx) => {
-                return await handleOrderStateTransition(tx, orderId, status, username);
+                return await handleOrderStateTransition(tx, orderId, status, username, { trackingNumber, hub, note, courier });
             });
         } catch (err) {
             if (err.isStockError) {

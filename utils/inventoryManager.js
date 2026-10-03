@@ -14,12 +14,13 @@ const PROCESSED_STATES = ['Preparing Order', 'In Transit', 'Ready For Pick Up', 
  * @param {string} username - Action operator username
  * @returns {Promise<object>} The updated order object
  */
-async function handleOrderStateTransition(tx, orderId, newStatus, username = 'System') {
+async function handleOrderStateTransition(tx, orderId, newStatus, username = 'System', extraData = {}) {
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) throw new Error(`Order ${orderId} not found`);
 
     const oldStatus = order.status;
-    if (oldStatus === newStatus) return order; // No transition change
+    // Allow trackingNumber or note updates even if status text is identical
+    if (oldStatus === newStatus && !extraData.trackingNumber && !extraData.note) return order;
 
     const isOldReserved = RESERVED_STATES.includes(oldStatus);
     const isNewReserved = RESERVED_STATES.includes(newStatus);
@@ -175,9 +176,48 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     };
     const progress = progressMap[newStatus] !== undefined ? progressMap[newStatus] : 50;
 
+    let personalization = {};
+    if (order.personalization && typeof order.personalization === 'object') {
+        personalization = { ...order.personalization };
+    } else if (typeof order.personalization === 'string') {
+        try { personalization = JSON.parse(order.personalization); } catch(e) {}
+    }
+
+    const currentHistory = Array.isArray(personalization.statusHistory) ? [...personalization.statusHistory] : [];
+    
+    let defaultHub = 'Eds Towels Pacific Mall Lucena Hub';
+    if (newStatus.includes('Transit') || newStatus.includes('Delivery')) {
+        defaultHub = 'J&T Express South Luzon Sort Facility';
+    } else if (newStatus.includes('Delivered') || newStatus.includes('Completed')) {
+        defaultHub = 'Destination Delivery Address';
+    }
+
+    currentHistory.push({
+        status: newStatus,
+        timestamp: new Date().toISOString(),
+        actor: username,
+        hub: extraData.hub || defaultHub,
+        note: extraData.note || `Order status updated to "${newStatus}"`
+    });
+
+    personalization.statusHistory = currentHistory;
+
+    if (extraData.trackingNumber) {
+        personalization.trackingNumber = extraData.trackingNumber;
+    }
+    if (extraData.courier) {
+        personalization.courier = extraData.courier;
+    } else if (!personalization.courier) {
+        personalization.courier = 'J&T Express';
+    }
+
     const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: { status: newStatus, progress }
+        data: { 
+            status: newStatus, 
+            progress,
+            personalization 
+        }
     });
 
     // Run self-healing database column reconciliation inside transition transactions

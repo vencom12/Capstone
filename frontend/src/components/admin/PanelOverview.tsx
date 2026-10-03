@@ -11,6 +11,7 @@ import {
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
+import WaybillModal from '@/components/dashboard/WaybillModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
@@ -44,6 +45,27 @@ export default function PanelOverview({
   // Edit Order Modal State
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [editStatus, setEditStatus] = useState('');
+  const [editTrackingNumber, setEditTrackingNumber] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [waybillOrder, setWaybillOrder] = useState<any>(null);
+
+  const openEditModal = (order: any) => {
+    setEditingOrder(order);
+    setEditStatus(order.status || 'In Queue');
+    const existingTracking = (order.personalization && typeof order.personalization === 'object' && order.personalization.trackingNumber)
+      ? order.personalization.trackingNumber
+      : '';
+    setEditTrackingNumber(existingTracking || '');
+    setEditNote('');
+  };
+
+  const generateTrackingCode = () => {
+    if (!editingOrder) return;
+    const cleanId = (editingOrder.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+    const code = `JNT-PH-78${cleanId}`;
+    setEditTrackingNumber(code);
+    showToast(`Generated J&T Express code: ${code}`, 'info');
+  };
 
   // 1. Filtering Logic
   const activeOrders = orders.filter((o) => {
@@ -190,11 +212,20 @@ export default function PanelOverview({
     if (!editingOrder) return;
 
     try {
+      const orderId = editingOrder.id || editingOrder._id;
+      const hub = editStatus.includes('Transit') || editStatus.includes('Delivery')
+        ? 'J&T Express South Luzon Sort Hub'
+        : 'Eds Towels Pacific Mall Lucena Hub';
+
       await api.post('/api/admin/orders/batch-status', {
-        ids: [editingOrder.id || editingOrder._id],
-        status: editStatus
+        ids: [orderId],
+        status: editStatus,
+        trackingNumber: editTrackingNumber.trim() || undefined,
+        note: editNote.trim() || undefined,
+        hub,
+        courier: 'J&T Express'
       });
-      showToast('Order status updated successfully', 'success');
+      showToast('Order and logistics milestone updated!', 'success');
       setEditingOrder(null);
       refreshData();
     } catch (err) {
@@ -450,8 +481,7 @@ export default function PanelOverview({
                           <div className="flex gap-2 justify-end">
                             <button
                               onClick={() => {
-                                setEditingOrder(o);
-                                setEditStatus(o.status);
+                                openEditModal(o);
                               }}
                               className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
                             >
@@ -572,8 +602,7 @@ export default function PanelOverview({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingOrder(o);
-                      setEditStatus(o.status);
+                      openEditModal(o);
                     }}
                     className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
                   >
@@ -728,22 +757,33 @@ export default function PanelOverview({
       <GlassModal
         isOpen={!!editingOrder}
         onClose={() => setEditingOrder(null)}
-        title="Update Order Status"
+        title="Update Operational & Logistics Status"
       >
         {editingOrder && (
-          <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left">
-            <div className="modal-box">
-              <span className="modal-label">Active Order ID</span>
-              <p className="modal-text-sm font-mono font-bold text-white m-0 mt-0.5">{editingOrder.orderId}</p>
+          <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
+            <div className="modal-box bg-white/5 p-3 rounded-xl border border-white/10 flex justify-between items-center">
+              <div>
+                <span className="modal-label text-text-dim text-xs">Active Order ID</span>
+                <p className="font-mono font-bold text-white text-sm m-0 mt-0.5">{editingOrder.orderId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWaybillOrder(editingOrder)}
+                className="bg-[#e11d48]/20 hover:bg-[#e11d48]/30 border border-[#e11d48]/40 text-[#f43f5e] font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>🏷️ Print Waybill</span>
+              </button>
             </div>
 
-            <div className="modal-section">
-              <label className="modal-label">Select Status</label>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-text-main">Production & Delivery Status</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
+                  'In Queue',
                   'Preparing Order',
                   'In Transit',
                   'Ready For Pick Up',
+                  'Out for Delivery',
                   'Order Delivered'
                 ].map((status) => {
                   const isActive = editStatus === status;
@@ -752,7 +792,7 @@ export default function PanelOverview({
                       key={status}
                       type="button"
                       onClick={() => setEditStatus(status)}
-                      className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border
+                      className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border text-center
                         ${isActive
                           ? 'bg-primary text-white border-transparent shadow-sm'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
@@ -766,15 +806,58 @@ export default function PanelOverview({
               </div>
             </div>
 
+            {/* J&T Tracking Number Input */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#e11d48]"></span>
+                  J&T Express Tracking Number
+                </label>
+                <button
+                  type="button"
+                  onClick={generateTrackingCode}
+                  className="text-[0.7rem] text-primary hover:underline font-bold cursor-pointer bg-transparent border-none p-0"
+                >
+                  Generate J&T Code
+                </button>
+              </div>
+              <input
+                type="text"
+                value={editTrackingNumber}
+                onChange={(e) => setEditTrackingNumber(e.target.value)}
+                placeholder="e.g. JNT-PH-78..."
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
+              />
+            </div>
+
+            {/* Logistics Milestone Note */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-text-main">Milestone Log Note (Visible to Customer)</label>
+              <input
+                type="text"
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                placeholder="e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
+              />
+            </div>
+
             <button
               type="submit"
-              className="bg-primary text-white font-bold py-3.5 rounded-xl mt-2 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
+              className="bg-primary text-white font-bold py-3 rounded-xl mt-1 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
             >
-              Save Operational Status
+              Save Operational Status & Tracking
             </button>
           </form>
         )}
       </GlassModal>
+
+      {/* J&T Waybill Thermal Sticker Modal */}
+      <WaybillModal
+        isOpen={!!waybillOrder}
+        onClose={() => setWaybillOrder(null)}
+        order={waybillOrder}
+      />
     </section>
   );
 }

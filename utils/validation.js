@@ -22,8 +22,12 @@ const schemas = {
     }),
     statusUpdate: Joi.object({
         ids: Joi.array().items(Joi.string()).min(1).required(),
-        status: Joi.string().required()
-    })
+        status: Joi.string().required(),
+        trackingNumber: Joi.string().allow('', null).optional(),
+        hub: Joi.string().allow('', null).optional(),
+        note: Joi.string().allow('', null).optional(),
+        courier: Joi.string().allow('', null).optional()
+    }).unknown(true)
 };
 
 const validate = (schema) => (req, res, next) => {

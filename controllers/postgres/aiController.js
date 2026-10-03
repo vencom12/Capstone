@@ -1282,16 +1282,10 @@ Output ONLY a JSON object:
         console.log(`[AI Vision] Step 3: Running audit checks for Order ${orderId}...`);
         const auditFailures = [];
 
-        // Platform-specific service validations
+        // Platform-specific service validations (GCash is official e-wallet)
         if (receipt.paymentMethod === 'gcash') {
             const gcashService = require('../../services/payments/gcashService');
             const platformCheck = gcashService.validateReceiptData(aiResult);
-            if (!platformCheck.isValid) {
-                auditFailures.push(platformCheck.error);
-            }
-        } else if (receipt.paymentMethod === 'paymaya') {
-            const paymayaService = require('../../services/payments/paymayaService');
-            const platformCheck = paymayaService.validateReceiptData(aiResult);
             if (!platformCheck.isValid) {
                 auditFailures.push(platformCheck.error);
             }

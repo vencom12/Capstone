@@ -14,9 +14,14 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   const [isWaybillOpen, setIsWaybillOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Standardized J&T Express tracking number derived from order ID
+  // Check if personalization has saved tracking number, or derive standard format
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization as any : {};
   const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-  const trackingNumber = `JNT-PH-78${cleanId}`;
+  const trackingNumber = personalization.trackingNumber || `JNT-PH-78${cleanId}`;
+
+  // Check if genuine recorded status history exists
+  const recordedHistory: Array<{ status: string; timestamp: string; actor?: string; hub?: string; note?: string }> = 
+    Array.isArray(personalization.statusHistory) ? personalization.statusHistory : [];
 
   // Normalize order status
   const rawStatus = (order.status || '').toLowerCase();
@@ -25,7 +30,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   const isInTransit = rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery);
   const isProduction = !isDelivered && !isOutForDelivery && !isInTransit;
 
-  // Base dates for realistic milestone chronology
+  // Base dates for fallback milestone chronology
   const baseDate = new Date(order.date || Date.now());
   const formatDate = (daysOffset: number, hoursOffset: number, minute: number) => {
     const d = new Date(baseDate);
@@ -50,6 +55,31 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   }
 
   const getTimeline = (): TimelineEvent[] => {
+    // 1. If real server audit history exists, render genuine recorded timestamps & notes
+    if (recordedHistory.length > 0) {
+      return recordedHistory.map((item, idx) => {
+        const itemDate = new Date(item.timestamp);
+        const formatted = isNaN(itemDate.getTime())
+          ? item.timestamp
+          : itemDate.toLocaleString('en-PH', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+
+        return {
+          status: item.status,
+          description: item.note || `Order marked as "${item.status}"`,
+          time: formatted,
+          isLatest: idx === recordedHistory.length - 1,
+          hub: item.hub || 'Eds Towels Pacific Mall Lucena Hub'
+        };
+      }).reverse();
+    }
+
+    // 2. Realistic fallback for legacy orders
     if (isDelivered) {
       return [
         {
