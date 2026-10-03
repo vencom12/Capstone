@@ -149,14 +149,14 @@ export default function AddressSelect({
           setStreet(detectedStreet);
           setArea(detectedArea);
           updateCombinedAddress(detectedStreet, detectedArea, landmark);
-          setLocationStatus('📍 Location detected! Please verify your house number & landmark below.');
+          setLocationStatus('Location detected! Please verify your house number & landmark below.');
           setTimeout(() => setLocationStatus(null), 5000);
         } catch {
           // Fallback to coordinates
           const gpsString = `GPS (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
           setStreet(street || gpsString);
           updateCombinedAddress(street || gpsString, area || 'Philippines', landmark);
-          setLocationStatus(`📍 Coordinates captured: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setLocationStatus(`Coordinates captured: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
           setTimeout(() => setLocationStatus(null), 4000);
         } finally {
           setIsDetectingLocation(false);
@@ -202,7 +202,7 @@ export default function AddressSelect({
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
               </svg>
-              <span>📍 Detect My GPS Location</span>
+              <span>Auto-Detect GPS Location</span>
             </>
           )}
         </button>
@@ -214,7 +214,7 @@ export default function AddressSelect({
         </div>
       )}
 
-      {/* Field 1: Detailed Street / House / Unit / Landmark */}
+      {/* Field 1: Detailed Street / House / Unit */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
           <span>House / Unit No., Building, Street Name *</span>
@@ -249,11 +249,8 @@ export default function AddressSelect({
       {/* Field 3: Dedicated Landmark / House Description for Courier */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span className="flex items-center gap-1">
-            <span>🚩 Landmark / House Guide for Rider</span>
-            <span className="text-[0.65rem] text-secondary font-semibold">(Shopee/Lazada Style)</span>
-          </span>
-          <span className="text-[0.65rem] text-text-dim/60 font-normal">Gate color, store across, etc.</span>
+          <span>Landmark / House Guide for Rider</span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">Optional (e.g. gate color, nearby store)</span>
         </label>
         <input
           type="text"
@@ -263,24 +260,6 @@ export default function AddressSelect({
           className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-secondary focus:shadow-[0_0_12px_rgba(236,72,153,0.2)] transition-all placeholder:text-text-dim/40"
         />
       </div>
-
-      {/* Delivery Confirmation Summary Card */}
-      {value && value.trim() && (
-        <div className="px-3.5 py-2.5 bg-primary/10 border border-primary/20 rounded-xl text-[0.72rem] flex flex-col gap-1">
-          <div className="flex items-start gap-2">
-            <span className="text-primary font-bold shrink-0">📍 Delivery To:</span>
-            <span className="text-text-main font-medium leading-relaxed break-words">
-              {[street, area].filter(Boolean).join(', ')}
-            </span>
-          </div>
-          {landmark && (
-            <div className="flex items-start gap-2 pl-4 text-secondary">
-              <span className="font-bold shrink-0">🚩 Rider Note:</span>
-              <span className="font-medium italic break-words">{landmark}</span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -157,8 +157,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
 
             {/* Destination Pin */}
             <div className="flex flex-col items-center">
-              <div className="w-7 h-7 rounded-full bg-success/20 border-2 border-success flex items-center justify-center text-xs shadow-[0_0_12px_rgba(34,197,94,0.5)]">
-                📍
+              <div className="w-7 h-7 rounded-full bg-success/20 border-2 border-success flex items-center justify-center text-success shadow-[0_0_12px_rgba(34,197,94,0.5)]">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
               </div>
               <span className="text-[0.65rem] font-bold text-text-main mt-1">Delivery</span>
               <span className="text-[0.6rem] text-text-dim max-w-[90px] truncate">{order.address || 'Customer'}</span>
@@ -232,15 +235,20 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       {/* Destination Confirmation Card */}
       <div className="bg-bg-surface border border-border-glass rounded-2xl p-3.5 flex flex-col gap-2">
         <div className="flex items-start gap-2.5">
-          <span className="text-lg">📍</span>
+          <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </div>
           <div className="text-xs leading-relaxed flex-1">
             <span className="font-bold text-text-main block">Recipient Delivery Address:</span>
-            <span className="text-text-dim">{order.address || 'No specific delivery address recorded on file.'}</span>
+            <span className="text-text-dim">{order.address?.split('(Landmark:')[0]?.trim() || order.address || 'No specific delivery address recorded on file.'}</span>
           </div>
         </div>
         {order.address && order.address.includes('(Landmark:') && (
-          <div className="ml-7 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-xl text-[0.72rem] text-secondary flex items-center gap-2">
-            <span className="font-bold shrink-0">🚩 Rider House Guide:</span>
+          <div className="ml-8 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-xl text-[0.72rem] text-secondary flex items-center gap-2">
+            <span className="font-bold shrink-0">Rider Guide:</span>
             <span className="italic">{order.address.split('(Landmark:')[1]?.replace(')', '')?.trim()}</span>
           </div>
         )}

@@ -298,7 +298,10 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
               ) : (
                 <div className="flex flex-col gap-1.5 p-3 bg-white/[0.04] border border-border-glass rounded-xl">
                   <div className="flex items-start gap-2 text-text-main text-xs leading-relaxed">
-                    <span className="text-primary font-bold mt-0.5">📍</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary mt-0.5 shrink-0">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
                     <span className="font-medium flex-1">{user.address}</span>
                   </div>
                   {user.phoneNumber && (
