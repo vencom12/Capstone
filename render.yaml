@@ -1,0 +1,83 @@
+# Render Blueprint for Stitch-Opt (Capstone)
+#
+# WHY THE BUILD COMMAND RUNS `prisma db push`
+# ------------------------------------------
+# This project has NO prisma/migrations/ directory. The database schema is
+# reconciled from prisma/schema.prisma at deploy time instead.
+#
+# This is deliberate: the app previously failed in production because
+# `User.isEmailVerified` existed in schema.prisma but not in the database.
+# The build regenerated the Prisma Client (which selects the new column) while
+# the database was never altered, so every request touching `User` failed with
+# P2022 and the admin dashboard rendered empty.
+#
+# Running `prisma db push` in the build command makes the database converge to
+# schema.prisma on every deploy, before the new code goes live.
+#
+# `--accept-data-loss` is deliberately NOT used. Without it, Prisma refuses to
+# apply a change that would drop a column or table and fails the build, forcing
+# a human to review destructive schema edits. Do not add it.
+
+services:
+  - type: web
+    name: capstone-btr7
+    runtime: node
+    plan: free
+    branch: customerconsole
+    region: singapore
+    autoDeploy: true
+
+    # `npm install` triggers root package.json "postinstall", which runs
+    # `prisma generate`, installs frontend deps, and builds the Next.js static
+    # export into frontend/out. `prisma db push` then syncs the database.
+    buildCommand: npm install && npx prisma db push
+
+    startCommand: npm run start
+
+    # Reports database connectivity AND schema drift. See utils/schemaHealth.js
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: DATABASE_URL
+        sync: false
+
+      - key: JWT_SECRET
+        sync: false
+
+      - key: FRONTEND_URL
+        value: https://capstone-btr7.onrender.com
+
+      - key: BUSINESS_NAME
+        value: Stitch-Opt Designs
+
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: GROQ_API_KEY
+        sync: false
+
+      # Leave SEMAPHORE_API_KEY blank to run SMS in defense-simulation mode
+      # (verification codes are printed to the server log).
+      - key: SEMAPHORE_API_KEY
+        sync: false
+      - key: SEMAPHORE_SENDER_NAME
+        value: SEMAPHORE
+
+      # Leave blank to run email verification in defense-simulation mode
+      # (verification links are printed to the server log).
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+
+      # Optional: enables the Socket.IO Redis adapter for horizontal scaling.
+      # Absent, the server logs "single-node mode" and works normally.
+      - key: REDIS_URL
+        sync: false

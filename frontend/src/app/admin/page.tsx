@@ -68,6 +68,7 @@ export default function AdminPage() {
   const [machines, setMachines] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbType, setDbType] = useState<string>('supabase');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Order History Panel specific filters
   const [historySearch, setHistorySearch] = useState('');
@@ -115,6 +116,8 @@ export default function AdminPage() {
         setProducts(data.products || []);
         setUsers(data.users || []);
       }
+      setLoadError(null);
+
       // Fetch machines separately since admin dashboard-state doesn't include them
       const machineData: any = await api.get('/api/machines');
       if (machineData) {
@@ -125,7 +128,12 @@ export default function AdminPage() {
         }
       }
     } catch (err) {
+      // A failed fetch must never look identical to an empty database, so record
+      // the failure and surface it instead of only writing to the console.
+      const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to sync admin operations data:', err);
+      setLoadError(message);
+      showToast(`Failed to load dashboard: ${message}`, 'error');
     } finally {
       setIsSyncing(false);
     }
@@ -659,6 +667,20 @@ export default function AdminPage() {
 
         {/* Content injection viewport */}
         <main className="dash-main flex-1 max-w-[1500px] w-full mx-auto pb-24">
+          {loadError && (
+            <div className="mx-5 mt-4 px-4 py-3 rounded-xl bg-danger/10 border border-danger/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-sm text-danger">
+                <span className="font-bold">Could not load dashboard data.</span>{' '}
+                <span className="opacity-90">{loadError}</span>
+              </div>
+              <button
+                onClick={fetchAdminData}
+                className="self-start sm:self-auto bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {renderContentPanel()}
         </main>
       </div>

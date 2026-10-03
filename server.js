@@ -315,18 +315,45 @@ const employeeRoutes = require('./routes/postgres/employee');
 const aiRoutes = require('./routes/postgres/aiRoutes');
 
 // Health check for diagnostics
+// Reports connectivity AND whether the database still matches prisma/schema.prisma.
+// A bare "SELECT 1" only proves the socket is open, so it reported "Connected"
+// while User.isEmailVerified and the EmailVerification table were missing and
+// every admin dashboard request failed with P2022.
+// Always answers 200 so Render does not restart-loop on a schema mismatch;
+// alert on database !== 'Connected' instead.
 app.get('/api/health', async (req, res) => {
-    let dbStatus = 'Disconnected';
+    let dbStatus = 'Connected';
+    let schema = { checked: false, ok: true, missingTables: [], missingColumns: [] };
+    let error = null;
+
     try {
         const prisma = require('./utils/prisma');
         await prisma.$queryRaw`SELECT 1`;
-        dbStatus = 'Connected';
-    } catch (e) { dbStatus = 'Error'; }
+    } catch (e) {
+        dbStatus = 'Unreachable';
+        error = e.message.split('\n')[0];
+        console.error('[HEALTH] Database connectivity check failed:', error);
+    }
 
-    res.json({ 
-        status: 'ok', 
+    if (dbStatus === 'Connected') {
+        try {
+            const { checkSchemaSync } = require('./utils/schemaHealth');
+            schema = await checkSchemaSync();
+            if (schema.checked && !schema.ok) {
+                dbStatus = 'Schema out of sync';
+            }
+        } catch (e) {
+            error = e.message.split('\n')[0];
+            console.error('[HEALTH] Schema drift check failed:', error);
+        }
+    }
+
+    res.json({
+        status: dbStatus === 'Connected' ? 'ok' : 'degraded',
         database: dbStatus,
         dbType: 'supabase',
+        schema,
+        ...(error ? { error } : {}),
         timestamp: new Date().toISOString()
     });
 });

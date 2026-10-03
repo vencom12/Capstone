@@ -21,7 +21,13 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
-      }).catch(() => {});
+      }).catch((err) => {
+        // The sidebar falls back to the default logo, so this is non-fatal, but
+        // it must not fail silently.
+        console.error('[AdminSidebar] Failed to load business logo settings:', err);
+      });
+    }).catch((err) => {
+      console.error('[AdminSidebar] Failed to load API client:', err);
     });
   }, []);
 
