@@ -1,5 +1,5 @@
 # 📘 Stitch-Opt Master System Integration & Security Guide
-*Comprehensive Architectural Specification, Security Blueprint, and Step-by-Step Implementation Runbook for Production SaaS Systems.*
+*Comprehensive Architectural Specification, Security Blueprint, and Step-by-Step Cloud Console Setup Runbook for Production SaaS Systems.*
 
 ---
 
@@ -12,6 +12,13 @@
 6. [Supabase & PostgreSQL Database Architecture (Prisma ORM)](#6-supabase--postgresql-architecture)
 7. [GitHub CI/CD & Render Cloud Production Deployment](#7-github-cicd--render-deployment)
 8. [Complete Project & Directory Blueprint](#8-complete-project--directory-blueprint)
+9. [Step-by-Step Cloud Console Navigation & Setup Runbook](#9-step-by-step-cloud-console-navigation--setup-runbook)
+   - [9.1 Google Cloud Console & Google AI Studio](#91-google-cloud-console--google-ai-studio-oauth-20--gemini-vision)
+   - [9.2 Firebase Console Setup](#92-firebase-console-web-sdk-google-auth-phone-sms--authorized-domains)
+   - [9.3 Cloudinary Dashboard Setup](#93-cloudinary-dashboard-cloud-name-api-keys--upload-presets)
+   - [9.4 Supabase Dashboard Setup](#94-supabase-dashboard-postgresql-pgbouncer-pooler--direct-strings)
+   - [9.5 GitHub Repository Configuration](#95-github-repository-setup--connection)
+   - [9.6 Render Dashboard Configuration](#96-render-dashboard-web-service-build-pipeline--environment-variables)
 
 ---
 
@@ -360,7 +367,7 @@ exports.verifyAndEnable2FA = async (req, res) => {
 
 ## 5. Cloudinary Cloud Asset Integration
 
-Render's free and standard web containers run on **ephemeral disks**—any image uploaded to the local disk is wiped when Render restarts or deploys. Cloudinary provides high-availability cloud storage with automatic image transformations.
+Render's web containers run on **ephemeral disks**—any image uploaded to the local disk is wiped when Render restarts or deploys. Cloudinary provides high-availability cloud storage with automatic image transformations.
 
 ```mermaid
 graph LR
@@ -463,6 +470,7 @@ On Render, the build process triggers automatically on every `git push origin ma
 | `GMAIL_USER` | `your.business@gmail.com` | SMTP Sender account |
 | `GMAIL_APP_PASSWORD` | `xxxx xxxx xxxx xxxx` | 16-character Google App Password |
 | `FRONTEND_URL` | `https://capstone-btr7.onrender.com` | Base link for verification emails |
+| `GEMINI_API_KEY` | `AIzaSy...` | Powers receipt OCR in Gemini Vision |
 
 ---
 
@@ -513,6 +521,212 @@ Capstone/
 ├── server.js                        # Master Express Server (HTTP, Sockets, Helmet, CORS)
 └── render.yaml                      # Infrastructure as Code Specification
 ```
+
+---
+
+## 9. Step-by-Step Cloud Console Navigation & Setup Runbook
+
+*This section provides click-by-click instructions for setting up the external platforms via their web user interfaces.*
+
+---
+
+### 9.1 Google Cloud Console & Google AI Studio (OAuth 2.0 & Gemini Vision)
+
+#### A. Configure Google OAuth 2.0 Client ID
+1. Navigate to **[Google Cloud Console](https://console.cloud.google.com/)**.
+2. In the top project selector dropdown, select your project (e.g., `ryven-4cbd5` or your Capstone project).
+3. In the left navigation menu, go to **APIs & Services** &rarr; **OAuth consent screen**:
+   - Choose **User Type**: **External** &rarr; Click **Create**.
+   - **App name**: `Stitch-Opt`
+   - **User support email**: Select your Gmail account.
+   - **Developer contact information**: Enter your Gmail address.
+   - Click **Save and Continue**.
+   - Under **Scopes**, click **Add or Remove Scopes**, select:
+     - `.../auth/userinfo.email`
+     - `.../auth/userinfo.profile`
+     - `openid`
+   - Click **Update** &rarr; **Save and Continue**.
+   - Under **Test users**, add your own Gmail (`revinaryven7@gmail.com`) for early staging testing.
+   - Click **Back to Dashboard**, and under **Publishing status**, click **Publish App** so any Google user can sign in.
+4. In the left menu, click **Credentials**:
+   - Click **+ CREATE CREDENTIALS** &rarr; Choose **OAuth client ID**.
+   - **Application type**: **Web application**.
+   - **Name**: `Stitch-Opt Web Client`.
+   - **Authorized JavaScript origins**: Click **+ ADD URI** and add:
+     - `http://localhost:3000`
+     - `http://localhost:5001`
+     - `https://capstone-btr7.onrender.com`
+   - **Authorized redirect URIs**: Click **+ ADD URI** and add:
+     - `https://ryven-4cbd5.firebaseapp.com/__/auth/handler`
+     - `http://localhost:3000`
+     - `https://capstone-btr7.onrender.com`
+   - Click **Create**.
+   - Copy the **Client ID** and save it.
+
+#### B. Generate Gemini 1.5 Flash Vision API Key (Receipt OCR)
+1. Go to **[Google AI Studio](https://aistudio.google.com/)**.
+2. Sign in with your Google account.
+3. In the top-left menu, click **Get API key**.
+4. Click **Create API key** &rarr; Select your Google Cloud Project &rarr; Click **Create API key in existing project**.
+5. Copy the generated key (`AIzaSy...`) and add it to your environment as `GEMINI_API_KEY`.
+
+---
+
+### 9.2 Firebase Console (Web SDK, Google Auth, Phone SMS & Authorized Domains)
+
+1. Open **[Firebase Console](https://console.firebase.google.com/)**.
+2. Click on your project card (e.g., `ryven-4cbd5`).
+
+#### A. Retrieve Web SDK Credentials
+1. Click the **Project settings** (gear icon ⚙️) next to *Project Overview* in the left sidebar.
+2. Under the **General** tab, scroll down to the **Your apps** section.
+3. If no web app exists, click the Web icon (`</>`), name it `Stitch-Opt Frontend`, and click **Register app**.
+4. Under **SDK setup and configuration**, select **Config**. Copy the configuration keys:
+   - `apiKey`
+   - `authDomain`
+   - `projectId`
+   - `storageBucket`
+   - `messagingSenderId`
+   - `appId`
+5. Ensure these values match your `frontend/src/lib/firebase.ts` and Render environment variables.
+
+#### B. Configure Authentication Providers
+1. In the left navigation, click **Build** &rarr; **Authentication**.
+2. Click the **Sign-in method** tab:
+   - **Google**:
+     1. Click on **Google**.
+     2. Toggle **Enable** to ON.
+     3. Set the **Project support email** to your Gmail.
+     4. Click **Save**.
+   - **Phone**:
+     1. Click on **Phone**.
+     2. Toggle **Enable** to ON.
+     3. (Optional for local testing) Expand **Phone numbers for testing** &rarr; Add:
+        - Phone: `+639170000000`
+        - Verification Code: `123456`
+     4. Click **Save**.
+
+#### C. Add Authorized Domains *(Critical)*
+1. While still under **Authentication**, click the **Settings** tab.
+2. Select **Authorized domains** from the sub-menu.
+3. Verify the following domains are listed (click **Add domain** if missing):
+   - `localhost`
+   - `ryven-4cbd5.firebaseapp.com`
+   - `ryven-4cbd5.web.app`
+   - `capstone-btr7.onrender.com` *(your live Render domain)*
+4. Click **Save**.
+
+---
+
+### 9.3 Cloudinary Dashboard (Cloud Name, API Keys & Upload Presets)
+
+1. Navigate to **[Cloudinary Console](https://console.cloudinary.com/)** and log in.
+2. From the **Dashboard** home screen, locate the **Product Environment Credentials** box:
+   - Copy **Cloud Name** &rarr; `CLOUDINARY_CLOUD_NAME`
+   - Copy **API Key** &rarr; `CLOUDINARY_API_KEY`
+   - Click the eye icon next to **API Secret** &rarr; Copy to `CLOUDINARY_API_SECRET`
+3. In the left sidebar, click the **Settings** gear icon (bottom left) &rarr; **Upload**:
+   - Scroll down to **Upload presets**.
+   - Verify that signed uploads are permitted (default is enabled).
+4. In the left sidebar, click **Media Library**:
+   - You can create a folder named `stitch_opt_uploads` where receipts and customized customer logos are automatically sorted.
+
+---
+
+### 9.4 Supabase Dashboard (PostgreSQL, PgBouncer Pooler & Direct Strings)
+
+1. Open **[Supabase Dashboard](https://supabase.com/dashboard)** and select your project.
+
+#### A. Retrieve Connection Strings
+1. Click the **Project Settings** (gear icon ⚙️) in the left navigation &rarr; **Database**.
+2. Scroll down to the **Connection string** section:
+   - Click the **URI** tab.
+   - Select **Transaction** mode (Port `6543` with PgBouncer):
+     - Check the **Use connection pooling** box.
+     - Mode: **Transaction**.
+     - Copy the URI:
+       ```
+       postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+       ```
+     - Paste this into `DATABASE_URL`.
+   - Select **Session** mode / Direct (Port `5432`):
+     - Uncheck connection pooling or select Session.
+     - Copy the URI:
+       ```
+       postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+       ```
+     - Paste this into `DIRECT_URL`.
+3. Replace `[YOUR-PASSWORD]` with the database password set during project creation.
+
+#### B. Verify Tables in Table Editor
+1. In the left sidebar, click **Table Editor** (grid icon).
+2. Confirm the presence of core tables: `User`, `Product`, `Order`, `Transaction`, `Machine`.
+3. If tables are missing, push the schema locally using:
+   ```bash
+   npx prisma db push
+   ```
+
+---
+
+### 9.5 GitHub Repository Setup & Connection
+
+1. Go to **[GitHub](https://github.com/)** and sign in.
+2. In the top-right corner, click **+** &rarr; **New repository**:
+   - Repository name: `Capstone`
+   - Visibility: **Public** or **Private**.
+   - Do not initialize with README if pushing an existing local codebase.
+   - Click **Create repository**.
+3. In your local terminal, link the repository and push your commits:
+   ```bash
+   git remote add origin https://github.com/vencom12/Capstone.git
+   git branch -M main
+   git push -u origin main
+   ```
+4. Verify on GitHub that all branches and commits appear under `main`.
+
+---
+
+### 9.6 Render Dashboard (Web Service, Build Pipeline & Environment Variables)
+
+1. Open **[Render Dashboard](https://dashboard.render.com/)**.
+2. Click **New +** in the top-right corner &rarr; Select **Web Service**.
+3. Choose **Build and deploy from a Git repository** &rarr; Click **Next**.
+4. Connect your GitHub account and select `vencom12/Capstone`.
+5. Configure Service Settings:
+   - **Name**: `capstone-btr7`
+   - **Region**: `Singapore` (closest to Philippine users) or `Oregon`.
+   - **Branch**: `main`
+   - **Root Directory**: Leave blank (monorepo root).
+   - **Runtime**: `Node`.
+   - **Build Command**:
+     ```bash
+     npm install && npm install --include=dev --prefix frontend && npm run build --prefix frontend
+     ```
+   - **Start Command**:
+     ```bash
+     node server.js
+     ```
+   - **Instance Type**: `Free`.
+6. Scroll down to **Environment Variables** &rarr; Click **Add Environment Variable** for each required key:
+   - `NODE_ENV` = `production`
+   - `DATABASE_URL` = *(Your Supabase Port 6543 Pooled String with `?pgbouncer=true`)*
+   - `DIRECT_URL` = *(Your Supabase Port 5432 Direct String)*
+   - `JWT_SECRET` = *(Generate with `crypto.randomBytes(64).toString('hex')`)*
+   - `CLOUDINARY_CLOUD_NAME` = *(From Cloudinary Console)*
+   - `CLOUDINARY_API_KEY` = *(From Cloudinary Console)*
+   - `CLOUDINARY_API_SECRET` = *(From Cloudinary Console)*
+   - `GMAIL_USER` = *(Your business Gmail address)*
+   - `GMAIL_APP_PASSWORD` = *(16-character Google App Password from myaccount.google.com &rarr; Security)*
+   - `FRONTEND_URL` = `https://capstone-btr7.onrender.com`
+   - `GEMINI_API_KEY` = *(From Google AI Studio)*
+   - `NEXT_PUBLIC_FIREBASE_API_KEY` = `AIzaSyAa-8VSKaCtHpW3LTjfBlUm_9jBlIyTjrs`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` = `ryven-4cbd5.firebaseapp.com`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID` = `ryven-4cbd5`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` = `ryven-4cbd5.firebasestorage.app`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` = `576470911091`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID` = `1:576470911091:web:83eaaee619b51308c34206`
+7. Click **Create Web Service**.
+8. Render will pull from GitHub, run the build pipeline, generate Prisma clients, compile the Next.js frontend, and launch `server.js`. Check the **Logs** tab to observe the server spinning up.
 
 ---
 *Created for the Stitch-Opt Production Platform. Maintained in the Project Root.*
