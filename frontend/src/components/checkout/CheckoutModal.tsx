@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -53,6 +54,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [claimantName, setClaimantName] = useState('');
   const [claimantPhone, setClaimantPhone] = useState('');
   const [pickupNote, setPickupNote] = useState('');
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [termsInitialTab, setTermsInitialTab] = useState<'refunds' | 'pickup' | 'copyright' | 'colors' | 'privacy'>('refunds');
 
   useEffect(() => {
     if (initialFulfillmentType) {
@@ -476,8 +479,15 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                         Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301
                       </span>
                       <span className="text-[0.7rem] text-primary/90 font-medium mt-0.5">
-                        🕒 Mall Hours: 10:00 AM – 8:00 PM Daily
+                        🕒 Mall Hours: 10:00 AM – 8:00 PM Daily • Free 30-day storage
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
+                        className="text-[0.68rem] text-primary hover:underline text-left bg-transparent border-none p-0 cursor-pointer w-fit mt-0.5"
+                      >
+                        View pick-up &amp; holding policies ›
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -587,6 +597,27 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
           {/* Right: Payment & Receipt AI Verification */}
           <div className="flex flex-col gap-5 border-l border-border-glass pl-7 max-md:border-l-0 max-md:pl-0 max-md:pt-4 max-md:border-t max-md:gap-3">
+             {/* Data Privacy & Custom Goods Compliance Note */}
+             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5 text-[0.72rem] text-text-dim">
+               <div className="flex items-center gap-1.5 text-text-main font-bold">
+                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                 <span>Philippine Data Privacy Act (RA 10173)</span>
+               </div>
+               <p className="m-0 leading-relaxed text-[0.68rem]">
+                 Your contact phone, fulfillment details, and GCash receipt are encrypted and processed solely for order completion and courier delivery.
+               </p>
+               <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[0.68rem]">
+                 <span>Custom Goods (RA 7394 Non-cancellable once stitched)</span>
+                 <button
+                   type="button"
+                   onClick={() => { setTermsInitialTab('refunds'); setIsTermsModalOpen(true); }}
+                   className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer"
+                 >
+                   View Policies ›
+                 </button>
+               </div>
+             </div>
+
              <GCashPayment 
                finalTotal={finalTotal}
                totalAmount={finalTotal} 
@@ -628,6 +659,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           setDeliveryPhone(addr.phoneNumber);
         }}
         selectedAddressId={selectedSavedAddress?.id}
+      />
+      {/* Terms & Policies Modal */}
+      <TermsAndPoliciesModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+        initialTab={termsInitialTab}
       />
     </GlassModal>
   );

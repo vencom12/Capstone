@@ -235,6 +235,12 @@ export default function ProductModal({
             </div>
           )}
 
+          {/* Color Calibration Disclaimer */}
+          <div className="flex items-center gap-1.5 text-[0.68rem] text-text-dim/80 pt-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Thread shades calibrated to Madeira/Isacord industrial standards. Physical color may vary slightly under natural lighting.</span>
+          </div>
+
           {/* Size Selector (Only shown if variants explicitly specify sizes) */}
           {hasSizes && (
             <div className="flex flex-col gap-2 border-t border-border-glass pt-3">

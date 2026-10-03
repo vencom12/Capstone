@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
+import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -20,6 +21,7 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -182,14 +184,34 @@ export default function DashboardSidebar({ activeTab, setActiveTab, onMobileTogg
           </button>
 
           <button
+            onClick={() => {
+              setIsTermsOpen(true);
+              if (typeof window !== 'undefined' && window.innerWidth <= 768) setSidebarOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-md:justify-start"
+            title="Terms & Studio Policies"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary/80">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span className="max-[1100px]:hidden max-md:inline whitespace-nowrap text-[0.82rem] font-medium">Terms & Policies</span>
+          </button>
+
+          <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-md:justify-start"
+            className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center max-md:justify-start"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             <span className="max-[1100px]:hidden max-md:inline whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
           </button>
         </div>
       </aside>
+
+      <TermsAndPoliciesModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+      />
     </>
   );
 }
+
