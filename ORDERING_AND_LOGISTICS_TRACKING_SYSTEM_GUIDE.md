@@ -80,7 +80,7 @@ flowchart LR
 
 ### Journey 3: Delivery Service Provider (3PL Handover & Transit)
 1. **Courier Acceptance**:
-   - J&T Express rider collects the package at the Lucena Main Studio or staff drops it off at the J&T Lucena branch.
+   - J&T Express rider collects the package at the Pacific Mall Lucena Studio or staff drops it off at the J&T Lucena branch.
    - Order status transitions to `Handed Over to J&T Express` / `In Transit`.
 2. **Hub Sorting & Regional Routing**:
    - Parcel moves: *Origin Lucena Hub (`LCN-MAIN-01`)* $\rightarrow$ *South Luzon Sorting Center* $\rightarrow$ *Destination Hub*.
@@ -135,7 +135,7 @@ frontend/src/
 * **Standard 100mm x 150mm (4x6 Inch) Layout**:
   - Formatted to match official J&T Express Philippine Air Waybill (AWB) guidelines.
   - **Barcode**: Pure SVG Code 128 barcode encoding the tracking number.
-  - **Origin Hub Routing**: `LCN-MAIN-01` (Lucena Main Studio) to destination sorting code.
+  - **Origin Hub Routing**: `LCN-MAIN-01` (Pacific Mall Lucena Studio) to destination sorting code.
   - **Payment Specification**: Highlights `NON-COD (PAID - GCASH)` or `COD` terms.
   - **Package Specifications**: Itemized descriptions, quantities, and weight (0.40 kg).
   - **Verification QR Code**: Scannable QR code generated via dynamic API encoding order reference, destination, and security token.

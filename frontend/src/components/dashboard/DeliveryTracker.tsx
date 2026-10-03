@@ -79,15 +79,15 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         },
         {
           status: 'Picked up by Logistics Partner',
-          description: 'J&T Express courier picked up parcel from Stitch-Opt Studio.',
+          description: 'J&T Express courier picked up parcel from Stitch-Opt Pacific Mall Lucena Studio.',
           time: formatDate(0, 16, 40),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Order Packed & Waybill Created',
           description: 'Embroidery finished. Parcel packed & J&T Air Waybill sticker generated.',
           time: formatDate(0, 14, 10),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Order Placed & Confirmed',
@@ -120,15 +120,15 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         },
         {
           status: 'Picked up by J&T Express',
-          description: 'J&T Express accepted package from Stitch-Opt Studio.',
+          description: 'J&T Express accepted package from Stitch-Opt Pacific Mall Lucena Studio.',
           time: formatDate(0, 16, 40),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Order Packed & Waybill Attached',
           description: 'Garment packed into shipping pouch with J&T Waybill sticker.',
           time: formatDate(0, 14, 10),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Order Placed & Confirmed',
@@ -149,15 +149,15 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         },
         {
           status: 'Picked up by J&T Express',
-          description: 'J&T Express courier scanned and accepted package from Stitch-Opt Lucena Hub.',
+          description: 'J&T Express courier scanned and accepted package from Stitch-Opt Pacific Mall Lucena Studio.',
           time: formatDate(0, 16, 30),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Order Packed & Waybill Attached',
           description: 'Embroidered cap inspected, sealed in pouch, and J&T AWB sticker applied.',
           time: formatDate(0, 14, 0),
-          hub: 'Lucena Main Studio'
+          hub: 'Pacific Mall Lucena Studio'
         },
         {
           status: 'Embroidery Production Completed',
@@ -176,10 +176,10 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
     return [
       {
         status: 'In Embroidery Production',
-        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Stitch-Opt Lucena Studio.',
+        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Stitch-Opt Pacific Mall Lucena Studio.',
         time: formatDate(0, 2, 30),
         isLatest: true,
-        hub: 'Lucena Main Studio'
+        hub: 'Pacific Mall Lucena Studio'
       },
       {
         status: 'Order Placed & Payment Verified',

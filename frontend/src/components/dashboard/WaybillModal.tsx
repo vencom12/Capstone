@@ -134,8 +134,8 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
           <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black text-center py-1">
             <div className="p-1">
               <span className="text-[8px] text-black/60 block font-sans">ORIGIN HUB</span>
-              <span className="font-black text-xs">LCN-MAIN-01</span>
-              <span className="text-[8px] block text-black/60">Lucena Hub</span>
+              <span className="font-black text-xs">LCN-PAC-01</span>
+              <span className="text-[8px] block text-black/60">Pacific Mall Lucena</span>
             </div>
             <div className="p-1">
               <span className="text-[8px] text-black/60 block font-sans">DESTINATION ROUTE</span>
@@ -151,10 +151,10 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
               <span className="font-sans font-black text-[9px] uppercase block mb-0.5 text-black/70">
                 SHIPPER (FROM):
               </span>
-              <p className="font-bold m-0 leading-tight">Stitch-Opt Studio Hub</p>
-              <p className="m-0 text-[9px] text-black/80">Lucena Main Studio Facility</p>
-              <p className="m-0 text-[9px] text-black/80">Lucena City, Quezon 4301</p>
-              <p className="m-0 text-[9px] font-bold mt-1">Tel: 0917-882-1490</p>
+              <p className="font-bold m-0 leading-tight">Stitch-Opt Studio</p>
+              <p className="m-0 text-[9px] text-black/80">Pacific Mall Lucena, M.L. Tagarao St.</p>
+              <p className="m-0 text-[9px] text-black/80">Brgy. 3, Lucena City, Quezon 4301</p>
+              <p className="m-0 text-[9px] font-bold mt-1">Tel: (042) 710-3321 / 0917-882-1490</p>
             </div>
 
             {/* Consignee */}
