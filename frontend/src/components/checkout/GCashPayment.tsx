@@ -166,21 +166,23 @@ export default function GCashPayment({
           
           {!verified && (
             <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1">
-              <span className="text-[0.72rem] text-text-dim font-bold">If AI missed your reference number, enter it manually below:</span>
+              <span className="text-[0.75rem] text-text-main font-bold">
+                Enter your 13-digit GCash Reference Number to complete order:
+              </span>
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="e.g. 1002 9384 1029"
                   value={manualRef}
                   onChange={(e) => handleRefChange(e.target.value)}
-                  className="flex-1 bg-black/40 border border-white/20 px-3 py-1.5 rounded-lg text-white font-mono text-[0.8rem] outline-none focus:border-primary"
+                  className="flex-1 bg-black/40 border border-white/20 px-3 py-2 rounded-lg text-white font-mono text-[0.85rem] outline-none focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={onSubmitManualRef}
-                  className="bg-primary text-white font-bold px-3 py-1.5 rounded-lg text-[0.75rem] hover:bg-primary/80 transition-all cursor-pointer"
+                  className="bg-primary text-white font-bold px-4 py-2 rounded-lg text-[0.78rem] hover:bg-primary/90 transition-all cursor-pointer shadow-sm shrink-0"
                 >
-                  Submit Ref
+                  Confirm Order →
                 </button>
               </div>
             </div>

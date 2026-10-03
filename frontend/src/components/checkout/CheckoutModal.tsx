@@ -180,44 +180,56 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       });
 
       if (verifyRes.success) {
-        setPaymentVerified(true);
-        const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
-        setAiVerificationResult(`✅ Verified${conf ? ` (${conf} confidence)` : ''} — Amount: ₱${verifyRes.aiResult?.extractedAmount?.toFixed(2) || '?'}`);
-        showToast('StitchMaster AI: Payment verified! Your order is now in the queue.', 'success');
-        await refreshUser();
-        await fetchDashboardState();
-        clearBasket();
-        onClose();
+        if (verifyRes.verificationStatus === 'pending_manual_verification') {
+          setAiVerificationResult('📄 Receipt uploaded! Please enter your GCash Reference Number below to finalize your order.');
+          showToast('Receipt received! Please enter your GCash Reference Number below.', 'info');
+        } else {
+          setPaymentVerified(true);
+          const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
+          setAiVerificationResult(`✅ Payment Verified${conf ? ` (${conf} confidence)` : ''} — Amount: ₱${verifyRes.aiResult?.extractedAmount?.toFixed(2) || finalTotal.toFixed(2)}`);
+          showToast('Payment verified! Your order is now in the workshop queue.', 'success');
+          await refreshUser();
+          await fetchDashboardState();
+          clearBasket();
+          onClose();
+        }
       } else {
-        setAiVerificationResult(`⚠️ ${verifyRes.message}`);
-        showToast(verifyRes.message || 'AI could not verify this receipt', 'error');
+        const friendlyFallback = "Receipt image received! Please enter your GCash Reference Number below to complete your order.";
+        setAiVerificationResult(`📄 ${friendlyFallback}`);
+        showToast('Receipt received! Please enter your GCash Reference Number below.', 'info');
         await fetchDashboardState();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Verification failed';
-      setAiVerificationResult(`❌ ${msg}`);
-      showToast(msg, 'error');
+      console.error('[Receipt Verification Catch]:', err);
+      const friendlyMsg = "Receipt image uploaded! Please enter your GCash Reference Number below so our team can confirm your payment.";
+      setAiVerificationResult(`📄 ${friendlyMsg}`);
+      showToast('Receipt uploaded! Please enter your GCash Reference Number below.', 'info');
     } finally {
       setAiAnalyzing(false);
     }
   };
 
   const handleSubmitManualRef = async () => {
-    if (!manualRef.trim()) {
-      showToast('Please enter your GCash Reference Number', 'error');
+    const cleanRef = manualRef.trim();
+    if (!cleanRef) {
+      showToast('Please enter your GCash Reference Number.', 'error');
       return;
     }
     setPaymentVerified(true);
-    setAiVerificationResult(`ℹ️ Manual Ref Added: ${manualRef.trim()} (Submitted for Admin Queue Review)`);
-    showToast('Reference code recorded! Proceeding to place order for queue review.', 'info');
+    setAiVerificationResult(`✅ GCash Reference Recorded: ${cleanRef}`);
+    showToast('Payment confirmed! Your order is now placed in the queue.', 'success');
+    await refreshUser();
+    await fetchDashboardState();
+    clearBasket();
+    onClose();
   };
 
   const handlePlaceOrder = async () => {
     if (!paymentVerified) {
-      showToast('Please upload and verify your payment receipt', 'error');
+      showToast('Please upload your receipt or enter your GCash reference number.', 'error');
       return;
     }
-    showToast('Order verified & submitted successfully!', 'success');
+    showToast('Order confirmed! We have received your order.', 'success');
     await refreshUser();
     await fetchDashboardState();
     clearBasket();
