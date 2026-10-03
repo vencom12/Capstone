@@ -151,8 +151,7 @@ export default function AuthModal() {
           setFormattedPhone(e164);
           setCooldown(otpRes.cooldownSeconds || 60);
           setRegStep('otp');
-          const codeMsg = otpRes.devCode ? ` [Code: ${otpRes.devCode}]` : '';
-          showToast((otpRes.message || `Verification code sent to ${e164}!`) + codeMsg, 'success');
+          showToast(`Verification code sent to ${e164}! Check your mobile phone.`, 'success');
         } else {
           showToast(otpRes.message || 'Failed to dispatch verification code.', 'error');
         }
