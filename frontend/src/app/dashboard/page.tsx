@@ -374,7 +374,7 @@ export default function DashboardPage() {
                           }}
                           className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                         >
-                          <span>Track Live GPS</span>
+                          <span>Track Delivery</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
                         </button>
                         <button 

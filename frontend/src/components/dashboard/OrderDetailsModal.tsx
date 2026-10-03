@@ -68,7 +68,7 @@ export default function OrderDetailsModal({
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            <span>Live Geolocation Tracking</span>
+            <span>Logistics & Shipping Tracking</span>
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
           </button>
         </div>
@@ -135,7 +135,7 @@ export default function OrderDetailsModal({
                     onClick={() => setActiveTab('tracking')}
                     className="text-[0.7rem] text-primary hover:underline bg-transparent border-none cursor-pointer font-semibold"
                   >
-                    View on Live Map →
+                    Track Delivery →
                   </button>
                 </div>
                 <div className="modal-box text-[0.85rem]">

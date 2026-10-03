@@ -1,367 +1,382 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Order } from '@/lib/types';
-import Link from 'next/link';
+import { showToast } from '@/components/ui/Toast';
+import WaybillModal from '@/components/dashboard/WaybillModal';
 
 interface DeliveryTrackerProps {
   order: Order;
   onClose?: () => void;
 }
 
-// Haversine formula to compute distance in kilometers between two GPS coordinates
-function computeDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
-  // Lucena Main Production Hub Coordinates
-  const HUB_COORDS = { lat: 13.9314, lng: 121.6133, name: 'Stitch-Opt Hub (Lucena Main)' };
+  const [isWaybillOpen, setIsWaybillOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // Determine true delivery lifecycle stage
+  // Standardized J&T Express tracking number derived from order ID
+  const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+  const trackingNumber = `JNT-PH-78${cleanId}`;
+
+  // Normalize order status
   const rawStatus = (order.status || '').toLowerCase();
   const isDelivered = rawStatus === 'completed' || rawStatus === 'order delivered' || order.progress >= 100;
-  const isOriginallyDispatched = rawStatus === 'out for delivery' || rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered);
+  const isOutForDelivery = rawStatus === 'out for delivery';
+  const isInTransit = rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery);
+  const isProduction = !isDelivered && !isOutForDelivery && !isInTransit;
 
-  // Demo toggle: allows students/panelists to test both the Workshop Phase and the Live GPS Dispatch phase
-  const [demoDispatched, setDemoDispatched] = useState(false);
-  const isDispatched = isOriginallyDispatched || demoDispatched;
-
-  // Derive Destination Coordinates based on address
-  const addressText = (order.address || '').toLowerCase();
-  const getDestination = () => {
-    if (addressText.includes('davao')) return { lat: 7.0731, lng: 125.6128, region: 'Davao Region (Mindanao)' };
-    if (addressText.includes('cebu')) return { lat: 10.3157, lng: 123.8854, region: 'Central Visayas' };
-    if (addressText.includes('manila') || addressText.includes('quezon city') || addressText.includes('makati')) {
-      return { lat: 14.5995, lng: 120.9842, region: 'Metro Manila' };
-    }
-    // Default Lucena / CALABARZON local destination
-    return { lat: 13.9425, lng: 121.6210, region: 'CALABARZON (Lucena Local)' };
+  // Base dates for realistic milestone chronology
+  const baseDate = new Date(order.date || Date.now());
+  const formatDate = (daysOffset: number, hoursOffset: number, minute: number) => {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + daysOffset);
+    d.setHours(d.getHours() + hoursOffset, minute, 0);
+    return d.toLocaleString('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
-  const destCoords = getDestination();
+  // Shopee-style dynamic logistics timeline events
+  interface TimelineEvent {
+    status: string;
+    description: string;
+    time: string;
+    isLatest?: boolean;
+    hub?: string;
+  }
 
-  // Courier state (synced with real rider transmitter if active)
-  const [courierLocation, setCourierLocation] = useState<{ lat: number; lng: number }>({
-    lat: HUB_COORDS.lat + 0.004,
-    lng: HUB_COORDS.lng + 0.003
-  });
-  const [courierSpeed, setCourierSpeed] = useState<number>(32);
-  const [lastPingTime, setLastPingTime] = useState<string>('Just now');
-  const [courierInfo] = useState({
-    name: 'Mark Anthony R.',
-    vehicle: 'Honda Click 125 (Plate: 429-QZ)',
-    phone: '0917 882 1490',
-    trackingNumber: `STITCH-TRK-${order.orderId}`
-  });
-
-  // Listen for real GPS updates from Rider Transmitter page via storage events
-  useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const stored = localStorage.getItem(`stitch-rider-gps-${order.orderId}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.lat && parsed.lng) {
-            setCourierLocation({ lat: parsed.lat, lng: parsed.lng });
-            setCourierSpeed(parsed.speed ? Math.round(parsed.speed * 3.6) : 28);
-            setLastPingTime('Just now (Rider Phone Lock)');
-            setDemoDispatched(true);
-          }
+  const getTimeline = (): TimelineEvent[] => {
+    if (isDelivered) {
+      return [
+        {
+          status: 'Parcel Delivered & Received',
+          description: `Parcel has been delivered to ${order.client || 'Recipient'}. Signature & photo proof recorded.`,
+          time: formatDate(2, 6, 15),
+          isLatest: true,
+          hub: 'Lucena Delivery Hub'
+        },
+        {
+          status: 'Out for Delivery',
+          description: 'Parcel is out for delivery with J&T Courier [Mark Anthony R. - 0917-882-1490].',
+          time: formatDate(2, 1, 30),
+          hub: 'Lucena Delivery Hub'
+        },
+        {
+          status: 'Arrived at Delivery Hub',
+          description: 'Parcel arrived at local sorting facility [J&T Lucena Distribution Center].',
+          time: formatDate(1, 19, 45),
+          hub: 'Lucena Delivery Hub'
+        },
+        {
+          status: 'In Transit',
+          description: 'Parcel departed South Luzon Sorting Center, in transit to delivery hub.',
+          time: formatDate(1, 10, 20),
+          hub: 'South Luzon Hub'
+        },
+        {
+          status: 'Picked up by Logistics Partner',
+          description: 'J&T Express courier picked up parcel from Stitch-Opt Studio.',
+          time: formatDate(0, 16, 40),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Order Packed & Waybill Created',
+          description: 'Embroidery finished. Parcel packed & J&T Air Waybill sticker generated.',
+          time: formatDate(0, 14, 10),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Order Placed & Confirmed',
+          description: 'Customer order placed & payment verified.',
+          time: formatDate(0, 0, 5)
         }
-      } catch {}
-    };
+      ];
+    }
 
-    handleStorage();
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [order.orderId]);
+    if (isOutForDelivery) {
+      return [
+        {
+          status: 'Parcel is Out for Delivery',
+          description: 'J&T Courier [Mark Anthony R. - 0917-882-1490] is delivering your parcel today. Please keep your lines open.',
+          time: formatDate(1, 4, 30),
+          isLatest: true,
+          hub: 'Lucena Delivery Hub'
+        },
+        {
+          status: 'Arrived at Delivery Hub',
+          description: 'Parcel arrived at local distribution facility [J&T Lucena Hub].',
+          time: formatDate(1, 1, 15),
+          hub: 'Lucena Delivery Hub'
+        },
+        {
+          status: 'In Transit',
+          description: 'Parcel departed South Luzon Sorting Center.',
+          time: formatDate(0, 20, 10),
+          hub: 'South Luzon Hub'
+        },
+        {
+          status: 'Picked up by J&T Express',
+          description: 'J&T Express accepted package from Stitch-Opt Studio.',
+          time: formatDate(0, 16, 40),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Order Packed & Waybill Attached',
+          description: 'Garment packed into shipping pouch with J&T Waybill sticker.',
+          time: formatDate(0, 14, 10),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Order Placed & Confirmed',
+          description: 'Customer order placed & payment verified.',
+          time: formatDate(0, 0, 5)
+        }
+      ];
+    }
 
-  // Compute real distance in km between current rider and destination
-  const distanceKm = computeDistanceKm(
-    courierLocation.lat,
-    courierLocation.lng,
-    destCoords.lat,
-    destCoords.lng
-  );
-  const estimatedMins = Math.max(5, Math.round(distanceKm * 2.5));
+    if (isInTransit) {
+      return [
+        {
+          status: 'In Transit to Local Delivery Hub',
+          description: 'Parcel is moving between J&T Express sorting centers towards destination.',
+          time: formatDate(0, 18, 20),
+          isLatest: true,
+          hub: 'South Luzon Sorting Center'
+        },
+        {
+          status: 'Picked up by J&T Express',
+          description: 'J&T Express courier scanned and accepted package from Stitch-Opt Lucena Hub.',
+          time: formatDate(0, 16, 30),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Order Packed & Waybill Attached',
+          description: 'Embroidered cap inspected, sealed in pouch, and J&T AWB sticker applied.',
+          time: formatDate(0, 14, 0),
+          hub: 'Lucena Main Studio'
+        },
+        {
+          status: 'Embroidery Production Completed',
+          description: 'Vector digitization and high-speed machine stitching passed inspection.',
+          time: formatDate(0, 10, 45)
+        },
+        {
+          status: 'Order Placed & Confirmed',
+          description: 'Customer order placed & payment verified.',
+          time: formatDate(0, 0, 5)
+        }
+      ];
+    }
 
-  const mapsNavigationUrl = `https://www.google.com/maps/dir/?api=1&origin=${HUB_COORDS.lat},${HUB_COORDS.lng}&destination=${encodeURIComponent(
-    order.address || `${destCoords.lat},${destCoords.lng}`
-  )}`;
+    // Default: Workshop Production Phase
+    return [
+      {
+        status: 'In Embroidery Production',
+        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Stitch-Opt Lucena Studio.',
+        time: formatDate(0, 2, 30),
+        isLatest: true,
+        hub: 'Lucena Main Studio'
+      },
+      {
+        status: 'Order Placed & Payment Verified',
+        description: `Order successfully logged via ${order.paymentMethod.toUpperCase()}. Preparing raw materials.`,
+        time: formatDate(0, 0, 5)
+      }
+    ];
+  };
+
+  const timeline = getTimeline();
+
+  const handleCopyTracking = () => {
+    navigator.clipboard.writeText(trackingNumber);
+    setCopied(true);
+    showToast('J&T Tracking Number copied to clipboard!', 'success');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="flex flex-col gap-4 font-sans text-left animate-[fadeIn_0.2s_ease-out]">
-      {/* ========================================================================= */}
-      {/* CASE 1: WORKSHOP PRODUCTION PHASE (Day 1-2 / In Queue / Stitching)        */}
-      {/* ========================================================================= */}
-      {!isDispatched && !isDelivered && (
-        <div className="flex flex-col gap-4">
-          {/* Workshop Header */}
-          <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 text-xl font-bold">
-                🏭
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-sm text-text-main">
-                    Stitch-Opt Manufacturing Line
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                    IN WORKSHOP QUEUE
-                  </span>
-                </div>
-                <p className="text-[0.72rem] text-text-dim mt-0.5 m-0">
-                  Facility: <span className="font-bold text-text-main">Lucena Main Studio</span> • Job Order #{order.orderId}
-                </p>
-              </div>
-            </div>
-
-            {/* Defense Demo Switcher */}
-            <button
-              onClick={() => setDemoDispatched(true)}
-              className="text-[0.72rem] font-bold px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 transition-all cursor-pointer shadow-sm"
-              title="Click to simulate courier dispatch for capstone defense demonstration"
-            >
-              Simulate Courier Dispatch (Demo) →
-            </button>
-          </div>
-
-          {/* Authentic Workshop Status Notice */}
-          <div className="bg-bg-card border border-border-glass rounded-2xl p-4 flex items-start gap-3">
-            <div className="text-xl shrink-0 mt-0.5">ℹ️</div>
-            <div className="text-xs leading-relaxed text-text-dim">
-              <p className="font-bold text-text-main m-0 mb-1">
-                Order Currently in Artisanal Embroidery Production
-              </p>
-              Your design is undergoing vector digitization and machine stitching at our Lucena facility. 
-              <span className="text-text-main font-semibold"> Live Courier Geolocation Tracking</span> activates automatically once the garment passes quality control inspection and is handed to the dispatch rider.
-            </div>
-          </div>
-
-          {/* Workshop Milestone Timeline */}
-          <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim m-0">
-              Manufacturing & Preparation Milestones
-            </h4>
-
-            <div className="flex flex-col gap-3">
-              {[
-                { title: 'Payment Verified & Job Order Logged', desc: 'GCash / Electronic receipt audited & scheduled', done: true, time: 'Step 1' },
-                { title: 'Vector Digitization & Thread Mapping', desc: 'Embroidery stitch density calculation & color hooping', done: (order.progress || 0) >= 20, active: (order.progress || 0) < 40, time: 'Step 2' },
-                { title: 'Automated Computerized Embroidery', desc: 'Brother/Barudan multi-needle high-speed stitching run', done: (order.progress || 0) >= 50, active: (order.progress || 0) >= 40 && (order.progress || 0) < 70, time: 'Step 3' },
-                { title: 'QA Inspection & Thread Trimming', desc: 'Manual tension check, backing removal, and defect audit', done: (order.progress || 0) >= 80, time: 'Step 4' },
-                { title: 'Courier Packaging & Waybill Assignment', desc: 'Handover to delivery courier for transit', done: false, time: 'Step 5' },
-              ].map((m, idx) => (
-                <div key={idx} className="flex items-start gap-3 relative">
-                  {idx < 4 && (
-                    <div className={`absolute left-3.5 top-6 bottom-0 w-0.5 -mb-2 ${m.done ? 'bg-primary' : 'bg-white/10'}`} />
-                  )}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
-                    m.done 
-                      ? 'bg-primary text-white shadow-sm' 
-                      : m.active 
-                        ? 'bg-amber-500 text-white animate-pulse' 
-                        : 'bg-white/10 text-text-dim'
-                  }`}>
-                    {m.done ? '✓' : idx + 1}
-                  </div>
-                  <div className="flex-1 flex justify-between items-start">
-                    <div>
-                      <h5 className={`text-xs font-bold m-0 ${m.done ? 'text-text-main' : 'text-text-dim'}`}>{m.title}</h5>
-                      <p className="text-[0.7rem] text-text-dim/80 m-0 mt-0.5 leading-snug">{m.desc}</p>
-                    </div>
-                    <span className="text-[0.65rem] text-text-dim font-medium ml-2 shrink-0">{m.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* CASE 2: ACTIVE COURIER DISPATCH PHASE (Out for Delivery / Live GPS)       */}
-      {/* ========================================================================= */}
-      {isDispatched && !isDelivered && (
-        <div className="flex flex-col gap-4">
-          {/* Telemetry Header */}
-          <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-success/20 border border-success/30 flex items-center justify-center text-success text-xl font-bold">
-                🚚
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-sm text-text-main">
-                    Stitch-Opt Dispatch Express
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/15 text-success border border-success/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
-                    LIVE COURIER GPS
-                  </span>
-                </div>
-                <p className="text-[0.72rem] text-text-dim mt-0.5 m-0">
-                  Tracking ID: <span className="font-mono text-text-main font-bold">{courierInfo.trackingNumber}</span> • Telemetry: {lastPingTime}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <a
-                href={mapsNavigationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:shadow-md transition-all cursor-pointer no-underline"
-              >
-                <span>Google Maps Route</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-
-              <Link
-                href={`/rider-track?orderId=${order.orderId}`}
-                target="_blank"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-text-dim text-xs font-semibold border border-border-glass no-underline"
-                title="Open mobile transmitter on rider smartphone"
-              >
-                📱 Rider Link
-              </Link>
-            </div>
-          </div>
-
-          {/* Real Route Graphic & Courier Coordinates Card */}
-          <div className="relative w-full rounded-2xl overflow-hidden border border-border-glass bg-[#0c101d] p-4 flex flex-col gap-3 shadow-inner">
-            {/* Top Telemetry Bar */}
-            <div className="flex justify-between items-center text-xs flex-wrap gap-2">
-              <div className="bg-bg-dark/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-xl text-[0.7rem] flex items-center gap-2">
-                <span className="text-text-dim">Courier GPS:</span>
-                <span className="font-mono font-bold text-primary">
-                  {courierLocation.lat.toFixed(4)}°N, {courierLocation.lng.toFixed(4)}°E
-                </span>
-                <span className="text-text-dim">({courierSpeed} km/h)</span>
-              </div>
-
-              <div className="bg-bg-dark/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-xl text-[0.7rem] text-text-dim flex items-center gap-1.5">
-                <span>Destination:</span>
-                <span className="font-bold text-text-main">{destCoords.region}</span>
-              </div>
-            </div>
-
-            {/* Visual Route Track */}
-            <div className="my-3 py-2 relative">
-              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden relative">
-                <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: '65%' }} />
-              </div>
-
-              <div className="flex justify-between items-center relative -top-3 px-1">
-                {/* Origin */}
-                <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-xs shadow-sm">
-                    🏭
-                  </div>
-                  <span className="text-[0.65rem] font-bold text-text-main mt-1">Lucena Hub</span>
-                </div>
-
-                {/* Courier Pin */}
-                <div className="flex flex-col items-center absolute" style={{ left: '62%' }}>
-                  <div className="w-8 h-8 rounded-full bg-secondary/30 border-2 border-secondary flex items-center justify-center text-sm shadow-sm animate-pulse">
-                    🛵
-                  </div>
-                  <span className="text-[0.62rem] font-extrabold text-secondary mt-1 whitespace-nowrap bg-bg-dark/90 px-1.5 py-0.5 rounded border border-secondary/30">
-                    Rider En Route
-                  </span>
-                </div>
-
-                {/* Destination */}
-                <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full bg-success/20 border-2 border-success flex items-center justify-center text-success shadow-sm">
-                    📍
-                  </div>
-                  <span className="text-[0.65rem] font-bold text-text-main mt-1">Drop-off</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Courier Details & Estimated Distance */}
-            <div className="flex justify-between items-center text-[0.72rem] bg-bg-dark/80 backdrop-blur-md border border-white/10 p-2.5 rounded-xl flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-text-dim">Assigned Courier:</span>
-                <span className="font-bold text-text-main">{courierInfo.name}</span>
-                <span className="text-text-dim text-[0.68rem]">({courierInfo.vehicle})</span>
-                <a
-                  href={`tel:${courierInfo.phone}`}
-                  className="px-2 py-0.5 rounded bg-white/10 text-primary font-bold text-[0.68rem] no-underline hover:bg-white/20 transition-all ml-1"
-                >
-                  📞 Call
-                </a>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-text-dim">Distance:</span>
-                <span className="font-bold text-primary">{distanceKm.toFixed(1)} km</span>
-                <span className="text-text-dim">• Est. Arrival:</span>
-                <span className="font-bold text-success">~{estimatedMins} mins</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* CASE 3: COMPLETED / DELIVERED STATE                                       */}
-      {/* ========================================================================= */}
-      {isDelivered && (
-        <div className="bg-success/10 border border-success/30 rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-success text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
-            ✓
+      {/* 1. Shopee-Style Top Status Banner */}
+      <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${
+        isDelivered
+          ? 'bg-success/10 border-success/30 text-success'
+          : isOutForDelivery
+            ? 'bg-secondary/10 border-secondary/30 text-secondary'
+            : isInTransit
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold shadow-sm ${
+            isDelivered
+              ? 'bg-success text-white'
+              : isOutForDelivery
+                ? 'bg-secondary text-white animate-pulse'
+                : 'bg-white/10 text-text-main'
+          }`}>
+            {isDelivered ? '✓' : isOutForDelivery ? '🚚' : isInTransit ? '📦' : '🧵'}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-success m-0">Package Successfully Delivered & Received</h4>
-            <p className="text-xs text-text-dim m-0 mt-0.5">
-              Handed to recipient at {order.address || 'Delivery Address'} • Verified & Completed.
+            <h4 className="text-sm font-extrabold m-0 leading-tight">
+              {isDelivered
+                ? 'Parcel has been delivered'
+                : isOutForDelivery
+                  ? 'Parcel is out for delivery'
+                  : isInTransit
+                    ? 'Parcel is in transit'
+                    : 'Parcel is being prepared'}
+            </h4>
+            <p className="text-[0.72rem] text-text-dim m-0 mt-0.5">
+              {isDelivered
+                ? 'Delivered to recipient address • Verified'
+                : 'Estimated Arrival: 1-3 Business Days via J&T Express'}
             </p>
           </div>
         </div>
-      )}
 
-      {/* Destination Confirmation Card */}
-      <div className="bg-bg-surface border border-border-glass rounded-2xl p-3.5 flex flex-col gap-2">
+        {/* Waybill Sticker Action Button */}
+        <button
+          onClick={() => setIsWaybillOpen(true)}
+          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+          title="View and print official 4x6 inch J&T Express thermal waybill sticker"
+        >
+          <span>🏷️ J&T Waybill Sticker</span>
+        </button>
+      </div>
+
+      {/* 2. Logistics Partner & Tracking Number Card */}
+      <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* J&T Express Badge */}
+          <div className="flex items-center gap-1 bg-[#e11d48] text-white px-2 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+            <span>J&T</span>
+            <span className="text-[9px] font-bold text-white/80">EXPRESS</span>
+          </div>
+          <div>
+            <span className="text-xs font-bold text-text-main block">Standard Delivery</span>
+            <span className="text-[0.7rem] text-text-dim">Official 3PL Logistics Partner</span>
+          </div>
+        </div>
+
+        {/* Tracking Number with Copy */}
+        <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
+          <div className="text-right">
+            <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
+              Tracking No.
+            </span>
+            <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+          </div>
+          <button
+            onClick={handleCopyTracking}
+            className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Shopee-Style Chronological Logistics Timeline Stepper */}
+      <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 flex flex-col gap-4">
+        <div className="flex justify-between items-center border-b border-border-glass pb-3">
+          <h4 className="text-xs font-extrabold uppercase tracking-wider text-text-dim m-0">
+            Logistics Tracking History
+          </h4>
+          <span className="text-[0.7rem] text-text-dim font-medium">
+            Status auto-refreshed in-app
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-4 pl-1">
+          {timeline.map((event, idx) => (
+            <div key={idx} className="flex items-start gap-3.5 relative">
+              {/* Vertical connector line */}
+              {idx < timeline.length - 1 && (
+                <div
+                  className={`absolute left-[9px] top-4 bottom-0 w-0.5 -mb-4 ${
+                    idx === 0 ? 'bg-primary' : 'bg-white/10'
+                  }`}
+                />
+              )}
+
+              {/* Step indicator node */}
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 z-10 ${
+                  event.isLatest
+                    ? 'bg-primary text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)] ring-4 ring-primary/20'
+                    : 'bg-white/15 text-text-dim'
+                }`}
+              >
+                {event.isLatest ? (
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                )}
+              </div>
+
+              {/* Event Content */}
+              <div className="flex-1 flex flex-col gap-0.5">
+                <div className="flex justify-between items-start flex-wrap gap-1">
+                  <h5
+                    className={`text-xs font-bold m-0 ${
+                      event.isLatest ? 'text-primary font-black' : 'text-text-main'
+                    }`}
+                  >
+                    {event.status}
+                  </h5>
+                  <span className="text-[0.68rem] text-text-dim font-mono">{event.time}</span>
+                </div>
+                <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
+                  {event.description}
+                </p>
+                {event.hub && (
+                  <span className="text-[0.65rem] text-text-dim/70 font-medium">
+                    Facility: {event.hub}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Recipient Delivery Address Card */}
+      <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col gap-2">
         <div className="flex items-start gap-2.5">
-          <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
+          <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
           </div>
           <div className="text-xs leading-relaxed flex-1">
-            <span className="font-bold text-text-main block">Recipient Delivery Address:</span>
-            <span className="text-text-dim">
-              {order.address?.split('(Landmark:')[0]?.trim() || order.address || 'No specific delivery address recorded on file.'}
-            </span>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-extrabold text-text-main">{order.client || 'Recipient'}</span>
+              <span className="text-text-dim text-[0.7rem]">(Delivery Recipient)</span>
+            </div>
+            <p className="text-text-dim m-0">
+              {order.address?.split('(Landmark:')[0]?.trim() || order.address || 'Standard Delivery Address'}
+            </p>
           </div>
         </div>
+
         {order.address && order.address.includes('(Landmark:') && (
-          <div className="ml-8 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-xl text-[0.72rem] text-secondary flex items-center gap-2">
-            <span className="font-bold shrink-0">Rider Landmark Guide:</span>
+          <div className="ml-8 px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-xl text-[0.7rem] text-secondary flex items-center gap-2">
+            <span className="font-bold shrink-0">Rider Note / Landmark:</span>
             <span className="italic">{order.address.split('(Landmark:')[1]?.replace(')', '')?.trim()}</span>
           </div>
         )}
       </div>
+
+      {/* 5. Waybill Modal */}
+      <WaybillModal
+        isOpen={isWaybillOpen}
+        onClose={() => setIsWaybillOpen(false)}
+        order={order}
+      />
     </div>
   );
 }
