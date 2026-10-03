@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
-import { useUIStore, AuthPortal } from '@/stores/useUIStore';
+import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -14,10 +14,10 @@ export default function AuthModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authParam = searchParams.get('auth'); // 'login' or 'register'
-  const roleParam = searchParams.get('role') as AuthPortal | null;
+  const roleParam = searchParams.get('role'); // 'admin' or 'employee'
   
-  const { isAuthOpen, authMode, authPortal, setAuthOpen, setAuthPortal } = useUIStore();
-  const mode = authPortal !== 'customer' ? 'login' : authMode;
+  const { isAuthOpen, authMode, setAuthOpen } = useUIStore();
+  const mode = roleParam ? 'login' : authMode;
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,35 +32,19 @@ export default function AuthModal() {
 
   // Listen to deep links (?auth=login or ?auth=register, and ?role=admin/employee)
   useEffect(() => {
-    if (roleParam && ['customer', 'employee', 'admin'].includes(roleParam)) {
-      setAuthPortal(roleParam);
-    }
     if (authParam === 'login' || authParam === 'register') {
       if (isAuthenticated) {
         handleClose();
       } else {
-        setAuthOpen(true, authParam, (roleParam as AuthPortal) || undefined);
+        setAuthOpen(true, authParam);
       }
     }
-  }, [authParam, roleParam, isAuthenticated, setAuthOpen, setAuthPortal]);
+  }, [authParam, isAuthenticated, setAuthOpen]);
 
   const handleClose = () => {
     setAuthOpen(false);
     if (authParam || roleParam) {
       router.replace('/');
-    }
-  };
-
-  // Quick helper to fill dev/test credentials for instant grading & evaluation
-  const handleAutofillTest = (role: 'admin' | 'employee') => {
-    if (role === 'admin') {
-      setEmail('admin');
-      setPassword('admin123');
-      showToast('Admin test credentials populated', 'info');
-    } else {
-      setEmail('employee');
-      setPassword('employee123');
-      showToast('Employee test credentials populated', 'info');
     }
   };
 
@@ -113,7 +97,7 @@ export default function AuthModal() {
     }
   };
 
-  // Handle Registration (Customer only)
+  // Handle Registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !email.trim() || !password) {
@@ -149,7 +133,7 @@ export default function AuthModal() {
     }
   };
 
-  // Handle Login (Customer, Staff, or Admin)
+  // Smart Unified Login: Server verifies cryptographic credentials & determines role automatically
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -159,23 +143,24 @@ export default function AuthModal() {
 
     setIsSubmitting(true);
     try {
-      const targetPortal = authPortal === 'customer' ? undefined : authPortal;
-      const res = await login(email.trim(), password, rememberMe, targetPortal);
+      const res = await login(email.trim(), password, rememberMe);
       
       if (res.success) {
         showToast(`Welcome back, ${res.user?.username || 'User'}!`, 'success');
         handleClose();
 
-        // Automatic role-based routing
+        // Smart Role-Based Routing
         if (res.user?.role === 'admin') {
           router.replace('/admin');
         } else if (res.user?.role === 'employee') {
           router.replace('/employee');
         } else {
-          if (authPortal === 'customer') {
-            router.refresh();
-          } else {
+          // If a customer was trying to access a restricted staff route
+          if (roleParam === 'admin' || roleParam === 'employee') {
+            showToast('Access restricted: your account does not have staff permissions.', 'info');
             router.replace('/dashboard');
+          } else {
+            router.refresh();
           }
         }
       } else {
@@ -198,30 +183,22 @@ export default function AuthModal() {
         
         {/* Header & Subtitle */}
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            {authPortal === 'admin' ? (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
-                Administrator Portal
+          {roleParam && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                {roleParam === 'admin' ? 'Administrator Authorization Required' : 'Staff Authorization Required'}
               </span>
-            ) : authPortal === 'employee' ? (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
-                Employee Portal
-              </span>
-            ) : null}
-          </div>
+            </div>
+          )}
 
           <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">
-            {authPortal === 'admin' 
-              ? 'Admin Login'
-              : authPortal === 'employee'
-              ? 'Employee Login'
-              : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
           <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
-            {authPortal === 'admin'
-              ? 'Enter master administrator credentials to access management controls'
-              : authPortal === 'employee'
-              ? 'Enter staff credentials to manage production tickets & queues'
+            {roleParam === 'admin'
+              ? 'Sign in with administrative credentials to access management controls'
+              : roleParam === 'employee'
+              ? 'Sign in with operator credentials to manage production queues'
               : mode === 'login' 
               ? 'Sign in to access your orders, designs & custom projects' 
               : 'Join Stitch-Opt for custom embroidery orders & tracking'}
@@ -230,7 +207,7 @@ export default function AuthModal() {
 
         {/* Credentials Form */}
         <form onSubmit={mode === 'login' ? handleLoginSubmit : handleRegisterSubmit} className="flex flex-col gap-3.5">
-          {authPortal === 'customer' && mode === 'register' && (
+          {!roleParam && mode === 'register' && (
             <div className="flex flex-col gap-1">
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username *</label>
               <input 
@@ -245,41 +222,20 @@ export default function AuthModal() {
           )}
           
           <div className="flex flex-col gap-1">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-[0.75rem] font-bold text-text-dim">
-                {authPortal === 'admin' 
-                  ? 'Admin Username or Email *'
-                  : authPortal === 'employee'
-                  ? 'Employee Username or Email *'
-                  : mode === 'login' ? 'Email or Username *' : 'Email Address *'}
-              </label>
-              {authPortal !== 'customer' && (
-                <button
-                  type="button"
-                  onClick={() => handleAutofillTest(authPortal)}
-                  className="bg-transparent border-none text-[0.7rem] text-primary hover:underline cursor-pointer p-0 font-medium"
-                >
-                  Autofill Demo
-                </button>
-              )}
-            </div>
+            <label className="text-[0.75rem] font-bold text-text-dim ml-1">
+              {mode === 'login' ? 'Email or Username *' : 'Email Address *'}
+            </label>
             <input 
               type={mode === 'login' ? 'text' : 'email'} 
               required 
-              placeholder={
-                authPortal === 'admin'
-                  ? 'admin'
-                  : authPortal === 'employee'
-                  ? 'employee'
-                  : mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'
-              }
+              placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
             />
           </div>
 
-          {authPortal === 'customer' && mode === 'register' && (
+          {!roleParam && mode === 'register' && (
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-[0.75rem] font-bold text-text-dim">Mobile Number</label>
@@ -299,7 +255,7 @@ export default function AuthModal() {
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-center ml-1">
               <label className="text-[0.75rem] font-bold text-text-dim">Password *</label>
-              {mode === 'login' && authPortal === 'customer' && (
+              {mode === 'login' && !roleParam && (
                 <button
                   type="button"
                   onClick={handleForgotPassword}
@@ -361,13 +317,13 @@ export default function AuthModal() {
             disabled={isSubmitting}
           >
             {isSubmitting 
-              ? (authPortal === 'admin' ? 'Authenticating Admin...' : authPortal === 'employee' ? 'Authenticating Employee...' : mode === 'login' ? 'Signing In...' : 'Creating Account...') 
-              : (authPortal === 'admin' ? 'Sign In as Admin' : authPortal === 'employee' ? 'Sign In as Employee' : mode === 'login' ? 'Sign In' : 'Create Account')}
+              ? (mode === 'login' ? 'Signing In...' : 'Creating Account...') 
+              : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </GlassButton>
         </form>
 
-        {/* Customer Only: Google Sign-In & Registration toggle */}
-        {authPortal === 'customer' && (
+        {/* 1-Click Google Sign-In (For Customers) */}
+        {!roleParam && (
           <>
             <div className="relative flex items-center justify-center my-0.5">
               <div className="border-t border-border-glass w-full" />
@@ -397,7 +353,7 @@ export default function AuthModal() {
                 {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                 <button
                   type="button"
-                  onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login', 'customer')}
+                  onClick={() => setAuthOpen(true, mode === 'login' ? 'register' : 'login')}
                   className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs"
                 >
                   {mode === 'login' ? 'Create an Account' : 'Sign In'}
@@ -406,55 +362,6 @@ export default function AuthModal() {
             </div>
           </>
         )}
-
-        {/* Bottom Test & Portal Switching Buttons */}
-        <div className="pt-2 border-t border-border-glass flex flex-col gap-2">
-          {authPortal === 'customer' ? (
-            <div className="flex gap-2 w-full pt-1">
-              <button
-                type="button"
-                onClick={() => setAuthPortal('employee')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
-              >
-                Employee Modal →
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthPortal('admin')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
-              >
-                Admin Modal →
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2 w-full pt-1">
-              {authPortal === 'admin' ? (
-                <button
-                  type="button"
-                  onClick={() => setAuthPortal('employee')}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
-                >
-                  Switch to Employee
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAuthPortal('admin')}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
-                >
-                  Switch to Admin
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setAuthPortal('customer')}
-                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
-              >
-                ← Back to Customer
-              </button>
-            </div>
-          )}
-        </div>
 
       </div>
     </GlassModal>
