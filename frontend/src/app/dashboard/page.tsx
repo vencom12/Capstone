@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -70,10 +70,17 @@ export default function DashboardPage() {
     setIsUpdating(true);
     try {
       const { api } = await import('@/lib/api');
-      await api.patch('/api/customer/settings', {
+      const res = await api.patch<{ message: string; user: any }>('/api/customer/settings', {
         [editingField]: editValue
       });
-      await refreshUser();
+      if (res && res.user) {
+        useAuthStore.getState().setUser({
+          ...useAuthStore.getState().user!,
+          ...res.user
+        });
+      } else {
+        await refreshUser();
+      }
       showToast('Profile updated successfully!', 'success');
       setEditingField(null);
       setEditValue('');

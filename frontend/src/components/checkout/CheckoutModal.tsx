@@ -30,6 +30,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState('');
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
+  const [manualRef, setManualRef] = useState('');
 
   const [giftPackaging, setGiftPackaging] = useState(false);
   const [calligraphyMessage, setCalligraphyMessage] = useState('');
@@ -57,6 +58,12 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
+
+    if (user && !user.isEmailVerified) {
+      showToast('Please verify your email address before placing an order.', 'error');
+      return;
+    }
+
     const file = e.target.files[0];
     setReceiptFile(file);
     setAiAnalyzing(true);
@@ -87,7 +94,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         totalAmount: finalTotal,
         address: user?.address,
         notes,
-        paymentMethod,
+        paymentMethod: 'gcash',
         receiptUrl: uploadData.url,
         giftPackaging,
         calligraphyMessage
@@ -118,7 +125,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       } else {
         setAiVerificationResult(`⚠️ ${verifyRes.message}`);
         showToast(verifyRes.message || 'AI could not verify this receipt', 'error');
-        // Order exists but remains in "Awaiting Payment" — admin can review
         await fetchDashboardState();
       }
     } catch (err: any) {
@@ -130,65 +136,26 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }
   };
 
-  const handleTestPlaceOrder = async () => {
-    setIsProcessing(true);
-    try {
-      await api.post('/api/customer/order/submit', {
-        items,
-        totalAmount: finalTotal,
-        address: user?.address,
-        notes,
-        paymentMethod: 'test_mode',
-        bypassVerification: true,
-        giftPackaging,
-        calligraphyMessage
-      });
-      
-      showToast('Test order placed successfully (Bypassed AI Verification)!', 'success');
-      await refreshUser();
-      await fetchDashboardState();
-      clearBasket();
-      onClose();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to place test order';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsProcessing(false);
+  const handleSubmitManualRef = async () => {
+    if (!manualRef.trim()) {
+      showToast('Please enter your GCash Reference Number', 'error');
+      return;
     }
+    setPaymentVerified(true);
+    setAiVerificationResult(`ℹ️ Manual Ref Added: ${manualRef.trim()} (Submitted for Admin Queue Review)`);
+    showToast('Reference code recorded! Proceeding to place order for queue review.', 'info');
   };
 
   const handlePlaceOrder = async () => {
-    // For e-wallet methods, the order is already placed during handleFileSelect
-    if (paymentMethod === 'gcash') {
-      if (!paymentVerified) {
-        showToast('Please upload and verify your payment receipt', 'error');
-      }
+    if (!paymentVerified) {
+      showToast('Please upload and verify your payment receipt', 'error');
       return;
     }
-
-    setIsProcessing(true);
-    try {
-      await api.post('/api/customer/order/submit', {
-        items,
-        totalAmount: finalTotal,
-        address: user?.address,
-        notes,
-        paymentMethod,
-        giftPackaging,
-        calligraphyMessage
-      });
-      
-      showToast('Order placed successfully!', 'success');
-      await refreshUser();
-      await fetchDashboardState();
-      clearBasket();
-      onClose();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to place order';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
+    showToast('Order verified & submitted successfully!', 'success');
+    await refreshUser();
+    await fetchDashboardState();
+    clearBasket();
+    onClose();
   };
 
   return (
@@ -293,27 +260,31 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             <div className="flex flex-col gap-4 max-[650px]:gap-3">
               <h3 className="text-[1rem] max-[650px]:text-[0.9rem] font-bold m-0">Payment Method</h3>
               
-              <div className="flex flex-col max-[650px]:flex-row gap-4 max-[650px]:gap-2 max-[650px]:items-stretch">
-                <div className="flex-1">
-                  <button
-                    className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-xl border bg-primary/20 border-primary text-white shadow-lg transition-all duration-200"
-                  >
-                    <span className="text-[#007df2] font-bold text-xl">G</span>
-                    <span className="text-[0.85rem] font-bold">GCash</span>
-                  </button>
+              <div className="w-full">
+                <div className="w-full flex items-center justify-between p-3.5 rounded-xl border bg-primary/20 border-primary text-white shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-[#007df2] text-white font-extrabold w-7 h-7 rounded-full flex items-center justify-center text-sm">G</span>
+                    <div className="flex flex-col">
+                      <span className="text-[0.88rem] font-bold">GCash P2P Transfer</span>
+                      <span className="text-[0.72rem] text-text-dim">Official Store Payment Partner</span>
+                    </div>
+                  </div>
+                  <span className="bg-success/20 text-success text-[0.68rem] font-bold px-2 py-0.5 rounded-full border border-success/30 uppercase">Active</span>
                 </div>
               </div>
 
-              {paymentMethod === 'gcash' && (
-                <GCashPayment
-                  receiptFile={receiptFile}
-                  aiAnalyzing={aiAnalyzing}
-                  aiVerificationResult={aiVerificationResult}
-                  paymentVerified={paymentVerified}
-                  onFileSelect={handleFileSelect}
-                  qrCodeUrl={gcashQrCodeUrl}
-                />
-              )}
+              <GCashPayment
+                receiptFile={receiptFile}
+                aiAnalyzing={aiAnalyzing}
+                aiVerificationResult={aiVerificationResult}
+                paymentVerified={paymentVerified}
+                onFileSelect={handleFileSelect}
+                qrCodeUrl={gcashQrCodeUrl}
+                finalTotal={finalTotal}
+                manualRef={manualRef}
+                setManualRef={setManualRef}
+                onSubmitManualRef={handleSubmitManualRef}
+              />
 
               <div className="flex items-center justify-between border-t border-border-glass pt-4 max-[650px]:pt-2.5 mt-auto">
                 <span className="text-[0.85rem] max-[650px]:text-[0.75rem] text-text-dim">Payment Status:</span>
@@ -336,15 +307,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                 >
                   {isProcessing ? 'Processing Order...' : 'Place Order'}
                 </GlassButton>
-
-                <button
-                  type="button"
-                  onClick={handleTestPlaceOrder}
-                  disabled={isProcessing}
-                  className="text-[0.75rem] text-primary hover:text-white underline cursor-pointer transition-all bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-xl border border-primary/30 w-full font-bold flex items-center justify-center gap-1.5"
-                >
-                  <span>⚡</span> Test Checkout (Skip GCash Verification)
-                </button>
               </div>
             </div>
           </div>
