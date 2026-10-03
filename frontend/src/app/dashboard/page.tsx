@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
+  const [orderDetailsTab, setOrderDetailsTab] = useState<'summary' | 'tracking'>('summary');
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   
@@ -289,20 +290,34 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
+                    <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50 flex-wrap gap-2">
                       <div className="text-[0.8rem]">
                         <span className="text-text-dim">Total: </span>
                         <span className="font-bold text-text-main">₱{order.totalAmount.toFixed(2)}</span>
                       </div>
-                      <button 
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setIsOrderDetailsOpen(true);
-                        }}
-                        className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer"
-                      >
-                        View Details
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setOrderDetailsTab('tracking');
+                            setIsOrderDetailsOpen(true);
+                          }}
+                          className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                        >
+                          <span>🚚 Track Live GPS</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setOrderDetailsTab('summary');
+                            setIsOrderDetailsOpen(true);
+                          }}
+                          className="text-[0.8rem] font-bold text-text-dim hover:text-text-main hover:underline bg-transparent border-none cursor-pointer"
+                        >
+                          Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -658,6 +673,7 @@ export default function DashboardPage() {
         order={selectedOrder}
         isOpen={isOrderDetailsOpen}
         onClose={() => setIsOrderDetailsOpen(false)}
+        initialTab={orderDetailsTab}
       />
       {/* Receipt Modal */}
       <ReceiptModal

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AddressSelectProps {
   value: string;
@@ -8,28 +8,6 @@ interface AddressSelectProps {
   className?: string;
   required?: boolean;
 }
-
-// Popular quick-fill suggestions for fast autofill across Quezon and major PH hubs
-const COMMON_PH_LOCATIONS = [
-  'Brgy. Cotta, Lucena City, Quezon',
-  'Brgy. Gulang-Gulang, Lucena City, Quezon',
-  'Brgy. Isabang, Lucena City, Quezon',
-  'Brgy. Ibabang Dupay, Lucena City, Quezon',
-  'Brgy. Dalahican, Lucena City, Quezon',
-  'Brgy. Market View, Lucena City, Quezon',
-  'Brgy. Poblacion, Lucena City, Quezon',
-  'Brgy. San Roque, Sariaya, Quezon',
-  'Brgy. Poblacion, Candelaria, Quezon',
-  'Brgy. San Diego, Tayabas City, Quezon',
-  'Brgy. Bukal Sur, Candelaria, Quezon',
-  'Brgy. Poblacion, Pagbilao, Quezon',
-  'Brgy. Bel-Air, Makati City, Metro Manila',
-  'Brgy. Fort Bonifacio (BGC), Taguig City, Metro Manila',
-  'Brgy. South Triangle, Quezon City, Metro Manila',
-  'Brgy. San Antonio, Pasig City, Metro Manila',
-  'Brgy. Lahug, Cebu City, Cebu',
-  'Brgy. Buhangin, Davao City, Davao del Sur'
-];
 
 /**
  * Intelligent parser to split an existing combined address into:
@@ -67,19 +45,17 @@ export default function AddressSelect({
   className = '',
   required = false
 }: AddressSelectProps) {
-  const datalistId = useId();
-
   // Local state for the two fields
   const [street, setStreet] = useState('');
   const [area, setArea] = useState('');
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<string | null>(null);
 
   // Sync internal state with incoming value on mount or external reset
   useEffect(() => {
     const parsed = parseAddressString(value || '');
     setStreet(parsed.street);
     setArea(parsed.area);
-    setIsInitialized(true);
   }, [value]);
 
   const updateCombinedAddress = (newStreet: string, newArea: string) => {
@@ -90,7 +66,6 @@ export default function AddressSelect({
     const a = newArea.trim();
 
     if (s && a) {
-      // Prevent accidental repetition if user typed area into street
       if (s.toLowerCase().includes(a.toLowerCase())) {
         onChange(s);
       } else {
@@ -101,18 +76,133 @@ export default function AddressSelect({
     }
   };
 
+  // Browser Geolocation API with Reverse Geocoding
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationStatus('Getting GPS coordinates...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocationStatus(`GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} • Resolving address...`);
+
+        try {
+          // OpenStreetMap Nominatim Free Reverse Geocoding (Works globally across all PH regions)
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en-PH,en' } }
+          );
+
+          if (!res.ok) throw new Error('Geocoding service unavailable');
+          const data = await res.json();
+          const addr = data.address || {};
+
+          // Extract street / road details
+          const streetParts = [
+            addr.house_number,
+            addr.road || addr.street || addr.neighbourhood,
+            addr.suburb
+          ].filter(Boolean);
+          const detectedStreet = streetParts.join(', ') || `Near GPS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+
+          // Extract barangay / city / province
+          const barangay = addr.quarter || addr.suburb || addr.village || addr.hamlet;
+          const city = addr.city || addr.town || addr.municipality;
+          const province = addr.province || addr.state || addr.region;
+          const postal = addr.postcode;
+
+          const areaParts = [
+            barangay ? (barangay.startsWith('Brgy') ? barangay : `Brgy. ${barangay}`) : null,
+            city,
+            province,
+            postal
+          ].filter(Boolean);
+
+          const detectedArea = areaParts.join(', ') || 'Philippines';
+
+          setStreet(detectedStreet);
+          setArea(detectedArea);
+          updateCombinedAddress(detectedStreet, detectedArea);
+          setLocationStatus('📍 Location detected successfully!');
+          setTimeout(() => setLocationStatus(null), 4000);
+        } catch {
+          // Fallback to coordinates
+          const gpsString = `GPS (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+          setStreet(street || gpsString);
+          updateCombinedAddress(street || gpsString, area || 'Philippines');
+          setLocationStatus(`📍 Coordinates captured: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setTimeout(() => setLocationStatus(null), 4000);
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationStatus('Permission denied. Please type your address manually.');
+        } else {
+          setLocationStatus('Unable to retrieve location. Please type manually.');
+        }
+        setTimeout(() => setLocationStatus(null), 4000);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
+      {/* Geolocation Quick Trigger */}
+      <div className="flex items-center justify-between">
+        <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
+          Delivery Address (Nationwide PH)
+        </span>
+        <button
+          type="button"
+          onClick={handleDetectGPS}
+          disabled={isDetectingLocation}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-[0.7rem] font-bold transition-all cursor-pointer disabled:opacity-50"
+        >
+          {isDetectingLocation ? (
+            <>
+              <svg className="animate-spin h-3 w-3 text-primary" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Detecting GPS...</span>
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+              </svg>
+              <span>📍 Detect My GPS Location</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {locationStatus && (
+        <div className="text-[0.7rem] text-primary/90 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg animate-[fadeIn_0.2s_ease-out]">
+          {locationStatus}
+        </div>
+      )}
+
       {/* Field 1: Detailed Street / House / Unit / Landmark */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span>Street Address & House / Unit No.</span>
-          <span className="text-[0.65rem] text-primary/70 font-normal">e.g. House No., Street, Landmark</span>
+          <span>House / Unit No., Street Name, Landmark</span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">e.g. Purok / Block / Subdivision</span>
         </label>
         <input
           type="text"
           required={required}
-          placeholder="e.g. Purok Matahimik or 142 Quezon Ave, near Lucena Grand Central"
+          placeholder="e.g. Purok Matahimik, Door 2 JP Laurel Ave, or 142 Quezon Ave"
           value={street}
           onChange={(e) => updateCombinedAddress(e.target.value, area)}
           className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
@@ -122,26 +212,20 @@ export default function AddressSelect({
       {/* Field 2: Barangay, City & Province */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span>Barangay, City & Province</span>
-          <span className="text-[0.65rem] text-text-dim/60 font-normal">Type or pick from suggestions</span>
+          <span>Barangay, City / Municipality, Province & Postal Code</span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">Mindanao, Visayas & Luzon</span>
         </label>
         <input
           type="text"
           required={required}
-          list={datalistId}
-          placeholder="e.g. Brgy. Cotta, Lucena City, Quezon"
+          placeholder="e.g. Brgy. Buhangin, Davao City, Davao del Sur 8000"
           value={area}
           onChange={(e) => updateCombinedAddress(street, e.target.value)}
           className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
         />
-        <datalist id={datalistId}>
-          {COMMON_PH_LOCATIONS.map((loc) => (
-            <option key={loc} value={loc} />
-          ))}
-        </datalist>
       </div>
 
-      {/* Clean Full Address Confirmation Pill (Clean single line without duplicates) */}
+      {/* Clean Full Address Confirmation */}
       {value && value.trim() && (
         <div className="px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl text-[0.72rem] flex items-start gap-2">
           <span className="text-primary font-bold shrink-0">📍 Delivery To:</span>
