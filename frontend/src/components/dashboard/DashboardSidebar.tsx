@@ -6,6 +6,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
+import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -28,6 +29,7 @@ export default function DashboardSidebar({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
@@ -224,26 +226,6 @@ export default function DashboardSidebar({
                 </div>
                 <span className="text-xs opacity-60">→</span>
               </button>
-
-              {/* Delivery Address Book */}
-              <button
-                onClick={() => {
-                  if (onOpenAddressBook) onOpenAddressBook();
-                  closeMobileDrawer();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-transparent text-text-main hover:bg-white/5 cursor-pointer text-left transition-all"
-              >
-                <div className="shrink-0 text-text-dim">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Delivery Addresses</div>
-                  <div className="text-[0.72rem] text-text-dim">Manage shipping address book</div>
-                </div>
-                <span className="text-xs opacity-60">→</span>
-              </button>
             </div>
           </div>
 
@@ -253,11 +235,14 @@ export default function DashboardSidebar({
               Support & Guidelines
             </span>
             <div className="flex flex-col gap-1">
-              {/* Help & Support / AI Assistant */}
-              <Link
-                href="/#faq"
-                onClick={closeMobileDrawer}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-transparent text-text-main hover:bg-white/5 cursor-pointer text-left transition-all no-underline"
+              {/* In-Dashboard Help & FAQs Modal Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHelpOpen(true);
+                  closeMobileDrawer();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-transparent text-text-main hover:bg-white/5 cursor-pointer text-left transition-all"
               >
                 <div className="shrink-0 text-text-dim">
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -266,13 +251,14 @@ export default function DashboardSidebar({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[0.9rem] font-medium leading-tight">Help & FAQs</div>
-                  <div className="text-[0.72rem] text-text-dim">Ordering guide & support</div>
+                  <div className="text-[0.72rem] text-text-dim">Ordering guide, digitizing & support</div>
                 </div>
-                <span className="text-xs opacity-60">↗</span>
-              </Link>
+                <span className="text-xs opacity-60">→</span>
+              </button>
 
               {/* Studio Policies & Terms */}
               <button
+                type="button"
                 onClick={() => {
                   setIsTermsOpen(true);
                   closeMobileDrawer();
@@ -399,8 +385,19 @@ export default function DashboardSidebar({
             </button>
 
             <button
-              onClick={() => setIsTermsOpen(true)}
+              onClick={() => setIsHelpOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
+              title="Help & FAQs"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary/80">
+                <circle cx="12" cy="12" r="10"/><path d="9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span className="max-[1100px]:hidden whitespace-nowrap text-[0.82rem] font-medium">Help & FAQs</span>
+            </button>
+
+            <button
+              onClick={() => setIsTermsOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
               title="Terms & Studio Policies"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary/80">
@@ -423,6 +420,11 @@ export default function DashboardSidebar({
       <TermsAndPoliciesModal
         isOpen={isTermsOpen}
         onClose={() => setIsTermsOpen(false)}
+      />
+
+      <CustomerHelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </>
   );
