@@ -108,45 +108,61 @@ export default function AuthModal() {
   // Step 1 -> Step 2: Send Real SMS via Firebase
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber || phoneNumber.trim().length < 10) {
-      showToast('Please enter a valid Philippine mobile number (e.g. 0917 123 4567)', 'error');
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      showToast('Please enter a valid 11-digit Philippine mobile number (e.g. 09171234567)', 'error');
       return;
     }
 
-    let clean = phoneNumber.trim().replace(/[^\d+]/g, '');
-    let e164 = clean;
-    if (clean.startsWith('09') && clean.length === 11) {
-      e164 = `+63${clean.substring(1)}`;
-    } else if (clean.startsWith('639') && clean.length === 12) {
-      e164 = `+${clean}`;
-    } else if (clean.startsWith('9') && clean.length === 10) {
-      e164 = `+63${clean}`;
-    } else if (!clean.startsWith('+')) {
-      e164 = `+${clean}`;
+    let e164 = digitsOnly;
+    if (digitsOnly.startsWith('09') && digitsOnly.length === 11) {
+      e164 = `+63${digitsOnly.substring(1)}`;
+    } else if (digitsOnly.startsWith('639') && digitsOnly.length === 12) {
+      e164 = `+${digitsOnly}`;
+    } else if (digitsOnly.startsWith('9') && digitsOnly.length === 10) {
+      e164 = `+63${digitsOnly}`;
+    } else if (!e164.startsWith('+')) {
+      e164 = `+${e164}`;
     }
 
     setIsSubmitting(true);
     try {
-      const verifier = getRecaptchaVerifier();
-      if (!verifier) throw new Error('reCAPTCHA failed to initialize.');
-      const confirmation = await signInWithPhoneNumber(auth, e164, verifier);
-      setConfirmationResult(confirmation);
-      setFormattedPhone(e164);
-      setCooldown(60);
-      setRegStep('otp');
-      showToast(`Real SMS code dispatched to ${e164}! Check your mobile phone.`, 'success');
+      // Direct backend API fallback / simulation trigger if Firebase client recaptcha fails
+      let confirmation: ConfirmationResult | null = null;
+      try {
+        const verifier = getRecaptchaVerifier();
+        if (verifier) {
+          confirmation = await signInWithPhoneNumber(auth, e164, verifier);
+        }
+      } catch (fbErr: any) {
+        console.warn('Firebase Client SMS unavailable, falling back to backend SMS engine:', fbErr);
+      }
+
+      if (confirmation) {
+        setConfirmationResult(confirmation);
+        setFormattedPhone(e164);
+        setCooldown(60);
+        setRegStep('otp');
+        showToast(`Real SMS verification code sent to ${e164}! Check your mobile phone.`, 'success');
+      } else {
+        // Fallback to backend SMS engine (Semaphore/Simulation)
+        const otpRes = await sendPhoneOtp(username, email, e164);
+        if (otpRes.success) {
+          setFormattedPhone(e164);
+          setCooldown(otpRes.cooldownSeconds || 60);
+          setRegStep('otp');
+          showToast(otpRes.message || `Verification code sent to ${e164}!`, 'success');
+        } else {
+          showToast(otpRes.message || 'Failed to dispatch verification code.', 'error');
+        }
+      }
     } catch (err: any) {
-      console.error('Firebase SMS Dispatch Error:', err);
+      console.error('SMS Dispatch Error:', err);
       if ((window as any).recaptchaVerifier) {
         try { (window as any).recaptchaVerifier.clear(); } catch {}
         (window as any).recaptchaVerifier = null;
       }
-      const msg = err.code === 'auth/invalid-phone-number' 
-        ? 'Invalid phone number format.' 
-        : err.code === 'auth/too-many-requests'
-        ? 'Too many SMS requests sent. Please wait a few minutes.'
-        : err.message || 'Failed to dispatch SMS to phone.';
-      showToast(msg, 'error');
+      showToast(err.message || 'Failed to send SMS code.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -402,17 +418,14 @@ export default function AuthModal() {
                   <input 
                     type="tel" 
                     required
+                    maxLength={13}
                     placeholder="0917 123 4567"
                     value={phoneNumber}
                     onChange={(e) => {
+                      // Numbers only (allow + at start for international +63 format)
                       const raw = e.target.value;
-                      let formatted = raw;
-                      if (raw.startsWith('09') && raw.length === 11) {
-                        formatted = `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`;
-                      } else if (raw.startsWith('639') && raw.length === 12) {
-                        formatted = `+${raw.slice(0, 2)} ${raw.slice(2, 5)} ${raw.slice(5, 8)} ${raw.slice(8)}`;
-                      }
-                      setPhoneNumber(formatted);
+                      const clean = raw.replace(/[^\d+]/g, '');
+                      setPhoneNumber(clean);
                     }}
                     className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all"
                   />
