@@ -85,7 +85,12 @@ export async function apiFetch<T = unknown>(
       throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const text = await response.text();
+    try {
+      return (text ? JSON.parse(text) : {}) as T;
+    } catch {
+      throw new Error('The server sent an unexpected response. Please try again.');
+    }
   } catch (e) {
     clearTimeout(timeout);
     throw e;

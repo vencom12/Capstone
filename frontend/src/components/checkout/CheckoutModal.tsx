@@ -6,7 +6,7 @@ import GlassButton from '@/components/ui/GlassButton';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
-import { api } from '@/lib/api';
+import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import AddressSelect from '@/components/ui/AddressSelect';
 import GCashPayment from './GCashPayment';
@@ -131,15 +131,24 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       const formData = new FormData();
       formData.append('receipt', file);
       
-      const uploadRes = await fetch('/api/customer/upload-receipt', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-      const uploadData = await uploadRes.json();
+      let uploadData: { url?: string };
+      try {
+        uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
+          method: 'POST',
+          body: formData
+        });
+      } catch {
+        showToast('We could not upload your receipt. Please try again with a clear screenshot.', 'error');
+        setReceiptFile(null);
+        setAiAnalyzing(false);
+        return;
+      }
 
-      if (!uploadRes.ok || !uploadData.url) {
-        throw new Error(uploadData.message || 'Failed to upload receipt');
+      if (!uploadData?.url) {
+        showToast('We could not upload your receipt. Please try again with a clear screenshot.', 'error');
+        setReceiptFile(null);
+        setAiAnalyzing(false);
+        return;
       }
 
       setReceiptUrl(uploadData.url);
