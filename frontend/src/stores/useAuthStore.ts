@@ -34,15 +34,18 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       rememberMe: false,
       
-      login: async (email, password, rememberMe = false, role = 'customer') => {
+      login: async (email, password, rememberMe = false, role) => {
         set({ isLoading: true });
         try {
-          const data = await api.post<{ user: User }>('/api/auth/login', {
+          const payload: any = {
             email,
             password,
             rememberMe,
-            portal: role,
-          });
+          };
+          if (role) {
+            payload.portal = role;
+          }
+          const data = await api.post<{ user: User }>('/api/auth/login', payload);
           
           if (!rememberMe) {
             // Set a flag in sessionStorage to track this session

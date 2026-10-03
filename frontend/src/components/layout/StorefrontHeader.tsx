@@ -157,11 +157,19 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             </Link>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               suppressHydrationWarning
-              onClick={() => useUIStore.getState().setAuthOpen(true, 'login')}
-              className="px-4 py-2 rounded-xl text-text-dim font-bold text-xs hover:bg-white/5 no-underline whitespace-nowrap bg-transparent border-none cursor-pointer"
+              onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'employee')}
+              className="px-2.5 py-1.5 rounded-lg text-text-dim/80 hover:text-text-main font-semibold text-xs border border-border-glass hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent cursor-pointer transition-all"
+              title="Employee & Administrator Portal Login"
+            >
+              Staff Access
+            </button>
+            <button
+              suppressHydrationWarning
+              onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'customer')}
+              className="px-3.5 py-1.5 rounded-xl text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all"
             >
               Login
             </button>

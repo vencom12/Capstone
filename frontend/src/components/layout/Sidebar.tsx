@@ -162,6 +162,24 @@ export default function Sidebar() {
             </ul>
           )}
         </div>
+
+        {/* Staff & Admin Access Footer */}
+        <div className="pt-3 mt-4 border-t border-border-glass shrink-0">
+          <button
+            suppressHydrationWarning
+            onClick={() => {
+              useUIStore.getState().setAuthOpen(true, 'login', 'employee');
+              setSidebarOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-text-dim hover:text-text-main hover:bg-bg-surface transition-all border border-transparent hover:border-border-glass bg-transparent cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              Staff & Admin Portal
+            </span>
+            <span className="text-[10px] bg-bg-surface px-1.5 py-0.5 rounded border border-border-glass">Log In</span>
+          </button>
+        </div>
       </aside>
     </>
   );

@@ -117,8 +117,13 @@ exports.login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-        if (portal && user.role !== portal) {
-            return res.status(403).json({ message: `Unauthorized: This account is not authorized for the ${portal} portal.` });
+        if (portal) {
+            if (portal === 'admin' && user.role !== 'admin') {
+                return res.status(403).json({ message: 'Unauthorized: This account does not have administrator privileges.' });
+            }
+            if (portal === 'employee' && user.role !== 'employee' && user.role !== 'admin') {
+                return res.status(403).json({ message: 'Unauthorized: This account does not have staff privileges.' });
+            }
         }
 
         const expiresIn = rememberMe ? '30d' : '1d';
