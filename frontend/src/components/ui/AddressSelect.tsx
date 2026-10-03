@@ -226,7 +226,7 @@ export default function AddressSelect({
           placeholder="e.g. House #142, Block 5 Lot 8, Purok Matahimik"
           value={street}
           onChange={(e) => updateCombinedAddress(e.target.value, area, landmark)}
-          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
         />
       </div>
 
@@ -242,7 +242,7 @@ export default function AddressSelect({
           placeholder="e.g. Brgy. Cotta, Lucena City, Quezon or Brgy. Buhangin, Davao City"
           value={area}
           onChange={(e) => updateCombinedAddress(street, e.target.value, landmark)}
-          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
         />
       </div>
 
@@ -257,7 +257,7 @@ export default function AddressSelect({
           placeholder="e.g. Tapat ng sari-sari store, kulay blue na gate, may pulang multicab sa tapat"
           value={landmark}
           onChange={(e) => updateCombinedAddress(street, area, e.target.value)}
-          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-secondary focus:shadow-[0_0_12px_rgba(236,72,153,0.2)] transition-all placeholder:text-text-dim/40"
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-secondary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
         />
       </div>
     </div>

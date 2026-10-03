@@ -150,7 +150,7 @@ export default function PanelAuditTrail() {
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all shadow-[0_0_12px_rgba(99,102,241,0.35)] cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -175,7 +175,7 @@ export default function PanelAuditTrail() {
                 onClick={() => setSelectedEntity(tab)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                   isSelected
-                    ? 'bg-primary text-white border-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                    ? 'bg-primary text-white border-primary shadow-sm'
                     : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                 }`}
               >

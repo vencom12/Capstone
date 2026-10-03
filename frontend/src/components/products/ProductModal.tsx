@@ -141,8 +141,8 @@ export default function ProductModal({
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
       <div className="grid grid-cols-[1fr_1.15fr] max-[900px]:grid-cols-1">
         {/* Image & Preview Section */}
-        <div className="bg-white/[0.02] flex flex-col items-center justify-center p-6 relative border-r border-border-glass max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:h-[220px] max-[900px]:p-4 max-[650px]:h-[180px]">
-          <div className="w-full max-w-[320px] aspect-square rounded-[24px] overflow-hidden bg-black/30 shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
+        <div className="bg-bg-surface/50 flex flex-col items-center justify-center p-6 relative border-r border-border-glass max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:h-[220px] max-[900px]:p-4 max-[650px]:h-[180px]">
+          <div className="w-full max-w-[320px] aspect-square rounded-[24px] overflow-hidden bg-bg-surface shadow-sm border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
             {(selectedVariant?.imageUrl || product.imageUrl) ? (
               <img
                 src={selectedVariant?.imageUrl || product.imageUrl}
@@ -217,8 +217,8 @@ export default function ProductModal({
                       }}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-primary/20 border-primary text-primary shadow-[0_0_12px_rgba(99,102,241,0.3)] scale-105'
-                          : 'bg-bg-surface border-border-glass text-text-main hover:border-white/30'
+                          ? 'bg-primary/20 border-primary text-primary shadow-sm scale-105'
+                          : 'bg-bg-surface border-border-glass text-text-main hover:border-primary/40'
                       }`}
                     >
                       {variant.color && (
@@ -250,8 +250,8 @@ export default function ProductModal({
                     onClick={() => setSelectedSize(s)}
                     className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       selectedSize === s
-                        ? 'bg-primary/20 border-primary text-primary shadow-[0_0_10px_rgba(99,102,241,0.3)]'
-                        : 'bg-bg-surface border-border-glass text-text-dim hover:text-white'
+                        ? 'bg-primary/20 border-primary text-primary shadow-sm'
+                        : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
                     }`}
                   >
                     {s}

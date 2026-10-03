@@ -40,7 +40,7 @@ function VerifyEmailContent() {
   }, [token, verifyEmailToken]);
 
   return (
-    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 text-center shadow-lg">
       {/* Icon */}
       <div className={`
         w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center text-3xl
@@ -69,8 +69,8 @@ function VerifyEmailContent() {
           onClick={() => router.push('/')}
           className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
             bg-primary text-white 
-            shadow-[0_4px_16px_rgba(99,102,241,0.35)] 
-            hover:shadow-[0_6px_24px_rgba(99,102,241,0.5)] 
+            shadow-sm 
+            hover:shadow-md 
             transition-all border-none"
         >
           Continue Shopping →
@@ -83,7 +83,7 @@ function VerifyEmailContent() {
             onClick={() => router.push('/')}
             className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
               bg-primary text-white 
-              shadow-[0_4px_16px_rgba(99,102,241,0.35)] 
+              shadow-sm 
               transition-all border-none"
           >
             Go to Homepage

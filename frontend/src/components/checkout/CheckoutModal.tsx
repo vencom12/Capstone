@@ -406,7 +406,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                  fullWidth
                  size="lg"
                  onClick={handlePlaceOrder}
-                 className="shadow-[0_4px_20px_rgba(99,102,241,0.4)] animate-[pulse_2s_infinite]"
+                 className="shadow-sm hover:shadow-md"
                >
                  Confirm & Dispatch Order
                </GlassButton>

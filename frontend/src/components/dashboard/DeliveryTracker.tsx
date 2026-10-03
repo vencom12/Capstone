@@ -89,7 +89,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:shadow-[0_0_16px_rgba(99,102,241,0.4)] transition-all cursor-pointer no-underline"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:shadow-md transition-all cursor-pointer no-underline"
           >
             <span>Open in Google Maps</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -135,7 +135,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           <div className="flex justify-between items-center relative -top-3 px-1">
             {/* Origin Pin */}
             <div className="flex flex-col items-center">
-              <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-xs shadow-[0_0_12px_rgba(99,102,241,0.5)]">
+              <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-xs shadow-sm">
                 🏭
               </div>
               <span className="text-[0.65rem] font-bold text-text-main mt-1">Stitch Hub</span>
@@ -147,7 +147,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               className="flex flex-col items-center transition-all duration-1000 absolute"
               style={{ left: `calc(${riderProgress}% - 14px)` }}
             >
-              <div className="w-8 h-8 rounded-full bg-secondary/30 border-2 border-secondary flex items-center justify-center text-sm shadow-[0_0_16px_rgba(236,72,153,0.6)] animate-bounce">
+              <div className="w-8 h-8 rounded-full bg-secondary/30 border-2 border-secondary flex items-center justify-center text-sm shadow-sm">
                 🚚
               </div>
               <span className="text-[0.65rem] font-extrabold text-secondary mt-1 whitespace-nowrap bg-bg-dark/90 px-1.5 py-0.5 rounded border border-secondary/30">
@@ -157,7 +157,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
 
             {/* Destination Pin */}
             <div className="flex flex-col items-center">
-              <div className="w-7 h-7 rounded-full bg-success/20 border-2 border-success flex items-center justify-center text-success shadow-[0_0_12px_rgba(34,197,94,0.5)]">
+              <div className="w-7 h-7 rounded-full bg-success/20 border-2 border-success flex items-center justify-center text-success shadow-sm">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
@@ -205,7 +205,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               {/* Status Dot */}
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
                 stage.done 
-                  ? 'bg-primary text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]' 
+                  ? 'bg-primary text-white shadow-sm' 
                   : stage.active 
                     ? 'bg-secondary text-white animate-pulse' 
                     : 'bg-white/10 text-text-dim'

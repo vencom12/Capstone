@@ -500,7 +500,7 @@ export default function PersistentAssistant() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(99,102,241,0.5)] cursor-pointer hover:scale-110 transition-transform duration-300 border-none"
+          className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl cursor-pointer hover:scale-110 transition-transform duration-300 border-none"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" /><circle cx="17" cy="7" r="5" /></svg>
         </button>
@@ -511,7 +511,7 @@ export default function PersistentAssistant() {
         <div 
           style={position ? { top: `${position.y}px`, left: `${position.x}px`, bottom: 'auto', right: 'auto' } : undefined}
           className={`
-            fixed z-[10000] bg-bg-card backdrop-blur-[15px] border border-border-glass rounded-[20px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden
+            fixed z-[10000] bg-bg-card backdrop-blur-[15px] border border-border-glass rounded-[20px] shadow-xl flex flex-col overflow-hidden
             transition-all duration-300 ease-in-out
             
             ${isExpanded 
@@ -605,7 +605,7 @@ export default function PersistentAssistant() {
                       className={`
                         w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer ml-1
                         ${isListening 
-                          ? 'bg-danger/20 border-danger/40 text-danger shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse'
+                          ? 'bg-danger/20 border-danger/40 text-danger  animate-pulse'
                           : 'bg-white/[0.05] border-transparent text-text-dim hover:text-text-main hover:bg-white/10'
                         }
                       `}

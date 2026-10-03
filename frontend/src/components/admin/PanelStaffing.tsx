@@ -165,7 +165,7 @@ export default function PanelStaffing({
           />
           <button
             onClick={() => openModal()}
-            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer whitespace-nowrap border-none"
+            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] shadow-sm hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
           >
             + Add Staff
           </button>
@@ -472,7 +472,7 @@ export default function PanelStaffing({
 
           <button
             type="submit"
-            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
+            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
           >
             {editingStaff ? 'Save Personnel Details' : 'Add Staff'}
           </button>
@@ -505,7 +505,7 @@ export default function PanelStaffing({
             <button
               type="button"
               onClick={confirmDisable}
-              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-sm"
             >
               Disable Account
             </button>

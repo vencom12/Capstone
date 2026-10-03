@@ -429,7 +429,7 @@ export default function PanelSettings({
               <button
                 onClick={handleSaveBizSettings}
                 disabled={isSavingBiz}
-                className="bg-purple-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-purple-600/90 cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 flex items-center gap-2 border-none shadow-[0_4px_15px_rgba(168,85,247,0.25)]"
+                className="bg-purple-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-purple-600/90 cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 flex items-center gap-2 border-none shadow-sm hover:shadow-md"
               >
                 {isSavingBiz ? (
                   <>
@@ -625,7 +625,7 @@ export default function PanelSettings({
               <button
                 onClick={handleSaveAISettings}
                 disabled={isSaving}
-                className="bg-primary text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 flex items-center gap-2 border-none shadow-[0_4px_15px_rgba(99,102,241,0.25)]"
+                className="bg-primary text-white text-xs font-bold px-5 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 flex items-center gap-2 border-none shadow-sm hover:shadow-md"
               >
                 {isSaving ? (
                   <>
@@ -671,7 +671,7 @@ export default function PanelSettings({
                 <button
                   onClick={handleUpdateGiftPrice}
                   disabled={isGiftLoading}
-                  className="flex items-center gap-2 text-xs font-bold text-bg-surface bg-secondary px-4 py-2.5 rounded-lg hover:bg-secondary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 border-none shadow-[0_4px_15px_rgba(236,72,153,0.25)] text-white"
+                  className="flex items-center gap-2 text-xs font-bold text-bg-surface bg-secondary px-4 py-2.5 rounded-lg hover:bg-secondary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 border-none shadow-sm hover:shadow-md text-white"
                 >
                   {isGiftLoading ? 'Saving...' : 'Save Price'}
                 </button>

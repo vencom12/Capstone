@@ -63,11 +63,11 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   return (
     <div
       onClick={() => onQuickView(product)}
-      className="group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] overflow-hidden cursor-pointer transition-all duration-300 hover:border-white/20 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex flex-col animate-[fadeIn_0.5s_ease-out]"
+      className="group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary/40 hover:-translate-y-1 shadow-sm hover:shadow-md flex flex-col animate-[fadeIn_0.5s_ease-out]"
     >
       {/* Image */}
       <div
-        className="h-[140px] md:h-[180px] bg-white/5 flex items-center justify-center relative overflow-hidden"
+        className="h-[140px] md:h-[180px] bg-bg-surface flex items-center justify-center relative overflow-hidden"
       >
         {product.imageUrl ? (
           <img 
@@ -83,7 +83,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         
         {/* Out of Stock badge */}
         {isOutOfStock && (
-          <span className="absolute top-3 left-3 bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-[0_4px_12px_rgba(239,68,68,0.5)]">
+          <span className="absolute top-3 left-3 bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
             Out of Stock
           </span>
         )}

@@ -302,7 +302,7 @@ export default function PanelOverview({
                     onClick={() => setQueueTab(tab.key)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                       queueTab === tab.key
-                        ? 'bg-primary text-white border-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                        ? 'bg-primary text-white border-primary shadow-sm'
                         : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                     }`}
                   >
@@ -484,7 +484,7 @@ export default function PanelOverview({
                 <div
                   key={id}
                   onClick={() => viewReceipt(o)}
-                  className={`bg-bg-card backdrop-blur-[12px] border rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-[0_4px_15px_rgba(99,102,241,0.2)]' : 'border-border-glass'
+                  className={`bg-bg-card backdrop-blur-[12px] border rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
                     }`}
                 >
                   {/* Select Toggle Box */}
@@ -754,7 +754,7 @@ export default function PanelOverview({
                       onClick={() => setEditStatus(status)}
                       className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border
                         ${isActive
-                          ? 'bg-primary text-white border-transparent shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                          ? 'bg-primary text-white border-transparent shadow-sm'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                         }
                       `}
@@ -768,7 +768,7 @@ export default function PanelOverview({
 
             <button
               type="submit"
-              className="bg-primary text-white font-bold py-3.5 rounded-xl mt-2 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
+              className="bg-primary text-white font-bold py-3.5 rounded-xl mt-2 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
             >
               Save Operational Status
             </button>

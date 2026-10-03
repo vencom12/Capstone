@@ -195,7 +195,7 @@ export default function AuthModal() {
                 placeholder="e.g. johndoe"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_14px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
           )}
@@ -210,7 +210,7 @@ export default function AuthModal() {
               placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_14px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+              className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
             />
           </div>
 
@@ -226,7 +226,7 @@ export default function AuthModal() {
                 placeholder="0917 123 4567"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_14px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
           )}
@@ -252,7 +252,7 @@ export default function AuthModal() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 pr-11 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:shadow-[0_0_14px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 pr-11 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
               <button 
                 type="button"
@@ -294,7 +294,7 @@ export default function AuthModal() {
             variant="primary"
             fullWidth
             size="lg"
-            className="mt-2 font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(99,102,241,0.35)]"
+            className="mt-2 font-bold text-sm tracking-wide shadow-sm"
             disabled={isSubmitting}
           >
             {isSubmitting 
@@ -317,7 +317,7 @@ export default function AuthModal() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isSubmitting}
-          className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.15)] hover:border-primary/40 disabled:opacity-50"
+          className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />

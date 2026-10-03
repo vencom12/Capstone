@@ -182,7 +182,7 @@ export default function DashboardPage() {
                   </button>
 
                   <div className={`
-                    absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden z-[3000] shadow-[0_20px_40px_rgba(0,0,0,0.4)]
+                    absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden z-[3000] shadow-lg
                     transition-all duration-300 origin-top-left
                     ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible'}
                   `}>
@@ -302,7 +302,7 @@ export default function DashboardPage() {
                             setOrderDetailsTab('tracking');
                             setIsOrderDetailsOpen(true);
                           }}
-                          className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                          className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                         >
                           <span>Track Live GPS</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
@@ -480,7 +480,7 @@ export default function DashboardPage() {
             </header>
             <div className="flex-1 overflow-y-auto pr-2 pb-6">
               {/* Profile Card */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)] flex flex-col">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col">
                 {/* Avatar Header */}
                 <div className="px-6 py-5 border-b border-border-glass/50 bg-black/10 flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-xl font-bold shrink-0 shadow-sm">
@@ -561,7 +561,7 @@ export default function DashboardPage() {
                               <button
                                 onClick={handleSaveField}
                                 disabled={isUpdating}
-                                className="bg-primary text-white font-bold px-5 py-2 rounded-lg text-[0.8rem] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none"
+                                className="bg-primary text-white font-bold px-5 py-2 rounded-lg text-[0.8rem] hover:shadow-md active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-none"
                               >
                                 {isUpdating ? 'Saving...' : 'Save'}
                               </button>
@@ -582,7 +582,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Preferences / Theme Panel */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)] flex flex-col mt-6">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
                   <h3 className="text-base font-bold text-text-main m-0">Preferences</h3>
                 </div>

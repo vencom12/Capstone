@@ -531,7 +531,7 @@ export default function AiAttendant() {
           flex items-center justify-center cursor-pointer
           border-none outline-none
           transition-all duration-300 ease-out
-          shadow-[0_8px_32px_rgba(99,102,241,0.4)]
+          shadow-lg
           ${isOpen
             ? 'bg-white/10 backdrop-blur-xl border border-border-glass rotate-0 scale-95'
             : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-primary/25 hover:scale-105'
@@ -581,7 +581,7 @@ export default function AiAttendant() {
           max-[500px]:rounded-none
         `}
       >
-        <div className="w-full h-full bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl max-[500px]:rounded-none flex flex-col overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
+        <div className="w-full h-full bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl max-[500px]:rounded-none flex flex-col overflow-hidden shadow-xl">
 
           {/* Header */}
           <div 
@@ -691,7 +691,7 @@ export default function AiAttendant() {
                               border-none cursor-pointer transition-all duration-200
                               ${oos
                                 ? 'bg-white/5 text-text-dim cursor-not-allowed'
-                                : 'bg-primary text-white hover:bg-[#4f46e5] hover:shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95'
+                                : 'bg-primary text-white hover:bg-[#4f46e5] hover:shadow-md active:scale-95'
                               }
                             `}
                           >
@@ -730,7 +730,7 @@ export default function AiAttendant() {
                   className={`
                     w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer
                     ${isListening 
-                      ? 'bg-danger/20 border-danger/40 text-danger shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse'
+                      ? 'bg-danger/20 border-danger/40 text-danger  animate-pulse'
                       : 'bg-white/[0.05] border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
                     }
                   `}

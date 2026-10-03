@@ -132,7 +132,7 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
                       // Error handled by api.download
                    }
                 }}
-                className="flex-1 py-2 bg-primary text-white rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all cursor-pointer hover:opacity-90"
+                className="flex-1 py-2 bg-primary text-white rounded-xl font-bold text-sm shadow-sm transition-all cursor-pointer hover:opacity-90"
              >
                 Download PDF
              </button>

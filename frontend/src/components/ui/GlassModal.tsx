@@ -53,7 +53,7 @@ export default function GlassModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] overflow-y-auto p-3 sm:p-6 flex min-h-full items-center justify-center bg-black/70 backdrop-blur-[8px]"
+      className="fixed inset-0 z-[99999] overflow-y-auto p-3 sm:p-6 flex min-h-full items-center justify-center bg-black/50 backdrop-blur-md"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -65,7 +65,7 @@ export default function GlassModal({
           bg-bg-card backdrop-blur-[12px]
           border border-border-glass
           rounded-xl overflow-hidden
-          shadow-[0_25px_80px_-12px_rgba(0,0,0,0.6)]
+          shadow-xl border border-border-glass
           animate-[modalScaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]
           ${className}
         `}

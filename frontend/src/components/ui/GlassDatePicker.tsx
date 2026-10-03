@@ -190,7 +190,7 @@ export default function GlassDatePicker({
   };
 
   const renderCalendarContent = () => (
-    <div className="w-[285px] max-w-full bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-4 shadow-[0_25px_60px_rgba(0,0,0,0.6)] animate-[fadeIn_0.15s_ease-out]">
+    <div className="w-[285px] max-w-full bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-4 shadow-xl border border-border-glass animate-[fadeIn_0.15s_ease-out]">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <span className="font-bold text-[0.95rem] text-text-main">
@@ -249,8 +249,8 @@ export default function GlassDatePicker({
                 w-8.5 h-8.5 flex items-center justify-center text-[0.8rem] rounded-lg transition-all cursor-pointer font-medium
                 ${!item.isCurrentMonth ? 'text-text-dim/30 hover:bg-white/5' : ''}
                 ${item.isCurrentMonth && !isSelected && !isToday ? 'text-text-main hover:bg-white/5 hover:text-white' : ''}
-                ${isToday && !isSelected ? 'border border-primary text-primary font-bold bg-primary/5 shadow-[0_0_8px_rgba(99,102,241,0.2)]' : ''}
-                ${isSelected ? 'bg-primary text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.5)]' : ''}
+                ${isToday && !isSelected ? 'border border-primary text-primary font-bold bg-primary/5 shadow-sm' : ''}
+                ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
               `}
             >
               {item.day}
@@ -288,7 +288,7 @@ export default function GlassDatePicker({
         type="button"
         suppressHydrationWarning
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary hover:shadow-[0_0_12px_rgba(99,102,241,0.15)] transition-all"
+        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary  transition-all"
       >
         <span className="font-sans text-text-main font-medium">{formatDateDisplay(value)}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-dim shrink-0">

@@ -56,7 +56,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
       <div className="flex flex-col border-b border-border-glass pb-6 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h3 className="m-0 text-[1.1rem] font-bold tracking-tight">Your Basket</h3>
-          <span className="bg-primary px-3 py-1 rounded-full text-xs font-bold text-white shadow-[0_0_10px_rgba(99,102,241,0.3)]">
+          <span className="bg-primary px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm">
             {mounted ? basketCount : 0} Items
           </span>
         </div>

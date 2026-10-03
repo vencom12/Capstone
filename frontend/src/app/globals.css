@@ -47,17 +47,19 @@
 }
 
 /* ========================================
-   Light Theme Override - Clean & Crisp
+   Light Theme Override - Artisanal Warm Linen & Ivory Cream
+   Soft, eye-friendly cream & linen tones with warm stone typography
    ======================================== */
 [data-theme="light"] {
-  --color-bg-dark: #f8fafc;
-  --color-bg-card: #ffffff;
-  --color-bg-sidebar: #f1f5f9;
-  --color-bg-header: rgba(255, 255, 255, 0.9);
-  --color-bg-surface: #f1f5f9;
-  --color-text-main: #0f172a;
-  --color-text-dim: #64748b;
-  --color-border-glass: rgba(0, 0, 0, 0.08);
+  --color-bg-dark: #f7f4ee;       /* Warm Linen base - soothing, zero glare */
+  --color-bg-card: #fffefb;       /* Soft Ivory Porcelain for cards */
+  --color-bg-sidebar: #f0ebe1;    /* Warm Oat/Stone sidebar */
+  --color-bg-header: rgba(247, 244, 238, 0.92);
+  --color-bg-surface: #eae3d5;    /* Muted sand tone for inputs, nested boxes */
+  --color-text-main: #1c1917;     /* Warm Charcoal 900 - soft & highly readable */
+  --color-text-dim: #78716c;      /* Warm Stone 500 */
+  --color-border-glass: rgba(68, 64, 60, 0.12); /* Warm organic outline */
+  --color-primary-glow: rgba(79, 70, 229, 0.12);
 }
 
 /* ========================================
@@ -489,4 +491,29 @@ select option {
   font-family: var(--font-outfit), 'Inter', sans-serif !important;
   fill: var(--color-text-main) !important;
   color: var(--color-text-main) !important;
+}
+/* Warm Ambient Diffusion Shadows for Light Mode */
+[data-theme="light"] .glass-card,
+[data-theme="light"] .dash-card,
+[data-theme="light"] .glass-table-container,
+[data-theme="light"] .dash-table-container {
+  box-shadow: 0 4px 20px -2px rgba(68, 64, 60, 0.05), 0 2px 6px -1px rgba(68, 64, 60, 0.03);
+}
+
+[data-theme="light"] .modal-box {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-glass);
+}
+
+[data-theme="light"] select option {
+  background-color: #fffefb;
+  color: #1c1917;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: rgba(240, 235, 225, 0.6);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(68, 64, 60, 0.18);
 }

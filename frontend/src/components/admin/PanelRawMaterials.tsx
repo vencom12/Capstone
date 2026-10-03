@@ -139,7 +139,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         }}
         className={`flex items-center justify-center h-8 w-24 flex-shrink-0 rounded-lg border transition-all duration-300 ease-in-out cursor-pointer select-none overflow-hidden
           ${isEditing 
-            ? 'bg-white/10 border-primary/50 shadow-[0_0_10px_rgba(99,102,241,0.15)]' 
+            ? 'bg-white/10 border-primary/50 shadow-sm' 
             : 'bg-white/5 border-border-glass hover:border-primary/30 hover:bg-white/10'
           }
         `}
@@ -464,7 +464,7 @@ export default function PanelRawMaterials({
           </button>
           <button
             onClick={() => setIsAddOpen(true)}
-            className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-[0_0_15px_rgba(99,102,241,0.4)]"
+            className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm hover:shadow-md"
           >
             + Add Material
           </button>
@@ -491,7 +491,7 @@ export default function PanelRawMaterials({
               </div>
               <button
                 onClick={handleDownloadRestockList}
-                className="bg-primary border border-primary/30 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary-light transition-all cursor-pointer flex items-center gap-1 shadow-[0_4px_15px_rgba(99,102,241,0.2)]"
+                className="bg-primary border border-primary/30 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary-light transition-all cursor-pointer flex items-center gap-1 shadow-sm"
               >
                 Download Shopping List
               </button>
@@ -789,7 +789,7 @@ export default function PanelRawMaterials({
 
           <button
             type="submit"
-            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
+            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
           >
             Add Material
           </button>
@@ -820,7 +820,7 @@ export default function PanelRawMaterials({
             <button
               type="button"
               onClick={confirmDeleteMaterial}
-              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+              className="px-4 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-sm"
             >
               Delete Material
             </button>
@@ -857,7 +857,7 @@ export default function PanelRawMaterials({
 
           <button
             type="submit"
-            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-[0_10px_20px_rgba(99,102,241,0.3)] text-center w-full text-sm font-sans"
+            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
           >
             Apply Global Parameters
           </button>

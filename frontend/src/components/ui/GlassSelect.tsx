@@ -75,7 +75,7 @@ export default function GlassSelect({
         type="button"
         suppressHydrationWarning
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none cursor-pointer hover:border-primary/40 focus:border-primary hover:shadow-[0_0_12px_rgba(99,102,241,0.15)] transition-all ${className}`}
+        className={`flex items-center justify-between w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none cursor-pointer hover:border-primary/40 focus:border-primary  transition-all ${className}`}
       >
         <span className="font-medium text-text-main truncate">{selectedOption?.label || placeholder}</span>
         <svg
@@ -94,7 +94,7 @@ export default function GlassSelect({
       {/* Popover Options Menu */}
       {isOpen && (
         <div 
-          className={`absolute left-0 right-0 bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[999] max-h-[250px] overflow-y-auto animate-[fadeIn_0.12s_ease-out] ${
+          className={`absolute left-0 right-0 bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-1.5 shadow-xl border border-border-glass z-[999] max-h-[250px] overflow-y-auto animate-[fadeIn_0.12s_ease-out] ${
             placementY === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           }`}
         >
@@ -111,7 +111,7 @@ export default function GlassSelect({
                   onClick={() => handleSelect(opt.value)}
                   className={`
                     w-full text-left px-3 py-2 text-[0.82rem] font-medium rounded-xl transition-all cursor-pointer border-none bg-transparent block truncate
-                    ${isSelected ? 'bg-primary text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.35)]' : 'text-text-main hover:bg-white/10 hover:text-white'}
+                    ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : 'text-text-main hover:bg-white/10 hover:text-white'}
                   `}
                 >
                   {opt.label}

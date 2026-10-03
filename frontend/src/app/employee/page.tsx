@@ -493,10 +493,10 @@ export default function EmployeePage() {
 
                       // Dynamic card borders and subtle neon glow based on status
                       const cardBorderClass = m.status === 'Running'
-                        ? 'border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.03)]'
+                        ? 'border-emerald-500/30 hover:border-emerald-500/50 shadow-sm'
                         : m.status === 'Idle'
-                        ? 'border-amber-500/20 hover:border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.02)]'
-                        : 'border-rose-500/30 hover:border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.03)]';
+                        ? 'border-amber-500/20 hover:border-amber-500/40 shadow-sm'
+                        : 'border-rose-500/30 hover:border-rose-500/50 shadow-sm';
 
                       return (
                         <div 
@@ -510,21 +510,21 @@ export default function EmployeePage() {
                                  {m.status === 'Running' ? (
                                    <>
                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]"></span>
+                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 "></span>
                                    </>
                                  ) : m.status === 'Idle' ? (
-                                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"></span>
+                                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 "></span>
                                  ) : (
                                    <>
                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)]"></span>
+                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 "></span>
                                    </>
                                  )}
                                </div>
                                <h3 className="m-0 font-bold text-xl text-text-main">{m.name}</h3>
                                {m.status === 'Running' && assignedOrder && (
                                 <span className={`text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
-                                  assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger shadow-[0_0_8px_rgba(239,68,68,0.2)]' :
+                                  assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger ' :
                                   assignedOrder.priorityScore >= 40 ? 'bg-warning/20 border-warning/30 text-warning' :
                                   'bg-primary/20 border-primary/30 text-primary'
                                 }`}>
@@ -591,7 +591,7 @@ export default function EmployeePage() {
                                      </div>
                                   </div>
 
-                                  <div className="flex-1 bg-black/30 p-6 rounded-2xl border border-white/5 mb-6 flex flex-col items-center justify-center text-center shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]">
+                                  <div className="flex-1 bg-bg-surface p-6 rounded-2xl border border-border-glass mb-6 flex flex-col items-center justify-center text-center shadow-inner">
                                      <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
                                         {assignedOrder.personalization?.text || assignedOrder.client}
                                      </h2>
@@ -618,13 +618,13 @@ export default function EmployeePage() {
                                   <div className="grid grid-cols-2 gap-4 mt-auto">
                                      <button 
                                        onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id)}
-                                       className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(34,197,94,0.15)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                       className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                                      >
                                        Ready for Pick Up
                                      </button>
                                      <button 
                                        onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id)}
-                                       className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-[0_4px_15px_rgba(245,158,11,0.15)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                       className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                                      >
                                        In Transit (Online)
                                      </button>
@@ -693,7 +693,7 @@ export default function EmployeePage() {
                       onClick={() => setOrdersQueueTab(tab.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                         ordersQueueTab === tab.key
-                          ? 'bg-primary text-white border-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                          ? 'bg-primary text-white border-primary shadow-sm'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                       }`}
                     >
@@ -752,7 +752,7 @@ export default function EmployeePage() {
                                <div className="flex flex-col">
                                  <div className="flex items-center gap-1.5">
                                    <span className={`w-2 h-2 rounded-full ${
-                                     o.priorityScore >= 80 ? 'bg-danger animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.7)]' :
+                                     o.priorityScore >= 80 ? 'bg-danger animate-pulse ' :
                                      o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
                                    }`}></span>
                                    <span className="font-bold text-text-main text-sm">
@@ -1211,7 +1211,7 @@ export default function EmployeePage() {
                 <button onClick={() => {
                   const html = document.documentElement;
                   html.setAttribute('data-theme', html.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-                }} className="bg-primary text-white font-bold px-5 py-2.5 rounded-lg text-[0.9rem] hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] cursor-pointer transition-all">Toggle Theme</button>
+                }} className="bg-primary text-white font-bold px-5 py-2.5 rounded-lg text-[0.9rem] hover:shadow-md cursor-pointer transition-all">Toggle Theme</button>
               </div>
             </div>
           </section>
@@ -1335,7 +1335,7 @@ export default function EmployeePage() {
             <div className="flex gap-3 mt-4">
               <button
                 type="submit"
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer text-sm"
+                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-md transition-all cursor-pointer text-sm"
               >
                 Update Ticket
               </button>
@@ -1419,7 +1419,7 @@ export default function EmployeePage() {
             <div className="flex gap-3 mt-4">
               <button 
                 onClick={() => handleDownloadReceipt(viewingReceiptOrder)}
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer text-center text-sm"
+                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-md transition-all cursor-pointer text-center text-sm"
               >
                 Download PDF
               </button>

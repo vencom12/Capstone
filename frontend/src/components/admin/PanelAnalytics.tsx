@@ -232,7 +232,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#1e293b]/90 backdrop-blur-[12px] border border-border-glass p-3 rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
+        <div className="bg-[#1e293b]/90 backdrop-blur-[12px] border border-border-glass p-3 rounded-xl shadow-md">
           <p className="text-xs text-text-dim m-0 font-semibold mb-1">{label}</p>
           {payload.map((p: any, idx: number) => {
             const isRev = p.name?.toLowerCase().includes('revenue');
@@ -326,7 +326,7 @@ export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
                 let iconColor = 'bg-primary/20 text-primary';
                 
                 if (isCritical) {
-                  borderClass = 'border-danger/40 bg-danger/5 shadow-[0_0_15px_rgba(244,63,94,0.05)]';
+                  borderClass = 'border-danger/40 bg-danger/5 shadow-sm';
                   iconColor = 'bg-danger/25 text-danger';
                 } else if (isWarning) {
                   borderClass = 'border-warning/40 bg-warning/5';
