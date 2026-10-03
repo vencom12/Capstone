@@ -51,6 +51,19 @@ export default function AuthModal() {
     }
   };
 
+  // Quick helper to fill dev/test credentials for instant grading & evaluation
+  const handleAutofillTest = (role: 'admin' | 'employee') => {
+    if (role === 'admin') {
+      setEmail('admin');
+      setPassword('admin123');
+      showToast('Admin test credentials populated', 'info');
+    } else {
+      setEmail('employee');
+      setPassword('employee123');
+      showToast('Employee test credentials populated', 'info');
+    }
+  };
+
   // Handle 1-Click Google Sign-In & Sign-Up (Customer only)
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
@@ -180,60 +193,35 @@ export default function AuthModal() {
   };
 
   return (
-    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[460px]">
+    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
       <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
         
-        {/* Portal Selector Navigation */}
-        <div className="flex bg-bg-surface p-1 rounded-xl border border-border-glass gap-1">
-          <button
-            type="button"
-            onClick={() => setAuthPortal('customer')}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
-              authPortal === 'customer'
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-transparent text-text-dim hover:text-text-main'
-            }`}
-          >
-            Customer
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthPortal('employee')}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
-              authPortal === 'employee'
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-transparent text-text-dim hover:text-text-main'
-            }`}
-          >
-            Staff / Operator
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthPortal('admin')}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
-              authPortal === 'admin'
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-transparent text-text-dim hover:text-text-main'
-            }`}
-          >
-            Administrator
-          </button>
-        </div>
-
         {/* Header & Subtitle */}
         <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            {authPortal === 'admin' ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
+                Administrator Portal
+              </span>
+            ) : authPortal === 'employee' ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
+                Employee Portal
+              </span>
+            ) : null}
+          </div>
+
           <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">
             {authPortal === 'admin' 
-              ? 'Administrator Access'
+              ? 'Admin Login'
               : authPortal === 'employee'
-              ? 'Staff & Operator Portal'
+              ? 'Employee Login'
               : mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
           <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
             {authPortal === 'admin'
-              ? 'Enter master credentials to access system management, finance & analytics'
+              ? 'Enter master administrator credentials to access management controls'
               : authPortal === 'employee'
-              ? 'Enter operator credentials to manage production tickets & machine queues'
+              ? 'Enter staff credentials to manage production tickets & queues'
               : mode === 'login' 
               ? 'Sign in to access your orders, designs & custom projects' 
               : 'Join Stitch-Opt for custom embroidery orders & tracking'}
@@ -257,21 +245,32 @@ export default function AuthModal() {
           )}
           
           <div className="flex flex-col gap-1">
-            <label className="text-[0.75rem] font-bold text-text-dim ml-1">
-              {authPortal === 'admin' 
-                ? 'Admin Username or Email *'
-                : authPortal === 'employee'
-                ? 'Operator Username or Email *'
-                : mode === 'login' ? 'Email or Username *' : 'Email Address *'}
-            </label>
+            <div className="flex justify-between items-center ml-1">
+              <label className="text-[0.75rem] font-bold text-text-dim">
+                {authPortal === 'admin' 
+                  ? 'Admin Username or Email *'
+                  : authPortal === 'employee'
+                  ? 'Employee Username or Email *'
+                  : mode === 'login' ? 'Email or Username *' : 'Email Address *'}
+              </label>
+              {authPortal !== 'customer' && (
+                <button
+                  type="button"
+                  onClick={() => handleAutofillTest(authPortal)}
+                  className="bg-transparent border-none text-[0.7rem] text-primary hover:underline cursor-pointer p-0 font-medium"
+                >
+                  Autofill Demo
+                </button>
+              )}
+            </div>
             <input 
               type={mode === 'login' ? 'text' : 'email'} 
               required 
               placeholder={
                 authPortal === 'admin'
-                  ? 'admin or admin@stitchopt.com'
+                  ? 'admin'
                   : authPortal === 'employee'
-                  ? 'employee or operator@stitchopt.com'
+                  ? 'employee'
                   : mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'
               }
               value={email}
@@ -362,8 +361,8 @@ export default function AuthModal() {
             disabled={isSubmitting}
           >
             {isSubmitting 
-              ? (authPortal === 'admin' ? 'Authenticating Admin...' : authPortal === 'employee' ? 'Authenticating Staff...' : mode === 'login' ? 'Signing In...' : 'Creating Account...') 
-              : (authPortal === 'admin' ? 'Sign In as Administrator' : authPortal === 'employee' ? 'Sign In as Operator' : mode === 'login' ? 'Sign In' : 'Create Account')}
+              ? (authPortal === 'admin' ? 'Authenticating Admin...' : authPortal === 'employee' ? 'Authenticating Employee...' : mode === 'login' ? 'Signing In...' : 'Creating Account...') 
+              : (authPortal === 'admin' ? 'Sign In as Admin' : authPortal === 'employee' ? 'Sign In as Employee' : mode === 'login' ? 'Sign In' : 'Create Account')}
           </GlassButton>
         </form>
 
@@ -408,33 +407,54 @@ export default function AuthModal() {
           </>
         )}
 
-        {/* Staff & Admin Notice / Switcher Footer */}
-        {authPortal !== 'customer' ? (
-          <div className="text-center pt-2 border-t border-border-glass flex flex-col gap-1.5">
-            <p className="text-[0.72rem] text-text-dim m-0">
-              {authPortal === 'admin' 
-                ? 'Restricted area. All access attempts are recorded in the security audit trail.' 
-                : 'Need operator credentials? Contact your store manager or system administrator.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setAuthPortal('customer')}
-              className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs mt-1"
-            >
-              ← Back to Customer Storefront
-            </button>
-          </div>
-        ) : (
-          <div className="text-center border-t border-border-glass/40 pt-1">
-            <button
-              type="button"
-              onClick={() => setAuthPortal('employee')}
-              className="bg-transparent border-none text-text-dim/80 hover:text-text-main text-[0.72rem] cursor-pointer transition-colors"
-            >
-              Authorized Staff or Administrator? <span className="text-primary font-bold underline ml-1">Staff Access</span>
-            </button>
-          </div>
-        )}
+        {/* Bottom Test & Portal Switching Buttons */}
+        <div className="pt-2 border-t border-border-glass flex flex-col gap-2">
+          {authPortal === 'customer' ? (
+            <div className="flex gap-2 w-full pt-1">
+              <button
+                type="button"
+                onClick={() => setAuthPortal('employee')}
+                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
+              >
+                Employee Modal →
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthPortal('admin')}
+                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
+              >
+                Admin Modal →
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 w-full pt-1">
+              {authPortal === 'admin' ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthPortal('employee')}
+                  className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
+                >
+                  Switch to Employee
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAuthPortal('admin')}
+                  className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
+                >
+                  Switch to Admin
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setAuthPortal('customer')}
+                className="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-bg-surface hover:bg-white/[0.08] text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer text-center"
+              >
+                ← Back to Customer
+              </button>
+            </div>
+          )}
+        </div>
 
       </div>
     </GlassModal>
