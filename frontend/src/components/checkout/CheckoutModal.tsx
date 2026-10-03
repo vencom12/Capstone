@@ -15,7 +15,7 @@ interface CheckoutModalProps {
   onClose: () => void;
 }
 
-type PaymentMethod = 'gcash';
+type PaymentMethod = 'gcash' | 'wallet';
 
 export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const { items, getTotal, clearBasket } = useBasketStore();
@@ -30,6 +30,7 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState('');
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
+  const [manualRef, setManualRef] = useState('');
 
   const [giftPackaging, setGiftPackaging] = useState(false);
   const [calligraphyMessage, setCalligraphyMessage] = useState('');
@@ -53,7 +54,9 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     }
   }, [isOpen]);
 
+  const walletBalance = user?.walletBalance || 0;
   const finalTotal = getTotal() + (giftPackaging ? giftPackagingPrice : 0);
+  const hasSufficientWallet = walletBalance >= finalTotal;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
@@ -118,7 +121,6 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       } else {
         setAiVerificationResult(`⚠️ ${verifyRes.message}`);
         showToast(verifyRes.message || 'AI could not verify this receipt', 'error');
-        // Order exists but remains in "Awaiting Payment" — admin can review
         await fetchDashboardState();
       }
     } catch (err: any) {
@@ -128,6 +130,16 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
     } finally {
       setAiAnalyzing(false);
     }
+  };
+
+  const handleSubmitManualRef = async () => {
+    if (!manualRef.trim()) {
+      showToast('Please enter your GCash Reference Number', 'error');
+      return;
+    }
+    setPaymentVerified(true);
+    setAiVerificationResult(`ℹ️ Manual Ref Added: ${manualRef.trim()} (Submitted for Admin Queue Review)`);
+    showToast('Reference code recorded! Proceeding to place order for queue review.', 'info');
   };
 
   const handleTestPlaceOrder = async () => {
@@ -158,36 +170,47 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   };
 
   const handlePlaceOrder = async () => {
-    // For e-wallet methods, the order is already placed during handleFileSelect
     if (paymentMethod === 'gcash') {
       if (!paymentVerified) {
         showToast('Please upload and verify your payment receipt', 'error');
+        return;
       }
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      await api.post('/api/customer/order/submit', {
-        items,
-        totalAmount: finalTotal,
-        address: user?.address,
-        notes,
-        paymentMethod,
-        giftPackaging,
-        calligraphyMessage
-      });
-      
-      showToast('Order placed successfully!', 'success');
+      showToast('Order verified & submitted successfully!', 'success');
       await refreshUser();
       await fetchDashboardState();
       clearBasket();
       onClose();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to place order';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsProcessing(false);
+      return;
+    }
+
+    if (paymentMethod === 'wallet') {
+      if (!hasSufficientWallet) {
+        showToast('Insufficient wallet balance. Please top up or use GCash.', 'error');
+        return;
+      }
+      setIsProcessing(true);
+      try {
+        await api.post('/api/customer/order/submit', {
+          items,
+          totalAmount: finalTotal,
+          address: user?.address,
+          notes,
+          paymentMethod: 'wallet',
+          giftPackaging,
+          calligraphyMessage
+        });
+
+        showToast('Paid with Wallet Balance! Order placed in queue.', 'success');
+        await refreshUser();
+        await fetchDashboardState();
+        clearBasket();
+        onClose();
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to place wallet order';
+        showToast(errorMessage, 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -293,15 +316,35 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             <div className="flex flex-col gap-4 max-[650px]:gap-3">
               <h3 className="text-[1rem] max-[650px]:text-[0.9rem] font-bold m-0">Payment Method</h3>
               
-              <div className="flex flex-col max-[650px]:flex-row gap-4 max-[650px]:gap-2 max-[650px]:items-stretch">
-                <div className="flex-1">
-                  <button
-                    className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-xl border bg-primary/20 border-primary text-white shadow-lg transition-all duration-200"
-                  >
-                    <span className="text-[#007df2] font-bold text-xl">G</span>
-                    <span className="text-[0.85rem] font-bold">GCash</span>
-                  </button>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('gcash')}
+                  className={`w-full flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    paymentMethod === 'gcash'
+                      ? 'bg-primary/20 border-primary text-white shadow-lg'
+                      : 'bg-black/20 border-white/10 text-text-dim hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[#007df2] font-extrabold text-lg">G</span>
+                  <span className="text-[0.8rem] font-bold">GCash</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('wallet')}
+                  className={`w-full flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    paymentMethod === 'wallet'
+                      ? 'bg-primary/20 border-primary text-white shadow-lg'
+                      : 'bg-black/20 border-white/10 text-text-dim hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-emerald-400 font-extrabold text-lg">💳</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[0.8rem] font-bold">Stitch Wallet</span>
+                    <span className="text-[0.68rem] text-text-dim font-mono">₱{walletBalance.toFixed(2)}</span>
+                  </div>
+                </button>
               </div>
 
               {paymentMethod === 'gcash' && (
@@ -312,16 +355,44 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   paymentVerified={paymentVerified}
                   onFileSelect={handleFileSelect}
                   qrCodeUrl={gcashQrCodeUrl}
+                  finalTotal={finalTotal}
+                  manualRef={manualRef}
+                  setManualRef={setManualRef}
+                  onSubmitManualRef={handleSubmitManualRef}
                 />
+              )}
+
+              {paymentMethod === 'wallet' && (
+                <div className="flex flex-col gap-3 bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl mt-2 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[0.8rem] font-bold text-emerald-400">Available Wallet Balance:</span>
+                    <span className="text-base font-extrabold text-emerald-400 font-mono">₱{walletBalance.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-emerald-500/20 pt-2 text-[0.78rem]">
+                    <span className="text-text-dim">Deduction Total:</span>
+                    <span className="text-white font-mono font-bold">-₱{finalTotal.toFixed(2)}</span>
+                  </div>
+                  {!hasSufficientWallet ? (
+                    <div className="bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg text-[0.75rem] text-red-400 font-medium">
+                      ⚠️ Insufficient balance for this order. Please top up your wallet or switch to GCash.
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-500/20 border border-emerald-500/40 p-2.5 rounded-lg text-[0.75rem] text-emerald-300 font-medium">
+                      ✓ Instant 1-Click Approval (No receipt upload required!)
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="flex items-center justify-between border-t border-border-glass pt-4 max-[650px]:pt-2.5 mt-auto">
                 <span className="text-[0.85rem] max-[650px]:text-[0.75rem] text-text-dim">Payment Status:</span>
                 <span className={`
                   px-3 max-[650px]:px-2 py-1 max-[650px]:py-0.5 rounded-full text-[0.7rem] max-[650px]:text-[0.6rem] font-bold uppercase tracking-wider
-                  ${paymentVerified ? 'bg-success/20 text-success border border-success/30' : 'bg-warning/20 text-warning border border-warning/30'}
+                  ${(paymentMethod === 'wallet' && hasSufficientWallet) || paymentVerified
+                    ? 'bg-success/20 text-success border border-success/30' 
+                    : 'bg-warning/20 text-warning border border-warning/30'}
                 `}>
-                  {paymentVerified ? 'Verified' : 'Pending'}
+                  {paymentMethod === 'wallet' ? (hasSufficientWallet ? 'Ready' : 'Insufficient') : (paymentVerified ? 'Verified' : 'Pending')}
                 </span>
               </div>
 
@@ -331,10 +402,10 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
                   size="lg"
                   fullWidth
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing || !paymentVerified}
-                  className={`max-[650px]:py-2 max-[650px]:text-[0.9rem] ${!paymentVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isProcessing || (paymentMethod === 'gcash' && !paymentVerified) || (paymentMethod === 'wallet' && !hasSufficientWallet)}
+                  className={`max-[650px]:py-2 max-[650px]:text-[0.9rem] ${(paymentMethod === 'gcash' && !paymentVerified) || (paymentMethod === 'wallet' && !hasSufficientWallet) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isProcessing ? 'Processing Order...' : 'Place Order'}
+                  {isProcessing ? 'Processing Order...' : paymentMethod === 'wallet' ? 'Pay & Place Order ⚡' : 'Place Order'}
                 </GlassButton>
 
                 <button
