@@ -1,13 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import {
-  REGIONS,
-  GeoItem,
-  getProvincesForRegion,
-  getCitiesForProvince,
-  getBarangaysForCity
-} from '@/lib/phAddress';
+import { useState, useEffect, useId } from 'react';
 
 interface AddressSelectProps {
   value: string;
@@ -16,322 +9,145 @@ interface AddressSelectProps {
   required?: boolean;
 }
 
-export default function AddressSelect({ value, onChange, className = '', required = false }: AddressSelectProps) {
-  // Cascading Selection State
-  // Default to Region IV-A (CALABARZON) -> Quezon -> Lucena City -> Barangay Cotta
-  const [selectedRegion, setSelectedRegion] = useState<GeoItem>(REGIONS[0]); // CALABARZON
-  const [provinces, setProvinces] = useState<GeoItem[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<GeoItem | null>(null);
+// Popular quick-fill suggestions for fast autofill across Quezon and major PH hubs
+const COMMON_PH_LOCATIONS = [
+  'Brgy. Cotta, Lucena City, Quezon',
+  'Brgy. Gulang-Gulang, Lucena City, Quezon',
+  'Brgy. Isabang, Lucena City, Quezon',
+  'Brgy. Ibabang Dupay, Lucena City, Quezon',
+  'Brgy. Dalahican, Lucena City, Quezon',
+  'Brgy. Market View, Lucena City, Quezon',
+  'Brgy. Poblacion, Lucena City, Quezon',
+  'Brgy. San Roque, Sariaya, Quezon',
+  'Brgy. Poblacion, Candelaria, Quezon',
+  'Brgy. San Diego, Tayabas City, Quezon',
+  'Brgy. Bukal Sur, Candelaria, Quezon',
+  'Brgy. Poblacion, Pagbilao, Quezon',
+  'Brgy. Bel-Air, Makati City, Metro Manila',
+  'Brgy. Fort Bonifacio (BGC), Taguig City, Metro Manila',
+  'Brgy. South Triangle, Quezon City, Metro Manila',
+  'Brgy. San Antonio, Pasig City, Metro Manila',
+  'Brgy. Lahug, Cebu City, Cebu',
+  'Brgy. Buhangin, Davao City, Davao del Sur'
+];
 
-  const [cities, setCities] = useState<GeoItem[]>([]);
-  const [selectedCity, setSelectedCity] = useState<GeoItem | null>(null);
+/**
+ * Intelligent parser to split an existing combined address into:
+ * [1] Street / House / Landmark
+ * [2] Barangay, City, Province
+ */
+function parseAddressString(full: string): { street: string; area: string } {
+  if (!full || !full.trim()) return { street: '', area: '' };
 
-  const [barangays, setBarangays] = useState<GeoItem[]>([]);
-  const [selectedBarangay, setSelectedBarangay] = useState<GeoItem | null>(null);
+  const trimmed = full.trim();
 
-  const [streetDetails, setStreetDetails] = useState('');
-  const [isManual, setIsManual] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // Pattern 1: Look for Brgy. / Barangay indicator as the split point
+  const brgyRegex = /^(.*?),\s*(Brgy\.?.*|Barangay.*)$/i;
+  const matchBrgy = trimmed.match(brgyRegex);
+  if (matchBrgy) {
+    return { street: matchBrgy[1].trim(), area: matchBrgy[2].trim() };
+  }
 
-  const isInitialMount = useRef(true);
-
-  // 1. Initial Load: Load Provinces for default region (CALABARZON)
-  useEffect(() => {
-    let isMounted = true;
-
-    async function initLocation() {
-      setIsLoading(true);
-      const provList = await getProvincesForRegion(selectedRegion.code);
-      if (!isMounted) return;
-
-      setProvinces(provList);
-
-      // Default to Quezon if in CALABARZON, otherwise first province
-      const defaultProv = provList.find(p => p.name.toLowerCase().includes('quezon')) || provList[0] || null;
-      setSelectedProvince(defaultProv);
-
-      if (defaultProv) {
-        const cityList = await getCitiesForProvince(selectedRegion.code, defaultProv.code);
-        if (!isMounted) return;
-
-        setCities(cityList);
-        const defaultCity = cityList.find(c => c.name.toLowerCase().includes('lucena')) || cityList[0] || null;
-        setSelectedCity(defaultCity);
-
-        if (defaultCity) {
-          const brgyList = await getBarangaysForCity(defaultCity.code);
-          if (!isMounted) return;
-
-          setBarangays(brgyList);
-          const defaultBrgy = brgyList.find(b => b.name.toLowerCase().includes('cotta')) || brgyList[0] || null;
-          setSelectedBarangay(defaultBrgy);
-        }
-      }
-      setIsLoading(false);
-    }
-
-    initLocation();
-
-    return () => {
-      isMounted = false;
+  // Pattern 2: Comma separated - first part is street/house, rest is area
+  const parts = trimmed.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      street: parts[0],
+      area: parts.slice(1).join(', ')
     };
-  }, []);
+  }
 
-  // 2. Synchronize string address upwards
-  const constructAddress = (
-    street: string,
-    brgy: GeoItem | null,
-    city: GeoItem | null,
-    prov: GeoItem | null,
-    reg: GeoItem
-  ) => {
-    const parts: string[] = [];
-    if (street && street.trim()) parts.push(street.trim());
-    if (brgy && brgy.name) parts.push(brgy.name.startsWith('Barangay') || brgy.name.startsWith('Brgy.') ? brgy.name : `Brgy. ${brgy.name}`);
-    if (city && city.name) parts.push(city.name);
-    if (prov && prov.name && prov.name !== city?.name) parts.push(prov.name);
-    if (reg && reg.name && !prov?.name.includes('Metro Manila')) {
-      const shortRegion = reg.name.split('(')[0].trim();
-      if (shortRegion) parts.push(shortRegion);
-    }
-    return parts.join(', ');
-  };
+  // Fallback: If only 1 part exists, assign to street
+  return { street: trimmed, area: '' };
+}
 
-  // Sync address changes to parent when sub-parts change
-  const handleUpdate = (
-    street = streetDetails,
-    brgy = selectedBarangay,
-    city = selectedCity,
-    prov = selectedProvince,
-    reg = selectedRegion
-  ) => {
-    if (isManual) return;
-    const full = constructAddress(street, brgy, city, prov, reg);
-    if (full) {
-      onChange(full);
-    }
-  };
+export default function AddressSelect({
+  value,
+  onChange,
+  className = '',
+  required = false
+}: AddressSelectProps) {
+  const datalistId = useId();
 
-  // Region Changed -> fetch new Provinces
-  const handleRegionChange = async (regionCode: string) => {
-    const reg = REGIONS.find(r => r.code === regionCode) || REGIONS[0];
-    setSelectedRegion(reg);
-    setIsLoading(true);
+  // Local state for the two fields
+  const [street, setStreet] = useState('');
+  const [area, setArea] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
-    const provList = await getProvincesForRegion(reg.code);
-    setProvinces(provList);
-    const newProv = provList[0] || null;
-    setSelectedProvince(newProv);
+  // Sync internal state with incoming value on mount or external reset
+  useEffect(() => {
+    const parsed = parseAddressString(value || '');
+    setStreet(parsed.street);
+    setArea(parsed.area);
+    setIsInitialized(true);
+  }, [value]);
 
-    if (newProv) {
-      const cityList = await getCitiesForProvince(reg.code, newProv.code);
-      setCities(cityList);
-      const newCity = cityList[0] || null;
-      setSelectedCity(newCity);
+  const updateCombinedAddress = (newStreet: string, newArea: string) => {
+    setStreet(newStreet);
+    setArea(newArea);
 
-      if (newCity) {
-        const brgyList = await getBarangaysForCity(newCity.code);
-        setBarangays(brgyList);
-        const newBrgy = brgyList[0] || null;
-        setSelectedBarangay(newBrgy);
-        handleUpdate(streetDetails, newBrgy, newCity, newProv, reg);
+    const s = newStreet.trim();
+    const a = newArea.trim();
+
+    if (s && a) {
+      // Prevent accidental repetition if user typed area into street
+      if (s.toLowerCase().includes(a.toLowerCase())) {
+        onChange(s);
       } else {
-        setBarangays([]);
-        setSelectedBarangay(null);
-        handleUpdate(streetDetails, null, newCity, newProv, reg);
+        onChange(`${s}, ${a}`);
       }
     } else {
-      setCities([]);
-      setSelectedCity(null);
-      setBarangays([]);
-      setSelectedBarangay(null);
-      handleUpdate(streetDetails, null, null, null, reg);
+      onChange(s || a);
     }
-    setIsLoading(false);
-  };
-
-  // Province Changed -> fetch new Cities
-  const handleProvinceChange = async (provinceCode: string) => {
-    const prov = provinces.find(p => p.code === provinceCode) || provinces[0] || null;
-    setSelectedProvince(prov);
-    if (!prov) return;
-
-    setIsLoading(true);
-    const cityList = await getCitiesForProvince(selectedRegion.code, prov.code);
-    setCities(cityList);
-    const newCity = cityList[0] || null;
-    setSelectedCity(newCity);
-
-    if (newCity) {
-      const brgyList = await getBarangaysForCity(newCity.code);
-      setBarangays(brgyList);
-      const newBrgy = brgyList[0] || null;
-      setSelectedBarangay(newBrgy);
-      handleUpdate(streetDetails, newBrgy, newCity, prov, selectedRegion);
-    } else {
-      setBarangays([]);
-      setSelectedBarangay(null);
-      handleUpdate(streetDetails, null, newCity, prov, selectedRegion);
-    }
-    setIsLoading(false);
-  };
-
-  // City Changed -> fetch new Barangays
-  const handleCityChange = async (cityCode: string) => {
-    const city = cities.find(c => c.code === cityCode) || cities[0] || null;
-    setSelectedCity(city);
-    if (!city) return;
-
-    setIsLoading(true);
-    const brgyList = await getBarangaysForCity(city.code);
-    setBarangays(brgyList);
-    const newBrgy = brgyList[0] || null;
-    setSelectedBarangay(newBrgy);
-    handleUpdate(streetDetails, newBrgy, city, selectedProvince, selectedRegion);
-    setIsLoading(false);
-  };
-
-  // Barangay Changed
-  const handleBarangayChange = (brgyCode: string) => {
-    const brgy = barangays.find(b => b.code === brgyCode) || barangays[0] || null;
-    setSelectedBarangay(brgy);
-    handleUpdate(streetDetails, brgy, selectedCity, selectedProvince, selectedRegion);
-  };
-
-  // Street Details Changed
-  const handleStreetChange = (s: string) => {
-    setStreetDetails(s);
-    handleUpdate(s, selectedBarangay, selectedCity, selectedProvince, selectedRegion);
   };
 
   return (
-    <div className={`flex flex-col gap-2.5 ${className}`}>
-      {/* Header controls: Switch mode */}
-      <div className="flex justify-between items-center text-[0.75rem] text-text-dim">
-        <span className="flex items-center gap-1.5 font-medium">
-          <span>📍</span>
-          <span>Delivery Address (Philippines):</span>
-          {isLoading && <span className="text-[0.65rem] text-primary animate-pulse">Updating...</span>}
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            const nextMode = !isManual;
-            setIsManual(nextMode);
-            if (nextMode) {
-              onChange(value || streetDetails);
-            } else {
-              handleUpdate();
-            }
-          }}
-          className="text-primary hover:text-white underline bg-transparent border-none cursor-pointer font-semibold text-[0.7rem] transition-colors"
-        >
-          {isManual ? '📍 Switch to Dropdowns' : '✍️ Custom Text'}
-        </button>
+    <div className={`flex flex-col gap-3 ${className}`}>
+      {/* Field 1: Detailed Street / House / Unit / Landmark */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
+          <span>Street Address & House / Unit No.</span>
+          <span className="text-[0.65rem] text-primary/70 font-normal">e.g. House No., Street, Landmark</span>
+        </label>
+        <input
+          type="text"
+          required={required}
+          placeholder="e.g. Purok Matahimik or 142 Quezon Ave, near Lucena Grand Central"
+          value={street}
+          onChange={(e) => updateCombinedAddress(e.target.value, area)}
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
+        />
       </div>
 
-      {isManual ? (
-        <textarea
+      {/* Field 2: Barangay, City & Province */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
+          <span>Barangay, City & Province</span>
+          <span className="text-[0.65rem] text-text-dim/60 font-normal">Type or pick from suggestions</span>
+        </label>
+        <input
+          type="text"
           required={required}
-          placeholder="Enter full specific delivery address..."
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-xs outline-none focus:border-primary resize-none transition-all shadow-inner"
+          list={datalistId}
+          placeholder="e.g. Brgy. Cotta, Lucena City, Quezon"
+          value={area}
+          onChange={(e) => updateCombinedAddress(street, e.target.value)}
+          className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary focus:shadow-[0_0_12px_rgba(99,102,241,0.2)] transition-all placeholder:text-text-dim/40"
         />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {/* Dropdown Hierarchy: 2x2 Grid */}
-          <div className="grid grid-cols-2 gap-2 max-[540px]:grid-cols-1">
-            {/* 1. Region */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.65rem] text-text-dim uppercase font-bold tracking-wider">Region</label>
-              <select
-                value={selectedRegion.code}
-                onChange={(e) => handleRegionChange(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass px-2.5 py-2 rounded-lg text-text-main text-xs outline-none focus:border-primary cursor-pointer hover:border-primary/40 transition-colors"
-              >
-                {REGIONS.map((r) => (
-                  <option key={r.code} value={r.code} className="bg-bg-dark text-white">
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <datalist id={datalistId}>
+          {COMMON_PH_LOCATIONS.map((loc) => (
+            <option key={loc} value={loc} />
+          ))}
+        </datalist>
+      </div>
 
-            {/* 2. Province */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.65rem] text-text-dim uppercase font-bold tracking-wider">Province</label>
-              <select
-                value={selectedProvince?.code || ''}
-                onChange={(e) => handleProvinceChange(e.target.value)}
-                disabled={provinces.length === 0}
-                className="w-full bg-bg-surface border border-border-glass px-2.5 py-2 rounded-lg text-text-main text-xs outline-none focus:border-primary cursor-pointer hover:border-primary/40 transition-colors disabled:opacity-50"
-              >
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.code} className="bg-bg-dark text-white">
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3. City / Municipality */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.65rem] text-text-dim uppercase font-bold tracking-wider">City / Municipality</label>
-              <select
-                value={selectedCity?.code || ''}
-                onChange={(e) => handleCityChange(e.target.value)}
-                disabled={cities.length === 0}
-                className="w-full bg-bg-surface border border-border-glass px-2.5 py-2 rounded-lg text-text-main text-xs outline-none focus:border-primary cursor-pointer hover:border-primary/40 transition-colors disabled:opacity-50"
-              >
-                {cities.map((c) => (
-                  <option key={c.code} value={c.code} className="bg-bg-dark text-white">
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 4. Barangay */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[0.65rem] text-text-dim uppercase font-bold tracking-wider">Barangay</label>
-              <select
-                value={selectedBarangay?.code || ''}
-                onChange={(e) => handleBarangayChange(e.target.value)}
-                disabled={barangays.length === 0}
-                className="w-full bg-bg-surface border border-border-glass px-2.5 py-2 rounded-lg text-text-main text-xs outline-none focus:border-primary cursor-pointer hover:border-primary/40 transition-colors disabled:opacity-50"
-              >
-                {barangays.length > 0 ? (
-                  barangays.map((b) => (
-                    <option key={b.code} value={b.code} className="bg-bg-dark text-white">
-                      {b.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="" className="bg-bg-dark text-white">Poblacion / General</option>
-                )}
-              </select>
-            </div>
-          </div>
-
-          {/* 5. House / Street / Unit / Landmark */}
-          <input
-            type="text"
-            required={required}
-            placeholder="House / Unit No., Street Name, Landmark (e.g. 142 Quezon Ave, near Lucena Grand Central)"
-            value={streetDetails}
-            onChange={(e) => handleStreetChange(e.target.value)}
-            className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-xs outline-none focus:border-primary transition-all shadow-inner"
-          />
-
-          {/* 6. Address Preview Pill */}
-          {value && (
-            <div className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-[0.72rem] text-primary flex items-start gap-1.5">
-              <span className="font-semibold shrink-0">📍 Selected:</span>
-              <span className="font-medium text-text-main break-words">{value}</span>
-            </div>
-          )}
+      {/* Clean Full Address Confirmation Pill (Clean single line without duplicates) */}
+      {value && value.trim() && (
+        <div className="px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl text-[0.72rem] flex items-start gap-2">
+          <span className="text-primary font-bold shrink-0">📍 Delivery To:</span>
+          <span className="text-text-main font-medium leading-relaxed break-words">
+            {value}
+          </span>
         </div>
       )}
     </div>
