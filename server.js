@@ -147,7 +147,9 @@ initCronJobs();
 // Helmet: Sets secure HTTP headers (XSS protection, clickjack prevention, MIME sniff guard)
 app.use(helmet({
     contentSecurityPolicy: false, // Disabled to allow inline scripts in PWA
-    crossOriginEmbedderPolicy: false // Allow loading cross-origin images (product photos)
+    crossOriginEmbedderPolicy: false, // Allow loading cross-origin images (product photos)
+    crossOriginOpenerPolicy: false, // CRITICAL: Disabled so Google/Firebase OAuth popups maintain window.opener communication without browser isolation
+    crossOriginResourcePolicy: false // Allow cross-origin resources
 }));
 
 // Running strictly in PostgreSQL mode
