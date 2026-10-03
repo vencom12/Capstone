@@ -7,17 +7,18 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 
 export default function GlobalAuthListener() {
-  const { loginWithGoogle } = useAuthStore();
-
   useEffect(() => {
-    let isMounted = true;
-    
-    // Check if the user is returning to the app from Google OAuth redirect
+    // This effect MUST run exactly once on mount with [] deps.
+    // Using useAuthStore.getState() instead of the hook value avoids
+    // Zustand rehydration changing the function reference and re-triggering
+    // this effect, which would cause getRedirectResult to return null
+    // (Firebase only returns the redirect credential once).
+
     getRedirectResult(auth)
       .then(async (result) => {
-        if (!isMounted || !result || !result.user) return;
+        if (!result || !result.user) return;
         const user = result.user;
-        
+
         if (!user.email) {
           showToast('No email associated with this Google account.', 'error');
           return;
@@ -25,6 +26,9 @@ export default function GlobalAuthListener() {
 
         console.log('[Google Auth] Redirect result received:', user.email, user.displayName, user.phoneNumber);
         showToast('Completing Google Sign-In...', 'info');
+
+        // Use getState() to get the latest store action without hook dependency
+        const { loginWithGoogle } = useAuthStore.getState();
 
         const res = await loginWithGoogle({
           email: user.email,
@@ -38,7 +42,7 @@ export default function GlobalAuthListener() {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('stitch-session-active', 'true');
           }
-          showToast(`Welcome back, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
+          showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
         } else {
           console.error('[Google Auth] Backend login error:', res.message);
           showToast(res.message || 'Google sign-in failed on server.', 'error');
@@ -50,11 +54,8 @@ export default function GlobalAuthListener() {
           showToast(error.message || 'Error completing Google sign-in.', 'error');
         }
       });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [loginWithGoogle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // MUST be [] — runs exactly once on mount
 
   return null;
 }
