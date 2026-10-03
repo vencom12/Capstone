@@ -89,11 +89,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Touch momentum scrolling for all mobile containers */
-.touch-scroll,
-main {
+/* Touch momentum scrolling for scrollable containers */
+.touch-scroll {
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
 }
 
 /* Safe area insets for mobile notched screens and gesture homebars */

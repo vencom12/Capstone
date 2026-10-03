@@ -756,7 +756,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-dvh md:h-screen w-full overflow-x-hidden md:overflow-hidden bg-transparent text-text-main flex-col md:flex-row">
+    <div className="min-h-screen min-h-dvh w-full bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* Mobile Top Bar */}
       <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-3.5 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
          <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0" title="Toggle Navigation Menu">
@@ -804,7 +804,7 @@ export default function DashboardPage() {
 
       <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 w-full min-h-0 md:h-full overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pt-[72px] md:pt-6 lg:pt-8 pb-28 md:pb-8 overscroll-y-contain touch-scroll">
+      <main className="w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0">
         {renderTabContent()}
       </main>
 

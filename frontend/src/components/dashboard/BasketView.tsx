@@ -449,8 +449,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         </div>
       </div>
 
-      {/* Floating Bottom Bar for Mobile Screen Checkout */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-surface/95 backdrop-blur-xl border-t border-border-glass p-3 px-4 z-40 flex items-center justify-between gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+      {/* Floating Bottom Bar for Mobile Screen Checkout - Positioned above Mobile Bottom Dock */}
+      <div className="lg:hidden fixed bottom-[56px] left-0 right-0 bg-bg-surface/95 backdrop-blur-xl border-t border-border-glass p-3 px-4 z-[990] flex items-center justify-between gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col">
           <span className="text-[0.68rem] text-text-dim uppercase tracking-wider font-semibold">
             Total ({selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'})
