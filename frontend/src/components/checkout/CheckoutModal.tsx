@@ -384,13 +384,18 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
           {/* Right: Payment & Receipt AI Verification */}
           <div className="flex flex-col gap-5 border-l border-border-glass pl-7 max-[650px]:border-l-0 max-[650px]:pl-0 max-[650px]:pt-3 max-[650px]:border-t max-[650px]:gap-3">
              <GCashPayment 
+               finalTotal={finalTotal}
                totalAmount={finalTotal} 
                qrCodeUrl={gcashQrCodeUrl}
+               receiptFile={receiptFile}
                onFileSelect={handleFileSelect} 
+               aiAnalyzing={aiAnalyzing}
                isAnalyzing={aiAnalyzing}
                aiVerificationResult={aiVerificationResult}
+               paymentVerified={paymentVerified}
                isVerified={paymentVerified}
                manualRef={manualRef}
+               setManualRef={setManualRef}
                onManualRefChange={setManualRef}
                onSubmitManualRef={handleSubmitManualRef}
              />

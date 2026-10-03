@@ -4,28 +4,36 @@ import React, { useState } from 'react';
 import { showToast } from '@/components/ui/Toast';
 
 interface GCashPaymentProps {
-  receiptFile: File | null;
-  aiAnalyzing: boolean;
-  aiVerificationResult: string | null;
-  paymentVerified: boolean;
+  receiptFile?: File | null;
+  aiAnalyzing?: boolean;
+  isAnalyzing?: boolean;
+  aiVerificationResult?: string | null;
+  paymentVerified?: boolean;
+  isVerified?: boolean;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   qrCodeUrl?: string | null;
-  finalTotal: number;
+  finalTotal?: number;
+  totalAmount?: number;
   manualRef: string;
-  setManualRef: (val: string) => void;
+  setManualRef?: (val: string) => void;
+  onManualRefChange?: (val: string) => void;
   onSubmitManualRef: () => void;
 }
 
 export default function GCashPayment({
   receiptFile,
   aiAnalyzing,
+  isAnalyzing,
   aiVerificationResult,
   paymentVerified,
+  isVerified,
   onFileSelect,
   qrCodeUrl,
   finalTotal,
+  totalAmount,
   manualRef,
   setManualRef,
+  onManualRefChange,
   onSubmitManualRef
 }: GCashPaymentProps) {
   const [copiedNumber, setCopiedNumber] = useState(false);
@@ -33,6 +41,10 @@ export default function GCashPayment({
   const [showQrModal, setShowQrModal] = useState(false);
 
   const accountNo = "09171234567";
+  const total = Number(finalTotal ?? totalAmount ?? 0);
+  const analyzing = Boolean(aiAnalyzing ?? isAnalyzing);
+  const verified = Boolean(paymentVerified ?? isVerified);
+  const handleRefChange = setManualRef || onManualRefChange || (() => {});
 
   const copyToClipboard = (text: string, type: 'number' | 'amount') => {
     navigator.clipboard.writeText(text);
@@ -58,10 +70,10 @@ export default function GCashPayment({
           </div>
           <button
             type="button"
-            onClick={() => copyToClipboard(finalTotal.toFixed(2), 'amount')}
+            onClick={() => copyToClipboard(total.toFixed(2), 'amount')}
             className="text-[0.72rem] bg-[#007df2]/20 hover:bg-[#007df2]/30 border border-[#007df2]/40 text-[#007df2] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1"
           >
-            {copiedAmount ? '✓ Copied Total' : `Copy ₱${finalTotal.toFixed(2)}`}
+            {copiedAmount ? '✓ Copied Total' : `Copy ₱${total.toFixed(2)}`}
           </button>
         </div>
         
@@ -130,7 +142,7 @@ export default function GCashPayment({
       </div>
 
       {/* AI Processing Status */}
-      {aiAnalyzing && (
+      {analyzing && (
         <div className="flex items-center gap-3 bg-[#007df2]/15 border border-[#007df2] p-3.5 rounded-xl animate-pulse">
           <div className="w-3 h-3 bg-[#007df2] rounded-full animate-ping"></div>
           <div className="flex flex-col">
@@ -141,15 +153,15 @@ export default function GCashPayment({
       )}
 
       {/* AI Result or Fail-Safe Fallback */}
-      {aiVerificationResult && !aiAnalyzing && (
+      {aiVerificationResult && !analyzing && (
         <div className={`flex flex-col gap-2 p-3.5 rounded-xl text-[0.78rem] font-medium border ${
-          paymentVerified 
+          verified 
             ? 'bg-success/10 border-success/30 text-success' 
             : 'bg-warning/10 border-warning/30 text-warning'
         }`}>
           <span className="leading-relaxed font-bold">{aiVerificationResult}</span>
           
-          {!paymentVerified && (
+          {!verified && (
             <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1">
               <span className="text-[0.72rem] text-text-dim font-bold">If AI missed your reference number, enter it manually below:</span>
               <div className="flex gap-2">
@@ -157,7 +169,7 @@ export default function GCashPayment({
                   type="text"
                   placeholder="e.g. 1002 9384 1029"
                   value={manualRef}
-                  onChange={(e) => setManualRef(e.target.value)}
+                  onChange={(e) => handleRefChange(e.target.value)}
                   className="flex-1 bg-black/40 border border-white/20 px-3 py-1.5 rounded-lg text-white font-mono text-[0.8rem] outline-none focus:border-primary"
                 />
                 <button
