@@ -154,7 +154,7 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
               <p className="font-bold m-0 leading-tight">Stitch-Opt Studio</p>
               <p className="m-0 text-[9px] text-black/80">Pacific Mall Lucena, M.L. Tagarao St.</p>
               <p className="m-0 text-[9px] text-black/80">Brgy. 3, Lucena City, Quezon 4301</p>
-              <p className="m-0 text-[9px] font-bold mt-1">Tel: (042) 710-3321 / 0917-882-1490</p>
+              <p className="m-0 text-[9px] font-bold mt-1">Tel / Mobile: 0928 810 3928</p>
             </div>
 
             {/* Consignee */}

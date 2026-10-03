@@ -10,6 +10,10 @@ The **Stitch-Opt Ordering & Logistics Tracking System** is an end-to-end e-comme
 
 Traditional Philippine e-commerce platforms struggle with customized apparel because they treat every item as an "off-the-shelf" SKU. Stitch-Opt bridges the gap between **e-commerce checkout**, **artisanal embroidery line production**, and **nationwide courier distribution** (standardized with J&T Express Philippines).
 
+* **Official Business Facility:** Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301
+* **Customer Service & Operations Hotline:** **0928 810 3928**
+* **Primary 3PL Logistics Partner:** J&T Express Philippines (Lucena Distribution Center)
+
 ```mermaid
 flowchart LR
     subgraph Customer [1. Customer Web Portal]

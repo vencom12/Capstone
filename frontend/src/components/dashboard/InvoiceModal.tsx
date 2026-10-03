@@ -58,7 +58,7 @@ export default function InvoiceModal({
               </div>
               <p className="text-xs text-text-dim mt-1.5 leading-relaxed m-0">
                 Premium Automated Embroidery & Apparel Customization<br />
-                VAT Reg. TIN: 429-810-332-00000<br />
+                VAT Reg. TIN: 429-810-332-00000 • Mobile: 0928 810 3928<br />
                 Pacific Mall Lucena, M.L. Tagarao St., Lucena City, Quezon 4301, Philippines
               </p>
             </div>
