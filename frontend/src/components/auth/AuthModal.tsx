@@ -174,22 +174,6 @@ export default function AuthModal() {
       <div className="flex flex-col gap-5 font-sans text-left pt-2 pb-1">
         {/* Header */}
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-primary/30 to-secondary/30 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_24px_rgba(99,102,241,0.25)] mb-3">
-            {mode === 'login' ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                <polyline points="10 17 15 12 10 7" />
-                <line x1="15" y1="12" x2="3" y2="12" />
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-                <line x1="23" y1="11" x2="17" y2="11" />
-              </svg>
-            )}
-          </div>
           <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">
             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
