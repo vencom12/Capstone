@@ -148,6 +148,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const data = await api.post<AuthResponse>('/api/auth/google', googleUserData);
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('stitch-session-active');
+          }
           set({ user: data.user, isAuthenticated: true, isLoading: false, rememberMe: true });
           return { success: true, user: data.user };
         } catch (err) {
