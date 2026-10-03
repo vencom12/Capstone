@@ -101,16 +101,16 @@ export default function StorefrontPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-transparent">
+    <div className="flex flex-col min-h-screen lg:h-screen w-full overflow-x-hidden lg:overflow-hidden bg-transparent">
       <StorefrontHeader />
       <EmailVerificationBanner />
 
       {/* Main Layout */}
-      <div className="flex-1 flex w-full overflow-hidden items-stretch relative">
+      <div className="flex-1 flex w-full min-h-0 min-w-0 lg:overflow-hidden items-stretch relative">
         <Sidebar />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 max-[480px]:p-3 bg-transparent">
+        <main className="flex-1 min-h-0 min-w-0 lg:overflow-y-auto p-4 md:p-6 max-[480px]:p-3 bg-transparent">
           <ProductGrid onQuickView={handleQuickView} />
         </main>
       </div>

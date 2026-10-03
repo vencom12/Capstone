@@ -317,7 +317,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </header>
-            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
+            <div className="flex-1 pr-0 md:pr-2">
               <ProductGrid onQuickView={handleQuickView} />
             </div>
           </section>
@@ -349,7 +349,7 @@ export default function DashboardPage() {
                 />
               </div>
             </header>
-            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
+            <div className="flex-1 pr-0 md:pr-2">
             
             {isSyncing && orders.length === 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
@@ -383,7 +383,7 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold mb-0.5">My Favorites</h1>
               <p className="text-text-dim text-[0.85rem] m-0">Designs you've saved for later.</p>
             </header>
-            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
+            <div className="flex-1 pr-0 md:pr-2">
             {isSyncing && favorites.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -435,7 +435,7 @@ export default function DashboardPage() {
                 />
               </div>
             </header>
-            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2">
+            <div className="flex-1 pr-0 md:pr-2">
             
             {isSyncing && transactions.length === 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               <h1 className="text-xl font-bold mb-0.5">Account Settings</h1>
               <p className="text-text-dim text-[0.85rem] m-0">Tap the edit icon to update any field individually.</p>
             </header>
-            <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2 pb-8">
+            <div className="flex-1 pr-0 md:pr-2 pb-8">
               {/* Profile Card */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col">
                 {/* Avatar Header */}
