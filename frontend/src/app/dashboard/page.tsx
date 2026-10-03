@@ -18,6 +18,7 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import AddressSelect from '@/components/ui/AddressSelect';
 import { TableSkeleton, CardSkeleton, ProductCardSkeleton } from '@/components/ui/Skeletons';
 import OrderMilestoneHero from '@/components/dashboard/OrderMilestoneHero';
+import OrderList from '@/components/dashboard/OrderList';
 import AddressBookModal from '@/components/dashboard/AddressBookModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -228,6 +229,7 @@ export default function DashboardPage() {
                 setOrderDetailsTab(tab || 'summary');
                 setIsOrderDetailsOpen(true);
               }} 
+              onViewAll={() => setActiveTab('tracking')}
             />
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-[650px]:mb-3">
               <div className="max-[1100px]:w-full">
@@ -332,66 +334,12 @@ export default function DashboardPage() {
                 <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
-                {filteredOrders.map((order) => (
-                  <div key={order.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-primary font-bold m-0">{order.orderId}</h4>
-                        <p className="text-xs text-text-dim mt-1">{new Date(order.date).toLocaleDateString()} • {order.paymentMethod.toUpperCase()}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${
-                        order.status === 'Completed' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1.5 mt-2">
-                      <div className="flex justify-between text-[0.8rem] font-medium">
-                        <span>Production Progress</span>
-                        <span>{order.progress}%</span>
-                      </div>
-                      <div className="w-full bg-black/30 h-2 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-primary h-full rounded-full transition-all duration-1000"
-                          style={{ width: `${order.progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50 flex-wrap gap-2">
-                      <div className="text-[0.8rem]">
-                        <span className="text-text-dim">Total: </span>
-                        <span className="font-bold text-text-main">₱{order.totalAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setOrderDetailsTab('tracking');
-                            setIsOrderDetailsOpen(true);
-                          }}
-                          className="text-[0.75rem] font-bold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                        >
-                          <span>Track Delivery</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setOrderDetailsTab('summary');
-                            setIsOrderDetailsOpen(true);
-                          }}
-                          className="text-[0.8rem] font-bold text-text-dim hover:text-text-main hover:underline bg-transparent border-none cursor-pointer"
-                        >
-                          Details
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <OrderList
+                orders={filteredOrders}
+                onTrack={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('tracking'); setIsOrderDetailsOpen(true); }}
+                onDetails={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('summary'); setIsOrderDetailsOpen(true); }}
+                onReorder={handleReorder}
+              />
             )}
           </div>
         </section>
