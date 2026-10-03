@@ -379,7 +379,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         </div>
 
         {/* Right Column: Clean, Focused Order Summary (5 of 12 cols on desktop) */}
-        <div className="lg:col-span-4 sticky top-4 flex flex-col gap-4">
+        <div className="lg:col-span-4 lg:sticky lg:top-4 flex flex-col gap-4">
           <div className="bg-bg-surface/90 border border-border-glass rounded-3xl p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col gap-4">
             <h2 className="text-base font-extrabold text-white m-0 pb-3 border-b border-white/10 flex items-center justify-between">
               <span>Order Summary</span>
@@ -449,26 +449,6 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         </div>
       </div>
 
-      {/* Floating Bottom Bar for Mobile Screen Checkout - Positioned above Mobile Bottom Dock */}
-      <div className="lg:hidden fixed bottom-[56px] left-0 right-0 bg-bg-surface/95 backdrop-blur-xl border-t border-border-glass p-3 px-4 z-[990] flex items-center justify-between gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
-        <div className="flex flex-col">
-          <span className="text-[0.68rem] text-text-dim uppercase tracking-wider font-semibold">
-            Total ({selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'})
-          </span>
-          <span className="text-lg font-mono font-black text-primary leading-tight">
-            ₱{selectedTotal.toFixed(2)}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleCheckout}
-          disabled={selectedItems.length === 0}
-          className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-light text-white font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer border-none flex items-center gap-1.5 disabled:opacity-40"
-        >
-          <span>Proceed to Checkout</span>
-          <span className="font-bold">→</span>
-        </button>
-      </div>
     </section>
   );
 }

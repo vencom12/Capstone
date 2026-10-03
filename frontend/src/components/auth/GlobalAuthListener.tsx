@@ -38,6 +38,11 @@ export default function GlobalAuthListener() {
           uid: user.uid,
         });
 
+        if (res.success && res.needsPassword) {
+          showToast('New here? Tap "Continue with Google" again to finish creating your password.', 'info');
+          return;
+        }
+
         if (res.success) {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('stitch-session-active', 'true');

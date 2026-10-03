@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { normalizePhilippinePhone, generateOtp, sendSms } = require('../../utils/smsService');
-const { generateVerificationToken, sendVerificationEmail } = require('../../utils/emailService');
+const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail } = require('../../utils/emailService');
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
@@ -560,6 +560,10 @@ exports.verifyEmail = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Verification token is required.' });
         }
 
+        if (String(token).startsWith('rst_')) {
+            return res.status(400).json({ success: false, message: 'Invalid verification link.' });
+        }
+
         const verification = await prisma.emailVerification.findUnique({
             where: { token }
         });
@@ -706,32 +710,17 @@ exports.googleAuth = async (req, res) => {
         });
 
         if (!user) {
-            // Pick a clean, friendly username from Google displayName if available, fallback to email prefix
-            let desiredName = displayName 
-                ? displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '') 
-                : email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
-            if (!desiredName) desiredName = `User_${Math.floor(1000 + Math.random() * 9000)}`;
-
-            // Check if username is already taken
-            const existingWithName = await prisma.user.findUnique({ where: { username: desiredName } });
-            const finalUsername = existingWithName ? `${desiredName}_${Math.floor(100 + Math.random() * 900)}` : desiredName;
-
-            const randomPassword = await bcrypt.hash(`google_${uid}_${Date.now()}`, 10);
-
-            user = await prisma.user.create({
-                data: {
-                    username: finalUsername,
-                    email: email,
-                    password: randomPassword,
-                    phoneNumber: phoneNumber || null,
-                    role: 'customer',
-                    isEmailVerified: true, // Google accounts have pre-verified email addresses
-                    isPhoneVerified: !!phoneNumber,
-                    walletBalance: 0
-                }
-            });
-
-            console.log(`[Google Auth] Created new customer account ${user.username} (${user.email}, phone: ${user.phoneNumber || 'none'})`);
+            // First-time Google user: do NOT create the account yet. Require the user to
+            // choose a password so they can also sign in with email + password later.
+            const suggestedUsername = (displayName
+                ? displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '')
+                : email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')) || 'User';
+            const setupToken = jwt.sign(
+                { purpose: 'google-setup', email, displayName: displayName || '', phoneNumber: phoneNumber || '', uid: uid || '' },
+                process.env.JWT_SECRET,
+                { expiresIn: '15m' }
+            );
+            return res.json({ success: true, needsPassword: true, setupToken, email, suggestedUsername });
         } else {
             // Update email verification and phone number if Google provided one and account has none
             const updateData = { isEmailVerified: true };
@@ -782,4 +771,181 @@ exports.googleAuth = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error during Google authentication.' });
     }
 };
+
+/**
+ * POST /auth/google/complete — Finishes first-time Google sign-up with a chosen password
+ */
+exports.googleComplete = async (req, res) => {
+    try {
+        const { setupToken, password, username } = req.body;
+        if (!setupToken || !password) {
+            return res.status(400).json({ success: false, message: 'Password is required.' });
+        }
+        if (String(password).length < 6) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        }
+
+        let payload;
+        try {
+            payload = jwt.verify(setupToken, process.env.JWT_SECRET);
+        } catch {
+            return res.status(400).json({ success: false, message: 'Google sign-up session expired. Please try again.' });
+        }
+        if (payload.purpose !== 'google-setup') {
+            return res.status(400).json({ success: false, message: 'Invalid sign-up session.' });
+        }
+
+        const email = payload.email;
+        const already = await prisma.user.findFirst({ where: { email } });
+        if (already) {
+            return res.status(400).json({ success: false, message: 'An account with this email already exists. Please sign in.' });
+        }
+
+        const desiredName = (username || '').trim().replace(/[^a-zA-Z0-9_\s]/g, '')
+            || (payload.displayName ? payload.displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '') : '')
+            || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')
+            || `User_${Math.floor(1000 + Math.random() * 9000)}`;
+        const taken = await prisma.user.findUnique({ where: { username: desiredName } });
+        const finalUsername = taken ? `${desiredName}_${Math.floor(100 + Math.random() * 900)}` : desiredName;
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await prisma.user.create({
+            data: {
+                username: finalUsername,
+                email,
+                password: hashedPassword,
+                phoneNumber: payload.phoneNumber || null,
+                role: 'customer',
+                isEmailVerified: true,
+                isPhoneVerified: !!payload.phoneNumber,
+                walletBalance: 0
+            }
+        });
+
+        const token = jwt.sign(
+            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000
+        };
+        res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
+
+        res.status(201).json({
+            success: true,
+            message: 'Account created! You can now sign in with Google or your password.',
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                email: user.email,
+                walletBalance: 0,
+                address: '',
+                phoneNumber: user.phoneNumber || '',
+                isPhoneVerified: user.isPhoneVerified || false,
+                isEmailVerified: true,
+                tenantId: user.tenantId
+            }
+        });
+    } catch (err) {
+        console.error('Google Complete Error:', err);
+        res.status(500).json({ success: false, message: 'Server error completing Google sign-up.' });
+    }
+};
+
+/**
+ * POST /auth/password/forgot — Emails a one-hour reset link (generic success to avoid account enumeration)
+ */
+exports.forgotPassword = async (req, res) => {
+    const generic = { success: true, message: 'If an account exists for that email, a reset link has been sent.', cooldownSeconds: 60 };
+    try {
+        const email = String(req.body.email || '').trim().toLowerCase();
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required.' });
+        }
+
+        const user = await prisma.user.findFirst({ where: { email } });
+        if (!user || user.role !== 'customer') {
+            return res.json(generic);
+        }
+
+        const recent = await prisma.emailVerification.findFirst({
+            where: { userId: user.id, token: { startsWith: 'rst_' } },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (recent) {
+            const elapsed = Math.floor((Date.now() - new Date(recent.createdAt).getTime()) / 1000);
+            if (elapsed < 60) {
+                return res.status(429).json({
+                    success: false,
+                    message: `Please wait ${60 - elapsed} seconds before requesting another reset email.`,
+                    cooldownRemaining: 60 - elapsed
+                });
+            }
+        }
+
+        await prisma.emailVerification.deleteMany({ where: { userId: user.id, token: { startsWith: 'rst_' } } });
+        const resetToken = 'rst_' + generateVerificationToken();
+        await prisma.emailVerification.create({
+            data: {
+                userId: user.id,
+                email: user.email,
+                token: resetToken,
+                expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+            }
+        });
+        await sendPasswordResetEmail(user.email, user.username, resetToken);
+
+        res.json(generic);
+    } catch (err) {
+        console.error('forgotPassword error:', err);
+        res.status(500).json({ success: false, message: 'Failed to send reset email. Please try again.' });
+    }
+};
+
+/**
+ * POST /auth/password/reset — Sets a new password using the emailed token
+ */
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        if (!token || !String(token).startsWith('rst_')) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired reset link.' });
+        }
+        if (!password || String(password).length < 6) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        }
+
+        const record = await prisma.emailVerification.findUnique({ where: { token } });
+        if (!record) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired reset link. Please request a new one.' });
+        }
+        if (new Date() > new Date(record.expiresAt)) {
+            await prisma.emailVerification.delete({ where: { token } }).catch(() => {});
+            return res.status(400).json({ success: false, message: 'This reset link has expired. Please request a new one.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+            where: { id: record.userId },
+            data: {
+                password: hashedPassword,
+                isEmailVerified: true,
+                tokenVersion: { increment: 1 }
+            }
+        });
+        await prisma.emailVerification.deleteMany({ where: { userId: record.userId, token: { startsWith: 'rst_' } } });
+
+        res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
+    } catch (err) {
+        console.error('resetPassword error:', err);
+        res.status(500).json({ success: false, message: 'Server error resetting password.' });
+    }
+};
+
 

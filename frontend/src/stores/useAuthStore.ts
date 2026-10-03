@@ -19,7 +19,10 @@ interface AuthState {
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
-  loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<AuthResponse>;
+  loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<AuthResponse & { needsPassword?: boolean; setupToken?: string; suggestedUsername?: string; email?: string }>;
+  completeGoogleSignup: (setupToken: string, password: string, username?: string) => Promise<AuthResponse>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;
@@ -150,7 +153,12 @@ export const useAuthStore = create<AuthState>()(
       loginWithGoogle: async (googleUserData) => {
         set({ isLoading: true });
         try {
-          const data = await api.post<AuthResponse>('/api/auth/google', googleUserData);
+          const data = await api.post<any>('/api/auth/google', googleUserData);
+          if (data.needsPassword) {
+            // First-time Google user: no account yet, caller must collect a password
+            set({ isLoading: false });
+            return { success: true, needsPassword: true, setupToken: data.setupToken, suggestedUsername: data.suggestedUsername, email: data.email };
+          }
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('stitch-session-active', 'true');
           }
@@ -160,6 +168,35 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return { success: false, message: err instanceof Error ? err.message : 'Google Sign-In failed' };
         }
+      },
+
+      completeGoogleSignup: async (setupToken, password, username) => {
+        set({ isLoading: true });
+        try {
+          const data = await api.post<{ user: User }>('/api/auth/google/complete', { setupToken, password, username });
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('stitch-session-active', 'true');
+          }
+          set({ user: data.user, isAuthenticated: true, isLoading: false, rememberMe: true });
+          return { success: true, user: data.user };
+        } catch (err) {
+          set({ isLoading: false });
+          return { success: false, message: err instanceof Error ? err.message : 'Could not finish Google sign-up' };
+        }
+      },
+
+      forgotPassword: async (email) => {
+        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
+          '/api/auth/password/forgot',
+          { email }
+        );
+      },
+
+      resetPassword: async (token, password) => {
+        return await api.post<{ success: boolean; message: string }>(
+          '/api/auth/password/reset',
+          { token, password }
+        );
       },
 
       logout: async () => {

@@ -130,7 +130,66 @@ async function sendVerificationEmail(recipientEmail, recipientName, verification
   return { success: true, simulated: true };
 }
 
+/**
+ * Sends a password reset email with a one-hour link.
+ */
+async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken) {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+  const businessName = process.env.BUSINESS_NAME || 'Stitch-Opt Designs';
+
+  const htmlContent = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #0f1117; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+      <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;">🔑 Reset Your Password</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 13px;">${businessName}</p>
+      </div>
+      <div style="padding: 28px 24px;">
+        <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">Hi <strong>${recipientName}</strong>,</p>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 24px;">
+          We received a request to reset your password. Click the button below to choose a new one.
+          This link expires in <strong style="color: #e2e8f0;">1 hour</strong>.
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-size: 14px; font-weight: 700;">Reset Password</a>
+        </div>
+        <p style="color: #64748b; font-size: 11px; line-height: 1.5; margin: 20px 0 0; word-break: break-all;">
+          If the button doesn't work, copy this URL into your browser:<br/>
+          <a href="${resetUrl}" style="color: #6366f1;">${resetUrl}</a>
+        </p>
+      </div>
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center;">
+        <p style="color: #475569; font-size: 11px; margin: 0;">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    </div>
+  `;
+
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: `"${businessName}" <${process.env.GMAIL_USER}>`,
+        to: recipientEmail,
+        subject: `Reset your password — ${businessName}`,
+        html: htmlContent,
+      });
+      console.log(`[Email Sent] Password reset to ${recipientEmail}, messageId: ${info.messageId}`);
+      return { success: true, simulated: false, messageId: info.messageId };
+    } catch (err) {
+      console.error('[Email Send Error]', err);
+    }
+  }
+
+  console.log('\n============================================================');
+  console.log('📧 [EMAIL GATEWAY SIMULATION — PASSWORD RESET]');
+  console.log(`Recipient: ${recipientEmail}`);
+  console.log(`Reset URL: ${resetUrl}`);
+  console.log('============================================================\n');
+  return { success: true, simulated: true };
+}
+
 module.exports = {
   generateVerificationToken,
   sendVerificationEmail,
+  sendPasswordResetEmail,
 };

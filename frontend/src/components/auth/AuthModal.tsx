@@ -27,7 +27,14 @@ export default function AuthModal() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, register, loginWithGoogle, isAuthenticated } = useAuthStore();
+  // Alternate views: normal login/register, forgot-password, or first-time Google password setup
+  const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [googleSetup, setGoogleSetup] = useState<{ token: string; email: string; username: string } | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const { login, register, loginWithGoogle, completeGoogleSignup, forgotPassword, isAuthenticated } = useAuthStore();
 
   // Listen to deep links (?auth=login or ?auth=register)
   useEffect(() => {
@@ -42,6 +49,11 @@ export default function AuthModal() {
 
   const handleClose = () => {
     setAuthOpen(false);
+    setView('main');
+    setForgotSent(false);
+    setGoogleSetup(null);
+    setNewPassword('');
+    setConfirmPassword('');
     if (authParam) {
       router.replace('/');
     }
@@ -66,6 +78,15 @@ export default function AuthModal() {
         phoneNumber: user.phoneNumber || '',
         uid: user.uid
       });
+
+      if (res.success && res.needsPassword && res.setupToken) {
+        // First-time Google user: ask them to create a password before the account is made
+        setGoogleSetup({ token: res.setupToken, email: res.email || user.email, username: res.suggestedUsername || '' });
+        setNewPassword('');
+        setConfirmPassword('');
+        setView('googleSetup');
+        return;
+      }
 
       if (res.success) {
         showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
@@ -169,8 +190,126 @@ export default function AuthModal() {
   };
 
   const handleForgotPassword = () => {
-    showToast('To reset your password, please contact store support or verify via email.', 'info');
+    setForgotSent(false);
+    setView('forgot');
   };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = email.trim();
+    if (!target || !target.includes('@')) {
+      showToast('Please enter the email address of your account.', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await forgotPassword(target.toLowerCase());
+      setForgotSent(true);
+    } catch (err: any) {
+      showToast(err.message || 'Could not send reset email.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleSetup) return;
+    if (newPassword.length < 6) {
+      showToast('Password must be at least 6 characters.', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('Passwords do not match.', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await completeGoogleSignup(googleSetup.token, newPassword, googleSetup.username);
+      if (res.success) {
+        showToast(`Welcome, ${res.user?.username || 'Customer'}! You can now also sign in with your password.`, 'success');
+        handleClose();
+        router.replace('/');
+        router.refresh();
+      } else {
+        showToast(res.message || 'Could not finish sign-up.', 'error');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const inputCls = 'w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40';
+
+  if (view === 'forgot') {
+    return (
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
+        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
+          <div className="text-center">
+            <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Reset Password</h2>
+            <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
+              {forgotSent
+                ? 'Check your inbox. If an account exists for that email, a reset link is on its way (valid for 1 hour).'
+                : "Enter your account email and we'll send you a link to set a new password."}
+            </p>
+          </div>
+          {!forgotSent && (
+            <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.75rem] font-bold text-text-dim ml-1">Email Address *</label>
+                <input type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+              </div>
+              <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
+                {isSubmitting ? 'Sending...' : 'Send Reset Link'}
+              </GlassButton>
+            </form>
+          )}
+          <button type="button" onClick={() => setView('main')} className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs">
+            ← Back to Sign In
+          </button>
+        </div>
+      </GlassModal>
+    );
+  }
+
+  if (view === 'googleSetup' && googleSetup) {
+    return (
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
+        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
+          <div className="text-center">
+            <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Create a Password</h2>
+            <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
+              Welcome! Set a password for <strong className="text-text-main">{googleSetup.email}</strong> so you can sign in with Google or with your email and password.
+            </p>
+          </div>
+          <form onSubmit={handleGoogleSetupSubmit} className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username</label>
+              <input type="text" value={googleSetup.username} onChange={(e) => setGoogleSetup({ ...googleSetup, username: e.target.value })} className={inputCls} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Password *</label>
+              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputCls} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Confirm Password *</label>
+              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="Re-enter password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputCls} />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer ml-1 select-none text-xs text-text-dim">
+              <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} className="accent-primary rounded cursor-pointer w-4 h-4" />
+              <span>Show password</span>
+            </label>
+            <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
+            </GlassButton>
+          </form>
+          <button type="button" onClick={handleClose} className="bg-transparent border-none text-text-dim hover:underline cursor-pointer p-0 text-xs">
+            Cancel
+          </button>
+        </div>
+      </GlassModal>
+    );
+  }
 
   return (
     <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
