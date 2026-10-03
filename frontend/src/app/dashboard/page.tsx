@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedCheckoutItems, setSelectedCheckoutItems] = useState<BasketItem[] | undefined>(undefined);
+  const [selectedFulfillmentType, setSelectedFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
@@ -226,8 +227,11 @@ export default function DashboardPage() {
         return (
           <BasketView
             onGoToShop={() => setActiveTab('shop')}
-            onOpenCheckout={(items) => {
+            onOpenCheckout={(items, fulfillmentType) => {
               setSelectedCheckoutItems(items);
+              if (fulfillmentType) {
+                setSelectedFulfillmentType(fulfillmentType);
+              }
               setIsCheckoutOpen(true);
             }}
           />

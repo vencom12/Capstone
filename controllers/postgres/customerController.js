@@ -186,13 +186,16 @@ exports.submitOrder = async (req, res) => {
                 });
             }
 
-            // Clean tracking code derived from order ID
+            // Detect pickup fulfillment
+            const isPickup = personalization?.fulfillmentType === 'pickup' || (typeof address === 'string' && address.toLowerCase().includes('pick-up'));
+            const courier = isPickup ? 'Store Pick-up' : (personalization?.courier || 'J&T Express');
             const cleanId = secureOrderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-            const initialTracking = `JNT-PH-78${cleanId}`;
+            const initialTracking = isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`;
 
             const orderPersonalization = {
                 ...(personalization && typeof personalization === 'object' ? personalization : {}),
-                courier: 'J&T Express',
+                fulfillmentType: isPickup ? 'pickup' : 'delivery',
+                courier,
                 trackingNumber: initialTracking,
                 statusHistory: [
                     {
@@ -200,7 +203,9 @@ exports.submitOrder = async (req, res) => {
                         timestamp: new Date().toISOString(),
                         actor: 'Customer Checkout',
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
-                        note: isInstantApproved ? 'Payment confirmed; placed in embroidery queue.' : 'Order submitted, pending payment confirmation.'
+                        note: isInstantApproved 
+                            ? (isPickup ? 'Payment confirmed; placed in embroidery queue for Store Pick-up.' : 'Payment confirmed; placed in embroidery queue for J&T Delivery.') 
+                            : 'Order submitted, pending payment confirmation.'
                     }
                 ]
             };

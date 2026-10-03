@@ -9,7 +9,7 @@ import type { BasketItem } from '@/lib/types';
 
 interface BasketViewProps {
   onGoToShop: () => void;
-  onOpenCheckout: (selectedItems?: BasketItem[]) => void;
+  onOpenCheckout: (selectedItems?: BasketItem[], fulfillmentType?: 'delivery' | 'pickup') => void;
 }
 
 export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewProps) {
@@ -20,6 +20,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
   // Selected item IDs for checkout
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
 
   useEffect(() => {
     setMounted(true);
@@ -96,7 +97,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       showToast('Please select at least one item to proceed to checkout.', 'error');
       return;
     }
-    onOpenCheckout(selectedItems);
+    onOpenCheckout(selectedItems, fulfillmentType);
   };
 
   // 1. EMPTY STATE
@@ -375,6 +376,39 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               </span>
             </h2>
 
+            {/* Fulfillment Method Selector */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
+                Fulfillment Method
+              </span>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setFulfillmentType('delivery')}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    fulfillmentType === 'delivery'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>🚚</span>
+                  <span>Door Delivery</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFulfillmentType('pickup')}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    fulfillmentType === 'pickup'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>🏪</span>
+                  <span>Store Pick-up</span>
+                </button>
+              </div>
+            </div>
+
             {/* Calculations Breakdown */}
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between items-center text-text-dim">
@@ -392,16 +426,16 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               </div>
 
               <div className="flex justify-between items-center text-text-dim">
-                <span>Logistics Partner:</span>
+                <span>Logistics:</span>
                 <span className="text-text-main font-medium text-xs">
-                  J&T Express Philippines
+                  {fulfillmentType === 'pickup' ? 'Store Counter Claiming' : 'J&T Express Philippines'}
                 </span>
               </div>
 
               <div className="flex justify-between items-center text-text-dim">
-                <span>Estimated Shipping:</span>
-                <span className="text-xs text-text-main font-semibold">
-                  Standard Rate / Store Pick-up
+                <span>Shipping Fee:</span>
+                <span className={`text-xs font-semibold ${fulfillmentType === 'pickup' ? 'text-emerald-400' : 'text-text-main'}`}>
+                  {fulfillmentType === 'pickup' ? 'FREE (Store Pick-up)' : 'Standard Delivery'}
                 </span>
               </div>
 
@@ -416,18 +450,34 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               </div>
             </div>
 
-            {/* Delivery Destination Preview */}
+            {/* Destination / Pick-up Preview */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col gap-1 text-xs">
               <span className="font-bold text-text-dim uppercase tracking-wider text-[0.65rem] flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                Delivering To
+                {fulfillmentType === 'pickup' ? (
+                  <>
+                    <span className="text-primary text-xs">🏪</span>
+                    Pick-up Location
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Delivering To
+                  </>
+                )}
               </span>
               <p className="text-white font-medium m-0 truncate">
-                {user?.address || 'Pacific Mall Lucena / Store Counter'}
+                {fulfillmentType === 'pickup'
+                  ? 'Eds Towels & Caps, Pacific Mall Lucena, Quezon'
+                  : (user?.address || 'Specify delivery address at checkout')}
               </p>
+              {fulfillmentType === 'pickup' && (
+                <span className="text-[0.68rem] text-primary/90 font-medium">
+                  Mall Hours: 10:00 AM – 8:00 PM Daily
+                </span>
+              )}
             </div>
 
             {/* Checkout CTA */}
@@ -437,25 +487,9 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               disabled={selectedItems.length === 0}
               className="w-full py-4 rounded-2xl bg-primary hover:bg-primary-light text-white font-extrabold text-sm tracking-wide transition-all duration-200 cursor-pointer border-none shadow-lg hover:shadow-primary/30 flex items-center justify-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
             >
-              <span>Proceed to GCash Checkout</span>
+              <span>{fulfillmentType === 'pickup' ? 'Proceed to Pick-up Checkout' : 'Proceed to GCash Checkout'}</span>
               <span className="transition-transform group-hover:translate-x-1 font-bold">→</span>
             </button>
-
-            {/* Trust Assurances */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-white/5 text-[0.72rem] text-text-dim">
-              <div className="flex items-center gap-2">
-                <span className="text-primary text-sm">🛡️</span>
-                <span>Eds Towels & Caps Embroidery (Official Studio)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 text-sm">✓</span>
-                <span>GCash Instant Reference & Thermal Waybill Label</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-amber-400 text-sm">📍</span>
-                <span>Operating at Pacific Mall Lucena, Quezon 4301</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -464,8 +498,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-surface/95 backdrop-blur-xl border-t border-border-glass p-3 px-4 z-40 flex items-center justify-between gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col">
           <span className="text-[0.68rem] text-text-dim uppercase tracking-wider font-semibold">
-            Total ({selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'})
-          </span>
+            Total ({selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'})</span>
+            <span className="text-[0.65rem] px-1.5 py-0.5 rounded bg-white/10 text-primary font-bold">{fulfillmentType === 'pickup' ? '🏪 Pick-up' : '🚚 Delivery'}</span>
           <span className="text-lg font-mono font-black text-primary leading-tight">
             ₱{selectedTotal.toFixed(2)}
           </span>

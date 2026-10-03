@@ -17,7 +17,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   // Check if personalization has saved tracking number, or derive standard format
   const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization as any : {};
   const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-  const trackingNumber = personalization.trackingNumber || `JNT-PH-78${cleanId}`;
+  const isPickup = personalization.fulfillmentType === 'pickup' ||
+    (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up')) ||
+    (personalization.courier && personalization.courier.toLowerCase().includes('pick-up')) ||
+    (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-'));
+  const trackingNumber = personalization.trackingNumber || (isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`);
 
   // Check if genuine recorded status history exists
   const recordedHistory: Array<{ status: string; timestamp: string; actor?: string; hub?: string; note?: string }> = 
@@ -224,7 +228,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   const handleCopyTracking = () => {
     navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
-    showToast('J&T Tracking Number copied to clipboard!', 'success');
+    showToast(isPickup ? 'Pick-up Claim Reference copied to clipboard!' : 'J&T Tracking Number copied to clipboard!', 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -252,18 +256,34 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
           <div>
             <h4 className="text-sm font-extrabold m-0 leading-tight">
-              {isDelivered
-                ? 'Parcel has been delivered'
-                : isOutForDelivery
-                  ? 'Parcel is out for delivery'
-                  : isInTransit
-                    ? 'Parcel is in transit'
-                    : 'Parcel is being prepared'}
+              {isPickup ? (
+                isDelivered
+                  ? 'Order Claimed at Pacific Mall Counter'
+                  : isOutForDelivery || isInTransit
+                    ? 'Ready for Counter Pick-up'
+                    : 'Crafting at Pacific Mall Studio'
+              ) : (
+                isDelivered
+                  ? 'Parcel has been delivered'
+                  : isOutForDelivery
+                    ? 'Parcel is out for delivery'
+                    : isInTransit
+                      ? 'Parcel is in transit'
+                      : 'Parcel is being prepared'
+              )}
             </h4>
             <p className="text-[0.72rem] text-text-dim m-0 mt-0.5">
-              {isDelivered
-                ? 'Delivered to recipient address • Verified'
-                : 'Estimated Arrival: 1-3 Business Days via J&T Express'}
+              {isPickup ? (
+                isDelivered
+                  ? 'Claimed by recipient at Eds Towels Counter • Verified'
+                  : isOutForDelivery || isInTransit
+                    ? 'Available for claiming at Pacific Mall Lucena (10:00 AM – 8:00 PM)'
+                    : 'Being hooped, digitized and stitched in our workshop'
+              ) : (
+                isDelivered
+                  ? 'Delivered to recipient address • Verified'
+                  : 'Estimated Arrival: 1-3 Business Days via J&T Express'
+              )}
             </p>
           </div>
         </div>
@@ -274,29 +294,44 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           title="View and print official 4x6 inch J&T Express thermal waybill sticker"
         >
-          <span>🏷️ J&T Waybill Sticker</span>
+          <span>{isPickup ? '📄 Claim Slip' : '🏷️ J&T Waybill Sticker'}</span>
         </button>
       </div>
 
       {/* 2. Logistics Partner & Tracking Number Card */}
       <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2.5">
-          {/* J&T Express Badge */}
-          <div className="flex items-center gap-1 bg-[#e11d48] text-white px-2 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
-            <span>J&T</span>
-            <span className="text-[9px] font-bold text-white/80">EXPRESS</span>
-          </div>
-          <div>
-            <span className="text-xs font-bold text-text-main block">Standard Delivery</span>
-            <span className="text-[0.7rem] text-text-dim">Official 3PL Logistics Partner</span>
-          </div>
+          {isPickup ? (
+            <>
+              <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+                <span>🏪</span>
+                <span>STORE PICK-UP</span>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-text-main block">Counter Claiming</span>
+                <span className="text-[0.7rem] text-text-dim">Pacific Mall Lucena Studio</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* J&T Express Badge */}
+              <div className="flex items-center gap-1 bg-[#e11d48] text-white px-2 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+                <span>J&T</span>
+                <span className="text-[9px] font-bold text-white/80">EXPRESS</span>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-text-main block">Standard Delivery</span>
+                <span className="text-[0.7rem] text-text-dim">Official 3PL Logistics Partner</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tracking Number with Copy */}
         <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
           <div className="text-right">
             <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
-              Tracking No.
+              {isPickup ? 'Claim Reference' : 'Tracking No.'}
             </span>
             <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
           </div>

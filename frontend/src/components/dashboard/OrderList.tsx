@@ -26,6 +26,8 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
   const title = getOrderTitle(order);
   const thumb = order.items?.[0]?.imageUrl;
   const percent = stage.step === 0 ? 0 : Math.round((stage.step / TOTAL_STEPS) * 100);
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
+  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
   return (
     <article className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
@@ -85,7 +87,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
             onClick={() => onTrack(order)}
             className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
           >
-            Track Delivery
+            {isPickup ? 'Track Pick-up' : 'Track Delivery'}
           </button>
         ) : stage.tone === 'done' ? (
           <button
