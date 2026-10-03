@@ -1,6 +1,21 @@
 // TypeScript interfaces derived from Prisma schema
 // These types mirror the database models and API response shapes
 
+export interface SavedAddress {
+  id: string;
+  recipientName: string;
+  phoneNumber: string;
+  region?: string;
+  province?: string;
+  city?: string;
+  barangay?: string;
+  postalCode?: string;
+  streetAddress: string;
+  fullAddress?: string;
+  label?: 'Home' | 'Work' | 'Other';
+  isDefault?: boolean;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -11,6 +26,8 @@ export interface User {
   isPhoneVerified?: boolean;
   isEmailVerified?: boolean;
   address?: string;
+  preferredDeliveryTime?: string;
+  savedAddresses?: SavedAddress[];
   createdAt: string;
 }
 
@@ -129,6 +146,11 @@ export interface DashboardState {
   transactions: Transaction[];
   receipts: Receipt[];
   walletBalance: number;
+  address?: string;
+  phoneNumber?: string;
+  isEmailVerified?: boolean;
+  savedAddresses?: SavedAddress[];
+  preferredDeliveryTime?: string;
   user?: User;
   productPagination?: {
     currentPage: number;

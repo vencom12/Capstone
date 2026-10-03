@@ -35,6 +35,7 @@ model User {
   isEmailVerified Boolean @default(false)
   address       String?
   preferredDeliveryTime String?
+  savedAddresses Json?   @default("[]")
   tokenVersion  Int      @default(0)
   createdAt     DateTime @default(now())
   shiftStatus   String   @default("offline") // clocked_in, offline

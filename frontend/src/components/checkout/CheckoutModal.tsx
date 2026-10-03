@@ -10,6 +10,8 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import AddressSelect from '@/components/ui/AddressSelect';
 import GCashPayment from './GCashPayment';
+import AddressBookModal from '@/components/dashboard/AddressBookModal';
+import type { SavedAddress } from '@/lib/types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -39,19 +41,22 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
 
-  // Inline Delivery Address & Contact Phone management (Gold Standard Just-in-Time)
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  // Shopee-Style Delivery Address & Contact Phone management
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState<SavedAddress | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setDeliveryAddress(user.address || '');
-      setDeliveryPhone(user.phoneNumber || '');
-      // If user has no address, open the address selector by default
-      if (!user.address) {
-        setIsEditingAddress(true);
+      if (user.savedAddresses && user.savedAddresses.length > 0) {
+        const primary = user.savedAddresses.find((a) => a.isDefault) || user.savedAddresses[0];
+        setSelectedSavedAddress(primary);
+        setDeliveryAddress(primary.fullAddress || primary.streetAddress);
+        setDeliveryPhone(primary.phoneNumber || user.phoneNumber || '');
+      } else {
+        setDeliveryAddress(user.address || '');
+        setDeliveryPhone(user.phoneNumber || '');
       }
     }
   }, [user, isOpen]);
@@ -232,85 +237,61 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-[650px]:grid-cols-1 max-[650px]:gap-4">
           {/* Left: Delivery & Summary */}
           <div className="flex flex-col gap-5 max-[650px]:gap-3">
-            <div className="flex flex-col gap-2.5">
+            {/* Delivery Address Section (Shopee-Style) */}
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                   Delivery Address
                 </h3>
-                {user?.address && !isEditingAddress && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingAddress(true)}
-                    className="text-[0.75rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-                  >
-                    Change
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setIsAddressBookOpen(true)}
+                  className="text-xs font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
+                >
+                  {deliveryAddress || user?.address ? 'Change' : '+ Add Address'}
+                </button>
               </div>
 
-              {/* Just-in-Time Address Selector */}
-              {isEditingAddress || !user?.address ? (
-                <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-white/[0.04] border border-border-glass">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[0.75rem] font-bold text-text-dim">Specify Delivery Destination</span>
-                    {user?.address && (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingAddress(false)}
-                        className="text-[0.7rem] text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer"
-                      >
-                        Keep Current
-                      </button>
-                    )}
-                  </div>
-
-                  <AddressSelect
-                    value={deliveryAddress}
-                    onChange={(val) => setDeliveryAddress(val)}
-                  />
-
-                  {(!user?.phoneNumber || !user.isPhoneVerified) && (
-                    <div className="flex flex-col gap-1 mt-1">
-                      <label className="text-[0.72rem] font-bold text-text-dim">Contact Phone (For Rider / Dispatch updates)</label>
-                      <input 
-                        type="tel"
-                        maxLength={13}
-                        placeholder="e.g. 0917 123 4567"
-                        value={deliveryPhone}
-                        onChange={(e) => setDeliveryPhone(e.target.value.replace(/[^\d+]/g, ''))}
-                        className="w-full bg-bg-surface border border-border-glass px-3 py-1.5 rounded-lg text-text-main text-xs outline-none focus:border-primary"
-                      />
+              {/* Shopee-style active address card */}
+              <div
+                onClick={() => setIsAddressBookOpen(true)}
+                className="p-3.5 bg-white/[0.04] border border-border-glass hover:border-primary/40 rounded-2xl flex flex-col gap-1.5 cursor-pointer transition-all group"
+              >
+                {deliveryAddress || user?.address ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs text-text-main">
+                          {selectedSavedAddress?.recipientName || user?.username || 'Customer'}
+                        </span>
+                        <span className="text-xs text-text-dim">
+                          | {deliveryPhone || selectedSavedAddress?.phoneNumber || user?.phoneNumber || 'No phone set'}
+                        </span>
+                        {selectedSavedAddress?.label && (
+                          <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-white/10 text-text-dim border border-border-glass">
+                            {selectedSavedAddress.label}
+                          </span>
+                        )}
+                        {selectedSavedAddress?.isDefault && (
+                          <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-primary/20 text-primary border border-primary/30">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-primary font-bold group-hover:underline">Edit ›</span>
                     </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mt-1">
-                    <button
-                      type="button"
-                      onClick={handleSaveDeliveryInfo}
-                      disabled={isSavingProfile || !deliveryAddress.trim()}
-                      className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs border-none cursor-pointer disabled:opacity-50 transition-all"
-                    >
-                      {isSavingProfile ? 'Saving...' : 'Confirm Address'}
-                    </button>
+                    <p className="text-xs text-text-dim m-0 leading-relaxed group-hover:text-text-main transition-colors">
+                      {deliveryAddress || selectedSavedAddress?.fullAddress || user?.address}
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-text-dim py-1">
+                    <span>No delivery address specified</span>
+                    <span className="text-primary font-bold">+ Choose Address</span>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5 p-3 bg-white/[0.04] border border-border-glass rounded-xl">
-                  <div className="flex items-start gap-2 text-text-main text-xs leading-relaxed">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary mt-0.5 shrink-0">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    <span className="font-medium flex-1">{user.address}</span>
-                  </div>
-                  {user.phoneNumber && (
-                    <div className="flex items-center gap-2 text-text-dim text-[0.75rem] ml-5">
-                      <span>{user.phoneNumber}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
 
               <textarea 
                 placeholder="Special notes or landmark instructions for delivery..." 
@@ -414,6 +395,17 @@ export default function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
           </div>
         </div>
       </div>
+          {/* Shopee-style Address Book Modal */}
+      <AddressBookModal
+        isOpen={isAddressBookOpen}
+        onClose={() => setIsAddressBookOpen(false)}
+        onSelectAddress={(addr) => {
+          setSelectedSavedAddress(addr);
+          setDeliveryAddress(addr.fullAddress || addr.streetAddress);
+          setDeliveryPhone(addr.phoneNumber);
+        }}
+        selectedAddressId={selectedSavedAddress?.id}
+      />
     </GlassModal>
   );
 }

@@ -88,6 +88,13 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           </span>
         )}
 
+        {/* Low Stock badge */}
+        {!isOutOfStock && availableStock > 0 && availableStock <= 5 && (
+          <span className="absolute top-3 left-3 bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm backdrop-blur-[2px]">
+            Only {availableStock} left
+          </span>
+        )}
+
         {/* Favorite button */}
         <button
           suppressHydrationWarning
@@ -138,8 +145,12 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             fullWidth
             size="sm"
             onClick={(e) => {
-              e.stopPropagation();
-              onQuickView(product);
+              if (product.variants && product.variants.length > 0) {
+                e.stopPropagation();
+                onQuickView(product);
+              } else {
+                handleAddToBasket(e);
+              }
             }}
             disabled={isOutOfStock}
           >

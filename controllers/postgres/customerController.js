@@ -33,6 +33,9 @@ exports.getDashboardState = async (req, res) => {
             favorites: enrichedFavorites,
             walletBalance: currentUser ? currentUser.walletBalance : 0,
             address: currentUser ? currentUser.address : '',
+            phoneNumber: currentUser ? currentUser.phoneNumber : '',
+            isEmailVerified: currentUser ? currentUser.isEmailVerified : false,
+            savedAddresses: currentUser ? (currentUser.savedAddresses || []) : [],
             preferredDeliveryTime: currentUser ? currentUser.preferredDeliveryTime : '',
             transactions,
             receipts
@@ -635,15 +638,16 @@ exports.validatePayment = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
-        const { username, email, address, phoneNumber, currentPassword, newPassword, preferredDeliveryTime } = req.body;
+        const { username, email, address, phoneNumber, currentPassword, newPassword, preferredDeliveryTime, savedAddresses } = req.body;
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const updateData = {};
         if (username) updateData.username = username;
         if (email) updateData.email = email;
-        if (address) updateData.address = address;
-        if (phoneNumber) updateData.phoneNumber = phoneNumber;
+        if (address !== undefined) updateData.address = address;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (savedAddresses !== undefined) updateData.savedAddresses = savedAddresses;
         if (preferredDeliveryTime !== undefined) updateData.preferredDeliveryTime = preferredDeliveryTime;
 
         if (newPassword) {

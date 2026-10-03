@@ -153,6 +153,7 @@ exports.login = async (req, res) => {
                 phoneNumber: user.phoneNumber || '',
                 isPhoneVerified: user.isPhoneVerified || false,
                 isEmailVerified: user.isEmailVerified || false,
+                savedAddresses: user.savedAddresses || [],
                 tenantId: user.tenantId
             } 
         });
@@ -181,7 +182,20 @@ exports.me = async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user.id },
-            select: { id: true, username: true, role: true }
+            select: { 
+                id: true, 
+                username: true, 
+                role: true, 
+                email: true, 
+                walletBalance: true, 
+                address: true, 
+                phoneNumber: true, 
+                isPhoneVerified: true, 
+                isEmailVerified: true, 
+                preferredDeliveryTime: true,
+                savedAddresses: true,
+                tenantId: true 
+            }
         });
         if (!user) return res.status(401).json({ message: 'User not found' });
         res.json({ user });

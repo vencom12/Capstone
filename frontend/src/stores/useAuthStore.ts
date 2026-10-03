@@ -190,6 +190,8 @@ export const useAuthStore = create<AuthState>()(
               user: { 
                 ...get().user!, 
                 address: data.address ?? get().user!.address,
+                phoneNumber: data.phoneNumber ?? get().user!.phoneNumber,
+                savedAddresses: data.savedAddresses ?? get().user!.savedAddresses ?? [],
                 preferredDeliveryTime: data.preferredDeliveryTime ?? (get().user as any)?.preferredDeliveryTime,
                 isEmailVerified: data.isEmailVerified ?? get().user!.isEmailVerified,
               } 

@@ -17,6 +17,10 @@ import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import AddressSelect from '@/components/ui/AddressSelect';
 import { TableSkeleton, CardSkeleton, ProductCardSkeleton } from '@/components/ui/Skeletons';
+import OrderMilestoneHero from '@/components/dashboard/OrderMilestoneHero';
+import AddressBookModal from '@/components/dashboard/AddressBookModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
+import { useBasketStore } from '@/stores/useBasketStore';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -35,6 +39,64 @@ export default function DashboardPage() {
   const [orderDetailsTab, setOrderDetailsTab] = useState<'summary' | 'tracking'>('summary');
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
+  const [selectedInvoiceTx, setSelectedInvoiceTx] = useState<any | null>(null);
+
+  // 1-Click Reorder Action
+  const handleReorder = (order: Order) => {
+    if (!order.items || order.items.length === 0) {
+      showToast('No catalog items available to reorder from this project.', 'info');
+      return;
+    }
+    const { addItem } = useBasketStore.getState();
+    let count = 0;
+    order.items.forEach((item) => {
+      addItem({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        selectedVariant: item.selectedVariant,
+        selectedColor: item.selectedColor,
+        selectedSize: item.selectedSize,
+        quantity: item.quantity || 1
+      });
+      count += (item.quantity || 1);
+    });
+    showToast(`Added ${count} item(s) from ${order.orderId} to your basket!`, 'success');
+    setBasketOpen(true);
+  };
+
+  // Move All Favorites to Basket
+  const handleMoveAllFavoritesToBasket = () => {
+    if (favorites.length === 0) {
+      showToast('Your favorites list is empty', 'info');
+      return;
+    }
+    const { addItem } = useBasketStore.getState();
+    let count = 0;
+    favorites.forEach((prod) => {
+      const isOutOfStock = prod.isOutOfStock !== undefined ? prod.isOutOfStock : ((prod.count ?? 0) - (prod.reservedCount ?? 0) <= 0);
+      if (!isOutOfStock) {
+        addItem({
+          productId: prod.id || prod._id || '',
+          name: prod.name,
+          price: prod.price,
+          imageUrl: prod.imageUrl,
+          quantity: 1
+        });
+        count++;
+      }
+    });
+    if (count > 0) {
+      showToast(`Moved ${count} favorite item(s) into your basket!`, 'success');
+      setBasketOpen(true);
+    } else {
+      showToast('All favorited items are currently out of stock.', 'error');
+    }
+  };
   
   // Settings State — inline edit one field at a time
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -159,6 +221,14 @@ export default function DashboardPage() {
       case 'shop':
         return (
           <section className="flex flex-col h-full animate-[fadeIn_0.3s_ease-out]">
+            <OrderMilestoneHero 
+              orders={orders} 
+              onViewDetails={(ord, tab) => {
+                setSelectedOrder(ord);
+                setOrderDetailsTab(tab || 'summary');
+                setIsOrderDetailsOpen(true);
+              }} 
+            />
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-[650px]:mb-3">
               <div className="max-[1100px]:w-full">
                 <h1 className="text-xl font-bold mb-0.5 max-[650px]:text-lg">Design Catalog</h1>
@@ -588,6 +658,76 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Shopee-Style Saved Addresses Panel */}
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+                <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-base font-bold text-text-main m-0">My Delivery Addresses</h3>
+                    <p className="text-xs text-text-dim m-0 mt-0.5">Shopee-style multi-address book for rapid checkout</p>
+                  </div>
+                  <button
+                    onClick={() => setIsAddressBookOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                  >
+                    <span>Manage / Add</span>
+                    <span>+</span>
+                  </button>
+                </div>
+                <div className="p-6 flex flex-col gap-3">
+                  {user?.savedAddresses && user.savedAddresses.length > 0 ? (
+                    user.savedAddresses.slice(0, 3).map((addr) => (
+                      <div
+                        key={addr.id}
+                        onClick={() => setIsAddressBookOpen(true)}
+                        className={`p-3.5 rounded-xl border flex flex-col gap-1.5 cursor-pointer transition-all ${
+                          addr.isDefault
+                            ? 'border-primary/40 bg-primary/5'
+                            : 'border-border-glass bg-bg-surface/60 hover:bg-bg-surface'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-text-main">{addr.recipientName}</span>
+                            <span className="text-xs text-text-dim">| {addr.phoneNumber}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-white/10 text-text-dim border border-border-glass">
+                              {addr.label || 'Home'}
+                            </span>
+                            {addr.isDefault && (
+                              <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-primary/20 text-primary border border-primary/30">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-primary font-semibold">Edit</span>
+                        </div>
+                        <p className="text-xs text-text-dim m-0 leading-relaxed truncate">
+                          {addr.fullAddress || addr.streetAddress}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-xs text-text-dim">
+                      <p className="m-0">No saved addresses yet.</p>
+                      <button
+                        onClick={() => setIsAddressBookOpen(true)}
+                        className="mt-2 text-primary font-bold hover:underline bg-transparent border-none cursor-pointer"
+                      >
+                        + Add Your First Address
+                      </button>
+                    </div>
+                  )}
+
+                  {user?.savedAddresses && user.savedAddresses.length > 3 && (
+                    <button
+                      onClick={() => setIsAddressBookOpen(true)}
+                      className="text-xs text-center text-primary font-bold hover:underline bg-transparent border-none cursor-pointer py-1"
+                    >
+                      View all {user.savedAddresses.length} addresses ›
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Preferences / Theme Panel */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
@@ -682,6 +822,21 @@ export default function DashboardPage() {
         onClose={() => setIsOrderDetailsOpen(false)}
         initialTab={orderDetailsTab}
       />
+      {/* Address Book Modal */}
+      <AddressBookModal
+        isOpen={isAddressBookOpen}
+        onClose={() => setIsAddressBookOpen(false)}
+      />
+
+      {/* Official Tax Invoice Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        order={selectedInvoiceOrder}
+        transaction={selectedInvoiceTx}
+        user={user}
+      />
+
       {/* Receipt Modal */}
       <ReceiptModal
         transactionId={selectedTransactionId}
