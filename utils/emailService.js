@@ -7,13 +7,13 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 /**
- * Creates and returns a reusable Nodemailer transporter.
- * Uses Gmail SMTP with an App Password for authentication.
+ * Creates and returns a reusable Nodemailer transporter or Resend client.
+ * Uses Gmail SMTP with an App Password or Resend API key for authentication.
  * Falls back to console simulation if credentials are missing.
  */
 function createTransporter() {
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS;
 
   if (!gmailUser || !gmailAppPassword) {
     return null; // Will use simulation mode
