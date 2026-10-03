@@ -40,7 +40,9 @@ export default function GCashPayment({
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  const accountNo = "09171234567";
+  const accountNo = "09288103928";
+  const displayAccountNo = "0928 810 3928";
+  const activeQrCodeUrl = qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent("09288103928")}&size=200x200&margin=8`;
   const total = Number(finalTotal ?? totalAmount ?? 0);
   const analyzing = Boolean(aiAnalyzing ?? isAnalyzing);
   const verified = Boolean(paymentVerified ?? isVerified);
@@ -50,7 +52,7 @@ export default function GCashPayment({
     navigator.clipboard.writeText(text);
     if (type === 'number') {
       setCopiedNumber(true);
-      showToast('Account number copied to clipboard!', 'success');
+      showToast('GCash number (0928 810 3928) copied to clipboard!', 'success');
       setTimeout(() => setCopiedNumber(false), 2000);
     } else {
       setCopiedAmount(true);
@@ -78,35 +80,36 @@ export default function GCashPayment({
         </div>
         
         <p className="text-[0.75rem] text-text-dim m-0 leading-relaxed">
-          Transfer to our official account & upload your payment screenshot:
+          Transfer to our official store GCash account & upload your payment screenshot:
         </p>
 
         <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
           <div className="flex flex-col">
-            <span className="text-[0.7rem] text-text-dim">Account Number</span>
-            <span className="text-[#007df2] font-bold text-[0.9rem]">0917-123-4567</span>
+            <span className="text-[0.7rem] text-text-dim">GCash Number</span>
+            <span className="text-[#007df2] font-black text-sm tracking-wide">{displayAccountNo}</span>
           </div>
           <button
             type="button"
             onClick={() => copyToClipboard(accountNo, 'number')}
-            className="bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1.5 rounded-lg text-[0.75rem] transition-all cursor-pointer border border-white/10"
+            className="bg-primary hover:bg-primary/90 text-white font-bold px-3 py-1.5 rounded-lg text-[0.75rem] transition-all cursor-pointer border border-primary/30 shadow-sm"
           >
-            {copiedNumber ? '✓ Copied' : 'Copy No.'}
+            {copiedNumber ? '✓ Copied' : 'Copy Number'}
           </button>
         </div>
 
         <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
           <span className="text-text-dim">Account Name:</span>
-          <span className="text-white font-bold">STITCH-OPT CORP</span>
+          <span className="text-white font-bold text-[0.8rem]">STITCH-OPT (PACIFIC MALL)</span>
         </div>
 
-        {qrCodeUrl && (
+        {activeQrCodeUrl && (
           <div className="mt-1 flex flex-col items-center">
             <div 
               onClick={() => setShowQrModal(true)}
               className="relative group cursor-pointer bg-white p-2 rounded-xl shadow-lg border border-white/20 hover:scale-105 transition-all duration-200"
             >
-              <img src={qrCodeUrl} alt="GCash QR Code" className="max-h-36 object-contain rounded-lg" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={activeQrCodeUrl} alt="GCash QR Code" className="max-h-36 object-contain rounded-lg" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
                 <span className="text-white font-bold text-[0.75rem] bg-black/60 px-3 py-1 rounded-full">Tap to Enlarge</span>
               </div>
@@ -186,7 +189,7 @@ export default function GCashPayment({
       )}
 
       {/* QR Code Fullscreen Lightbox Modal */}
-      {showQrModal && qrCodeUrl && (
+      {showQrModal && activeQrCodeUrl && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={() => setShowQrModal(false)}>
           <div className="bg-bg-dark border border-white/20 p-6 rounded-3xl flex flex-col items-center gap-4 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <button
@@ -197,7 +200,8 @@ export default function GCashPayment({
             </button>
             <h3 className="text-white font-bold text-base m-0">GCash Official QR Code</h3>
             <div className="bg-white p-3 rounded-2xl shadow-inner">
-              <img src={qrCodeUrl} alt="GCash QR Code Enlarged" className="w-64 h-64 object-contain" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={activeQrCodeUrl} alt="GCash QR Code Enlarged" className="w-64 h-64 object-contain" />
             </div>
             <p className="text-text-dim text-[0.75rem] text-center m-0">Open your GCash App, tap QR, and scan this code directly.</p>
           </div>
