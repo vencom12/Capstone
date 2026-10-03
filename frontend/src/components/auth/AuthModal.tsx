@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import AddressSelect from '@/components/ui/AddressSelect';
 import { auth, googleProvider } from '@/lib/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, type ConfirmationResult } from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup, signInWithRedirect, getRedirectResult, type ConfirmationResult } from 'firebase/auth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -43,6 +43,16 @@ export default function AuthModal() {
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     try {
+      // In production or mobile browsers, signInWithPopup is often blocked by cross-origin privacy / third-party cookie restrictions.
+      // We attempt signInWithPopup, but fall back seamlessly to signInWithRedirect if blocked or closed.
+      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      
+      if (!isLocalhost) {
+        // Direct redirect on deployed production domain avoids popup cross-site cookie blocking
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
@@ -67,8 +77,14 @@ export default function AuthModal() {
       }
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        showToast('Sign-in popup was closed.', 'info');
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+        // If popup was blocked or closed unexpectedly, initiate redirect instead
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          showToast(redirectErr.message || 'Failed to start Google sign-in.', 'error');
+        }
       } else if (err.code === 'auth/unauthorized-domain') {
         showToast('Domain is not authorized in Firebase Console.', 'error');
       } else {
@@ -78,6 +94,43 @@ export default function AuthModal() {
       setIsSubmitting(false);
     }
   };
+
+  // Check for returning from signInWithRedirect
+  useEffect(() => {
+    let isMounted = true;
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!isMounted || !result || !result.user) return;
+        const user = result.user;
+        if (!user.email) {
+          showToast('No email associated with this Google account.', 'error');
+          return;
+        }
+        const res = await loginWithGoogle({
+          email: user.email,
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '',
+          uid: user.uid
+        });
+        if (res.success) {
+          showToast('Signed in with Google successfully!', 'success');
+          handleClose();
+          window.location.href = '/';
+        } else {
+          showToast(res.message || 'Google sign-in failed on server.', 'error');
+        }
+      })
+      .catch((error) => {
+        if (error.code && error.code !== 'auth/null-user') {
+          console.error('Redirect sign-in error:', error);
+          showToast(error.message || 'Error completing Google sign-in.', 'error');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loginWithGoogle]);
 
   const getRecaptchaVerifier = () => {
     if (typeof window === 'undefined') return null;
