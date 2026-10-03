@@ -6,7 +6,7 @@ export interface User {
   username: string;
   email: string;
   role: 'admin' | 'employee' | 'customer';
-  walletBalance: number;
+  walletBalance?: number;
   phoneNumber?: string;
   isPhoneVerified?: boolean;
   isEmailVerified?: boolean;

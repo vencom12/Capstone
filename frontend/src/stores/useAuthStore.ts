@@ -170,7 +170,6 @@ export const useAuthStore = create<AuthState>()(
             set({ 
               user: { 
                 ...get().user!, 
-                walletBalance: data.walletBalance ?? get().user!.walletBalance,
                 address: data.address ?? get().user!.address,
                 preferredDeliveryTime: data.preferredDeliveryTime ?? (get().user as any)?.preferredDeliveryTime,
                 isEmailVerified: data.isEmailVerified ?? get().user!.isEmailVerified,

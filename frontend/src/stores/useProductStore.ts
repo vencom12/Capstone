@@ -16,7 +16,6 @@ interface ProductStoreState {
   favorites: Product[];
   transactions: Transaction[];
   receipts: Receipt[];
-  walletBalance: number;
 
   searchQuery: string;
   selectedCategory: string;
@@ -41,7 +40,6 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
   favorites: [],
   transactions: [],
   receipts: [],
-  walletBalance: 0,
 
   searchQuery: '',
   selectedCategory: 'All',
@@ -71,7 +69,6 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
         favorites: data.favorites || [],
         transactions: data.transactions || [],
         receipts: data.receipts || [],
-        walletBalance: data.walletBalance || 0,
         isSyncing: false,
       });
     } catch (err: any) {
