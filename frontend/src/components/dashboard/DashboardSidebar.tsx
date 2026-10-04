@@ -156,7 +156,18 @@ export default function DashboardSidebar({
         {/* ============================================================ */}
         <div className="hidden max-md:flex flex-col flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
           {/* Quick Account Profile Card */}
-          <div className="p-3 rounded-2xl bg-white/[0.04] border border-border-glass flex items-center gap-3">
+          <button
+            onClick={() => {
+              setActiveTab('settings');
+              closeMobileDrawer();
+            }}
+            className={`w-full p-3 rounded-2xl border flex items-center gap-3 text-left cursor-pointer transition-all ${
+              activeTab === 'settings'
+                ? 'bg-primary/15 border-primary text-text-main shadow-sm'
+                : 'bg-white/[0.04] border-border-glass hover:bg-white/10 text-text-main'
+            }`}
+            title="Open Account Settings"
+          >
             <div className="w-11 h-11 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-base shrink-0">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
             </div>
@@ -171,7 +182,8 @@ export default function DashboardSidebar({
               </div>
               <p className="text-[0.75rem] text-text-dim truncate m-0">{user?.email || 'Customer Account'}</p>
             </div>
-          </div>
+            <span className="text-xs text-text-dim opacity-70">⚙️</span>
+          </button>
 
           {/* Drawer Section 1: Customer Activity & Shortcuts */}
           <div>
