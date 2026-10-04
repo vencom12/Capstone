@@ -216,3 +216,80 @@ To synchronize your deployed instance on Render with all local improvements:
    - Click a variant badge inside the basket to reselect garment options on the fly.
    - Click "Clear Basket" to test the custom confirmation dialog.
    - Select orders in the Admin dashboard to test **Batch Print Labels** and the **Handover Manifest**.
+
+---
+
+## 9. Automated Dual-OCR Payment Verification & Anti-Fraud Engine
+
+### Architectural Overview
+To eliminate vulnerabilities surrounding GCash screenshot uploads, the verification pipeline was upgraded with strict cryptographic-like safety checks, duplicate receipt rejection, and multi-tier OCR fallback:
+
+```
+[Customer Uploads Receipt Screenshot]
+                │
+                ▼
+[Cloud Multimodal Vision OCR (Groq / Qwen / Llama 3.2)]
+       │ (if fails or times out)
+       ▼
+[In-House Local OCR Engine (Tesseract.js)]
+                │
+                ▼
+      [Receipt Data Extracted]
+ (Reference No, Amount, Timestamp, Merchant)
+                │
+                ├─────────────────────────────────────────────────┐
+                ▼                                                 ▼
+[1. Uniqueness Gate (Postgres & Mongo)]         [2. Amount & Freshness Tolerances]
+- Checks if Reference No. was already             - Extracted amount must match order total.
+  recorded in any approved order.                 - Receipt date cannot predate order or
+- Prevents reusing the same receipt.                exceed 48-hour freshness window.
+                │                                                 │
+                └─────────────────┬───────────────────────────────┘
+                                  ▼
+                     [Multi-Vector Decision]
+                                  │
+     ┌────────────────────────────┼────────────────────────────┐
+     ▼                            ▼                            ▼
+[Auto-Approved]          [Flagged for Review]         [Instant Rejection]
+High confidence score     Borderline match or         Duplicate reference no.
+& all checks clear.       blurry screenshot.          or amount mismatch.
+```
+
+### Key Security Safeguards
+1. **Cross-Order Uniqueness Index**:
+   - Queries both MongoDB and PostgreSQL databases to check if the extracted `referenceId` has ever been credited to another order.
+   - Prevents the attack vector where a customer places a second order using a previously approved receipt screenshot.
+2. **Amount Tolerance Matching**:
+   - Matches receipt total against the expected checkout total, rejecting partial payments or underpayments automatically.
+3. **Timestamp Freshness & Anti-Replay Gate**:
+   - Compares the receipt's printed timestamp against the order creation time to prevent the use of old or recycled receipts from days or weeks prior.
+4. **Resilient Dual-OCR Pipeline**:
+   - **Primary**: Cloud-hosted high-resolution Multimodal LLM Vision API.
+   - **Secondary (Zero-Downtime Fallback)**: In-house `Tesseract.js` running locally on the server to extract text even if the remote AI API experiences rate limits or network latency.
+5. **Customer-Centric Non-Technical Messaging**:
+   - Removed technical stack traces and confidential security logic from user toasts.
+   - Provides clear, friendly, actionable guidance: *"Please upload a clear, original GCash payment receipt showing the reference number and exact order amount."*
+
+---
+
+## 10. Admin Settings & Configuration Modernization (`PanelSettings.tsx`)
+
+### Problem Statement
+The administrative settings panel suffered from:
+1. **Empty / Broken Icon Containers**: Several section headings rendered empty `<div>` boxes without icons.
+2. **Pompous / Over-Engineered Jargon**: Terminology like *"Luxury Gift Suite Price"*, *"Business Solutions Pricing"*, and *"Fulfillment Channel Policy: Counter Pick-up Only (Isolated)"* alienated business owners.
+3. **Monolithic Vertical Layout**: Five unrelated management domains were dumped into a single long scrolling list with scattered save buttons.
+
+### Redesign & Implementation
+1. **Sub-Tab Categorization**:
+   Organized settings into 4 clean, focused tabs with dedicated status indicators:
+   - 🏬 **Store & Branding**: Business name, tagline, address, phone, support email, website link, and visual asset cards.
+   - 🚚 **Fulfillment & Pricing**: J&T Express courier shipping toggle (with live status badge and checkout behavior explanation) and Gift Packaging price input.
+   - 🤖 **AI & Automation**: Chat assistant model selection, receipt OCR vision model selection, API endpoint URL, confidence threshold slider, and an interactive diagnostic connection test tool with latency readout.
+   - 🎨 **Theme & Appearance**: Dark Mode and Light Mode cards with visual preview badges.
+2. **Vector Iconography**:
+   - Replaced all empty circle containers with crisp, thematic SVGs for each category.
+3. **Simplified Business Terminology**:
+   - Converted all pretentious jargon into clean, standard business language understandable by non-technical shop managers.
+4. **Visual Upload Cards**:
+   - Created dedicated preview containers for the **Store Logo** and **GCash QR Code** with thumbnail previews, delete triggers (`×`), and styled file upload pickers.

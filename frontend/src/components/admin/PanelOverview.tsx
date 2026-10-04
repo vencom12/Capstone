@@ -226,15 +226,6 @@ export default function PanelOverview({
     'Ready For Pick Up': '#10b981'  // Emerald/Success
   };
 
-  // AI Main Tip text based on pending queue size
-  let aiTipText = '';
-  if (pendingOrders.length > 10) {
-    aiTipText = `Revenue Alert: High volume detected. ${pendingOrders.length} orders are currently generating value in the queue.`;
-  } else if (pendingOrders.length > 0) {
-    aiTipText = `Operational Health: Stable. You have ${pendingOrders.length} active orders moving through the system.`;
-  } else {
-    aiTipText = `System Status: Ready. All orders have been fulfilled. Awaiting new designs or customer checkout.`;
-  }
 
   // 2. Fetch Receipt Details
   const viewReceipt = async (order: any) => {
@@ -360,55 +351,17 @@ export default function PanelOverview({
     <section className="animate-fade flex flex-col min-h-full text-left">
 
 
-      {/* AI Master Banner */}
-      <div className="glass-card mb-5 relative overflow-hidden flex flex-col gap-3 shrink-0 border border-border-glass p-5 rounded-[24px]">
-        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          </div>
-          <div className="flex flex-col text-left">
-            <span className="font-extrabold text-[0.95rem] text-text-main leading-tight">StitchMaster AI Production Insights</span>
-            <span className="text-[0.78rem] text-text-dim mt-0.5" id="ai-main-tip">{aiTipText}</span>
-          </div>
-        </div>
-
-        {/* insights card container */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-1.5" id="ai-insights-container">
-          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Predicted Revenue</span>
-            <span className="text-lg font-extrabold text-success mt-1">₱{queuedRevenue.toFixed(2)}</span>
-          </div>
-          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Actual Revenue</span>
-            <span className="text-lg font-extrabold text-primary mt-1">₱{realizedRevenue.toFixed(2)}</span>
-          </div>
-          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all relative group">
-            <div className="flex items-center justify-between">
-              <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Catalog Velocity</span>
-              <span
-                className="text-text-dim/70 hover:text-white cursor-help text-xs font-bold"
-                title="Catalog Velocity measures active orders currently being processed in the system. High velocity indicates fast product turnover and active customer demand."
-              >
-                ℹ️
-              </span>
-            </div>
-            <span className="text-lg font-extrabold text-white mt-1">{pendingOrders.length} active</span>
-            <span className="text-[0.65rem] text-text-dim/80 mt-0.5">Order fulfillment queue</span>
-          </div>
-          <div className="bg-white/5 border border-border-glass/40 p-3.5 rounded-2xl flex flex-col text-left hover:bg-white/[0.08] transition-all">
-            <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">Orders</span>
-            <span className="text-lg font-extrabold text-secondary mt-1">{orders.length} total</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main split grid */}
       <div className="flex flex-col lg:flex-row gap-5 items-start mb-6 w-full">
         {/* Left Column: Active orders queue (70%) */}
         <div className="glass-card flex-1 w-full min-w-0 p-5 border border-border-glass rounded-[24px]">
           <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
-            <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
+              <span className="text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
+              </span>
+            </div>
             <div className="flex gap-3 items-center flex-wrap">
               <GlassDatePicker
                 value={dateFilter}
