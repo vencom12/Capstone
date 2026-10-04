@@ -215,6 +215,7 @@ model SystemSettings {
   id                 String  @id @default("global")
   inventoryAuditLog  Boolean @default(true)
   giftPackagingPrice Float   @default(5.00)
+  deliveryEnabled    Boolean @default(false)
 
   // Dynamic AI Configuration (Phase 1: AI Sustainability)
   aiChatModel        String @default("llama-3.3-70b-versatile")

@@ -444,6 +444,7 @@ exports.getPublicSettings = async (req, res) => {
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         res.json({ 
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
+            deliveryEnabled: settings ? settings.deliveryEnabled : false,
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
         });

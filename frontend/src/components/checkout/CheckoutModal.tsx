@@ -50,7 +50,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<SavedAddress | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('pickup');
   const [claimantName, setClaimantName] = useState('');
   const [claimantPhone, setClaimantPhone] = useState('');
   const [pickupNote, setPickupNote] = useState('');
@@ -59,9 +60,13 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
   useEffect(() => {
     if (initialFulfillmentType) {
-      setFulfillmentType(initialFulfillmentType);
+      if (initialFulfillmentType === 'delivery' && !deliveryEnabled) {
+        setFulfillmentType('pickup');
+      } else {
+        setFulfillmentType(initialFulfillmentType);
+      }
     }
-  }, [initialFulfillmentType, isOpen]);
+  }, [initialFulfillmentType, isOpen, deliveryEnabled]);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -86,11 +91,16 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{giftPackagingPrice: number, gcashQrCodeUrl: string}>('/api/customer/settings')
+      api.get<{giftPackagingPrice: number, gcashQrCodeUrl: string, deliveryEnabled?: boolean}>('/api/customer/settings')
         .then(res => {
           if (res) {
             setGiftPackagingPrice(res.giftPackagingPrice);
             setGcashQrCodeUrl(res.gcashQrCodeUrl);
+            const isDelivOn = Boolean(res.deliveryEnabled);
+            setDeliveryEnabled(isDelivOn);
+            if (!isDelivOn) {
+              setFulfillmentType('pickup');
+            }
           }
         })
         .catch(console.error);
@@ -143,7 +153,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
 
-    const isPickup = fulfillmentType === 'pickup';
+    const isPickup = !deliveryEnabled || fulfillmentType === 'pickup';
     let currentAddress = '';
     
     if (isPickup) {
@@ -367,49 +377,69 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-md:grid-cols-1 max-md:gap-4">
           {/* Left: Delivery & Summary */}
           <div className="flex flex-col gap-5 max-md:gap-3">
-            {/* Fulfillment Method Toggle */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
-                Fulfillment Method
-              </span>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl border border-border-glass">
-                <button
-                  type="button"
-                  onClick={() => setFulfillmentType('delivery')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
-                    fulfillmentType === 'delivery'
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                    <rect x="1" y="3" width="15" height="13" />
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                    <circle cx="5.5" cy="18.5" r="2.5" />
-                    <circle cx="18.5" cy="18.5" r="2.5" />
-                  </svg>
-                  <span>Door Delivery</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFulfillmentType('pickup')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
-                    fulfillmentType === 'pickup'
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                  </svg>
-                  <span>Store Pick-up</span>
-                </button>
+            {/* Fulfillment Method Selector / Policy Header */}
+            {deliveryEnabled ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
+                  Fulfillment Method
+                </span>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl border border-border-glass">
+                  <button
+                    type="button"
+                    onClick={() => setFulfillmentType('delivery')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
+                      fulfillmentType === 'delivery'
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <rect x="1" y="3" width="15" height="13" />
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                      <circle cx="5.5" cy="18.5" r="2.5" />
+                      <circle cx="18.5" cy="18.5" r="2.5" />
+                    </svg>
+                    <span>Door Delivery</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFulfillmentType('pickup')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
+                      fulfillmentType === 'pickup'
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                    <span>Store Pick-up</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-primary/10 border border-primary/20 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white">In-Store Counter Pick-up</span>
+                    <span className="text-[0.7rem] text-text-dim">Claim your customized items directly at our Pacific Mall studio counter</span>
+                  </div>
+                </div>
+                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase tracking-wider">
+                  Active Mode
+                </span>
+              </div>
+            )}
 
-            {/* Delivery Address Section (When Door Delivery is selected) */}
-            {fulfillmentType === 'delivery' ? (
+            {/* Delivery Address Section (When Door Delivery is enabled & selected) */}
+            {deliveryEnabled && fulfillmentType === 'delivery' ? (
               <div className="flex flex-col gap-2 animate-[fadeIn_0.2s_ease-out]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2">
