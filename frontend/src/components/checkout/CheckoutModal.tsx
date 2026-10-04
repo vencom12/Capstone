@@ -39,9 +39,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
 
-  const [giftPackaging, setGiftPackaging] = useState(false);
-  const [calligraphyMessage, setCalligraphyMessage] = useState('');
-  const [giftPackagingPrice, setGiftPackagingPrice] = useState(5.00);
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
 
@@ -91,10 +88,9 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{giftPackagingPrice: number, gcashQrCodeUrl: string, deliveryEnabled?: boolean}>('/api/customer/settings')
+      api.get<{gcashQrCodeUrl: string, deliveryEnabled?: boolean}>('/api/customer/settings')
         .then(res => {
           if (res) {
-            setGiftPackagingPrice(res.giftPackagingPrice);
             setGcashQrCodeUrl(res.gcashQrCodeUrl);
             const isDelivOn = Boolean(res.deliveryEnabled);
             setDeliveryEnabled(isDelivOn);
@@ -111,7 +107,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   }, [isOpen]);
 
   const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const finalTotal = itemsTotal + (giftPackaging ? giftPackagingPrice : 0);
+  const finalTotal = itemsTotal;
 
   const handleClearProcessedItems = () => {
     if (checkoutItems && checkoutItems.length > 0 && checkoutItems.length < allBasketItems.length) {
@@ -229,8 +225,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
         paymentMethod: 'gcash',
         receiptUrl: uploadData.url,
-        giftPackaging,
-        calligraphyMessage,
         personalization: {
           fulfillmentType: isPickup ? 'pickup' : 'delivery',
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',
@@ -322,8 +316,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         address: currentAddress,
         notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
         paymentMethod: 'gcash',
-        giftPackaging,
-        calligraphyMessage,
         personalization: {
           fulfillmentType: isPickup ? 'pickup' : 'delivery',
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',
@@ -594,34 +586,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                   );
                 })}
               </div>
-
-              {/* Gift Suite Upsell */}
-              <div className="flex flex-col gap-2 mt-1 bg-primary/10 border border-primary/20 p-3 rounded-xl transition-all">
-                 <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={giftPackaging} onChange={(e) => setGiftPackaging(e.target.checked)} className="accent-primary w-4 h-4" />
-                    <span className="text-[0.85rem] font-bold text-primary">Add Luxury Gift Suite (+₱{giftPackagingPrice.toFixed(2)})</span>
-                 </label>
-                 {giftPackaging && (
-                    <div className="flex flex-col animate-[fadeIn_0.3s_ease-out]">
-                       <span className="text-[0.7rem] text-text-dim mb-1 ml-6">Includes Premium Linen Box & Handwritten Calligraphy</span>
-                       <input 
-                         type="text" 
-                         placeholder="Enter brief calligraphy message (e.g. Happy Birthday!)" 
-                         value={calligraphyMessage}
-                         onChange={(e) => setCalligraphyMessage(e.target.value)}
-                         className="ml-6 bg-black/20 border border-white/10 p-2 rounded-lg text-white text-[0.8rem] outline-none focus:border-primary"
-                       />
-                    </div>
-                 )}
-              </div>
-
-              {/* Delivery ETA */}
-              {giftPackaging && estimatedMinutes !== null && (
-                 <div className="flex justify-between items-center px-2 text-[0.8rem] text-text-dim">
-                    <span>Estimated Completion:</span>
-                    <span className="font-bold text-text-main">~{Math.max(1, Math.ceil(estimatedMinutes / 60))} Hours</span>
-                 </div>
-              )}
 
               <div className="flex justify-between items-center px-2 pt-2 border-t border-border-glass">
                 <span className="font-bold text-sm">Total Payable:</span>
