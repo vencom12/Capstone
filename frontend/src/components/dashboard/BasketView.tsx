@@ -5,6 +5,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
+import GlassModal from '@/components/ui/GlassModal';
 import type { BasketItem } from '@/lib/types';
 
 interface BasketViewProps {
@@ -17,6 +18,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   const { products, toggleFavorite, favorites } = useProductStore();
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Selected item IDs for checkout
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -166,12 +168,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
         {/* Clear All CTA */}
         <button
-          onClick={() => {
-            if (confirm('Are you sure you want to empty your basket?')) {
-              clearBasket();
-              showToast('Basket cleared', 'info');
-            }
-          }}
+          type="button"
+          onClick={() => setShowClearConfirm(true)}
           className="text-text-dim hover:text-danger text-xs font-semibold px-3 py-1.5 rounded-lg border border-border-glass hover:border-danger/30 transition-all cursor-pointer bg-white/[0.03]"
         >
           Clear Basket
@@ -464,6 +462,61 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         </div>
       </div>
 
+      {/* Custom Confirmation Dialog for Clearing Basket */}
+      <GlassModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        maxWidth="max-w-[420px]"
+      >
+        <div className="flex flex-col items-center text-center p-2">
+          {/* Warning Icon Badge */}
+          <div className="w-14 h-14 rounded-2xl bg-danger/15 border border-danger/30 text-danger flex items-center justify-center mb-4">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </div>
+
+          <h3 className="text-lg font-extrabold text-text-main m-0 mb-1.5">
+            Clear Entire Basket?
+          </h3>
+          <p className="text-xs text-text-dim leading-relaxed m-0 mb-6 max-w-xs">
+            This will remove all <strong className="text-text-main">{items.length} item{items.length === 1 ? '' : 's'}</strong> and personalized embroidery lettering from your basket.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(false)}
+              className="py-3 px-4 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-bold transition-all cursor-pointer active:scale-95"
+            >
+              Keep Items
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearBasket();
+                setShowClearConfirm(false);
+                showToast('Basket cleared', 'info');
+              }}
+              className="py-3 px-4 rounded-xl bg-danger hover:bg-danger/90 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-danger/20 active:scale-95"
+            >
+              Yes, Clear All
+            </button>
+          </div>
+        </div>
+      </GlassModal>
     </section>
   );
 }
