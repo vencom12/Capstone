@@ -539,3 +539,38 @@ select option {
 [data-theme="light"] ::-webkit-scrollbar-thumb {
   background: rgba(68, 64, 60, 0.18);
 }
+
+/* ========================================
+   Clean Print Rules (Thermal Labels & Manifests)
+   ======================================== */
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  /* Reset body and hide background page chrome */
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  /* When printing from a modal, hide non-printable UI and show label container */
+  .print\\:hidden,
+  button,
+  header,
+  nav,
+  aside {
+    display: none !important;
+  }
+
+  /* Target waybill thermal sticker and handover manifests */
+  #jnt-thermal-waybill,
+  #batch-thermal-labels,
+  #courier-handover-manifest {
+    visibility: visible !important;
+    display: block !important;
+  }
+}

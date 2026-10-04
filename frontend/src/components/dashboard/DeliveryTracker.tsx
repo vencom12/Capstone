@@ -113,15 +113,15 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         },
         {
           status: 'Picked up by Logistics Partner',
-          description: 'J&T Express courier picked up parcel from Stitch-Opt Pacific Mall Lucena Studio.',
+          description: 'Courier picked up parcel from Eds Towels & Caps Pacific Mall Lucena Studio.',
           time: formatDate(0, 16, 40),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
-          status: 'Order Packed & Waybill Created',
-          description: 'Embroidery finished. Parcel packed & J&T Air Waybill sticker generated.',
+          status: 'Order Packed & Shipping Label Created',
+          description: 'Embroidery finished. Parcel packed & pouch dispatch label generated.',
           time: formatDate(0, 14, 10),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
           status: 'Order Placed & Confirmed',
@@ -135,34 +135,34 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       return [
         {
           status: 'Parcel is Out for Delivery',
-          description: 'J&T Courier [Mark Anthony R. - 0917-882-1490] is delivering your parcel today. Please keep your lines open.',
+          description: 'Delivery rider is on the way to your address. Please keep lines open.',
           time: formatDate(1, 4, 30),
           isLatest: true,
           hub: 'Lucena Delivery Hub'
         },
         {
           status: 'Arrived at Delivery Hub',
-          description: 'Parcel arrived at local distribution facility [J&T Lucena Hub].',
+          description: 'Parcel arrived at local distribution facility [Lucena Hub].',
           time: formatDate(1, 1, 15),
           hub: 'Lucena Delivery Hub'
         },
         {
           status: 'In Transit',
-          description: 'Parcel departed South Luzon Sorting Center.',
+          description: 'Parcel departed sorting center in transit to destination.',
           time: formatDate(0, 20, 10),
-          hub: 'South Luzon Hub'
+          hub: 'South Luzon Sorting Center'
         },
         {
-          status: 'Picked up by J&T Express',
-          description: 'J&T Express accepted package from Stitch-Opt Pacific Mall Lucena Studio.',
+          status: 'Handed Over to Courier',
+          description: 'Carrier accepted package from Eds Towels & Caps Pacific Mall Lucena.',
           time: formatDate(0, 16, 40),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
-          status: 'Order Packed & Waybill Attached',
-          description: 'Garment packed into shipping pouch with J&T Waybill sticker.',
+          status: 'Order Packed & Label Attached',
+          description: 'Garment packed into shipping pouch with dispatch label sticker.',
           time: formatDate(0, 14, 10),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
           status: 'Order Placed & Confirmed',
@@ -176,26 +176,26 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       return [
         {
           status: 'In Transit to Local Delivery Hub',
-          description: 'Parcel is moving between J&T Express sorting centers towards destination.',
+          description: 'Parcel is moving through carrier sorting route towards destination.',
           time: formatDate(0, 18, 20),
           isLatest: true,
           hub: 'South Luzon Sorting Center'
         },
         {
-          status: 'Picked up by J&T Express',
-          description: 'J&T Express courier scanned and accepted package from Stitch-Opt Pacific Mall Lucena Studio.',
+          status: 'Handed Over to Courier',
+          description: 'Courier scanned and received package from Eds Towels & Caps Pacific Mall Lucena.',
           time: formatDate(0, 16, 30),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
-          status: 'Order Packed & Waybill Attached',
-          description: 'Embroidered cap inspected, sealed in pouch, and J&T AWB sticker applied.',
+          status: 'Order Packed & Label Attached',
+          description: 'Embroidered cap inspected, sealed in pouch, and label applied.',
           time: formatDate(0, 14, 0),
-          hub: 'Pacific Mall Lucena Studio'
+          hub: 'Eds Towels Pacific Mall Studio'
         },
         {
           status: 'Embroidery Production Completed',
-          description: 'Vector digitization and high-speed machine stitching passed inspection.',
+          description: 'Vector digitization and machine embroidery passed quality check.',
           time: formatDate(0, 10, 45)
         },
         {
@@ -210,10 +210,10 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
     return [
       {
         status: 'In Embroidery Production',
-        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Stitch-Opt Pacific Mall Lucena Studio.',
+        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Eds Towels & Caps Pacific Mall Lucena Studio.',
         time: formatDate(0, 2, 30),
         isLatest: true,
-        hub: 'Pacific Mall Lucena Studio'
+        hub: 'Eds Towels Pacific Mall Studio'
       },
       {
         status: 'Order Placed & Payment Verified',
@@ -327,20 +327,39 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           )}
         </div>
 
-        {/* Tracking Number with Copy */}
-        <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
-          <div className="text-right">
-            <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
-              {isPickup ? 'Claim Reference' : 'Tracking No.'}
-            </span>
-            <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+        {/* Tracking Number with Copy & Official Courier Portal link */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
+            <div className="text-right">
+              <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
+                {isPickup ? 'Claim Reference' : 'Tracking No.'}
+              </span>
+              <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+            </div>
+            <button
+              onClick={handleCopyTracking}
+              className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
           </div>
-          <button
-            onClick={handleCopyTracking}
-            className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
+
+          {!isPickup && (
+            <a
+              href={`https://www.jtexpress.ph/trajectoryQuery?bills=${trackingNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-[0.72rem] font-bold no-underline inline-flex items-center gap-1.5 transition-all shadow-sm"
+              title="Open real tracking portal on J&T Express Philippines"
+            >
+              <span>Track on J&T Portal</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          )}
         </div>
       </div>
 

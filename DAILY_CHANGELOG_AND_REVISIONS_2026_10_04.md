@@ -178,7 +178,29 @@ The following commits record these enhancements in the repository:
 
 ---
 
-## 6. Deployment Instructions (Render Verification)
+## 7. Delivery & High-Volume Logistics Polish (Capstone Defense Ready)
+
+### Overview & Real-World Domain Alignment
+Small custom embroidery businesses operating out of retail malls (such as *Eds Towels & Caps* at Pacific Mall Lucena) do not maintain direct API webhooks with commercial couriers (J&T Express, LBC, Flash Express). Instead, real-world e-commerce shops utilize a standardized **Thermal Pouch Dispatch Label** and a **Physical Handover Manifest** for delivery personnel.
+
+### Implemented Enhancements
+1. **Authentic Parcel Dispatch Label (`WaybillModal.tsx`)**:
+   - Replaced simulated "Official Air Waybill" claims with a genuine **"Parcel Shipping & Dispatch Label (4x6\" Thermal)"**.
+   - Configured official shop origin (`Eds Towels & Caps, Pacific Mall Lucena, Quezon Province 4301, Tel: 0928 810 3928`).
+   - Generates authentic package barcodes, recipient shipping addresses, landmark notes, and verification QR codes.
+   - Automatically pivots between **Courier Dispatch** and **Store Pick-Up Claim Slip** depending on fulfillment selection.
+
+2. **Carrier Tracking Integration (`DeliveryTracker.tsx`)**:
+   - Added a direct external portal button: **`Track on J&T Portal ↗`** (`https://www.jtexpress.ph/trajectoryQuery?bills=...`).
+   - Cleaned up the timeline milestones to reflect the physical workshop workflow at Pacific Mall Lucena.
+
+3. **High-Volume Operations for 10+ Orders (`PanelOverview.tsx`)**:
+   - **Batch Print Labels**: Selecting multiple orders in the Admin panel allows 1-click printing of all 4x6" labels continuously on thermal roll printers with native page-breaks.
+   - **Courier Handover Manifest**: Generates a standard 1-page printable transmittal document with a full parcel table, pouch checklists, and formal sign-off boxes for the shop staff and courier rider.
+
+---
+
+## 8. Deployment Instructions (Render Verification)
 
 To synchronize your deployed instance on Render with all local improvements:
 
@@ -193,3 +215,4 @@ To synchronize your deployed instance on Render with all local improvements:
    - Verify that adding embroidery text shows the default cursive lettering stitch preview.
    - Click a variant badge inside the basket to reselect garment options on the fly.
    - Click "Clear Basket" to test the custom confirmation dialog.
+   - Select orders in the Admin dashboard to test **Batch Print Labels** and the **Handover Manifest**.
