@@ -23,7 +23,7 @@ services:
     name: capstone-btr7
     runtime: node
     plan: free
-    branch: customerconsole
+    branch: main
     region: singapore
     autoDeploy: true
 
