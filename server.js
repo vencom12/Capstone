@@ -24,16 +24,17 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps, curl)
         if (!origin) return callback(null, true);
         
-        // Exact match or strict subdomain regex matching
-        const isAllowed = origin === 'http://localhost:3000' || 
-                          origin === 'http://127.0.0.1:3000' ||
+        // Allow all local dev origins (localhost, 127.0.0.1, [::1]) regardless of port
+        const isAllowed = origin.startsWith('http://localhost') || 
+                          origin.startsWith('http://127.0.0.1') ||
+                          origin.startsWith('http://[::1]') ||
                           /^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin) ||
                           /^https:\/\/[a-zA-Z0-9-]+\.render\.com$/.test(origin);
                           
         if (isAllowed) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
     credentials: true
@@ -465,7 +466,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, '0.0.0.0', async () => {
+server.listen(PORT, async () => {
     console.log(`[OK] Server listening on port ${PORT}`);
     console.log(`[OK] Socket.IO real-time engine active`);
     console.log(`[OK] Routes ready: /api/auth/profile (PUT), /api/products (GET), etc.`);

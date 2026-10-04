@@ -5,14 +5,18 @@
 
 const getApiBase = () => {
   if (typeof window !== 'undefined') {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalhost && window.location.port === '3000') {
-      return `${window.location.protocol}//${window.location.hostname}:5001`;
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || 
+                        hostname === '127.0.0.1' || 
+                        hostname === '[::1]' || 
+                        hostname === '::1';
+    if (isLocalhost) {
+      if (window.location.port === '5001') {
+        return window.location.origin;
+      }
+      return `${window.location.protocol}//${hostname}:5001`;
     }
     // In production or when served by Express, always use the current domain origin
-    if (!isLocalhost) {
-      return window.location.origin;
-    }
     if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
