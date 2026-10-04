@@ -256,7 +256,7 @@ export default function DashboardSidebar({
                 <span className="text-xs opacity-60">→</span>
               </button>
 
-              {/* Studio Policies & Terms */}
+              {/* Store Policies & Terms */}
               <button
                 type="button"
                 onClick={() => {
@@ -271,7 +271,7 @@ export default function DashboardSidebar({
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Studio Policies</div>
+                  <div className="text-[0.9rem] font-medium leading-tight">Store Policies</div>
                   <div className="text-[0.72rem] text-text-dim">Terms of service & privacy</div>
                 </div>
                 <span className="text-xs opacity-60">→</span>
@@ -398,7 +398,7 @@ export default function DashboardSidebar({
             <button
               onClick={() => setIsTermsOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
-              title="Terms & Studio Policies"
+              title="Terms & Store Policies"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary/80">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />

@@ -65,7 +65,7 @@ export default function TermsAndPoliciesModal({
 
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col gap-1.5 text-emerald-200">
             <span className="font-bold text-emerald-400 text-xs uppercase tracking-wide flex items-center gap-1.5">
-              <span>✓</span> 100% Studio Error Guarantee
+              <span>✓</span> 100% Workshop Error Guarantee
             </span>
             <p className="m-0 text-xs">
               If our embroidery workshop makes an error (e.g. misspelled name differing from your confirmed order details, incorrect thread color, or garment defect upon arrival), Eds Towels & Caps guarantees a <strong>100% free re-stitch or complete refund</strong> within 7 calendar days of receipt.
@@ -77,11 +77,11 @@ export default function TermsAndPoliciesModal({
     {
       id: 'pickup',
       title: 'Store Pick-up & Counter Claiming',
-      badge: 'Pacific Mall Studio',
+      badge: 'Pacific Mall Lucena',
       content: (
         <div className="flex flex-col gap-3 text-xs sm:text-sm text-text-dim leading-relaxed">
           <p className="text-text-main font-semibold">
-            For customers selecting in-store pick-up at our official studio in Pacific Mall Lucena, Quezon:
+            For customers selecting in-store pick-up at our official store in Pacific Mall Lucena, Quezon:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

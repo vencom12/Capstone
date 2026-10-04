@@ -46,14 +46,14 @@ export default function CustomerHelpModal({ isOpen, onClose }: CustomerHelpModal
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Studio Help & Customer FAQs"
+      title="Help & Customer FAQs"
       maxWidth="max-w-[580px]"
     >
       <div className="flex flex-col gap-4 text-left">
-        {/* Studio Info Quick Card */}
+        {/* Store Info Quick Card */}
         <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-border-glass flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-sm text-text-main">Eds Towels & Caps Studio</span>
+            <span className="font-extrabold text-sm text-text-main">Eds Towels & Caps</span>
             <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30">
               Pacific Mall Lucena
             </span>
@@ -67,7 +67,7 @@ export default function CustomerHelpModal({ isOpen, onClose }: CustomerHelpModal
                 <circle cx="12" cy="12" r="10"/>
                 <polyline points="12 6 12 12 16 14"/>
               </svg>
-              Daily 10:00 AM – 8:00 PM
+              Daily 10:00 AM – 8:00 PM (Mall Hours)
             </span>
             <a 
               href="tel:09288103928" 
@@ -122,7 +122,7 @@ export default function CustomerHelpModal({ isOpen, onClose }: CustomerHelpModal
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
-            Call Studio Support
+            Call Support
           </a>
           <button
             type="button"
