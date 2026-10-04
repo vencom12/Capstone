@@ -9,6 +9,10 @@ const getApiBase = () => {
     if (isLocalhost && window.location.port === '3000') {
       return `${window.location.protocol}//${window.location.hostname}:5001`;
     }
+    // In production or when served by Express, always use the current domain origin
+    if (!isLocalhost) {
+      return window.location.origin;
+    }
     if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
