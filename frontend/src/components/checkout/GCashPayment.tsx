@@ -145,18 +145,18 @@ export default function GCashPayment({
         </div>
       </div>
 
-      {/* AI Processing Status */}
+      {/* Receipt Processing Status */}
       {analyzing && (
         <div className="flex items-center gap-3 bg-[#007df2]/15 border border-[#007df2] p-3.5 rounded-xl animate-pulse">
           <div className="w-3 h-3 bg-[#007df2] rounded-full animate-ping"></div>
           <div className="flex flex-col">
-            <span className="text-[0.8rem] text-white font-bold">StitchMaster AI is verifying receipt...</span>
-            <span className="text-[0.7rem] text-text-dim">Extracting GCash reference number & amount</span>
+            <span className="text-[0.8rem] text-white font-bold">Checking your receipt...</span>
+            <span className="text-[0.7rem] text-text-dim">Confirming your GCash payment details</span>
           </div>
         </div>
       )}
 
-      {/* AI Result or Fail-Safe Fallback */}
+      {/* Verification Notice or Friendly Encouragement Box */}
       {aiVerificationResult && !analyzing && (
         <div className={`flex flex-col gap-2 p-3.5 rounded-xl text-[0.78rem] font-medium border ${
           verified 
@@ -165,10 +165,28 @@ export default function GCashPayment({
         }`}>
           <span className="leading-relaxed font-bold">{aiVerificationResult}</span>
           
-          {!verified && (
+          {Boolean(
+            aiVerificationResult.toLowerCase().includes('already') || 
+            aiVerificationResult.toLowerCase().includes('duplicate') ||
+            aiVerificationResult.toLowerCase().includes('earlier')
+          ) ? (
+            <div className="flex flex-col gap-2.5 border-t border-white/10 pt-2.5 mt-1">
+              <span className="text-[0.75rem] text-text-dim leading-relaxed">
+                To help us start embroidering your items without delay, please upload the official GCash receipt screenshot from this payment. Make sure the amount and reference number are clear!
+              </span>
+              <button
+                type="button"
+                onClick={() => document.getElementById('gcash-upload')?.click()}
+                className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.78rem] transition-all cursor-pointer shadow-md self-start flex items-center gap-2"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                Upload My Payment Receipt
+              </button>
+            </div>
+          ) : !verified ? (
             <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1">
               <span className="text-[0.75rem] text-text-main font-bold">
-                Enter your 13-digit GCash Reference Number to complete order:
+                Can't read clearly? You can also type your GCash Reference Number below:
               </span>
               <div className="flex gap-2">
                 <input
@@ -187,7 +205,7 @@ export default function GCashPayment({
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 

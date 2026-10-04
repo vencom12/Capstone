@@ -147,6 +147,10 @@ export default function StorefrontPage() {
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
+        onSuccess={() => {
+          setIsCheckoutOpen(false);
+          router.push('/dashboard');
+        }}
       />
 
       {/* AI Store Attendant Chatbot */}

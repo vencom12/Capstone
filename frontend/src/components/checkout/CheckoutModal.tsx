@@ -19,11 +19,12 @@ interface CheckoutModalProps {
   onClose: () => void;
   checkoutItems?: BasketItem[];
   initialFulfillmentType?: 'delivery' | 'pickup';
+  onSuccess?: () => void;
 }
 
 type PaymentMethod = 'gcash';
 
-export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialFulfillmentType }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialFulfillmentType, onSuccess }: CheckoutModalProps) {
   const { items: allBasketItems, removeItem, clearBasket } = useBasketStore();
   const items = checkoutItems && checkoutItems.length > 0 ? checkoutItems : allBasketItems;
   const { user, setUser, refreshUser } = useAuthStore();
@@ -38,6 +39,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [receiptUrl, setReceiptUrl] = useState('');
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
@@ -114,7 +116,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     if (checkoutItems && checkoutItems.length > 0 && checkoutItems.length < allBasketItems.length) {
       checkoutItems.forEach(i => removeItem(i.id));
     } else {
-      handleClearProcessedItems();
+      clearBasket();
     }
   };
 
@@ -219,7 +221,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       }
 
       const firstPersonalizedItem = items.find((i) => i.personalization?.text);
-      const orderRes = await api.post<{ order: { orderId: string }, receiptID: string }>('/api/customer/order/submit', {
+      const orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
         address: currentAddress,
@@ -238,6 +240,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         }
       });
 
+      if (orderRes?.order?.orderId) {
+        setPendingOrderId(orderRes.order.orderId);
+      }
+
       // Step 3: Call AI verification with the uploaded receipt
       const verifyRes = await api.post<{
         success: boolean;
@@ -247,7 +253,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         aiResult?: { extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
       }>('/api/ai/verify-receipt', {
         receiptUrl: uploadData.url,
-        orderTotal: finalTotal,
+        orderTotal: orderRes.order?.totalAmount ?? finalTotal,
         orderId: orderRes.order.orderId
       });
 
@@ -260,13 +266,17 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
         } else {
           setPaymentVerified(true);
-          const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
-          setAiVerificationResult(`✅ Payment Verified${conf ? ` (${conf} confidence)` : ''} — Amount: ₱${verifyRes.aiResult?.extractedAmount?.toFixed(2) || finalTotal.toFixed(2)}`);
-          showToast('Payment verified! Your order is now in the workshop queue.', 'success');
-          await refreshUser();
-          await fetchDashboardState();
-          handleClearProcessedItems();
-          onClose();
+          const amountText = verifyRes.aiResult?.extractedAmount ? `₱${verifyRes.aiResult.extractedAmount.toFixed(2)}` : `₱${finalTotal.toFixed(2)}`;
+          setAiVerificationResult(`✅ Payment Confirmed — ${amountText}`);
+          showToast('Payment confirmed! Your order is now in the queue.', 'success');
+          try {
+            await refreshUser();
+            await fetchDashboardState();
+            handleClearProcessedItems();
+          } catch (cleanErr) {
+            console.error('[Checkout Cleanup Notice]:', cleanErr);
+          }
+          handleModalClose(true);
         }
       } else {
         // Auto-fill extracted reference ID so customer doesn't have to manually retype 13 digits!
@@ -324,6 +334,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         address: currentAddress,
         notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
         paymentMethod: 'gcash',
+        existingOrderId: pendingOrderId || undefined,
+        referenceNumber: cleanRef,
         personalization: {
           fulfillmentType: isPickup ? 'pickup' : 'delivery',
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',
@@ -338,17 +350,35 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       });
 
       setPaymentVerified(true);
-      setAiVerificationResult(`✅ GCash Reference Recorded: ${cleanRef}`);
-      showToast('Order placed! GCash Reference recorded for workshop queue.', 'success');
+      setAiVerificationResult(`✅ GCash Reference Saved: ${cleanRef}`);
+      showToast('Order received! Thank you for your payment.', 'success');
       await refreshUser();
       await fetchDashboardState();
-      handleClearProcessedItems();
-      onClose();
+      try {
+        await refreshUser();
+        await fetchDashboardState();
+        handleClearProcessedItems();
+      } catch (cleanErr) {
+        console.error('[Manual Ref Cleanup Notice]:', cleanErr);
+      }
+      handleModalClose(true);
     } catch (err: any) {
       console.error('[Manual Ref Order Submit Catch]:', err);
       showToast(err.message || 'Failed to submit order. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleModalClose = (wasSuccessful = false) => {
+    setPendingOrderId(null);
+    setReceiptFile(null);
+    setAiVerificationResult(null);
+    setManualRef('');
+    setPaymentVerified(false);
+    onClose();
+    if (wasSuccessful && onSuccess) {
+      onSuccess();
     }
   };
 
@@ -358,14 +388,18 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       return;
     }
     showToast('Order confirmed! We have received your order.', 'success');
-    await refreshUser();
-    await fetchDashboardState();
-    handleClearProcessedItems();
-    onClose();
+    try {
+      await refreshUser();
+      await fetchDashboardState();
+      handleClearProcessedItems();
+    } catch (cleanErr) {
+      console.error('[Place Order Cleanup Notice]:', cleanErr);
+    }
+    handleModalClose(true);
   };
 
   return (
-    <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[780px]" noPadding>
+    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[780px]" noPadding>
       <div className="p-6 max-md:p-4 flex flex-col">
         <div className="flex justify-between items-center mb-5 max-md:mb-3">
           <h2 className="text-xl max-md:text-lg font-bold m-0 flex items-center gap-3 max-md:gap-2">

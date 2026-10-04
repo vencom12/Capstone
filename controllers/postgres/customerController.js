@@ -68,18 +68,58 @@ exports.topupWallet = async (req, res) => {
 
 exports.submitOrder = async (req, res) => {
     try {
-        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization, isRush, dueDate } = req.body;
+        const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization, isRush, dueDate, existingOrderId, referenceNumber } = req.body;
         const userId = req.user.id;
+
+        // If this is a manual reference confirmation for an existing order in 'Awaiting Payment', update it
+        if (existingOrderId) {
+            const existingOrder = await prisma.order.findFirst({
+                where: { orderId: existingOrderId, userId },
+                include: { receipt: true, transaction: true }
+            });
+            if (existingOrder && existingOrder.paymentStatus === 'unpaid') {
+                const cleanRef = (personalization?.referenceNumber || referenceNumber || '').trim();
+                const updatedPersonalization = {
+                    ...(typeof existingOrder.personalization === 'object' && existingOrder.personalization !== null ? existingOrder.personalization : {}),
+                    ...(personalization || {}),
+                    referenceNumber: cleanRef
+                };
+                
+                await prisma.order.update({
+                    where: { id: existingOrder.id },
+                    data: {
+                        personalization: updatedPersonalization,
+                        notes: notes || existingOrder.notes
+                    }
+                });
+
+                if (existingOrder.receipt) {
+                    await prisma.receipt.update({
+                        where: { id: existingOrder.receipt.id },
+                        data: {
+                            referenceId: cleanRef || existingOrder.receipt.referenceId
+                        }
+                    });
+                }
+
+                return res.json({ message: 'Order reference number recorded successfully.', order: existingOrder, receiptID: existingOrder.receipt?.receiptID });
+            }
+        }
 
         if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
 
         // Fix B: Payment Method Whitelist (Only GCash for digital wallet per store policy)
-        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash', 'test_mode'];
+        const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash'];
+        // test_mode is strictly restricted to development environments and authenticated administrators
+        if (process.env.NODE_ENV !== 'production' && req.user && req.user.role === 'admin') {
+            VALID_PAYMENT_METHODS.push('test_mode');
+        }
         if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
             return res.status(400).json({ message: 'Invalid payment method. Only GCash, Store Wallet, or Cash at Counter are accepted.' });
         }
 
-        const isInstantApproved = (paymentMethod === 'wallet' || paymentMethod === 'test_mode' || req.body.bypassVerification === true);
+        // Security Hardening: Never allow client parameter bypasses. Only genuine wallet transactions or admin dev test mode.
+        const isInstantApproved = (paymentMethod === 'wallet' || (paymentMethod === 'test_mode' && process.env.NODE_ENV !== 'production' && req.user?.role === 'admin'));
 
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -89,13 +129,31 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Fix A: Server-side total recalculation (never trust client-sent total)
+        // Correctly factors in variant price overrides (e.g. promotional/test variants)
         let serverTotal = 0;
         for (const item of items) {
             const productId = item.productId || item.id;
             if (!productId) return res.status(400).json({ message: `Invalid product in cart item: ${item.name || 'Unknown'}` });
             const product = await prisma.product.findUnique({ where: { id: productId } });
             if (!product) return res.status(404).json({ message: `Product not found: ${item.name || productId}` });
-            serverTotal += product.price * (item.quantity || 1);
+            
+            let itemUnitPrice = product.price;
+            if (item.selectedVariant && Array.isArray(product.variants)) {
+                const matchedVariant = product.variants.find(v => v && (v.name === item.selectedVariant || v.id === item.selectedVariant));
+                if (matchedVariant && matchedVariant.priceOverride !== undefined && matchedVariant.priceOverride !== null) {
+                    const parsedOverride = parseFloat(matchedVariant.priceOverride);
+                    if (!isNaN(parsedOverride)) {
+                        itemUnitPrice = parsedOverride;
+                    }
+                }
+            } else if (item.price !== undefined && !isNaN(parseFloat(item.price)) && Array.isArray(product.variants)) {
+                const priceMatchesVariant = product.variants.some(v => v && parseFloat(v.priceOverride) === parseFloat(item.price));
+                if (priceMatchesVariant) {
+                    itemUnitPrice = parseFloat(item.price);
+                }
+            }
+
+            serverTotal += itemUnitPrice * (item.quantity || 1);
         }
         // Add gift packaging if selected
         if (giftPackaging) {
@@ -108,13 +166,16 @@ exports.submitOrder = async (req, res) => {
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
 
-        // Fix D: For e-wallet payments, require a verified receipt
+        // Anti-Replay Defense: Block using an already-verified receipt URL at checkout
         if (paymentMethod === 'gcash' && receiptUrl) {
-            const verifiedReceipt = await prisma.receipt.findFirst({
+            const alreadyUsedReceipt = await prisma.receipt.findFirst({
                 where: { imageUrl: receiptUrl, aiVerificationStatus: 'verified' }
             });
-            // Note: If no verified receipt exists yet, we still allow order creation in "Awaiting Payment" status.
-            // The AI verification flow will promote it to "In Queue" after verification.
+            if (alreadyUsedReceipt) {
+                return res.status(400).json({
+                    message: "This payment receipt was already used for an earlier order. Please upload the official GCash receipt you used for this purchase so we can get your order started right away! 🧵"
+                });
+            }
         }
 
         const secureOrderId = `ORD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;

@@ -912,6 +912,11 @@ export default function DashboardPage() {
         }}
         checkoutItems={selectedCheckoutItems}
         initialFulfillmentType={selectedFulfillmentType}
+        onSuccess={() => {
+          setIsCheckoutOpen(false);
+          setSelectedCheckoutItems(undefined);
+          setActiveTab('tracking');
+        }}
       />
       {/* Order Details Modal */}
       <OrderDetailsModal

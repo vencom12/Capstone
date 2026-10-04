@@ -41,6 +41,25 @@ async function parseReceiptWithLocalOCR(imageSource) {
                 extractedAmount = parseFloat(amountMatches[amountMatches.length - 1]);
             }
         }
+        let recipientName = null;
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        const sentViaIdx = lines.findIndex(l => /sent\s*via\s*gcash/i.test(l));
+        if (sentViaIdx > 0) {
+            const candidate1 = lines[sentViaIdx - 1];
+            const candidate2 = sentViaIdx >= 2 ? lines[sentViaIdx - 2] : null;
+            if (candidate2 && !/^(total|amount|ref|php|₱|\+63|09)/i.test(candidate2) && candidate2.length > 2) {
+                recipientName = candidate2;
+            } else if (candidate1 && !/^(total|amount|ref|php|₱)/i.test(candidate1)) {
+                recipientName = candidate1;
+            }
+        }
+
+        let transactionDate = null;
+        const dateMatch = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s*(?:AM|PM))?)?/i);
+        if (dateMatch) {
+            transactionDate = dateMatch[0];
+        }
+
         const hasFinData = Boolean(referenceId && extractedAmount !== null);
         const isValidReceipt = isGcash || hasFinData;
         let confidence = 0.50;
@@ -51,6 +70,8 @@ async function parseReceiptWithLocalOCR(imageSource) {
             isValidReceipt,
             extractedAmount,
             referenceId,
+            recipientName,
+            transactionDate,
             paymentPlatform: isGcash ? 'GCash' : 'InstaPay / E-Wallet',
             confidence: Math.min(1.0, confidence),
             rawText: text,
