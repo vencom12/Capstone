@@ -208,7 +208,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         } catch {}
       }
 
-      // Step 2: Submit order first (in "Awaiting Payment" status) to get orderId
+      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
       const orderRes = await api.post<{ order: { orderId: string }, receiptID: string }>('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
@@ -223,7 +223,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',
           claimantName: isPickup ? (claimantName.trim() || user?.username) : undefined,
           claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber) : undefined,
-          pickupNote: isPickup ? pickupNote.trim() : undefined
+          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          text: firstPersonalizedItem?.personalization?.text,
+          color: firstPersonalizedItem?.personalization?.threadColor,
+          font: firstPersonalizedItem?.personalization?.font,
         }
       });
 
@@ -299,6 +302,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
     setIsProcessing(true);
     try {
+      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
       await api.post('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
@@ -313,7 +317,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           referenceNumber: cleanRef,
           claimantName: isPickup ? (claimantName.trim() || user?.username) : undefined,
           claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber) : undefined,
-          pickupNote: isPickup ? pickupNote.trim() : undefined
+          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          text: firstPersonalizedItem?.personalization?.text,
+          color: firstPersonalizedItem?.personalization?.threadColor,
+          font: firstPersonalizedItem?.personalization?.font,
         }
       });
 
@@ -551,7 +558,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     <div key={item.id} className="flex justify-between items-start p-2.5 bg-white/5 border border-border-glass/50 rounded-xl">
                       <div className="flex flex-col text-left">
                         <span className="font-bold text-[0.85rem]">{item.name}</span>
-                        <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5">
+                        <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5 flex-wrap">
                           {item.selectedColor && (
                             <span 
                               className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0" 
@@ -559,6 +566,11 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                             />
                           )}
                           <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                          {item.personalization?.text && (
+                            <span className="text-primary font-semibold flex items-center gap-1">
+                              • 🪡 &ldquo;{item.personalization.text}&rdquo; ({item.personalization.threadColor || 'Gold'})
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="font-mono font-bold text-[0.9rem]">₱{(item.price * item.quantity).toFixed(2)}</span>

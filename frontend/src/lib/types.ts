@@ -74,6 +74,12 @@ export interface OrderItem {
   selectedVariant?: string;
   selectedColor?: string;
   selectedSize?: string;
+  personalization?: {
+    text: string;
+    font?: string;
+    threadColor?: string;
+    threadHex?: string;
+  };
 }
 
 export interface Order {
@@ -93,6 +99,27 @@ export interface Order {
   date: string;
   createdAt: string;
   updatedAt: string;
+  personalization?: {
+    fulfillmentType?: 'pickup' | 'delivery' | string;
+    courier?: string;
+    trackingNumber?: string;
+    referenceNumber?: string;
+    claimantName?: string;
+    claimantPhone?: string;
+    pickupNote?: string;
+    text?: string;
+    font?: string;
+    color?: string;
+    threadHex?: string;
+    statusHistory?: Array<{
+      status: string;
+      timestamp: string;
+      actor?: string;
+      hub?: string;
+      note?: string;
+    }>;
+    [key: string]: any;
+  };
 }
 
 export interface Transaction {
@@ -137,6 +164,12 @@ export interface BasketItem {
   selectedVariant?: string;
   selectedColor?: string;
   selectedSize?: string;
+  personalization?: {
+    text: string;
+    font?: string;
+    threadColor?: string;
+    threadHex?: string;
+  };
 }
 
 export interface DashboardState {

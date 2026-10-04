@@ -34,10 +34,44 @@ export default function ProductModal({
   const [quantity, setQuantity] = useState<number>(1);
   const [queueLoadCount, setQueueLoadCount] = useState<number>(3);
 
+  // Custom Embroidery Lettering / Personalization state
+  const [isPersonalized, setIsPersonalized] = useState<boolean>(false);
+  const [customText, setCustomText] = useState<string>('');
+  const [threadColor, setThreadColor] = useState<{ name: string; hex: string }>({
+    name: 'Metallic Gold',
+    hex: '#d4af37',
+  });
+  const [fontStyle, setFontStyle] = useState<{ name: string; fontCss: string }>({
+    name: 'Classic Formal Script',
+    fontCss: 'Brush Script MT, cursive, Georgia, serif',
+  });
+
+  const THREAD_COLORS = [
+    { name: 'Metallic Gold', hex: '#d4af37' },
+    { name: 'Pure White', hex: '#ffffff' },
+    { name: 'Obsidian Black', hex: '#1c1917' },
+    { name: 'Silver Platinum', hex: '#e2e8f0' },
+    { name: 'Royal Navy', hex: '#1e3a8a' },
+    { name: 'Crimson Red', hex: '#b91c1c' },
+    { name: 'Emerald Green', hex: '#047857' },
+    { name: 'Rose Blush', hex: '#fb7185' },
+  ];
+
+  const FONT_OPTIONS = [
+    { name: 'Classic Formal Script', fontCss: 'Brush Script MT, cursive, Georgia, serif' },
+    { name: 'Serif Monogram', fontCss: 'Georgia, serif' },
+    { name: 'Modern Clean Sans', fontCss: 'system-ui, sans-serif' },
+    { name: 'Collegiate Block', fontCss: 'Impact, Arial Black, sans-serif' },
+  ];
+
   // Sync state when product opens
   useEffect(() => {
     if (product) {
       setQuantity(1);
+      setIsPersonalized(false);
+      setCustomText('');
+      setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
+      setFontStyle({ name: 'Classic Formal Script', fontCss: 'Brush Script MT, cursive, Georgia, serif' });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         setSelectedVariant(product.variants[0]);
         setSelectedColor(product.variants[0].color || '');
@@ -100,7 +134,19 @@ export default function ProductModal({
       return false;
     }
 
-    const existing = items.find((i) => i.productId === productId && i.selectedVariant === selectedVariant?.name);
+    const trimmedCustomText = customText.trim();
+    if (isPersonalized && !trimmedCustomText) {
+      showToast('Please enter the name or monogram text to embroider.', 'error');
+      return false;
+    }
+
+    const existing = items.find(
+      (i) =>
+        i.productId === productId &&
+        i.selectedVariant === selectedVariant?.name &&
+        i.selectedSize === selectedSize &&
+        (i.personalization?.text || '') === (isPersonalized ? trimmedCustomText : '')
+    );
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + quantity > availableStock) {
       showToast(`Sorry, only ${availableStock} units available for "${product.name}".`, 'error');
@@ -116,6 +162,14 @@ export default function ProductModal({
       selectedVariant: selectedVariant?.name,
       selectedColor: selectedColor || selectedVariant?.color,
       selectedSize: selectedSize || undefined,
+      personalization: isPersonalized && trimmedCustomText
+        ? {
+            text: trimmedCustomText,
+            font: fontStyle.name,
+            threadColor: threadColor.name,
+            threadHex: threadColor.hex,
+          }
+        : undefined,
     });
 
     return true;
@@ -266,6 +320,137 @@ export default function ProductModal({
               </div>
             </div>
           )}
+
+          {/* Custom Embroidery Personalization (Lettering / Monogram) */}
+          <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-2xl border border-white/5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-text-main flex items-center gap-1.5 cursor-pointer">
+                <span>🪡</span>
+                <span>Custom Embroidery Lettering</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsPersonalized(!isPersonalized)}
+                className={`text-[0.72rem] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  isPersonalized
+                    ? 'bg-primary/20 border-primary text-primary'
+                    : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main'
+                }`}
+              >
+                {isPersonalized ? '✓ Included' : '+ Add Name/Text'}
+              </button>
+            </div>
+
+            {isPersonalized && (
+              <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
+                {/* Text input */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
+                    <span>Name or Monogram Text</span>
+                    <span>{customText.length}/25</span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={25}
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="e.g. Dr. Rafael Santos or R.S."
+                    className="w-full bg-bg-surface border border-border-glass focus:border-primary p-2.5 rounded-xl text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium"
+                  />
+                </div>
+
+                {/* Live Stitch Typography Preview */}
+                {customText.trim() && (
+                  <div className="p-3 rounded-xl bg-black/40 border border-border-glass flex flex-col items-center justify-center text-center">
+                    <span className="text-[0.65rem] uppercase tracking-wider text-text-dim mb-1">
+                      Stitch Preview ({threadColor.name} • {fontStyle.name})
+                    </span>
+                    <span
+                      className="text-lg font-bold tracking-wide transition-all"
+                      style={{
+                        color: threadColor.hex,
+                        fontFamily: fontStyle.fontCss,
+                        textShadow: '0 0 10px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      {customText}
+                    </span>
+                  </div>
+                )}
+
+                {/* Font Style Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">
+                    Font Style
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {FONT_OPTIONS.map((f) => {
+                      const isSelected = fontStyle.name === f.name;
+                      return (
+                        <button
+                          key={f.name}
+                          type="button"
+                          onClick={() => setFontStyle(f)}
+                          className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm'
+                              : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
+                          }`}
+                        >
+                          <span className="block truncate text-[0.72rem] leading-tight">{f.name}</span>
+                          <span
+                            className="block text-sm mt-0.5 truncate"
+                            style={{ fontFamily: f.fontCss }}
+                          >
+                            Sample
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Thread Color Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
+                    <span>Thread Color</span>
+                    <span className="text-text-main normal-case font-medium">{threadColor.name}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {THREAD_COLORS.map((tc) => {
+                      const isSelected = threadColor.name === tc.name;
+                      return (
+                        <button
+                          key={tc.name}
+                          type="button"
+                          onClick={() => setThreadColor(tc)}
+                          title={tc.name}
+                          className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+                            isSelected
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-bg-surface scale-110 border-white'
+                              : 'border-white/20 hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: tc.hex }}
+                        >
+                          {isSelected && (
+                            <span
+                              className={`text-[10px] font-bold ${
+                                tc.hex === '#ffffff' || tc.hex === '#e2e8f0'
+                                  ? 'text-black'
+                                  : 'text-white'
+                              }`}
+                            >
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Quantity Stepper */}
           <div className="flex items-center justify-between border-t border-border-glass pt-3">

@@ -277,6 +277,21 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 Size: {item.selectedSize}
                               </span>
                             )}
+                            {item.personalization?.text && (
+                              <span className="bg-primary/10 border border-primary/20 text-primary text-[0.7rem] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
+                                <span>🪡</span>
+                                <span>&ldquo;{item.personalization.text}&rdquo;</span>
+                                {item.personalization.threadHex && (
+                                  <span
+                                    className="w-2 h-2 rounded-full border border-white/40 inline-block shadow-xs"
+                                    style={{ backgroundColor: item.personalization.threadHex }}
+                                  />
+                                )}
+                                <span className="opacity-75 font-normal text-[0.65rem]">
+                                  ({item.personalization.threadColor || 'Gold'})
+                                </span>
+                              </span>
+                            )}
                             <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.68rem] px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
                               <span>🧵</span> Digitizing Included
                             </span>

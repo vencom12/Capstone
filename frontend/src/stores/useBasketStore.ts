@@ -20,13 +20,20 @@ export const useBasketStore = create<BasketState>()(
 
       addItem: (item) => {
         set((state) => {
+          const itemText = item.personalization?.text || '';
           const existing = state.items.find(
-            (i) => i.productId === item.productId && i.selectedVariant === item.selectedVariant && i.selectedSize === item.selectedSize
+            (i) =>
+              i.productId === item.productId &&
+              i.selectedVariant === item.selectedVariant &&
+              i.selectedSize === item.selectedSize &&
+              (i.personalization?.text || '') === itemText &&
+              (i.personalization?.font || '') === (item.personalization?.font || '') &&
+              (i.personalization?.threadColor || '') === (item.personalization?.threadColor || '')
           );
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId && i.selectedVariant === item.selectedVariant && i.selectedSize === item.selectedSize
+                i.id === existing.id
                   ? { ...i, quantity: i.quantity + (item.quantity || 1) }
                   : i
               ),
@@ -45,6 +52,7 @@ export const useBasketStore = create<BasketState>()(
                 selectedVariant: item.selectedVariant,
                 selectedColor: item.selectedColor,
                 selectedSize: item.selectedSize,
+                personalization: item.personalization,
               },
             ],
           };
