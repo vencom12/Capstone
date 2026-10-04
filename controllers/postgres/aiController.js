@@ -16,17 +16,17 @@ const getAISettings = async () => {
         }
         return {
             aiChatModel: settings.aiChatModel || 'openai/gpt-oss-120b',
-            aiVisionModel: settings.aiVisionModel || 'qwen/qwen3.6-27b',
+            aiVisionModel: settings.aiVisionModel || 'qwen/qwen3.8-27b',
             aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
-            minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.75
+            minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.70
         };
     } catch (e) {
         console.error('Failed to fetch dynamic AI settings, using defaults:', e);
         return {
             aiChatModel: 'openai/gpt-oss-120b',
-            aiVisionModel: 'qwen/qwen3.6-27b',
+            aiVisionModel: 'qwen/qwen3.8-27b',
             aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
-            minConfidenceScore: 0.75
+            minConfidenceScore: 0.70
         };
     }
 };
@@ -1291,15 +1291,16 @@ Output ONLY a JSON object:
             }
         }
 
-        // Audit Check A: Price Match
+        // Audit Check A: Price Match (tolerance of 0.05 for rounding)
         const extractedAmount = parseFloat(aiResult.extractedAmount) || 0;
-        if (extractedAmount < numOrderTotal) {
-            auditFailures.push(`Underpayment: Receipt shows ${extractedAmount} but order requires ${numOrderTotal}.`);
+        const isAmountMatch = Math.abs(extractedAmount - numOrderTotal) < 0.05 || extractedAmount >= numOrderTotal;
+        if (!isAmountMatch) {
+            auditFailures.push(`Underpayment: Receipt shows ₱${extractedAmount.toFixed(2)} but order requires ₱${numOrderTotal.toFixed(2)}.`);
         }
 
         // Audit Check B: Duplicate Reference ID (Defense 2)
         if (aiResult.referenceId) {
-            const cleanRefId = aiResult.referenceId.replace(/\s+/g, '');
+            const cleanRefId = String(aiResult.referenceId).replace(/\s+/g, '');
             const existingByRef = await prisma.receipt.findFirst({
                 where: {
                     referenceId: cleanRefId,
@@ -1313,14 +1314,14 @@ Output ONLY a JSON object:
             aiResult.referenceId = cleanRefId; // Normalize for storage
         }
 
-        // Audit Check C: Recency (within last 24 hours)
+        // Audit Check C: Recency (within last 48 hours for test/production flexibility)
         if (aiResult.transactionDate) {
             try {
                 const txDate = new Date(aiResult.transactionDate);
                 const now = new Date();
                 const hoursAgo = (now - txDate) / (1000 * 60 * 60);
-                if (hoursAgo > 24) {
-                    auditFailures.push(`Expired receipt: Transaction date (${aiResult.transactionDate}) is more than 24 hours old.`);
+                if (hoursAgo > 48) {
+                    auditFailures.push(`Expired receipt: Transaction date (${aiResult.transactionDate}) is more than 48 hours old.`);
                 }
             } catch (dateErr) {
                 // If date can't be parsed, don't fail on this check alone
@@ -1329,7 +1330,7 @@ Output ONLY a JSON object:
         }
 
         // === STEP 4: Automated Verdict ===
-        const allChecksPassed = auditFailures.length === 0 && aiResult.isAmountMatch && isPassedGate;
+        const allChecksPassed = auditFailures.length === 0 && isAmountMatch && isPassedGate;
         const flaggedReason = auditFailures.length > 0 ? auditFailures.join(' | ') : (!isPassedGate ? `Low confidence: ${confidence} (threshold: ${MIN_CONFIDENCE})` : null);
         const verificationStatus = allChecksPassed ? 'verified' : 'flagged';
 

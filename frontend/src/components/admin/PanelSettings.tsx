@@ -53,8 +53,8 @@ export default function PanelSettings({
   ];
 
   const visionModelSuggestions = [
-    { value: 'llama-3.2-11b-vision-preview', label: 'Llama 3.2 11B Vision (Recommended)' },
-    { value: 'llama-3.2-90b-vision-preview', label: 'Llama 3.2 90B Vision (Large-Scale)' }
+    { value: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B Vision (Recommended • Active)' },
+    { value: 'qwen/qwen3.6-27b', label: 'Qwen 3.6 27B Vision' }
   ];
 
   const fetchSettings = async () => {

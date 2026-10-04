@@ -253,8 +253,11 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
       if (verifyRes.success) {
         if (verifyRes.verificationStatus === 'pending_manual_verification') {
-          setAiVerificationResult('📄 Receipt uploaded! Please enter your GCash Reference Number below to finalize your order.');
-          showToast('Receipt received! Please enter your GCash Reference Number below.', 'info');
+          if (verifyRes.aiResult?.referenceId) {
+            setManualRef(verifyRes.aiResult.referenceId);
+          }
+          setAiVerificationResult('📄 Receipt uploaded! Please confirm your GCash Reference Number below to finalize your order.');
+          showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
         } else {
           setPaymentVerified(true);
           const conf = verifyRes.aiResult?.confidence ? `${Math.round(verifyRes.aiResult.confidence * 100)}%` : '';
@@ -266,16 +269,20 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           onClose();
         }
       } else {
-        const friendlyFallback = "Receipt image received! Please enter your GCash Reference Number below to complete your order.";
-        setAiVerificationResult(`📄 ${friendlyFallback}`);
-        showToast('Receipt received! Please enter your GCash Reference Number below.', 'info');
+        // Auto-fill extracted reference ID so customer doesn't have to manually retype 13 digits!
+        if (verifyRes.aiResult?.referenceId) {
+          setManualRef(verifyRes.aiResult.referenceId);
+        }
+        const reasonText = verifyRes.message || verifyRes.flaggedReason || "Please confirm your GCash Reference Number below to complete your order.";
+        setAiVerificationResult(`⚠️ ${reasonText}`);
+        showToast(reasonText, 'info');
         await fetchDashboardState();
       }
     } catch (err: any) {
       console.error('[Receipt Verification Catch]:', err);
-      const friendlyMsg = "Receipt image uploaded! Please enter your GCash Reference Number below so our team can confirm your payment.";
+      const friendlyMsg = "Receipt image uploaded! Please confirm your GCash Reference Number below so our team can confirm your payment.";
       setAiVerificationResult(`📄 ${friendlyMsg}`);
-      showToast('Receipt uploaded! Please enter your GCash Reference Number below.', 'info');
+      showToast('Receipt uploaded! Please confirm your GCash Reference Number below.', 'info');
     } finally {
       setAiAnalyzing(false);
     }

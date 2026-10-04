@@ -68,9 +68,8 @@ const fetchGroqChatWithFallback = async (apiKey, url, initialModel, payloadWitho
 const fetchGroqVisionWithFallback = async (apiKey, url, initialModel, payloadWithoutModel) => {
     // Implement proper fallback sequence for vision models
     const visionFallbackChain = [
-        'qwen/qwen3.6-27b',
-        'openai/gpt-oss-120b',
-        'llama-3.2-11b-vision-preview'
+        'qwen/qwen3.8-27b',
+        'qwen/qwen3.6-27b'
     ];
     
     const modelsToTry = [initialModel];
