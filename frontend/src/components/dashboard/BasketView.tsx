@@ -82,7 +82,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   const handleMoveToFavorites = (item: BasketItem) => {
     const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
     if (product) {
-      toggleFavorite(product);
+      const pId = product.id || (product as any)._id;
+      toggleFavorite(pId);
       removeItem(item.id);
       showToast(`Moved "${item.name}" to your Favorites!`, 'success');
     } else {

@@ -230,8 +230,142 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken)
   });
 }
 
+/**
+ * Sends an Order Confirmation email upon checkout submission.
+ */
+async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const trackingUrl = `${baseUrl}/dashboard?tab=orders`;
+  const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
+
+  const orderId = order.orderId || order.id || 'N/A';
+  const totalAmount = parseFloat(order.totalAmount || order.amount || 0).toFixed(2);
+  const items = Array.isArray(order.items) ? order.items : [];
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
+  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+
+  const itemsHtml = items.map((it) => `
+    <li style="margin-bottom: 8px; color: #e2e8f0; font-size: 13px;">
+      <strong>${it.quantity}x ${it.name}</strong> 
+      ${it.personalization?.text ? `<span style="color: #fbbf24;">(Stitch: "${it.personalization.text}")</span>` : ''} 
+      — ₱${(parseFloat(it.price || 0) * (it.quantity || 1)).toFixed(2)}
+    </li>
+  `).join('');
+
+  const htmlContent = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0f1117; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;">🧵 Order Confirmed!</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 13px;">Order #${orderId} • ${businessName}</p>
+      </div>
+      <div style="padding: 28px 24px;">
+        <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
+          Hi <strong>${recipientName || 'Valued Customer'}</strong>,
+        </p>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 20px;">
+          We have received your embroidery order. Our workshop team is currently digitizing and preparing your items for production.
+        </p>
+        
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <h3 style="color: #ffffff; margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Order Details</h3>
+          <ul style="padding-left: 20px; margin: 0;">
+            ${itemsHtml || '<li style="color: #94a3b8;">Custom Embroidery Design</li>'}
+          </ul>
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; padding-top: 10px; display: flex; justify-content: space-between; color: #ffffff; font-weight: bold; font-size: 14px;">
+            <span>Total Payable:</span>
+            <span style="color: #10b981; font-family: monospace;">₱${totalAmount}</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            Fulfillment: <strong style="color: #e2e8f0;">${isPickup ? '🏪 Store Pick-up (Pacific Mall Lucena)' : '🚚 J&T Express Delivery'}</strong>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${trackingUrl}" style="display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 10px; font-size: 13px; font-weight: 700;">
+            Track Order Live
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return dispatchEmail({
+    to: recipientEmail,
+    subject: `Order Confirmed #${orderId} — ${businessName}`,
+    html: htmlContent,
+    simulationInfo: { tag: 'ORDER CONFIRMATION', url: trackingUrl }
+  });
+}
+
+/**
+ * Sends a notification email when an order is ready for in-store pickup or handed to courier.
+ */
+async function sendOrderStatusReadyEmail(recipientEmail, recipientName, order, newStatus) {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const trackingUrl = `${baseUrl}/dashboard?tab=orders`;
+  const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
+
+  const orderId = order.orderId || order.id || 'N/A';
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
+  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+  const claimCode = personalization.trackingNumber || `PU-LUC-${orderId.slice(-6).toUpperCase()}`;
+
+  const isReadyForPickup = newStatus.toLowerCase().includes('pick') || isPickup;
+
+  const htmlContent = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0f1117; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+      <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800;">
+          ${isReadyForPickup ? '🎉 Ready for Pick-Up!' : '🚚 Your Order is In Transit!'}
+        </h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 13px;">Order #${orderId} • ${businessName}</p>
+      </div>
+      <div style="padding: 28px 24px;">
+        <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
+          Hi <strong>${recipientName || 'Valued Customer'}</strong>,
+        </p>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 20px;">
+          ${isReadyForPickup 
+            ? 'Great news! Your customized embroidery order has completed quality inspection and is now packed and ready for claiming at our counter.' 
+            : 'Your customized embroidery order has been completed and handed over to our delivery courier.'}
+        </p>
+
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #818cf8; font-weight: bold; display: block; margin-bottom: 6px;">
+            ${isReadyForPickup ? 'Official Counter Claim Slip Code' : 'Tracking Reference'}
+          </span>
+          <span style="font-size: 24px; font-family: monospace; font-weight: 800; color: #ffffff; letter-spacing: 1px;">
+            ${claimCode}
+          </span>
+          ${isReadyForPickup ? `
+            <p style="color: #94a3b8; font-size: 12px; margin: 12px 0 0;">
+              📍 <strong>Eds Towels & Caps Counter</strong>, Ground Floor, Pacific Mall Lucena<br/>
+              ⏰ Hours: <strong>10:00 AM – 8:00 PM Daily</strong>
+            </p>
+          ` : ''}
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${trackingUrl}" style="display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 10px; font-size: 13px; font-weight: 700;">
+            View Live Tracking & Claim Slip
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return dispatchEmail({
+    to: recipientEmail,
+    subject: `${isReadyForPickup ? 'Ready for Pick-Up' : 'In Transit'}: Order #${orderId} — ${businessName}`,
+    html: htmlContent,
+    simulationInfo: { tag: 'ORDER READY NOTIFICATION', url: trackingUrl }
+  });
+}
+
 module.exports = {
   generateVerificationToken,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendOrderConfirmationEmail,
+  sendOrderStatusReadyEmail,
 };

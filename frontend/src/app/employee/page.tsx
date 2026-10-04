@@ -273,17 +273,21 @@ export default function EmployeePage() {
     }
   };
 
-  const completeMachineTask = async (order: any, nextStatus: string, machineId: string) => {
+  const completeMachineTask = async (order: any, nextStatus: string, machineId: string, customProgress?: number) => {
     try {
       const orderId = order.id || order._id;
       const url = dbType === 'postgres'
         ? `/api/employee/orders/${orderId}/status`
         : `/api/employee/orders/${orderId}`;
 
+      const progress = customProgress !== undefined 
+        ? customProgress 
+        : (nextStatus === 'Preparing Order' ? 50 : 100);
+
       const payload = {
         status: nextStatus,
-        progress: 100,
-        machineId: null
+        progress,
+        machineId: nextStatus === 'Preparing Order' ? machineId : null
       };
 
       if (dbType === 'postgres') {
@@ -618,19 +622,30 @@ export default function EmployeePage() {
                                   </div>
 
                                   {/* Action Buttons */}
-                                  <div className="grid grid-cols-2 gap-4 mt-auto">
-                                     <button 
-                                       onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id)}
-                                       className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                                     >
-                                       Ready for Pick Up
-                                     </button>
-                                     <button 
-                                       onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id)}
-                                       className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                                     >
-                                       In Transit (Online)
-                                     </button>
+                                  <div className="flex flex-col gap-2 mt-auto">
+                                     {assignedOrder.status === 'In Queue' && (
+                                       <button 
+                                         onClick={() => completeMachineTask(assignedOrder, 'Preparing Order', m.id, 50)}
+                                         className="w-full bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-1.5"
+                                       >
+                                         <span>🪡</span>
+                                         <span>Advance Status: Stitching in Progress (50%)</span>
+                                       </button>
+                                     )}
+                                     <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                          onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id, 100)}
+                                          className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                        >
+                                          Ready for Pick Up
+                                        </button>
+                                        <button 
+                                          onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id, 75)}
+                                          className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                                        >
+                                          In Transit (Online)
+                                        </button>
+                                     </div>
                                   </div>
                                </div>
                              ) : (

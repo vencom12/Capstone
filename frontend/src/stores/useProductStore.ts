@@ -110,7 +110,6 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
     favorites: [],
     transactions: [],
     receipts: [],
-    walletBalance: 0,
     searchQuery: '',
     selectedCategory: 'All'
   }),

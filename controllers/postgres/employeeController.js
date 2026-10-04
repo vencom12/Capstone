@@ -87,6 +87,18 @@ exports.updateOrderStatus = async (req, res) => {
             });
         });
 
+        // Send ready for pick up / in transit email notification asynchronously
+        if (['ready for pick up', 'ready for pickup', 'in transit', 'out for delivery'].includes(status?.toLowerCase())) {
+            prisma.user.findUnique({ where: { id: updatedOrder.userId } }).then(cust => {
+                if (cust && cust.email) {
+                    const { sendOrderStatusReadyEmail } = require('../../utils/emailService');
+                    sendOrderStatusReadyEmail(cust.email, cust.username, updatedOrder, status).catch(err => {
+                        console.error('[EmailService] Order ready status email dispatch failed:', err.message);
+                    });
+                }
+            }).catch(() => {});
+        }
+
         res.json(updatedOrder);
     } catch (err) {
         console.error('Employee Order Update Error:', err);

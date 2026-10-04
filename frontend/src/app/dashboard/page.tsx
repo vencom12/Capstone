@@ -12,7 +12,7 @@ import ProductModal from '@/components/products/ProductModal';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
 import OrderDetailsModal from '@/components/dashboard/OrderDetailsModal';
 import ReceiptModal from '@/components/dashboard/ReceiptModal';
-import type { Product, Order, BasketItem } from '@/lib/types';
+import type { Product, Order, BasketItem, SavedAddress } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import AddressSelect from '@/components/ui/AddressSelect';
@@ -523,9 +523,8 @@ export default function DashboardPage() {
           { key: 'username', label: 'Display Name', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>), type: 'text' as const },
           { key: 'email', label: 'Email Address', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>), type: 'email' as const },
           { key: 'phoneNumber', label: 'Phone Number', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>), type: 'text' as const },
-
           { key: 'preferredDeliveryTime', label: 'Preferred Delivery Time', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>), type: 'text' as const },
-        ];
+        ] as Array<{ key: string; label: string; icon: React.ReactNode; type: 'text' | 'email' | 'textarea' }>;
 
         // Unify address sources: if savedAddresses is not yet populated, use profile address as initial default
         const effectiveSavedAddresses: SavedAddress[] = (user?.savedAddresses && user.savedAddresses.length > 0)
@@ -907,7 +906,12 @@ export default function DashboardPage() {
       {/* Checkout Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setSelectedCheckoutItems(undefined);
+        }}
+        checkoutItems={selectedCheckoutItems}
+        initialFulfillmentType={selectedFulfillmentType}
       />
       {/* Order Details Modal */}
       <OrderDetailsModal

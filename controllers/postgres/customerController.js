@@ -292,7 +292,13 @@ exports.submitOrder = async (req, res) => {
         const productsList = await prisma.product.findMany();
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const enrichedList = await enrichProductsWithStock(productsList);
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedList);
+        // Send Order Confirmation Email via Resend / SMTP asynchronously
+        const { sendOrderConfirmationEmail } = require('../../utils/emailService');
+        if (user.email) {
+            sendOrderConfirmationEmail(user.email, user.username, result).catch(err => {
+                console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
+            });
+        }
 
         res.json({ message: 'Order placed successfully.', order: result, receiptID: secureReceiptId });
     } catch (err) {

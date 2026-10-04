@@ -12,7 +12,7 @@ import { showToast } from '@/components/ui/Toast';
 import AddressSelect from '@/components/ui/AddressSelect';
 import GCashPayment from './GCashPayment';
 import AddressBookModal from '@/components/dashboard/AddressBookModal';
-import type { SavedAddress } from '@/lib/types';
+import type { SavedAddress, BasketItem } from '@/lib/types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -110,6 +110,9 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       handleClearProcessedItems();
     }
   };
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   const handleSaveDeliveryInfo = async () => {
     const cleanAddr = deliveryAddress.trim();
