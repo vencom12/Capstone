@@ -41,3 +41,4 @@ development/dev_routes.js
 *.md
 *.pdf
 *.pid
+*.traineddata

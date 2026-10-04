@@ -44,9 +44,9 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
   return (
     <header className="sticky top-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
-      <div className="max-w-[1440px] mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
-        <div className="flex items-center justify-between w-full lg:w-auto min-w-0">
+        <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
           {/* Brand & Hamburger Area */}
           <div className="flex items-center gap-2.5 min-w-0 shrink">
             <button
@@ -126,7 +126,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         </div>
 
         {/* Middle: Search Bar & Category Dropdown */}
-        <div className="w-full lg:flex-1 lg:max-w-[520px] relative flex items-center gap-2">
+        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative flex items-center gap-2">
           {/* Animated Custom Category Dropdown */}
           <div className="shrink-0 relative category-dropdown-container">
             <button
@@ -187,7 +187,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         </div>
 
         {/* Desktop Actions (Theme, Auth, Basket) - visible only on lg:flex */}
-        <div className="hidden lg:flex items-center gap-3 justify-end shrink-0">
+        <div className="hidden lg:flex items-center gap-3 justify-end shrink-0 lg:min-w-[220px]">
           <button
             suppressHydrationWarning
             onClick={() => {
@@ -195,7 +195,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               const current = html.getAttribute('data-theme');
               html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
             }}
-            className="p-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
+            className="w-10 h-10 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
             title="Toggle theme"
             aria-label="Toggle theme"
           >
@@ -215,14 +215,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'customer')}
-                className="px-4 py-2 rounded-xl text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all"
+                className="px-4 py-2 rounded-xl text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all active:scale-95"
               >
                 Login
               </button>
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'register')}
-                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity"
+                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity shadow-sm active:scale-95"
               >
                 Sign Up
               </button>
@@ -232,7 +232,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           <button
             suppressHydrationWarning
             onClick={() => router.push('/dashboard?tab=basket')}
-            className="p-2 rounded-xl text-text-main hover:bg-white/5 transition-all cursor-pointer relative shrink-0 bg-transparent border-none"
+            className="w-10 h-10 rounded-xl text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center"
             title="View My Basket"
             aria-label="View My Basket"
           >
