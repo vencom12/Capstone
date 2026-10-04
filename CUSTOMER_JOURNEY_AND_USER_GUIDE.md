@@ -170,13 +170,18 @@ flowchart LR
 2. **Selective Item Checkboxing**:
    - Customers can check/uncheck individual garments to purchase only what they want now, leaving other items saved in the basket for later.
    - Master checkbox allows 1-click **Select All**.
-3. **Quantity Safeguards**:
+3. **In-Window Variant Editing**:
+   - Clicking any item's variant or color badge (`[Variant • Size ✎]`) opens a dedicated variant selection modal.
+   - Customers can switch between colors, sizes, and product options directly inside the basket without losing their personalized lettering or item quantities.
+4. **Favorite Preservation**:
+   - Clicking the save / bookmark button copies the product into the customer's Favorites while keeping it intact in the basket.
+   - Adding to favorites triggers a toast notification, while removing items from favorites is silent.
+5. **Custom Clear Basket Dialog**:
+   - Clicking "Clear Basket" opens a glassmorphic confirmation modal with safety options ("Keep Items" / "Yes, Clear All"), replacing unsightly browser alerts.
+6. **Quantity Safeguards**:
    - Plus/minus controls validate against real-time warehouse stock. If a customer attempts to select more than available stock, an instant warning toast appears without reloading the page.
-4. **Fulfillment Selection in Basket**:
-   - **Door Delivery**: Shows standard J&T Express logistics partner preview and destination address.
-   - **Store Pick-up**: Instantly updates shipping fee to **FREE (Store Pick-up)** and displays the pickup counter preview: `Eds Towels & Caps, Pacific Mall Lucena, Quezon (10AM – 8PM)`.
-5. **Mobile View Floating Action Bar**:
-   - On smartphone screens (<1024px), a sticky bottom checkout bar appears displaying the active item count, fulfillment badge (`🏪 Pick-up` or `🚚 Delivery`), running total, and checkout CTA.
+7. **Clean Minimalist Line Icons**:
+   - All legacy emojis in the checkout, basket badges, and fulfillment toggles have been replaced with vector SVG line icons.
 
 ---
 
