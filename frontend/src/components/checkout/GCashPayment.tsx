@@ -62,7 +62,7 @@ export default function GCashPayment({
   };
 
   return (
-    <div className="flex flex-col gap-4 border-t border-border-glass pt-4 mt-2 animate-[fadeIn_0.3s_ease-out]">
+    <div className="flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
       {/* GCash Quick Transfer Info Card */}
       <div className="bg-[#007df2]/10 border border-[#007df2]/30 p-4 rounded-xl flex flex-col gap-2.5">
         <div className="flex items-center justify-between">

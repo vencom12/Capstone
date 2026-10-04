@@ -378,7 +378,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           {/* Left: Delivery & Summary */}
           <div className="flex flex-col gap-5 max-md:gap-3">
             {/* Fulfillment Method Selector / Policy Header */}
-            {deliveryEnabled ? (
+            {deliveryEnabled && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
                   Fulfillment Method
@@ -395,7 +395,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                       <rect x="1" y="3" width="15" height="13" />
-                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 8" />
                       <circle cx="5.5" cy="18.5" r="2.5" />
                       <circle cx="18.5" cy="18.5" r="2.5" />
                     </svg>
@@ -417,24 +417,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     <span>Store Pick-up</span>
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between px-3.5 py-2.5 bg-primary/10 border border-primary/20 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                      <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-white">In-Store Counter Pick-up</span>
-                    <span className="text-[0.7rem] text-text-dim">Claim your customized items directly at our Pacific Mall studio counter</span>
-                  </div>
-                </div>
-                <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase tracking-wider">
-                  Active Mode
-                </span>
               </div>
             )}
 
@@ -504,50 +486,35 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                 />
               </div>
             ) : (
-              /* Store Pick-up Section */
-              <div className="flex flex-col gap-2.5 animate-[fadeIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2 text-text-main">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                      <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
-                    <span>Store Pick-up Counter</span>
-                  </h3>
-                  <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-extrabold uppercase">
-                    Free • Ready When Stitched
-                  </span>
-                </div>
-
-                <div className="p-3.5 bg-white/[0.04] border border-border-glass rounded-2xl flex flex-col gap-1.5 text-xs">
-                  <div className="flex items-start gap-2.5">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mt-0.5 shrink-0">
-                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                      <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-extrabold text-text-main text-[0.82rem]">
-                        Eds Towels & Caps Embroidery Studio
+              /* Single Streamlined Store Pick-up Card */
+              <div className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
+                <div className="p-3 bg-white/[0.04] border border-border-glass rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-white text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
+                        <span className="text-[0.62rem] px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase">
+                          Free Pick-up
+                        </span>
+                      </div>
+                      <span className="text-text-dim text-[0.72rem]">
+                        Pacific Mall Lucena • 10:00 AM – 8:00 PM Daily
                       </span>
-                      <span className="text-text-dim text-[0.75rem] leading-relaxed">
-                        Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301
-                      </span>
-                      <span className="text-[0.7rem] text-primary/90 font-medium mt-0.5 flex items-center gap-1.5">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                          <circle cx="12" cy="12" r="10"/>
-                          <polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                        Mall Hours: 10:00 AM – 8:00 PM Daily • Free 30-day storage
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
-                        className="text-[0.68rem] text-primary hover:underline text-left bg-transparent border-none p-0 cursor-pointer w-fit mt-0.5"
-                      >
-                        View pick-up &amp; holding policies ›
-                      </button>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
+                    className="text-[0.7rem] text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap"
+                  >
+                    Policies ›
+                  </button>
                 </div>
 
                 {/* Claimant Details */}
@@ -664,28 +631,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           </div>
 
           {/* Right: Payment & Receipt AI Verification */}
-          <div className="flex flex-col gap-5 border-l border-border-glass pl-7 max-md:border-l-0 max-md:pl-0 max-md:pt-4 max-md:border-t max-md:gap-3">
-             {/* Data Privacy & Custom Goods Compliance Note */}
-             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5 text-[0.72rem] text-text-dim">
-               <div className="flex items-center gap-1.5 text-text-main font-bold">
-                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                 <span>Philippine Data Privacy Act (RA 10173)</span>
-               </div>
-               <p className="m-0 leading-relaxed text-[0.68rem]">
-                 Your contact phone, fulfillment details, and GCash receipt are encrypted and processed solely for order completion and courier delivery.
-               </p>
-               <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[0.68rem]">
-                 <span>Custom Goods (RA 7394 Non-cancellable once stitched)</span>
-                 <button
-                   type="button"
-                   onClick={() => { setTermsInitialTab('refunds'); setIsTermsModalOpen(true); }}
-                   className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer"
-                 >
-                   View Policies ›
-                 </button>
-               </div>
-             </div>
-
+          <div className="flex flex-col gap-4 border-l border-border-glass pl-7 max-md:border-l-0 max-md:pl-0 max-md:pt-4 max-md:border-t max-md:gap-3">
              <GCashPayment 
                finalTotal={finalTotal}
                totalAmount={finalTotal} 
@@ -714,6 +660,21 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                  Confirm & Dispatch Order
                </GlassButton>
              )}
+
+             {/* Discrete Legal & Privacy Footnote */}
+             <div className="flex items-center justify-between text-[0.68rem] text-text-dim/80 pt-2 border-t border-border-glass/40">
+               <span className="flex items-center gap-1.5">
+                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                 Encrypted under RA 10173 &amp; Custom Goods Policy (RA 7394)
+               </span>
+               <button
+                 type="button"
+                 onClick={() => { setTermsInitialTab('refunds'); setIsTermsModalOpen(true); }}
+                 className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer ml-2 whitespace-nowrap"
+               >
+                 View Policies ›
+               </button>
+             </div>
           </div>
         </div>
       </div>
