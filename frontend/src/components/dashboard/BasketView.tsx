@@ -6,7 +6,7 @@ import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
-import type { BasketItem } from '@/lib/types';
+import type { BasketItem, ProductVariant } from '@/lib/types';
 
 interface BasketViewProps {
   onGoToShop: () => void;
@@ -14,11 +14,12 @@ interface BasketViewProps {
 }
 
 export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewProps) {
-  const { items, removeItem, updateQuantity, clearBasket } = useBasketStore();
+  const { items, removeItem, updateQuantity, updateBasketItem, clearBasket } = useBasketStore();
   const { products, toggleFavorite, favorites } = useProductStore();
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [editingItem, setEditingItem] = useState<BasketItem | null>(null);
 
   // Selected item IDs for checkout
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -261,15 +262,53 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                           {/* Variant & Personalization Badges */}
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            {item.selectedVariant && (
-                              <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
-                                {item.selectedVariant}
-                              </span>
-                            )}
-                            {item.selectedSize && (
-                              <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
-                                Size: {item.selectedSize}
-                              </span>
+                            {/* Interactive Clickable Variant Badge to change options */}
+                            {product?.variants && product.variants.length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingItem(item);
+                                }}
+                                className="group/variant flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 text-primary hover:text-primary-light text-[0.72rem] px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                                title="Click to change variant or color"
+                              >
+                                {item.selectedColor && (
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full border border-white/40 inline-block shadow-xs shrink-0"
+                                    style={{ backgroundColor: item.selectedColor }}
+                                  />
+                                )}
+                                <span>{item.selectedVariant || 'Select Variant'}</span>
+                                {item.selectedSize && <span>• {item.selectedSize}</span>}
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="opacity-70 group-hover/variant:opacity-100 transition-opacity ml-0.5"
+                                >
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                            ) : (
+                              <>
+                                {item.selectedVariant && (
+                                  <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
+                                    {item.selectedVariant}
+                                  </span>
+                                )}
+                                {item.selectedSize && (
+                                  <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
+                                    Size: {item.selectedSize}
+                                  </span>
+                                )}
+                              </>
                             )}
                             {item.personalization?.text && (
                               <span className="bg-primary/10 border border-primary/20 text-primary text-[0.7rem] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
@@ -517,6 +556,137 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           </div>
         </div>
       </GlassModal>
+
+      {/* Variant Selection Modal for in-window customization */}
+      {editingItem && (() => {
+        const product = products.find((p) => (p.id || (p as any)._id) === editingItem.productId);
+        const variants = product?.variants || [];
+
+        return (
+          <GlassModal
+            isOpen={Boolean(editingItem)}
+            onClose={() => setEditingItem(null)}
+            maxWidth="max-w-[460px]"
+          >
+            <div className="flex flex-col gap-4 text-left p-1">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-border-glass pb-3">
+                <div>
+                  <span className="text-[0.65rem] uppercase tracking-wider text-primary font-bold">
+                    Select Garment Option
+                  </span>
+                  <h3 className="text-base sm:text-lg font-extrabold text-text-main m-0 leading-tight">
+                    {editingItem.name}
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-text-dim block">Current:</span>
+                  <span className="text-xs font-bold text-text-main">
+                    {editingItem.selectedVariant || 'Default'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Variants List */}
+              <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
+                {variants.length > 0 ? (
+                  variants.map((v: ProductVariant, idx: number) => {
+                    const isSelected = editingItem.selectedVariant === v.name;
+                    const variantPrice = v.priceOverride ?? product?.price ?? editingItem.price;
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          updateBasketItem(editingItem.id, {
+                            selectedVariant: v.name,
+                            selectedColor: v.color || editingItem.selectedColor,
+                            selectedSize: v.size || editingItem.selectedSize,
+                            price: variantPrice,
+                            imageUrl: v.imageUrl || editingItem.imageUrl,
+                          });
+                          showToast(`Updated to "${v.name}"`, 'success');
+                          setEditingItem(null);
+                        }}
+                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? 'bg-primary/15 border-primary shadow-sm ring-1 ring-primary'
+                            : 'bg-bg-surface/80 hover:bg-white/[0.06] border-border-glass hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Color swatch or Variant Image preview */}
+                          {v.imageUrl ? (
+                            <img
+                              src={v.imageUrl}
+                              alt={v.name}
+                              className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0"
+                            />
+                          ) : v.color ? (
+                            <div
+                              className="w-8 h-8 rounded-xl border border-white/30 shrink-0 shadow-inner flex items-center justify-center"
+                              style={{ backgroundColor: v.color }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 shrink-0 flex items-center justify-center text-xs font-bold text-text-dim">
+                              {idx + 1}
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <span className="text-sm font-bold text-text-main block leading-snug">
+                              {v.name}
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {v.size && (
+                                <span className="text-[0.7rem] text-text-dim">
+                                  Size: <b className="text-text-main">{v.size}</b>
+                                </span>
+                              )}
+                              {v.color && (
+                                <span className="text-[0.7rem] text-text-dim flex items-center gap-1">
+                                  Color: <b className="text-text-main">{v.color}</b>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 pl-3">
+                          <span className="text-sm font-mono font-bold text-primary block">
+                            ₱{variantPrice.toFixed(2)}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[0.65rem] text-primary font-bold uppercase tracking-wider">
+                              Selected ✓
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-6 text-center text-text-dim text-xs">
+                    No alternative variants available for this item.
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-2 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="w-full py-2.5 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-bold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </GlassModal>
+        );
+      })()}
     </section>
   );
 }

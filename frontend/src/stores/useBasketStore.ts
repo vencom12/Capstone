@@ -8,6 +8,10 @@ interface BasketState {
   addItem: (item: Omit<BasketItem, 'id' | 'quantity'> & { quantity?: number }) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updateBasketItem: (
+    basketItemId: string,
+    updates: Partial<Pick<BasketItem, 'selectedVariant' | 'selectedColor' | 'selectedSize' | 'price' | 'imageUrl'>>
+  ) => void;
   clearBasket: () => void;
   getTotal: () => number;
   getCount: () => number;
@@ -70,6 +74,19 @@ export const useBasketStore = create<BasketState>()(
           items: state.items.map((i) =>
             i.id === idOrProductId || i.productId === idOrProductId
               ? { ...i, quantity: Math.max(1, quantity) }
+              : i
+          ),
+        }));
+      },
+
+      updateBasketItem: (basketItemId, updates) => {
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.id === basketItemId
+              ? {
+                  ...i,
+                  ...updates,
+                }
               : i
           ),
         }));
