@@ -79,16 +79,17 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     updateQuantity(id, newQty);
   };
 
-  const handleMoveToFavorites = (item: BasketItem) => {
+  const handleToggleFavoriteItem = (item: BasketItem) => {
     const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
     if (product) {
       const pId = product.id || (product as any)._id;
+      const isFav = favorites.some((f) => (f.id || (f as any)._id) === pId);
       toggleFavorite(pId);
-      removeItem(item.id);
-      showToast(`Moved "${item.name}" to your Favorites!`, 'success');
-    } else {
-      removeItem(item.id);
-      showToast(`Removed from basket`, 'info');
+      if (isFav) {
+        showToast(`Removed "${item.name}" from your Favorites`, 'info');
+      } else {
+        showToast(`Saved "${item.name}" to your Favorites (item kept in basket)`, 'success');
+      }
     }
   };
 
@@ -338,9 +339,13 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleMoveToFavorites(item)}
-                            className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-dim hover:text-primary transition-all flex items-center gap-1.5 cursor-pointer border border-border-glass text-[0.72rem]"
-                            title="Save to Favorites"
+                            onClick={() => handleToggleFavoriteItem(item)}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer border text-[0.72rem] ${
+                              isFav
+                                ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm'
+                                : 'bg-white/5 border-border-glass text-text-dim hover:text-primary hover:bg-white/10'
+                            }`}
+                            title={isFav ? "Saved in Favorites (Click to unfavorite)" : "Save to Favorites"}
                           >
                             <svg
                               width="13"
@@ -353,7 +358,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             >
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                             </svg>
-                            <span className="hidden sm:inline">Save</span>
+                            <span className="hidden sm:inline">{isFav ? 'Saved' : 'Save'}</span>
                           </button>
 
                           <button
