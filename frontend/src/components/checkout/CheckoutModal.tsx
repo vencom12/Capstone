@@ -470,7 +470,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
                 <div className="p-3.5 bg-white/[0.04] border border-border-glass rounded-2xl flex flex-col gap-1.5 text-xs">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-primary text-sm mt-0.5">📍</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mt-0.5 shrink-0">
+                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
                     <div className="flex flex-col gap-0.5">
                       <span className="font-extrabold text-white text-[0.82rem]">
                         Eds Towels & Caps Embroidery Studio
@@ -478,8 +481,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                       <span className="text-text-dim text-[0.75rem] leading-relaxed">
                         Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301
                       </span>
-                      <span className="text-[0.7rem] text-primary/90 font-medium mt-0.5">
-                        🕒 Mall Hours: 10:00 AM – 8:00 PM Daily • Free 30-day storage
+                      <span className="text-[0.7rem] text-primary/90 font-medium mt-0.5 flex items-center gap-1.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Mall Hours: 10:00 AM – 8:00 PM Daily • Free 30-day storage
                       </span>
                       <button
                         type="button"

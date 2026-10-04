@@ -86,13 +86,25 @@ export default function TermsAndPoliciesModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl">
-              <span className="font-bold text-white block text-xs mb-1">📍 Physical Counter</span>
+              <span className="font-bold text-white flex items-center gap-1.5 text-xs mb-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                Physical Counter
+              </span>
               <p className="m-0 text-xs">
                 Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301.
               </p>
             </div>
             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl">
-              <span className="font-bold text-white block text-xs mb-1">🕒 Operating Schedule</span>
+              <span className="font-bold text-white flex items-center gap-1.5 text-xs mb-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Operating Schedule
+              </span>
               <p className="m-0 text-xs">
                 Open Daily: 10:00 AM – 8:00 PM (Following official Pacific Mall holiday & operational hours).
               </p>

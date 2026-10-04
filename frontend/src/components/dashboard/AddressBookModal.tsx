@@ -523,13 +523,31 @@ export default function AddressBookModal({
                     type="button"
                     onClick={() => setLabel(tag)}
                     className={`
-                      px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border
+                      px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border flex items-center gap-2
                       ${label === tag
                         ? 'bg-primary text-white border-primary shadow-sm'
                         : 'bg-bg-surface text-text-dim border-border-glass hover:bg-white/5'}
                     `}
                   >
-                    {tag === 'Home' ? '🏠 Home' : tag === 'Work' ? '🏢 Work' : '📍 Other'}
+                    {tag === 'Home' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                      </svg>
+                    )}
+                    {tag === 'Work' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                      </svg>
+                    )}
+                    {tag === 'Other' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                    )}
+                    <span>{tag}</span>
                   </button>
                 ))}
               </div>
