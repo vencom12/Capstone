@@ -42,7 +42,8 @@ export default function GCashPayment({
 
   const accountNo = "09288103928";
   const displayAccountNo = "0928 810 3928";
-  const activeQrCodeUrl = qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent("09288103928")}&size=200x200&margin=8`;
+  const OFFICIAL_GCASH_QR = "https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg";
+  const activeQrCodeUrl = qrCodeUrl || OFFICIAL_GCASH_QR;
   const total = Number(finalTotal ?? totalAmount ?? 0);
   const analyzing = Boolean(aiAnalyzing ?? isAnalyzing);
   const verified = Boolean(paymentVerified ?? isVerified);

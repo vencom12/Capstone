@@ -39,7 +39,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
 
-  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
+  const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
+  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
 
   // Shopee-Style Delivery Address & Contact Phone management
