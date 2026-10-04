@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
 
 export const formatCategoryName = (str?: string) => {
@@ -88,9 +89,13 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
     // Optimistic update
     if (isFav) {
       set({ favorites: favorites.filter((f) => (f.id || f._id) !== productId) });
+      // When removing from favorites, do NOT show a notification as per user requirements
     } else {
       const product = products.find((p) => (p.id || p._id) === productId);
-      if (product) set({ favorites: [...favorites, product] });
+      if (product) {
+        set({ favorites: [...favorites, product] });
+        showToast(`Saved "${product.name}" to favorites`, 'success');
+      }
     }
 
     try {

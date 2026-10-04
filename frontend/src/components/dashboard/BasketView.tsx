@@ -83,13 +83,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
     if (product) {
       const pId = product.id || (product as any)._id;
-      const isFav = favorites.some((f) => (f.id || (f as any)._id) === pId);
       toggleFavorite(pId);
-      if (isFav) {
-        showToast(`Removed "${item.name}" from your Favorites`, 'info');
-      } else {
-        showToast(`Saved "${item.name}" to your Favorites (item kept in basket)`, 'success');
-      }
     }
   };
 
