@@ -279,7 +279,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         await fetchDashboardState();
       }
     } catch (err: any) {
-      console.error('[Receipt Verification Catch]:', err);
+      console.warn('[Receipt Verification Notice]:', err?.message || err);
       const friendlyMsg = "Receipt image uploaded! Please confirm your GCash Reference Number below so our team can confirm your payment.";
       setAiVerificationResult(`📄 ${friendlyMsg}`);
       showToast('Receipt uploaded! Please confirm your GCash Reference Number below.', 'info');

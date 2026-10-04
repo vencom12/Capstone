@@ -1112,6 +1112,8 @@ exports.listModels = async (req, res) => {
 };
 
 exports.verifyReceipt = async (req, res) => {
+    let receipt = null;
+    let numOrderTotal = 0;
     try {
         const { receiptUrl, orderTotal, orderId } = req.body;
         const apiKey = process.env.GROQ_API_KEY;
@@ -1128,10 +1130,10 @@ exports.verifyReceipt = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid order total." });
         }
 
-        const numOrderTotal = parseFloat(orderTotal);
+        numOrderTotal = parseFloat(orderTotal);
 
         // === Ownership Validation ===
-        const receipt = await prisma.receipt.findFirst({ where: { orderID: orderId } });
+        receipt = await prisma.receipt.findFirst({ where: { orderID: orderId } });
         if (!receipt) {
             return res.status(404).json({ success: false, message: "Receipt not found for this order." });
         }
@@ -1171,7 +1173,6 @@ exports.verifyReceipt = async (req, res) => {
                     await prisma.receipt.update({
                         where: { id: receipt.id },
                         data: {
-                            imageHash,
                             aiVerificationStatus: 'flagged',
                             flaggedReason: `Duplicate receipt: This exact image was already used for order ${existingByHash.orderID}.`,
                             status: 'Rejected'
@@ -1365,6 +1366,17 @@ Output ONLY a JSON object:
 
         console.log(`[AI Vision] Step 4: Verdict for Order ${orderId}: ${verificationStatus}${flaggedReason ? ' — ' + flaggedReason : ''}`);
 
+        // Check if imageHash is unique before saving to avoid Prisma unique constraint crash
+        let safeImageHash = null;
+        if (imageHash) {
+            const hashConflict = await prisma.receipt.findFirst({
+                where: { imageHash, NOT: { id: receipt.id } }
+            });
+            if (!hashConflict) {
+                safeImageHash = imageHash;
+            }
+        }
+
         // Update Receipt
         const updatedReceipt = await prisma.receipt.update({
             where: { id: receipt.id },
@@ -1373,7 +1385,7 @@ Output ONLY a JSON object:
                 confidenceScore: confidence,
                 aiVerificationStatus: verificationStatus,
                 status: allChecksPassed ? 'Verified' : 'Manual Review',
-                imageHash,
+                imageHash: safeImageHash,
                 referenceId: aiResult.referenceId || null,
                 flaggedReason
             }
@@ -1434,7 +1446,7 @@ Output ONLY a JSON object:
                 });
             }
         } catch (dbErr) {
-            console.error('[AI Fallback DB Error]:', dbErr);
+            console.error('[AI Fallback DB Error]:', dbErr?.message || dbErr);
         }
 
         return res.json({
@@ -1444,7 +1456,7 @@ Output ONLY a JSON object:
             message: "Receipt uploaded successfully! Please enter your GCash Reference Number below so our team can confirm your payment.",
             aiResult: {
                 isValidReceipt: true,
-                extractedAmount: numOrderTotal,
+                extractedAmount: numOrderTotal || 0,
                 isAmountMatch: true,
                 confidence: 1.0
             }
