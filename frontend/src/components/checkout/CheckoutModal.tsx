@@ -660,21 +660,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                  Confirm & Dispatch Order
                </GlassButton>
              )}
-
-             {/* Discrete Legal & Privacy Footnote */}
-             <div className="flex items-center justify-between text-[0.68rem] text-text-dim/80 pt-2 border-t border-border-glass/40">
-               <span className="flex items-center gap-1.5">
-                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                 Encrypted under RA 10173 &amp; Custom Goods Policy (RA 7394)
-               </span>
-               <button
-                 type="button"
-                 onClick={() => { setTermsInitialTab('refunds'); setIsTermsModalOpen(true); }}
-                 className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer ml-2 whitespace-nowrap"
-               >
-                 View Policies ›
-               </button>
-             </div>
           </div>
         </div>
       </div>
