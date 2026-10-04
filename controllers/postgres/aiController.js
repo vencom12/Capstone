@@ -1188,17 +1188,46 @@ exports.verifyReceipt = async (req, res) => {
             console.warn('[AI Vision] Could not compute image hash (non-fatal):', hashErr.message);
         }
 
-        // === STEP 1 & 2: Visual Classification + OCR Extraction ===
-        console.log(`[AI Vision] Steps 1-2: Classifying and extracting data for Order ${orderId}...`);
+        // === STEP 1 & 2: HYBRID DUAL-ENGINE VERIFICATION ===
+        // TIER 1: In-House Local OCR Pipeline (Instant, deterministic, zero-cost, no model deprecation)
+        console.log(`[Payment Verification] Tier 1: Running in-house local OCR for Order ${orderId}...`);
+        const { parseReceiptWithLocalOCR } = require('../../services/payments/localOcrService');
+        
+        let aiResult = null;
+        let extractionEngine = 'In-House Local OCR (Tesseract.js)';
+        
+        try {
+            const localOcrResult = await parseReceiptWithLocalOCR(receiptUrl);
+            if (localOcrResult && localOcrResult.isValidReceipt && localOcrResult.referenceId && localOcrResult.extractedAmount !== null) {
+                console.log(`[Payment Verification] Tier 1 SUCCESS: Extracted amount ₱${localOcrResult.extractedAmount}, Ref: ${localOcrResult.referenceId}`);
+                aiResult = {
+                    isValidReceipt: true,
+                    extractedAmount: localOcrResult.extractedAmount,
+                    referenceId: localOcrResult.referenceId,
+                    transactionDate: new Date().toISOString(),
+                    recipientName: "Eds Towels & Caps",
+                    paymentPlatform: localOcrResult.paymentPlatform,
+                    isAmountMatch: Math.abs(localOcrResult.extractedAmount - numOrderTotal) < 0.05 || localOcrResult.extractedAmount >= numOrderTotal,
+                    confidence: localOcrResult.confidence,
+                    reason: `Verified via In-House Local OCR Engine. Extracted Reference: ${localOcrResult.referenceId}, Amount: ₱${localOcrResult.extractedAmount}`
+                };
+            }
+        } catch (localErr) {
+            console.warn('[Payment Verification] Tier 1 local OCR skipped to Tier 2:', localErr.message);
+        }
 
-        const data = await fetchGroqVisionWithFallback(apiKey, GROQ_API_URL, VISION_MODEL, {
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        {
-                            type: "text",
-                            text: `You are a payment verification auditor. Analyze this image and perform TWO tasks:
+        // TIER 2: Multimodal AI Vision Fallback (Only if Tier 1 did not obtain full financial data)
+        if (!aiResult) {
+            console.log(`[Payment Verification] Tier 2: Escalating to AI Vision model (${VISION_MODEL})...`);
+            extractionEngine = `Multimodal AI (${VISION_MODEL})`;
+            const data = await fetchGroqVisionWithFallback(apiKey, GROQ_API_URL, VISION_MODEL, {
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                type: "text",
+                                text: `You are a payment verification auditor. Analyze this image and perform TWO tasks:
 
 TASK 1 - VISUAL CLASSIFICATION:
 Determine if this image is a legitimate digital payment receipt/transaction confirmation (e.g., GCash, PayMaya, BPI, BDO, bank transfer screenshot). Look for:
@@ -1230,26 +1259,26 @@ Output ONLY a JSON object:
   "confidence": number (0 to 1),
   "reason": "string explaining the analysis"
 }`
-                        },
-                        {
-                            type: "image_url",
-                            image_url: { url: receiptUrl }
-                        }
-                    ]
-                }
-            ],
-            response_format: { type: "json_object" }
-        });
+                            },
+                            {
+                                type: "image_url",
+                                image_url: { url: receiptUrl }
+                            }
+                        ]
+                    }
+                ],
+                response_format: { type: "json_object" }
+            });
 
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error("AI failed to provide a valid response.");
-        }
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                throw new Error("AI failed to provide a valid response.");
+            }
 
-        let aiResult;
-        try {
-            aiResult = JSON.parse(data.choices[0].message.content);
-        } catch (parseErr) {
-            throw new Error("AI returned malformed JSON: " + data.choices[0].message.content.substring(0, 200));
+            try {
+                aiResult = JSON.parse(data.choices[0].message.content);
+            } catch (parseErr) {
+                throw new Error("AI returned malformed JSON: " + data.choices[0].message.content.substring(0, 200));
+            }
         }
 
         // Sanitize confidence to a valid range
