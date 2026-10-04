@@ -586,22 +586,22 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
             maxWidth="max-w-[460px]"
           >
             <div className="flex flex-col gap-4 text-left p-1">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-3 border-b border-border-glass pb-3">
-                <div>
+              {/* Header with sufficient right padding to avoid the close (X) button */}
+              <div className="flex flex-col gap-2 border-b border-border-glass pb-3 pr-10">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-[0.65rem] uppercase tracking-wider text-primary font-bold">
                     Select Garment Option
                   </span>
-                  <h3 className="text-base sm:text-lg font-extrabold text-text-main m-0 leading-tight">
-                    {editingItem.name}
-                  </h3>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-text-dim">Current:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 font-bold text-text-main text-[0.72rem]">
+                      {editingItem.selectedVariant || 'Default'}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-text-dim block">Current:</span>
-                  <span className="text-xs font-bold text-text-main">
-                    {editingItem.selectedVariant || 'Default'}
-                  </span>
-                </div>
+                <h3 className="text-base sm:text-lg font-extrabold text-text-main m-0 leading-tight">
+                  {editingItem.name}
+                </h3>
               </div>
 
               {/* Variants List */}
