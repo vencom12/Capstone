@@ -151,7 +151,7 @@ export default function Sidebar() {
                       transition-all duration-300 text-left text-[0.85rem] border
                       ${selectedCategory === category
                         ? 'bg-primary border-primary/40 text-white font-semibold shadow-sm'
-                        : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-white'
+                        : 'bg-bg-surface border-border-glass text-text-dim hover:bg-white/[0.08] hover:border-white/20 hover:translate-x-1 hover:text-text-main'
                       }
                     `}
                   >

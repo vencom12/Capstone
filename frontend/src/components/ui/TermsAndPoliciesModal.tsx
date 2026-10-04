@@ -55,7 +55,7 @@ export default function TermsAndPoliciesModal({
             Under the Consumer Act of the Philippines (Republic Act No. 7394), custom-manufactured and personalized items are subject to specific production guidelines:
           </p>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-2">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               1. Non-Cancellable Once Production Begins
             </span>
             <p className="m-0">
@@ -86,7 +86,7 @@ export default function TermsAndPoliciesModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl">
-              <span className="font-bold text-white flex items-center gap-1.5 text-xs mb-1">
+              <span className="font-bold text-text-main flex items-center gap-1.5 text-xs mb-1">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
                   <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
                   <circle cx="12" cy="10" r="3"/>
@@ -98,7 +98,7 @@ export default function TermsAndPoliciesModal({
               </p>
             </div>
             <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl">
-              <span className="font-bold text-white flex items-center gap-1.5 text-xs mb-1">
+              <span className="font-bold text-text-main flex items-center gap-1.5 text-xs mb-1">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
@@ -121,7 +121,7 @@ export default function TermsAndPoliciesModal({
           </div>
 
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl">
-            <span className="font-bold text-white block text-xs mb-1">Authorized Representatives</span>
+            <span className="font-bold text-text-main block text-xs mb-1">Authorized Representatives</span>
             <p className="m-0 text-xs">
               If an authorized family member or representative will claim on your behalf, please ensure they bring the digital order ID, claim code (e.g. PU-LUC-...), and a valid government or student ID.
             </p>
@@ -139,7 +139,7 @@ export default function TermsAndPoliciesModal({
             Guidelines regarding logos, emblems, school seals, and commercial trademarks:
           </p>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               Customer Representation & Warranty
             </span>
             <p className="m-0 text-xs">
@@ -148,7 +148,7 @@ export default function TermsAndPoliciesModal({
           </div>
 
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               Right to Decline Prohibited Content
             </span>
             <p className="m-0 text-xs">
@@ -168,7 +168,7 @@ export default function TermsAndPoliciesModal({
             Understanding digital previews versus physical textile materials:
           </p>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               Display RGB vs. Physical Thread Pigments
             </span>
             <p className="m-0 text-xs">
@@ -176,7 +176,7 @@ export default function TermsAndPoliciesModal({
             </p>
           </div>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               Fabric Texture &amp; Density
             </span>
             <p className="m-0 text-xs">
@@ -196,7 +196,7 @@ export default function TermsAndPoliciesModal({
             Commitment to customer privacy under the Philippine Data Privacy Act of 2012:
           </p>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               Purpose-Bound Data Collection
             </span>
             <p className="m-0 text-xs">
@@ -204,7 +204,7 @@ export default function TermsAndPoliciesModal({
             </p>
           </div>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-white text-xs uppercase tracking-wide">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               No Third-Party Advertising
             </span>
             <p className="m-0 text-xs">
@@ -230,7 +230,7 @@ export default function TermsAndPoliciesModal({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === sec.id
                   ? 'bg-primary text-white border-primary shadow-sm'
-                  : 'bg-white/[0.03] text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                  : 'bg-white/[0.03] text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
               }`}
             >
               {sec.title.split(' ')[0]} {sec.title.split(' ')[1] || ''}
@@ -240,7 +240,7 @@ export default function TermsAndPoliciesModal({
 
         {/* Section Header */}
         <div className="flex items-center justify-between gap-2 pt-1">
-          <h3 className="text-base sm:text-lg font-black text-white m-0">
+          <h3 className="text-base sm:text-lg font-black text-text-main m-0">
             {currentSection.title}
           </h3>
           <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-white/10 text-primary font-bold uppercase tracking-wider border border-border-glass shrink-0">
@@ -258,7 +258,7 @@ export default function TermsAndPoliciesModal({
           <span>Eds Towels &amp; Caps Embroidery Studio • Pacific Mall Lucena, Quezon</span>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold cursor-pointer border border-border-glass transition-all"
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-text-main text-xs font-bold cursor-pointer border border-border-glass transition-all"
           >
             I Understand
           </button>

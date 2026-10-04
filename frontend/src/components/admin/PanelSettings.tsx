@@ -268,14 +268,14 @@ export default function PanelSettings({
               {/* Business Name */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Business Name</span>
+                  <span className="font-bold text-sm text-text-main">Business Name</span>
                   <span className="text-xs text-text-dim mt-1">The primary name printed at the top of the receipt layout.</span>
                 </div>
                 <input
                   type="text"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="STITCH-OPT DESIGNS"
                 />
               </div>
@@ -283,14 +283,14 @@ export default function PanelSettings({
               {/* Receipt Tagline */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Receipt Tagline</span>
+                  <span className="font-bold text-sm text-text-main">Receipt Tagline</span>
                   <span className="text-xs text-text-dim mt-1">A short brand motto printed directly under the business name.</span>
                 </div>
                 <input
                   type="text"
                   value={receiptTagline}
                   onChange={(e) => setReceiptTagline(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="Premium Embroidery Services"
                 />
               </div>
@@ -298,14 +298,14 @@ export default function PanelSettings({
               {/* Business Address */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Business Address</span>
+                  <span className="font-bold text-sm text-text-main">Business Address</span>
                   <span className="text-xs text-text-dim mt-1">The physical address listed on all transaction invoices.</span>
                 </div>
                 <input
                   type="text"
                   value={businessAddress}
                   onChange={(e) => setBusinessAddress(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="123 Digital Thread Lane, Manila"
                 />
               </div>
@@ -313,14 +313,14 @@ export default function PanelSettings({
               {/* Business Contact */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Contact Number</span>
+                  <span className="font-bold text-sm text-text-main">Contact Number</span>
                   <span className="text-xs text-text-dim mt-1">The store telephone or mobile number for customer queries.</span>
                 </div>
                 <input
                   type="text"
                   value={businessContact}
                   onChange={(e) => setBusinessContact(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="+63 (02) 888-THREAD"
                 />
               </div>
@@ -328,14 +328,14 @@ export default function PanelSettings({
               {/* Business Email */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Support Email Address</span>
+                  <span className="font-bold text-sm text-text-main">Support Email Address</span>
                   <span className="text-xs text-text-dim mt-1">Email address printed on the footer of all receipts.</span>
                 </div>
                 <input
                   type="email"
                   value={businessEmail}
                   onChange={(e) => setBusinessEmail(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="contact@stitch-opt.com"
                 />
               </div>
@@ -343,14 +343,14 @@ export default function PanelSettings({
               {/* Business Website URL */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Business Website URL</span>
+                  <span className="font-bold text-sm text-text-main">Business Website URL</span>
                   <span className="text-xs text-text-dim mt-1">Website URL printed on the footer of all receipts.</span>
                 </div>
                 <input
                   type="text"
                   value={businessWebsite}
                   onChange={(e) => setBusinessWebsite(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-sans"
                   placeholder="www.stitch-opt.com"
                 />
               </div>
@@ -358,7 +358,7 @@ export default function PanelSettings({
               {/* Business Logo Upload */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Business Logo</span>
+                  <span className="font-bold text-sm text-text-main">Business Logo</span>
                   <span className="text-xs text-text-dim mt-1">Upload a custom logo for receipts and the website favicon.</span>
                 </div>
                 <div className="flex items-center gap-4 flex-1 justify-end">
@@ -459,14 +459,14 @@ export default function PanelSettings({
               {/* Chat & Orchestration Model */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Chat Orchestration Model</span>
+                  <span className="font-bold text-sm text-text-main">Chat Orchestration Model</span>
                   <span className="text-xs text-text-dim mt-1">Select the primary model for conversational commands, automated stock actions, and catalog revisions.</span>
                 </div>
                 <div className="flex flex-col gap-2 min-w-[280px]">
                   <select
                     value={aiChatModel}
                     onChange={(e) => setAiChatModel(e.target.value)}
-                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm outline-none focus:border-primary transition-all cursor-pointer font-sans"
+                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm outline-none focus:border-primary transition-all cursor-pointer font-sans"
                   >
                     {chatModelSuggestions.map((m) => (
                       <option key={m.value} value={m.value}>{m.label}</option>
@@ -480,7 +480,7 @@ export default function PanelSettings({
                     placeholder="Or enter custom model ID..."
                     value={aiChatModel}
                     onChange={(e) => setAiChatModel(e.target.value)}
-                    className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-white text-[0.8rem] outline-none focus:border-primary transition-all font-mono"
+                    className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-[0.8rem] outline-none focus:border-primary transition-all font-mono"
                   />
                 </div>
               </div>
@@ -488,14 +488,14 @@ export default function PanelSettings({
               {/* Vision (OCR) Model */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">OCR Vision Model</span>
+                  <span className="font-bold text-sm text-text-main">OCR Vision Model</span>
                   <span className="text-xs text-text-dim mt-1">Select the multimodal vision model responsible for parsing transaction receipts and proof-of-payment.</span>
                 </div>
                 <div className="flex flex-col gap-2 min-w-[280px]">
                   <select
                     value={aiVisionModel}
                     onChange={(e) => setAiVisionModel(e.target.value)}
-                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm outline-none focus:border-primary transition-all cursor-pointer font-sans"
+                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm outline-none focus:border-primary transition-all cursor-pointer font-sans"
                   >
                     {visionModelSuggestions.map((m) => (
                       <option key={m.value} value={m.value}>{m.label}</option>
@@ -509,7 +509,7 @@ export default function PanelSettings({
                     placeholder="Or enter custom vision model ID..."
                     value={aiVisionModel}
                     onChange={(e) => setAiVisionModel(e.target.value)}
-                    className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-white text-[0.8rem] outline-none focus:border-primary transition-all font-mono"
+                    className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-[0.8rem] outline-none focus:border-primary transition-all font-mono"
                   />
                 </div>
               </div>
@@ -517,14 +517,14 @@ export default function PanelSettings({
               {/* Provider Endpoint */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">AI Provider Endpoint URL</span>
+                  <span className="font-bold text-sm text-text-main">AI Provider Endpoint URL</span>
                   <span className="text-xs text-text-dim mt-1">Set the endpoint address where chat completions and vision analysis queries are securely dispatched.</span>
                 </div>
                 <input
                   type="text"
                   value={aiProviderUrl}
                   onChange={(e) => setAiProviderUrl(e.target.value)}
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-white text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-mono"
+                  className="bg-bg-surface border border-border-glass rounded-lg py-2.5 px-3 text-text-main text-sm min-w-[280px] md:max-w-[400px] flex-1 outline-none focus:border-primary transition-all font-mono"
                   placeholder="https://api.groq.com/openai/v1/chat/completions"
                 />
               </div>
@@ -532,7 +532,7 @@ export default function PanelSettings({
               {/* Confidence Score Gate */}
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
                 <div className="flex flex-col max-w-[350px]">
-                  <span className="font-bold text-sm text-white">Confidence Threshold Gate</span>
+                  <span className="font-bold text-sm text-text-main">Confidence Threshold Gate</span>
                   <span className="text-xs text-text-dim mt-1">
                     Control verification safety. Receipts below this confidence level are auto-flagged for operator manual review. 
                     Currently set to: <strong className="text-primary font-mono text-[0.85rem] bg-primary/10 px-1.5 py-0.5 rounded ml-1">{minConfidenceScore}%</strong>
@@ -653,7 +653,7 @@ export default function PanelSettings({
 
             <div className="flex items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl">
               <div className="flex flex-col text-left">
-                <span className="font-bold text-sm text-white">Luxury Gift Suite Price</span>
+                <span className="font-bold text-sm text-text-main">Luxury Gift Suite Price</span>
                 <span className="text-xs text-text-dim mt-1">Controls the upsell price for premium packaging at checkout</span>
               </div>
               <div className="flex items-center gap-2">
@@ -663,7 +663,7 @@ export default function PanelSettings({
                     type="number" 
                     value={giftPrice}
                     onChange={(e) => setGiftPrice(e.target.value as any)}
-                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 pl-7 pr-3 text-white text-sm w-24 outline-none focus:border-primary transition-all font-mono"
+                    className="bg-bg-surface border border-border-glass rounded-lg py-2.5 pl-7 pr-3 text-text-main text-sm w-24 outline-none focus:border-primary transition-all font-mono"
                     step="0.50"
                     min="0"
                   />
@@ -671,7 +671,7 @@ export default function PanelSettings({
                 <button
                   onClick={handleUpdateGiftPrice}
                   disabled={isGiftLoading}
-                  className="flex items-center gap-2 text-xs font-bold text-bg-surface bg-secondary px-4 py-2.5 rounded-lg hover:bg-secondary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 border-none shadow-sm hover:shadow-md text-white"
+                  className="flex items-center gap-2 text-xs font-bold text-white bg-primary px-4 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 border-none shadow-sm hover:shadow-md"
                 >
                   {isGiftLoading ? 'Saving...' : 'Save Price'}
                 </button>
@@ -693,7 +693,7 @@ export default function PanelSettings({
 
             <div className="flex items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl">
               <div className="flex flex-col text-left">
-                <span className="font-bold text-sm text-white">Default Theme Configuration</span>
+                <span className="font-bold text-sm text-text-main">Default Theme Configuration</span>
                 <span className="text-xs text-text-dim mt-1">Locks standard premium dark-mode visuals across auth panels</span>
               </div>
               <button

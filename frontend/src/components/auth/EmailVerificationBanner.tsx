@@ -51,7 +51,7 @@ export default function EmailVerificationBanner() {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-amber-400 text-base">⚠️</span>
           <span className="text-amber-200/90 font-medium">
-            Your email <strong className="text-white font-bold">{user.email}</strong> is not verified yet.
+            Your email <strong className="text-amber-100 font-bold">{user.email}</strong> is not verified yet.
           </span>
           <span className="text-amber-200/60 text-xs hidden sm:inline">
             Verify to place orders.

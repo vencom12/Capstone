@@ -161,7 +161,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   }}
                   className={`
                     w-full text-left px-3 py-2 text-xs font-medium rounded-xl transition-all hover:bg-white/10 cursor-pointer border-none bg-transparent block truncate
-                    ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-sm' : 'text-text-main hover:text-white'}
+                    ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-sm' : 'text-text-main hover:text-primary'}
                   `}
                 >
                   {c === 'All' ? 'All Designs' : c}

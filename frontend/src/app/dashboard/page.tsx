@@ -602,10 +602,10 @@ export default function DashboardPage() {
                                 autoFocus
                                 className="w-full bg-bg-surface border border-primary/50 p-3 rounded-xl text-text-main text-[0.95rem] outline-none focus:border-primary cursor-pointer transition-all shadow-sm"
                               >
-                                <option value="Express (Earliest available dispatch)" className="bg-bg-dark text-white">Express (Earliest available dispatch)</option>
-                                <option value="Morning (8:00 AM - 12:00 PM)" className="bg-bg-dark text-white">Morning (8:00 AM - 12:00 PM)</option>
-                                <option value="Afternoon (1:00 PM - 5:00 PM)" className="bg-bg-dark text-white">Afternoon (1:00 PM - 5:00 PM)</option>
-                                <option value="Evening (5:00 PM - 8:00 PM)" className="bg-bg-dark text-white">Evening (5:00 PM - 8:00 PM)</option>
+                                <option value="Express (Earliest available dispatch)" className="bg-bg-surface text-text-main">Express (Earliest available dispatch)</option>
+                                <option value="Morning (8:00 AM - 12:00 PM)" className="bg-bg-surface text-text-main">Morning (8:00 AM - 12:00 PM)</option>
+                                <option value="Afternoon (1:00 PM - 5:00 PM)" className="bg-bg-surface text-text-main">Afternoon (1:00 PM - 5:00 PM)</option>
+                                <option value="Evening (5:00 PM - 8:00 PM)" className="bg-bg-surface text-text-main">Evening (5:00 PM - 8:00 PM)</option>
                               </select>
                             ) : field.type === 'textarea' ? (
                               <textarea

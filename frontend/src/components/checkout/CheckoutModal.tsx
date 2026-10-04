@@ -459,7 +459,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               /* Store Pick-up Section */
               <div className="flex flex-col gap-2.5 animate-[fadeIn_0.2s_ease-out]">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2 text-white">
+                  <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2 text-text-main">
                     <span className="text-base">🏪</span>
                     <span>Store Pick-up Counter</span>
                   </h3>
@@ -475,7 +475,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                       <circle cx="12" cy="10" r="3"/>
                     </svg>
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-extrabold text-white text-[0.82rem]">
+                      <span className="font-extrabold text-text-main text-[0.82rem]">
                         Eds Towels & Caps Embroidery Studio
                       </span>
                       <span className="text-text-dim text-[0.75rem] leading-relaxed">
@@ -591,7 +591,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               {giftPackaging && estimatedMinutes !== null && (
                  <div className="flex justify-between items-center px-2 text-[0.8rem] text-text-dim">
                     <span>Estimated Completion:</span>
-                    <span className="font-bold text-white">~{Math.max(1, Math.ceil(estimatedMinutes / 60))} Hours</span>
+                    <span className="font-bold text-text-main">~{Math.max(1, Math.ceil(estimatedMinutes / 60))} Hours</span>
                  </div>
               )}
 

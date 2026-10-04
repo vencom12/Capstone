@@ -105,7 +105,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     return (
       <section className="flex flex-col min-h-full animate-[fadeIn_0.3s_ease-out]">
         <header className="mb-6">
-          <h1 className="text-2xl font-black text-white m-0 tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl font-black text-text-main m-0 tracking-tight flex items-center gap-3">
             <span>My Embroidery Basket</span>
             <span className="text-xs bg-white/10 text-text-dim px-3 py-1 rounded-full font-normal">
               0 Items
@@ -133,7 +133,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Your Basket is Empty</h2>
+          <h2 className="text-xl font-bold text-text-main mb-2">Your Basket is Empty</h2>
           <p className="text-text-dim text-sm max-w-md mb-6 leading-relaxed">
             You haven&apos;t added any personalized caps or luxury towels yet. Explore our custom embroidery catalog and customize your design!
           </p>
@@ -156,7 +156,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       <header className="mb-5 flex justify-between items-end flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-black text-white m-0 tracking-tight">
+            <h1 className="text-2xl font-black text-text-main m-0 tracking-tight">
               My Embroidery Basket
             </h1>
             <span className="text-xs bg-primary/20 border border-primary/30 text-primary px-2.5 py-0.5 rounded-full font-bold">
@@ -195,7 +195,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                 onChange={handleToggleSelectAll}
                 className="w-4 h-4 rounded accent-primary cursor-pointer"
               />
-              <span className="text-xs sm:text-sm font-bold text-white">
+              <span className="text-xs sm:text-sm font-bold text-text-main">
                 Select All ({items.length} {items.length === 1 ? 'item' : 'items'})
               </span>
             </label>
@@ -256,7 +256,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-sm sm:text-base font-bold text-white m-0 truncate">
+                          <h3 className="text-sm sm:text-base font-bold text-text-main m-0 truncate">
                             {item.name}
                           </h3>
                           {product?.tag && (
@@ -302,17 +302,17 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             type="button"
                             onClick={() => handleQuantityChange(item.id, item.productId, item.quantity - 1)}
                             disabled={item.quantity <= 1}
-                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed border-none text-xs"
+                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-text-main font-bold flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed border-none text-xs"
                           >
                             -
                           </button>
-                          <span className="w-7 text-center text-xs font-mono font-bold text-white select-none">
+                          <span className="w-7 text-center text-xs font-mono font-bold text-text-main select-none">
                             {item.quantity}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleQuantityChange(item.id, item.productId, item.quantity + 1)}
-                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center transition-all cursor-pointer border-none text-xs"
+                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-text-main font-bold flex items-center justify-center transition-all cursor-pointer border-none text-xs"
                           >
                             +
                           </button>
@@ -381,7 +381,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         {/* Right Column: Clean, Focused Order Summary (5 of 12 cols on desktop) */}
         <div className="lg:col-span-4 lg:sticky lg:top-4 flex flex-col gap-4">
           <div className="bg-bg-surface/90 border border-border-glass rounded-3xl p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col gap-4">
-            <h2 className="text-base font-extrabold text-white m-0 pb-3 border-b border-white/10 flex items-center justify-between">
+            <h2 className="text-base font-extrabold text-text-main m-0 pb-3 border-b border-white/10 flex items-center justify-between">
               <span>Order Summary</span>
               <span className="text-xs font-mono font-bold text-primary">
                 {selectedItemCount} {selectedItemCount === 1 ? 'item' : 'items'}
@@ -392,7 +392,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
             <div className="flex flex-col gap-2.5 text-xs sm:text-sm">
               <div className="flex justify-between items-center text-text-dim">
                 <span>Merchandise Subtotal:</span>
-                <span className="font-mono text-white font-bold">
+                <span className="font-mono text-text-main font-bold">
                   ₱{selectedTotal.toFixed(2)}
                 </span>
               </div>
@@ -420,7 +420,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
               <div className="pt-3 border-t border-white/10 flex justify-between items-center">
                 <div>
-                  <span className="text-sm sm:text-base font-black text-white block">Estimated Total</span>
+                  <span className="text-sm sm:text-base font-black text-text-main block">Estimated Total</span>
                   <span className="text-[0.68rem] text-text-dim">Free Pacific Mall Pick-up available</span>
                 </div>
                 <span className="text-xl sm:text-2xl font-mono font-black text-primary">
