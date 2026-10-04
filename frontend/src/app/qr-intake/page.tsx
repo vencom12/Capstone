@@ -13,7 +13,7 @@ export default function QRIntakePage() {
   const [client, setClient] = useState('');
   const [text, setText] = useState('');
   const [color, setColor] = useState('Navy');
-  const [font, setFont] = useState('Standard');
+  const [font] = useState('Classic Cursive Script');
   const [waiverSigned, setWaiverSigned] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,11 +84,9 @@ export default function QRIntakePage() {
                </div>
                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Font Style</label>
-                  <select value={font} onChange={e => setFont(e.target.value)} className="bg-black/30 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary">
-                    <option value="Standard">Standard Block</option>
-                    <option value="Script">Elegant Script</option>
-                    <option value="Athletic">Athletic</option>
-                  </select>
+                  <div className="bg-black/30 border border-white/10 p-3 rounded-xl text-white text-xs flex items-center font-serif italic text-primary">
+                    Classic Cursive Script
+                  </div>
                </div>
              </div>
 

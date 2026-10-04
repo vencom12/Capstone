@@ -34,17 +34,19 @@ export default function ProductModal({
   const [quantity, setQuantity] = useState<number>(1);
   const [queueLoadCount, setQueueLoadCount] = useState<number>(3);
 
-  // Custom Embroidery Lettering / Personalization state
+  // Custom Embroidery Lettering / Personalization state (Exclusive Cursive Script Font)
   const [isPersonalized, setIsPersonalized] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>('');
   const [threadColor, setThreadColor] = useState<{ name: string; hex: string }>({
     name: 'Metallic Gold',
     hex: '#d4af37',
   });
-  const [fontStyle, setFontStyle] = useState<{ name: string; fontCss: string }>({
-    name: 'Classic Formal Script',
-    fontCss: 'Brush Script MT, cursive, Georgia, serif',
-  });
+  
+  // Studio Machine Standard: One default formal cursive script
+  const DEFAULT_FONT = {
+    name: 'Classic Cursive Script',
+    fontCss: "'Brush Script MT', 'Segoe Script', 'Great Vibes', cursive",
+  };
 
   const THREAD_COLORS = [
     { name: 'Metallic Gold', hex: '#d4af37' },
@@ -57,13 +59,6 @@ export default function ProductModal({
     { name: 'Rose Blush', hex: '#fb7185' },
   ];
 
-  const FONT_OPTIONS = [
-    { name: 'Classic Formal Script', fontCss: 'Brush Script MT, cursive, Georgia, serif' },
-    { name: 'Serif Monogram', fontCss: 'Georgia, serif' },
-    { name: 'Modern Clean Sans', fontCss: 'system-ui, sans-serif' },
-    { name: 'Collegiate Block', fontCss: 'Impact, Arial Black, sans-serif' },
-  ];
-
   // Sync state when product opens
   useEffect(() => {
     if (product) {
@@ -71,7 +66,6 @@ export default function ProductModal({
       setIsPersonalized(false);
       setCustomText('');
       setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
-      setFontStyle({ name: 'Classic Formal Script', fontCss: 'Brush Script MT, cursive, Georgia, serif' });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         setSelectedVariant(product.variants[0]);
         setSelectedColor(product.variants[0].color || '');
@@ -165,7 +159,7 @@ export default function ProductModal({
       personalization: isPersonalized && trimmedCustomText
         ? {
             text: trimmedCustomText,
-            font: fontStyle.name,
+            font: DEFAULT_FONT.name,
             threadColor: threadColor.name,
             threadHex: threadColor.hex,
           }
@@ -363,52 +357,23 @@ export default function ProductModal({
                 {customText.trim() && (
                   <div className="p-3 rounded-xl bg-black/40 border border-border-glass flex flex-col items-center justify-center text-center">
                     <span className="text-[0.65rem] uppercase tracking-wider text-text-dim mb-1">
-                      Stitch Preview ({threadColor.name} • {fontStyle.name})
+                      Stitch Preview ({threadColor.name} • Cursive Script)
                     </span>
                     <span
                       className="text-lg font-bold tracking-wide transition-all"
                       style={{
                         color: threadColor.hex,
-                        fontFamily: fontStyle.fontCss,
+                        fontFamily: DEFAULT_FONT.fontCss,
                         textShadow: '0 0 10px rgba(0,0,0,0.5)',
                       }}
                     >
                       {customText}
                     </span>
+                    <span className="text-[0.65rem] text-text-dim/70 mt-1 italic">
+                      Standard computerized cursive embroidery lettering
+                    </span>
                   </div>
                 )}
-
-                {/* Font Style Selector */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">
-                    Font Style
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {FONT_OPTIONS.map((f) => {
-                      const isSelected = fontStyle.name === f.name;
-                      return (
-                        <button
-                          key={f.name}
-                          type="button"
-                          onClick={() => setFontStyle(f)}
-                          className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm'
-                              : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
-                          }`}
-                        >
-                          <span className="block truncate text-[0.72rem] leading-tight">{f.name}</span>
-                          <span
-                            className="block text-sm mt-0.5 truncate"
-                            style={{ fontFamily: f.fontCss }}
-                          >
-                            Sample
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {/* Thread Color Selector */}
                 <div className="flex flex-col gap-1.5">
