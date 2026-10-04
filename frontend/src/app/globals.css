@@ -557,8 +557,8 @@ select option {
     min-height: auto !important;
   }
 
-  /* When printing from a modal, hide non-printable UI and show label container */
-  .print\\:hidden,
+  /* When printing, hide non-printable UI and show label container */
+  .no-print,
   button,
   header,
   nav,

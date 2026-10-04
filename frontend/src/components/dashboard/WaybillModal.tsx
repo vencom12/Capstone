@@ -19,8 +19,8 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
     (personalization.courier && personalization.courier.toLowerCase().includes('pick-up')) ||
     (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-'));
 
-  const trackingNumber = personalization.trackingNumber || (isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`);
-  const courierName = isPickup ? 'IN-STORE PICK-UP' : (personalization.courier || 'J&T EXPRESS');
+  const trackingNumber = personalization.trackingNumber || null;
+  const courierName = isPickup ? 'IN-STORE PICK-UP' : (personalization.courier || 'Delivery Courier');
 
   // QR code representation for parcel sorting & claiming
   const qrData = `${courierName}|TRACK:${trackingNumber}|ORDER:${order.orderId}|CLIENT:${encodeURIComponent(
@@ -200,79 +200,83 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
           {/* Top Bar: Shipper Hub Brand & Dispatch Route */}
           <div className="border-b-2 border-black pb-2 flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <div className={`${isPickup ? 'bg-emerald-700' : 'bg-[#e11d48]'} text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm`}>
-                {isPickup ? 'COUNTER' : 'DISPATCH'}
+              <div className={`${isPickup ? 'bg-emerald-700' : 'bg-black'} text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm`}>
+                {isPickup ? 'PICK-UP' : 'DISPATCH'}
               </div>
-              <span className="font-black text-xs tracking-tight">{courierName}</span>
-              <span className="text-[9px] font-bold text-black/60">EDS TOWELS & CAPS</span>
+              <span className="font-black text-xs tracking-tight">EDS TOWELS & CAPS</span>
+              <span className="text-[9px] font-bold text-black/60">PACIFIC MALL LUCENA</span>
             </div>
             <div className="text-right">
-              <span className="bg-black text-white px-2 py-0.5 text-[9px] font-black uppercase">
-                {isPickup ? 'STORE PICKUP' : 'STANDARD LOGISTICS'}
+              <span className="border border-black px-1.5 py-0.5 text-[8.5px] font-black uppercase text-black">
+                {isPickup ? 'STORE PICKUP' : (courierName || 'PARCEL COURIER')}
               </span>
             </div>
           </div>
 
-          {/* Barcode Section */}
-          <div className="flex flex-col items-center py-2 border-b-2 border-black">
-            {/* Visual Barcode Pattern */}
-            <div className="w-full h-12 flex items-center justify-center overflow-hidden py-1">
-              <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 240 40">
-                <rect x="0" y="0" width="4" height="40" fill="black" />
-                <rect x="6" y="0" width="2" height="40" fill="black" />
-                <rect x="10" y="0" width="6" height="40" fill="black" />
-                <rect x="18" y="0" width="2" height="40" fill="black" />
-                <rect x="22" y="0" width="4" height="40" fill="black" />
-                <rect x="28" y="0" width="8" height="40" fill="black" />
-                <rect x="38" y="0" width="2" height="40" fill="black" />
-                <rect x="42" y="0" width="6" height="40" fill="black" />
-                <rect x="50" y="0" width="4" height="40" fill="black" />
-                <rect x="56" y="0" width="2" height="40" fill="black" />
-                <rect x="60" y="0" width="6" height="40" fill="black" />
-                <rect x="68" y="0" width="8" height="40" fill="black" />
-                <rect x="78" y="0" width="2" height="40" fill="black" />
-                <rect x="82" y="0" width="4" height="40" fill="black" />
-                <rect x="88" y="0" width="6" height="40" fill="black" />
-                <rect x="96" y="0" width="2" height="40" fill="black" />
-                <rect x="100" y="0" width="6" height="40" fill="black" />
-                <rect x="108" y="0" width="4" height="40" fill="black" />
-                <rect x="114" y="0" width="2" height="40" fill="black" />
-                <rect x="118" y="0" width="8" height="40" fill="black" />
-                <rect x="128" y="0" width="4" height="40" fill="black" />
-                <rect x="134" y="0" width="6" height="40" fill="black" />
-                <rect x="142" y="0" width="2" height="40" fill="black" />
-                <rect x="146" y="0" width="6" height="40" fill="black" />
-                <rect x="154" y="0" width="4" height="40" fill="black" />
-                <rect x="160" y="0" width="8" height="40" fill="black" />
-                <rect x="170" y="0" width="2" height="40" fill="black" />
-                <rect x="174" y="0" width="6" height="40" fill="black" />
-                <rect x="182" y="0" width="4" height="40" fill="black" />
-                <rect x="188" y="0" width="2" height="40" fill="black" />
-                <rect x="192" y="0" width="8" height="40" fill="black" />
-                <rect x="202" y="0" width="4" height="40" fill="black" />
-                <rect x="208" y="0" width="6" height="40" fill="black" />
-                <rect x="216" y="0" width="2" height="40" fill="black" />
-                <rect x="220" y="0" width="8" height="40" fill="black" />
-                <rect x="230" y="0" width="4" height="40" fill="black" />
-                <rect x="236" y="0" width="4" height="40" fill="black" />
-              </svg>
+          {/* Barcode Section (Rendered when tracking number is assigned) */}
+          {trackingNumber && (
+            <div className="flex flex-col items-center py-2 border-b-2 border-black">
+              {/* Visual Barcode Pattern */}
+              <div className="w-full h-12 flex items-center justify-center overflow-hidden py-1">
+                <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 240 40">
+                  <rect x="0" y="0" width="4" height="40" fill="black" />
+                  <rect x="6" y="0" width="2" height="40" fill="black" />
+                  <rect x="10" y="0" width="6" height="40" fill="black" />
+                  <rect x="18" y="0" width="2" height="40" fill="black" />
+                  <rect x="22" y="0" width="4" height="40" fill="black" />
+                  <rect x="28" y="0" width="8" height="40" fill="black" />
+                  <rect x="38" y="0" width="2" height="40" fill="black" />
+                  <rect x="42" y="0" width="6" height="40" fill="black" />
+                  <rect x="50" y="0" width="4" height="40" fill="black" />
+                  <rect x="56" y="0" width="2" height="40" fill="black" />
+                  <rect x="60" y="0" width="6" height="40" fill="black" />
+                  <rect x="68" y="0" width="8" height="40" fill="black" />
+                  <rect x="78" y="0" width="2" height="40" fill="black" />
+                  <rect x="82" y="0" width="4" height="40" fill="black" />
+                  <rect x="88" y="0" width="6" height="40" fill="black" />
+                  <rect x="96" y="0" width="2" height="40" fill="black" />
+                  <rect x="100" y="0" width="6" height="40" fill="black" />
+                  <rect x="108" y="0" width="4" height="40" fill="black" />
+                  <rect x="114" y="0" width="2" height="40" fill="black" />
+                  <rect x="118" y="0" width="8" height="40" fill="black" />
+                  <rect x="128" y="0" width="4" height="40" fill="black" />
+                  <rect x="134" y="0" width="6" height="40" fill="black" />
+                  <rect x="142" y="0" width="2" height="40" fill="black" />
+                  <rect x="146" y="0" width="6" height="40" fill="black" />
+                  <rect x="154" y="0" width="4" height="40" fill="black" />
+                  <rect x="160" y="0" width="8" height="40" fill="black" />
+                  <rect x="170" y="0" width="2" height="40" fill="black" />
+                  <rect x="174" y="0" width="6" height="40" fill="black" />
+                  <rect x="182" y="0" width="4" height="40" fill="black" />
+                  <rect x="188" y="0" width="2" height="40" fill="black" />
+                  <rect x="192" y="0" width="8" height="40" fill="black" />
+                  <rect x="202" y="0" width="4" height="40" fill="black" />
+                  <rect x="208" y="0" width="6" height="40" fill="black" />
+                  <rect x="216" y="0" width="2" height="40" fill="black" />
+                  <rect x="220" y="0" width="8" height="40" fill="black" />
+                  <rect x="230" y="0" width="4" height="40" fill="black" />
+                  <rect x="236" y="0" width="4" height="40" fill="black" />
+                </svg>
+              </div>
+              <span className="font-mono text-xs font-black tracking-widest mt-1">
+                {trackingNumber}
+              </span>
             </div>
-            <span className="font-mono text-xs font-black tracking-widest mt-1">
-              {trackingNumber}
-            </span>
-          </div>
+          )}
 
-          {/* Hub Routing Codes */}
-          <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black text-center py-1">
-            <div className="p-1">
-              <span className="text-[8px] text-black/60 block font-sans">ORIGIN HUB</span>
-              <span className="font-black text-xs">LCN-PAC-01</span>
-              <span className="text-[8px] block text-black/60">Pacific Mall Lucena</span>
+          {/* Dispatch Identifier Header */}
+          <div className="flex justify-between items-center py-1.5 border-b-2 border-black">
+            <div>
+              <span className="text-[8px] text-black/60 block font-sans">
+                {trackingNumber ? 'CARRIER TRACKING NO.' : 'SHOP PARCEL REF.'}
+              </span>
+              <span className="font-mono text-xs font-black tracking-wider">
+                {trackingNumber || `PKG-${cleanId}`}
+              </span>
             </div>
-            <div className="p-1">
-              <span className="text-[8px] text-black/60 block font-sans">DESTINATION ROUTE</span>
-              <span className="font-black text-xs">CAL-MNL-EZ</span>
-              <span className="text-[8px] block text-black/60">Standard Transit</span>
+            <div className="text-right">
+              <span className="text-[8px] text-black/60 block font-sans">ORDER ID</span>
+              <span className="font-mono text-xs font-black">#{order.orderId}</span>
             </div>
           </div>
 

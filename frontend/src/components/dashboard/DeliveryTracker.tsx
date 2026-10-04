@@ -21,7 +21,8 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
     (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up')) ||
     (personalization.courier && personalization.courier.toLowerCase().includes('pick-up')) ||
     (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-'));
-  const trackingNumber = personalization.trackingNumber || (isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`);
+  const trackingNumber = personalization.trackingNumber || (isPickup ? `PU-LUC-${cleanId}` : null);
+  const courierName = isPickup ? 'IN-STORE PICK-UP' : (personalization.courier || 'Partner Courier / Local Rider');
 
   // Check if genuine recorded status history exists
   const recordedHistory: Array<{ status: string; timestamp: string; actor?: string; hub?: string; note?: string }> = 
@@ -32,24 +33,8 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   const isDelivered = rawStatus === 'completed' || rawStatus === 'order delivered' || order.progress >= 100;
   const isOutForDelivery = rawStatus === 'out for delivery';
   const isInTransit = rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery);
-  const isProduction = !isDelivered && !isOutForDelivery && !isInTransit;
 
-  // Base dates for fallback milestone chronology
-  const baseDate = new Date(order.date || Date.now());
-  const formatDate = (daysOffset: number, hoursOffset: number, minute: number) => {
-    const d = new Date(baseDate);
-    d.setDate(d.getDate() + daysOffset);
-    d.setHours(d.getHours() + hoursOffset, minute, 0);
-    return d.toLocaleString('en-PH', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  // Shopee-style dynamic logistics timeline events
+  // Real status history from database or active order status
   interface TimelineEvent {
     status: string;
     description: string;
@@ -59,7 +44,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   }
 
   const getTimeline = (): TimelineEvent[] => {
-    // 1. If real server audit history exists, render genuine recorded timestamps & notes
+    // If genuine logged status history exists in database, render it
     if (recordedHistory.length > 0) {
       return recordedHistory.map((item, idx) => {
         const itemDate = new Date(item.timestamp);
@@ -68,6 +53,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           : itemDate.toLocaleString('en-PH', {
               month: 'short',
               day: 'numeric',
+              year: 'numeric',
               hour: '2-digit',
               minute: '2-digit',
               hour12: true
@@ -75,152 +61,48 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
 
         return {
           status: item.status,
-          description: item.note || `Order marked as "${item.status}"`,
+          description: item.note || `Order status updated to "${item.status}"`,
           time: formatted,
           isLatest: idx === recordedHistory.length - 1,
-          hub: item.hub || 'Eds Towels Pacific Mall Lucena Hub'
+          hub: item.hub || 'Eds Towels & Caps Pacific Mall Hub'
         };
       }).reverse();
     }
 
-    // 2. Realistic fallback for legacy orders
-    if (isDelivered) {
-      return [
-        {
-          status: 'Parcel Delivered & Received',
-          description: `Parcel has been delivered to ${order.client || 'Recipient'}. Signature & photo proof recorded.`,
-          time: formatDate(2, 6, 15),
-          isLatest: true,
-          hub: 'Lucena Delivery Hub'
-        },
-        {
-          status: 'Out for Delivery',
-          description: 'Parcel is out for delivery with J&T Courier [Mark Anthony R. - 0917-882-1490].',
-          time: formatDate(2, 1, 30),
-          hub: 'Lucena Delivery Hub'
-        },
-        {
-          status: 'Arrived at Delivery Hub',
-          description: 'Parcel arrived at local sorting facility [J&T Lucena Distribution Center].',
-          time: formatDate(1, 19, 45),
-          hub: 'Lucena Delivery Hub'
-        },
-        {
-          status: 'In Transit',
-          description: 'Parcel departed South Luzon Sorting Center, in transit to delivery hub.',
-          time: formatDate(1, 10, 20),
-          hub: 'South Luzon Hub'
-        },
-        {
-          status: 'Picked up by Logistics Partner',
-          description: 'Courier picked up parcel from Eds Towels & Caps Pacific Mall Lucena Studio.',
-          time: formatDate(0, 16, 40),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Order Packed & Shipping Label Created',
-          description: 'Embroidery finished. Parcel packed & pouch dispatch label generated.',
-          time: formatDate(0, 14, 10),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Order Placed & Confirmed',
-          description: 'Customer order placed & payment verified.',
-          time: formatDate(0, 0, 5)
-        }
-      ];
-    }
+    // Single genuine verified milestone based strictly on the order record
+    const orderDate = new Date(order.date || (order as any).createdAt || Date.now());
+    const formattedOrderDate = isNaN(orderDate.getTime())
+      ? 'Recorded'
+      : orderDate.toLocaleString('en-PH', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
 
-    if (isOutForDelivery) {
-      return [
-        {
-          status: 'Parcel is Out for Delivery',
-          description: 'Delivery rider is on the way to your address. Please keep lines open.',
-          time: formatDate(1, 4, 30),
-          isLatest: true,
-          hub: 'Lucena Delivery Hub'
-        },
-        {
-          status: 'Arrived at Delivery Hub',
-          description: 'Parcel arrived at local distribution facility [Lucena Hub].',
-          time: formatDate(1, 1, 15),
-          hub: 'Lucena Delivery Hub'
-        },
-        {
-          status: 'In Transit',
-          description: 'Parcel departed sorting center in transit to destination.',
-          time: formatDate(0, 20, 10),
-          hub: 'South Luzon Sorting Center'
-        },
-        {
-          status: 'Handed Over to Courier',
-          description: 'Carrier accepted package from Eds Towels & Caps Pacific Mall Lucena.',
-          time: formatDate(0, 16, 40),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Order Packed & Label Attached',
-          description: 'Garment packed into shipping pouch with dispatch label sticker.',
-          time: formatDate(0, 14, 10),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Order Placed & Confirmed',
-          description: 'Customer order placed & payment verified.',
-          time: formatDate(0, 0, 5)
-        }
-      ];
-    }
-
-    if (isInTransit) {
-      return [
-        {
-          status: 'In Transit to Local Delivery Hub',
-          description: 'Parcel is moving through carrier sorting route towards destination.',
-          time: formatDate(0, 18, 20),
-          isLatest: true,
-          hub: 'South Luzon Sorting Center'
-        },
-        {
-          status: 'Handed Over to Courier',
-          description: 'Courier scanned and received package from Eds Towels & Caps Pacific Mall Lucena.',
-          time: formatDate(0, 16, 30),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Order Packed & Label Attached',
-          description: 'Embroidered cap inspected, sealed in pouch, and label applied.',
-          time: formatDate(0, 14, 0),
-          hub: 'Eds Towels Pacific Mall Studio'
-        },
-        {
-          status: 'Embroidery Production Completed',
-          description: 'Vector digitization and machine embroidery passed quality check.',
-          time: formatDate(0, 10, 45)
-        },
-        {
-          status: 'Order Placed & Confirmed',
-          description: 'Customer order placed & payment verified.',
-          time: formatDate(0, 0, 5)
-        }
-      ];
-    }
-
-    // Default: Workshop Production Phase
-    return [
+    const events: TimelineEvent[] = [
       {
-        status: 'In Embroidery Production',
-        description: 'Order is currently undergoing vector digitizing, hooping, and machine stitching at Eds Towels & Caps Pacific Mall Lucena Studio.',
-        time: formatDate(0, 2, 30),
+        status: order.status || 'Order Placed',
+        description: isPickup
+          ? (isDelivered ? 'Order claimed by customer at store counter.' : 'Awaiting counter pick-up at Pacific Mall Lucena.')
+          : (isDelivered ? 'Parcel delivered to recipient address.' : `Current order status: ${order.status}`),
+        time: formattedOrderDate,
         isLatest: true,
-        hub: 'Eds Towels Pacific Mall Studio'
-      },
-      {
-        status: 'Order Placed & Payment Verified',
-        description: `Order successfully logged via ${order.paymentMethod.toUpperCase()}. Preparing raw materials.`,
-        time: formatDate(0, 0, 5)
+        hub: 'Eds Towels & Caps Pacific Mall Lucena'
       }
     ];
+
+    if (order.status !== 'In Queue' && order.status !== 'Pending') {
+      events.push({
+        status: 'Order Placed & Confirmed',
+        description: `Order verified with ${order.paymentMethod ? order.paymentMethod.toUpperCase() : 'standard'} payment.`,
+        time: formattedOrderDate
+      });
+    }
+
+    return events;
   };
 
   const timeline = getTimeline();
@@ -288,13 +170,13 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
         </div>
 
-        {/* Waybill Sticker Action Button */}
+        {/* Waybill / Dispatch Label Button */}
         <button
           onClick={() => setIsWaybillOpen(true)}
           className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-          title="View and print official 4x6 inch J&T Express thermal waybill sticker"
+          title="View and print 4x6 inch pouch dispatch label"
         >
-          <span>{isPickup ? '📄 Claim Slip' : '🏷️ J&T Waybill Sticker'}</span>
+          <span>{isPickup ? '📄 Claim Slip' : '🏷️ Parcel Label'}</span>
         </button>
       </div>
 
@@ -314,53 +196,59 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
             </>
           ) : (
             <>
-              {/* J&T Express Badge */}
-              <div className="flex items-center gap-1 bg-[#e11d48] text-white px-2 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
-                <span>J&T</span>
-                <span className="text-[9px] font-bold text-white/80">EXPRESS</span>
+              {/* Courier Delivery Indicator */}
+              <div className="flex items-center gap-1.5 bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+                <span>🚚</span>
+                <span>PARCEL DELIVERY</span>
               </div>
               <div>
-                <span className="text-xs font-bold text-text-main block">Standard Delivery</span>
-                <span className="text-[0.7rem] text-text-dim">Official 3PL Logistics Partner</span>
+                <span className="text-xs font-bold text-text-main block">{courierName}</span>
+                <span className="text-[0.7rem] text-text-dim">Standard Courier Logistics</span>
               </div>
             </>
           )}
         </div>
 
         {/* Tracking Number with Copy & Official Courier Portal link */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
-            <div className="text-right">
-              <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
-                {isPickup ? 'Claim Reference' : 'Tracking No.'}
-              </span>
-              <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+        {trackingNumber ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
+              <div className="text-right">
+                <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
+                  {isPickup ? 'Claim Reference' : 'Tracking No.'}
+                </span>
+                <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+              </div>
+              <button
+                onClick={handleCopyTracking}
+                className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
             </div>
-            <button
-              onClick={handleCopyTracking}
-              className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
 
-          {!isPickup && (
-            <a
-              href={`https://www.jtexpress.ph/trajectoryQuery?bills=${trackingNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-[0.72rem] font-bold no-underline inline-flex items-center gap-1.5 transition-all shadow-sm"
-              title="Open real tracking portal on J&T Express Philippines"
-            >
-              <span>Track on J&T Portal</span>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-            </a>
-          )}
-        </div>
+            {!isPickup && trackingNumber.startsWith('JNT') && (
+              <a
+                href={`https://www.jtexpress.ph/trajectoryQuery?bills=${trackingNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-[0.72rem] font-bold no-underline inline-flex items-center gap-1.5 transition-all shadow-sm"
+                title="Verify tracking on carrier portal"
+              >
+                <span>Track Online</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="text-right">
+            <span className="text-[0.68rem] text-text-dim italic">Tracking number assigned upon courier pickup</span>
+          </div>
+        )}
       </div>
 
       {/* 3. Shopee-Style Chronological Logistics Timeline Stepper */}
