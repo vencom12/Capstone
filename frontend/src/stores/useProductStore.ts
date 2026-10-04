@@ -77,7 +77,9 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
       });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error('Failed to fetch dashboard state:', err);
+      if (!silent) {
+        console.warn('Dashboard state sync notice:', err?.message || err);
+      }
       set({ isSyncing: false });
     }
   },

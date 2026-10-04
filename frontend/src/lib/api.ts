@@ -67,12 +67,28 @@ export async function apiFetch<T = unknown>(
   const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
-    let response = await fetch(fullUrl, {
-      ...options,
-      headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
-      credentials: 'include',
-      signal: controller.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(fullUrl, {
+        ...options,
+        headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
+        credentials: 'include',
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      // If transient connection drop (e.g. server restarting), retry once after 800ms
+      if (fetchErr.name !== 'AbortError' && (!options.method || options.method === 'GET')) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        response = await fetch(fullUrl, {
+          ...options,
+          headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } else {
+        throw fetchErr;
+      }
+    }
 
     clearTimeout(timeout);
 

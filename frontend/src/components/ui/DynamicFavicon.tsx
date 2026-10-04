@@ -55,7 +55,7 @@ export default function DynamicFavicon() {
           manifestLink.href = manifestUrl;
         }
       })
-      .catch(err => console.error('Failed to load dynamic favicon', err));
+      .catch(() => {});
   }, []);
 
   return null;

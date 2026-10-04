@@ -466,6 +466,19 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.warn(`[PORT] Port ${PORT} is temporarily busy. Auto-retrying in 1.5 seconds...`);
+        setTimeout(() => {
+            try { server.close(); } catch (e) {}
+            server.listen(PORT);
+        }, 1500);
+    } else {
+        console.error('[SERVER ERROR]', err);
+    }
+});
+
 server.listen(PORT, async () => {
     console.log(`[OK] Server listening on port ${PORT}`);
     console.log(`[OK] Socket.IO real-time engine active`);
