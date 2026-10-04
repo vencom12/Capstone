@@ -10,20 +10,20 @@ interface CustomerHelpModalProps {
 
 const FAQS = [
   {
-    q: 'How does computerized embroidery ordering work?',
-    a: 'Computerized embroidery involves 3 stages: (1) Vector Digitizing — converting your artwork or chosen design into machine stitch coordinates, (2) Fabric Hooping & Thread Spooling — calibrating multi-needle industrial embroidery machines with Madeira commercial threads, and (3) Precision Stitching & Quality Inspection.'
+    q: 'How does custom embroidery personalization work?',
+    a: 'We specialize in direct machine stitching for names, monograms, letters, and custom text onto towels, caps, and garments. You choose your item, type your personalized name or text, pick your thread color and font, and our embroidery machine stitches each letter directly into the fabric with durable, high-quality thread.'
   },
   {
     q: 'What is the standard production turnaround time?',
-    a: 'Standard catalog and custom embroidery orders are completed within 2 to 3 business days. For bulk orders (schools, corporate uniforms, sports events), production timelines vary depending on stitch count and quantity. You can monitor live milestone updates in your "Tracking" tab.'
+    a: 'Standard personalized name and text stitching orders are completed within 2 to 3 business days. For bulk orders (schools, sports events, giveaways), turnaround depends on quantity. You can monitor your order progress live in your "Tracking" tab.'
   },
   {
     q: 'Where can I pick up my orders in Lucena City?',
-    a: 'Store pick-up is available at our flagship studio: Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301. We are open daily from 10:00 AM to 8:00 PM. Present your digital claim slip or Order ID from your dashboard upon arrival.'
+    a: 'Store pick-up is available at our Pacific Mall Lucena branch: Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301. We are open daily from 10:00 AM to 8:00 PM (following Pacific Mall hours). Simply show your Order ID or digital claim code from your dashboard upon claiming.'
   },
   {
-    q: 'How does doorstep courier delivery work?',
-    a: 'We partner with J&T Express for door-to-door delivery across Quezon Province and nationwide. Once your embroidery passes quality check and is dispatched, you will receive an active J&T tracking number and printable thermal waybill directly in your "Tracking" tab.'
+    q: 'How does doorstep delivery work?',
+    a: 'We partner with J&T Express for door-to-door delivery across Lucena, Quezon Province, and nationwide. Once your personalized stitching is inspected and packed, your live J&T tracking number will appear in your "Tracking" tab.'
   },
   {
     q: 'How do I submit GCash or Maya payments?',

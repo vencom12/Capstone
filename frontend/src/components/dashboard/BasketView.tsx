@@ -443,7 +443,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
             {/* Subtle Assurance */}
             <div className="flex items-center justify-center gap-1.5 text-[0.7rem] text-text-dim/80 pt-1 border-t border-white/5">
               <span>🛡️</span>
-              <span>Fast Studio Embroidery • Official GCash Checkout</span>
+              <span>Precision Name & Letter Stitching • Official GCash Checkout</span>
             </div>
           </div>
         </div>
