@@ -27,7 +27,8 @@ let _csrfToken: string | null = null;
 
 async function refreshCSRFToken(): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/csrf-token`, { credentials: 'include' });
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/auth/csrf-token`, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       _csrfToken = data.csrfToken;
@@ -43,7 +44,8 @@ export async function apiFetch<T = unknown>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+  const base = getApiBase();
+  const fullUrl = url.startsWith('/') ? `${base}${url}` : url;
 
   const headers: Record<string, string> = {
     'X-Requested-With': 'XMLHttpRequest',

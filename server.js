@@ -26,6 +26,7 @@ app.use(cors({
         
         // Exact match or strict subdomain regex matching
         const isAllowed = origin === 'http://localhost:3000' || 
+                          origin === 'http://127.0.0.1:3000' ||
                           /^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin) ||
                           /^https:\/\/[a-zA-Z0-9-]+\.render\.com$/.test(origin);
                           
