@@ -236,7 +236,11 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-xl">🧵</span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                          <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
                       )}
                       {item.selectedColor && (
                         <div
@@ -312,7 +316,10 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             )}
                             {item.personalization?.text && (
                               <span className="bg-primary/10 border border-primary/20 text-primary text-[0.7rem] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
-                                <span>🪡</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                  <circle cx="6" cy="6" r="3" />
+                                  <path d="M8.5 8.5L21 21" />
+                                </svg>
                                 <span>&ldquo;{item.personalization.text}&rdquo;</span>
                                 {item.personalization.threadHex && (
                                   <span
@@ -325,8 +332,11 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 </span>
                               </span>
                             )}
-                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.68rem] px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
-                              <span>🧵</span> Digitizing Included
+                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.68rem] px-2 py-0.5 rounded-md font-medium flex items-center gap-1.5">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                              </svg>
+                              Digitizing Included
                             </span>
                           </div>
                         </div>
@@ -419,7 +429,12 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           {/* Quick catalog shortcut */}
           <div className="p-3.5 bg-white/[0.02] border border-border-glass/60 rounded-2xl flex items-center justify-between text-xs text-text-dim">
             <span className="flex items-center gap-2">
-              <span>🧵</span> Want to customize another towel or cap?
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+              Want to customize another towel or cap?
             </span>
             <button
               onClick={onGoToShop}
@@ -494,7 +509,9 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
             {/* Subtle Assurance */}
             <div className="flex items-center justify-center gap-1.5 text-[0.7rem] text-text-dim/80 pt-1 border-t border-white/5">
-              <span>🛡️</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
               <span>Precision Name & Letter Stitching • Official GCash Checkout</span>
             </div>
           </div>

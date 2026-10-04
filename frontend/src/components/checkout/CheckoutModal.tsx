@@ -376,25 +376,33 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                 <button
                   type="button"
                   onClick={() => setFulfillmentType('delivery')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
                     fulfillmentType === 'delivery'
                       ? 'bg-primary text-white border-primary shadow-sm'
                       : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <span>🚚</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
                   <span>Door Delivery</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFulfillmentType('pickup')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
                     fulfillmentType === 'pickup'
                       ? 'bg-primary text-white border-primary shadow-sm'
                       : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <span>🏪</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
                   <span>Store Pick-up</span>
                 </button>
               </div>
@@ -470,7 +478,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               <div className="flex flex-col gap-2.5 animate-[fadeIn_0.2s_ease-out]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2 text-text-main">
-                    <span className="text-base">🏪</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
                     <span>Store Pick-up Counter</span>
                   </h3>
                   <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-extrabold uppercase">
@@ -571,7 +582,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                           <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
                           {item.personalization?.text && (
                             <span className="text-primary font-semibold flex items-center gap-1">
-                              • 🪡 &ldquo;{item.personalization.text}&rdquo; ({item.personalization.threadColor || 'Gold'})
+                              • 
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                <circle cx="6" cy="6" r="3" />
+                                <path d="M8.5 8.5L21 21" />
+                              </svg>
+                              &ldquo;{item.personalization.text}&rdquo; ({item.personalization.threadColor || 'Gold'})
                             </span>
                           )}
                         </div>
