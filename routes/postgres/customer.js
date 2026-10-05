@@ -68,4 +68,16 @@ router.patch('/orders/:id/location', customerController.updateOrderLocation);
 const forecastingController = require('../../controllers/postgres/forecastingController');
 router.post('/products/:id/track-view', forecastingController.trackProductView);
 
+const feedbackController = require('../../controllers/postgres/feedbackController');
+// Customer feedback submission (supports authenticated or guest submission)
+router.post('/feedback', (req, res, next) => {
+    const token = req.cookies.customer_token || req.cookies.token;
+    if (token) {
+        try {
+            req.user = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (e) { /* guest submission allowed */ }
+    }
+    next();
+}, feedbackController.submitFeedback);
+
 module.exports = router;

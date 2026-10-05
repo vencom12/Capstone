@@ -150,21 +150,124 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
     try {
-        const { username, email, password, role } = req.body;
-        const existingUser = await prisma.user.findFirst({
-            where: { OR: [{ email }, { username }] }
+        const { username, email, password, role, phoneNumber, address } = req.body;
+
+        if (!username || !username.trim()) {
+            return res.status(400).json({ message: 'Username is required' });
+        }
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Email address is required' });
+        }
+        if (!password || !password.trim()) {
+            return res.status(400).json({ message: 'Password is required' });
+        }
+
+        const normalizedUsername = username.trim();
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Check if user already exists by email
+        const existingEmail = await prisma.user.findFirst({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
         });
-        if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+        // 2. Check if user already exists by username
+        const existingUsername = await prisma.user.findFirst({
+            where: { username: { equals: normalizedUsername, mode: 'insensitive' } }
+        });
+
+        // Case A: The account already exists as a customer -> Automatically promote to staff!
+        const existingCustomer = (existingEmail && existingEmail.role === 'customer')
+            ? existingEmail
+            : (existingUsername && existingUsername.role === 'customer')
+                ? existingUsername
+                : null;
+
+        if (existingCustomer) {
+            // Ensure username isn't taken by a third party
+            if (normalizedUsername && normalizedUsername !== existingCustomer.username) {
+                const usernameConflict = await prisma.user.findFirst({
+                    where: {
+                        username: { equals: normalizedUsername, mode: 'insensitive' },
+                        id: { not: existingCustomer.id }
+                    }
+                });
+                if (usernameConflict) {
+                    return res.status(400).json({
+                        message: `The username "${normalizedUsername}" is already taken by another account. Please select a different username.`
+                    });
+                }
+            }
+
+            // Ensure email isn't taken by a third party
+            if (normalizedEmail && normalizedEmail !== existingCustomer.email.toLowerCase()) {
+                const emailConflict = await prisma.user.findFirst({
+                    where: {
+                        email: { equals: normalizedEmail, mode: 'insensitive' },
+                        id: { not: existingCustomer.id }
+                    }
+                });
+                if (emailConflict) {
+                    return res.status(400).json({
+                        message: `The email "${normalizedEmail}" is already used by another account.`
+                    });
+                }
+            }
+
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
+            const updatedUser = await prisma.user.update({
+                where: { id: existingCustomer.id },
+                data: {
+                    role: role || 'employee',
+                    username: normalizedUsername || existingCustomer.username,
+                    email: normalizedEmail || existingCustomer.email,
+                    password: hashedPassword,
+                    phoneNumber: phoneNumber ? phoneNumber.trim() : (existingCustomer.phoneNumber || null),
+                    address: address ? address.trim() : (existingCustomer.address || null)
+                }
+            });
+
+            return res.json({
+                id: updatedUser.id,
+                message: `Existing customer account "${updatedUser.username}" was promoted to ${role === 'admin' ? 'Administrator' : 'Artisan / Employee'} staff successfully!`,
+                user: { id: updatedUser.id, username: updatedUser.username, role: updatedUser.role }
+            });
+        }
+
+        // Case B: Existing user is already an employee or admin
+        if (existingEmail) {
+            return res.status(400).json({
+                message: `A staff account with email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}"). You can edit their credentials directly in the table.`
+            });
+        }
+
+        if (existingUsername) {
+            return res.status(400).json({
+                message: `The username "${normalizedUsername}" is already taken by another account. Please select a different username.`
+            });
+        }
 
         const bcrypt = require('bcryptjs');
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
         const user = await prisma.user.create({
-            data: { username, email, password: hashedPassword, role }
+            data: {
+                username: normalizedUsername,
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: role || 'employee',
+                phoneNumber: phoneNumber ? phoneNumber.trim() : null,
+                address: address ? address.trim() : null
+            }
         });
-        res.json({ message: 'User created successfully', user: { id: user.id, username, role } });
+        res.json({ id: user.id, message: 'User created successfully', user: { id: user.id, username: user.username, role: user.role } });
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('createUser error:', err);
+        if (err.code === 'P2002') {
+            return res.status(400).json({ message: 'An account with these unique credentials already exists.' });
+        }
+        res.status(500).json({ message: err.message || 'Server error creating user' });
     }
 };
 
@@ -174,14 +277,42 @@ exports.updateUser = async (req, res) => {
         const userId = req.params.id;
 
         const updateData = {};
-        if (username) updateData.username = username;
-        if (email) updateData.email = email;
+
+        if (username && username.trim()) {
+            const normalizedUsername = username.trim();
+            const existingUsername = await prisma.user.findFirst({
+                where: {
+                    username: { equals: normalizedUsername, mode: 'insensitive' },
+                    id: { not: userId }
+                }
+            });
+            if (existingUsername) {
+                return res.status(400).json({ message: `The username "${normalizedUsername}" is already taken by another account.` });
+            }
+            updateData.username = normalizedUsername;
+        }
+
+        if (email && email.trim()) {
+            const normalizedEmail = email.trim().toLowerCase();
+            const existingEmail = await prisma.user.findFirst({
+                where: {
+                    email: { equals: normalizedEmail, mode: 'insensitive' },
+                    id: { not: userId }
+                }
+            });
+            if (existingEmail) {
+                return res.status(400).json({ message: `An account with the email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}").` });
+            }
+            updateData.email = normalizedEmail;
+        }
+
         if (role) updateData.role = role;
-        if (phoneNumber) updateData.phoneNumber = phoneNumber;
-        if (address) updateData.address = address;
-        if (password) {
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber ? phoneNumber.trim() : null;
+        if (address !== undefined) updateData.address = address ? address.trim() : null;
+
+        if (password && password.trim()) {
             const bcrypt = require('bcryptjs');
-            updateData.password = await bcrypt.hash(password, 10);
+            updateData.password = await bcrypt.hash(password.trim(), 10);
         }
 
         const user = await prisma.user.update({
@@ -192,7 +323,11 @@ exports.updateUser = async (req, res) => {
         const { password: _, ...safeUser } = user;
         res.json(safeUser);
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('updateUser error:', err);
+        if (err.code === 'P2002') {
+            return res.status(400).json({ message: 'An account with these unique credentials already exists.' });
+        }
+        res.status(500).json({ message: err.message || 'Server error updating user' });
     }
 };
 
@@ -202,7 +337,11 @@ exports.deleteUser = async (req, res) => {
         await prisma.user.delete({ where: { id: req.params.id } });
         res.json({ message: 'User deleted' });
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('deleteUser error:', err);
+        if (err.code === 'P2003') {
+            return res.status(400).json({ message: 'Cannot delete user because they have existing order history, transactions, or assigned machine records.' });
+        }
+        res.status(500).json({ message: err.message || 'Server error deleting user' });
     }
 };
 
@@ -348,9 +487,23 @@ exports.updateInventoryItem = async (req, res) => {
         if (!existing) return res.status(404).json({ message: 'Item not found' });
 
         const updateData = {};
-        if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
-        if (item !== undefined) updateData.item = item;
-        if (unit !== undefined) updateData.unit = unit;
+
+        // Role separation: Employees can ONLY adjust stock counts (+ / -)
+        if (req.user?.role !== 'admin') {
+            if (minThreshold !== undefined && parseInt(minThreshold) !== existing.minThreshold) {
+                return res.status(403).json({ message: 'Only administrators can adjust safety warning thresholds' });
+            }
+            if (item !== undefined && item !== existing.item) {
+                return res.status(403).json({ message: 'Only administrators can rename inventory materials' });
+            }
+            if (unit !== undefined && unit !== existing.unit) {
+                return res.status(403).json({ message: 'Only administrators can alter material measurement units' });
+            }
+        } else {
+            if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
+            if (item !== undefined) updateData.item = item;
+            if (unit !== undefined) updateData.unit = unit;
+        }
 
         let newCount = existing.count;
         if (action && amount !== undefined) {
@@ -832,23 +985,25 @@ exports.uploadGCashQr = async (req, res) => {
 
 exports.getGlobalAuditLogs = async (req, res) => {
     try {
-        const { entity, action, search, limit = 100, page = 1 } = req.query;
-        const take = Math.min(parseInt(limit) || 100, 200);
-        const skip = (Math.max(parseInt(page) || 1, 1) - 1) * take;
+        const { entity, action, search, limit = 15, page = 1 } = req.query;
+        const take = Math.min(parseInt(limit) || 15, 200);
+        const pageNum = Math.max(parseInt(page) || 1, 1);
+        const skip = (pageNum - 1) * take;
 
         const where = {};
-        if (entity && entity !== 'All') {
-            where.entity = entity;
+        if (entity && entity !== 'All' && entity.trim()) {
+            where.entity = entity.trim();
         }
-        if (action && action !== 'All') {
-            where.action = action;
+        if (action && action !== 'All' && action.trim()) {
+            where.action = action.trim();
         }
-        if (search) {
+        if (search && search.trim() && search.trim() !== 'undefined' && search.trim() !== 'null') {
+            const q = search.trim();
             where.OR = [
-                { action: { contains: search, mode: 'insensitive' } },
-                { entity: { contains: search, mode: 'insensitive' } },
-                { entityId: { contains: search, mode: 'insensitive' } },
-                { ipAddress: { contains: search, mode: 'insensitive' } },
+                { action: { contains: q, mode: 'insensitive' } },
+                { entity: { contains: q, mode: 'insensitive' } },
+                { entityId: { contains: q, mode: 'insensitive' } },
+                { ipAddress: { contains: q, mode: 'insensitive' } },
             ];
         }
 
@@ -904,10 +1059,10 @@ exports.getOrderHistory = async (req, res) => {
         const skip = (pageNum - 1) * take;
 
         const where = {
-            status: { in: ['Order Delivered', 'Completed', 'Order Canceled'] }
+            status: { in: ['Order Delivered', 'Delivered', 'Completed', 'Order Canceled', 'Cancelled'] }
         };
 
-        if (search && search.trim()) {
+        if (search && search.trim() && search.trim() !== 'undefined' && search.trim() !== 'null') {
             const query = search.trim();
             where.OR = [
                 { orderId: { contains: query, mode: 'insensitive' } },
@@ -916,22 +1071,25 @@ exports.getOrderHistory = async (req, res) => {
             ];
         }
 
-        if (date && date.trim()) {
-            const startOfDay = new Date(date.trim());
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(date.trim());
-            endOfDay.setHours(23, 59, 59, 999);
-            where.date = {
-                gte: startOfDay,
-                lte: endOfDay
-            };
+        if (date && date.trim() && date.trim() !== 'undefined' && date.trim() !== 'null') {
+            const parsed = new Date(date.trim());
+            if (!isNaN(parsed.getTime())) {
+                const startOfDay = new Date(parsed);
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date(parsed);
+                endOfDay.setHours(23, 59, 59, 999);
+                where.date = {
+                    gte: startOfDay,
+                    lte: endOfDay
+                };
+            }
         }
 
         const [orders, total] = await Promise.all([
             prisma.order.findMany({
                 where,
                 include: { transaction: true, receipt: true },
-                orderBy: { date: 'desc' },
+                orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
                 skip,
                 take
             }),
@@ -942,11 +1100,11 @@ exports.getOrderHistory = async (req, res) => {
             orders,
             total,
             page: pageNum,
-            totalPages: Math.ceil(total / take)
+            totalPages: Math.ceil(total / take) || 1
         });
     } catch (err) {
         console.error('getOrderHistory error:', err);
-        res.status(500).json({ message: 'Error retrieving archived order history' });
+        res.status(500).json({ message: 'Error retrieving archived order history', error: err.message });
     }
 };
 

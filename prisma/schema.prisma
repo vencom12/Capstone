@@ -306,3 +306,44 @@ model EmailVerification {
   @@index([token])
 }
 
+model Feedback {
+  id            String   @id @default(uuid())
+  category      String   @default("General") // Order Quality, Embroidery Stitching, Delivery & Turnaround, Customer Support, General
+  rating        Int      @default(5) // 1 to 5 stars
+  message       String
+  status        String   @default("Pending") // Pending, Reviewed, Resolved
+  staffNotes    String?
+  customerName  String?
+  customerEmail String?
+  orderId       String?
+  userId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model MaintenanceTicket {
+  id              String    @id @default(uuid())
+  machineId       String
+  machineName     String
+  issueType       String    @default("Mechanical Jam") // Mechanical Jam, Needle / Thread Fault, Tension / Hook, Motor / Power, Routine Service, Other
+  severity        String    @default("Warning") // Critical, Warning, Routine
+  description     String
+  status          String    @default("Open") // Open, In_Progress, Resolved
+  reportedBy      String    // Username
+  reportedById    String?
+  resolutionNotes String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  @@index([machineId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+

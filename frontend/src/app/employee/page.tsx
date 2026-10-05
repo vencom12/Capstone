@@ -18,6 +18,7 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
+import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
 import Pagination from '@/components/ui/Pagination';
 
 export default function EmployeePage() {
@@ -283,6 +284,11 @@ export default function EmployeePage() {
     }
   }, [isHydrated, isAuthenticated, checkAccess, router]);
 
+  // Reset queue page on filter changes
+  useEffect(() => {
+    setQueuePage(1);
+  }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
+
   if (!isHydrated || !isAuthenticated || !checkAccess('employee')) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#0f172a] text-white">
@@ -481,11 +487,6 @@ export default function EmployeePage() {
 
     return matchesSearch && matchesDate && matchesTab;
   });
-
-  // Reset queue page on filter changes
-  useEffect(() => {
-    setQueuePage(1);
-  }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
 
   const paginatedQueueOrders = activeOrders.slice(
     (queuePage - 1) * queuePageSize,
@@ -1252,42 +1253,7 @@ export default function EmployeePage() {
         );
 
       case 'support':
-        return (
-          <section className="animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-8">
-              <h1 className="text-3xl font-extrabold mb-1">Support Helpdesk</h1>
-              <p className="text-text-dim text-[0.95rem] m-0">Contact tech support or view machine manuals.</p>
-            </header>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass p-6 rounded-[20px] flex flex-col items-start text-left hover:-translate-y-1 transition-all duration-300 hover:border-white/20">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center mb-4">
-                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                  </div>
-                  <h3 className="font-bold text-lg m-0 mb-2">Machine Manuals</h3>
-                  <p className="text-text-dim text-[0.85rem] m-0 mb-6 leading-relaxed flex-1">Access PDF documentation for Happy and Brother embroidery machines.</p>
-                  <button className="w-full bg-transparent border border-border-glass text-text-main py-2 rounded-lg text-[0.85rem] font-medium hover:bg-white/5 cursor-pointer mt-auto">View Library</button>
-               </div>
-               
-               <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass p-6 rounded-[20px] flex flex-col items-start text-left hover:-translate-y-1 transition-all duration-300 hover:border-white/20">
-                  <div className="w-12 h-12 rounded-xl bg-[#10b981]/20 text-[#10b981] flex items-center justify-center mb-4">
-                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                  </div>
-                  <h3 className="font-bold text-lg m-0 mb-2">Technical Support</h3>
-                  <p className="text-text-dim text-[0.85rem] m-0 mb-6 leading-relaxed flex-1">Direct line to the maintenance department and lead technician.</p>
-                  <button className="w-full bg-transparent border border-border-glass text-text-main py-2 rounded-lg text-[0.85rem] font-medium hover:bg-white/5 cursor-pointer mt-auto">Open Ticket</button>
-               </div>
-
-               <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass p-6 rounded-[20px] flex flex-col items-start text-left hover:-translate-y-1 transition-all duration-300 hover:border-white/20">
-                  <div className="w-12 h-12 rounded-xl bg-[#ef4444]/20 text-[#ef4444] flex items-center justify-center mb-4">
-                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                  </div>
-                  <h3 className="font-bold text-lg m-0 mb-2">Emergency Protocols</h3>
-                  <p className="text-text-dim text-[0.85rem] m-0 mb-6 leading-relaxed flex-1">Standard operating procedures for power failure or needle breaks.</p>
-                  <button className="w-full bg-transparent border border-border-glass text-text-main py-2 rounded-lg text-[0.85rem] font-medium hover:bg-white/5 cursor-pointer mt-auto">Read Protocols</button>
-               </div>
-            </div>
-          </section>
-        );
+        return <PanelEmployeeSupport />;
 
       case 'settings':
         return (

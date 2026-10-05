@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
+import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import type { Order } from '@/lib/types';
 
 interface OrderDetailsModalProps {
@@ -19,6 +20,7 @@ export default function OrderDetailsModal({
   initialTab = 'summary'
 }: OrderDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -156,13 +158,21 @@ export default function OrderDetailsModal({
         )}
 
         {/* Footer Actions */}
-        <div className="modal-footer pt-3 border-t border-border-glass">
+        <div className="modal-footer pt-3 border-t border-border-glass flex items-center gap-2">
           <button 
             type="button"
             onClick={onClose}
             className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass py-2 rounded-xl font-bold text-sm transition-all cursor-pointer text-text-main"
           >
             Close
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFeedbackModalOpen(true)}
+            className="flex-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>★</span>
+            <span>Leave Review</span>
           </button>
           {order.status === 'Completed' && (
             <button 
@@ -174,6 +184,12 @@ export default function OrderDetailsModal({
           )}
         </div>
       </div>
+
+      <CustomerHelpModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        defaultOrderId={order.orderId}
+      />
     </GlassModal>
   );
 }

@@ -7,11 +7,13 @@ import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
 import Pagination from '@/components/ui/Pagination';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface InlineStockAdjusterProps {
   material: any;
   refreshData: () => Promise<void>;
   fetchAuditLogs: () => Promise<void>;
+  isAdmin?: boolean;
 }
 
 function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineStockAdjusterProps) {
@@ -188,7 +190,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
   );
 }
 
-function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs }: InlineStockAdjusterProps) {
+function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmin = true }: InlineStockAdjusterProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState((material.minThreshold || 10).toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -196,6 +198,14 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs }: Inli
   useEffect(() => {
     setInputValue((material.minThreshold || 10).toString());
   }, [material.minThreshold]);
+
+  if (!isAdmin) {
+    return (
+      <span className="font-mono text-xs text-text-dim px-2 py-1 select-none" title="Safety warning limit (Configured by Administrator)">
+        {material.minThreshold || 10}
+      </span>
+    );
+  }
 
   const handleAbsoluteSubmit = async () => {
     const newVal = parseInt(inputValue);
@@ -281,6 +291,9 @@ export default function PanelRawMaterials({
   isSyncing,
   refreshData
 }: PanelRawMaterialsProps) {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -335,7 +348,7 @@ export default function PanelRawMaterials({
           setAuditLogToggle(!!settings.inventoryAuditLog);
         }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => console.warn('Could not load inventory settings:', err?.message || err));
   }, []);
 
   // Stock Level Filter State
@@ -487,19 +500,23 @@ export default function PanelRawMaterials({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
           />
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-main hover:bg-white/5 cursor-pointer"
-            title="Inventory Settings"
-          >
-            ⚙️
-          </button>
-          <button
-            onClick={() => setIsAddOpen(true)}
-            className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm hover:shadow-md"
-          >
-            + Add Material
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-main hover:bg-white/5 cursor-pointer"
+                title="Inventory Settings"
+              >
+                ⚙️
+              </button>
+              <button
+                onClick={() => setIsAddOpen(true)}
+                className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm hover:shadow-md"
+              >
+                + Add Material
+              </button>
+            </>
+          )}
         </div>
       </header>
 
@@ -618,6 +635,7 @@ export default function PanelRawMaterials({
                             material={i}
                             refreshData={refreshData}
                             fetchAuditLogs={fetchAuditLogs}
+                            isAdmin={isAdmin}
                           />
                         </td>
                         <td className="glass-td text-left">
@@ -631,12 +649,16 @@ export default function PanelRawMaterials({
                         </td>
                         <td className="glass-td text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setDeletingMaterial(i)}
-                              className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
-                            >
-                              Delete
-                            </button>
+                            {isAdmin ? (
+                              <button
+                                onClick={() => setDeletingMaterial(i)}
+                                className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
+                              >
+                                Delete
+                              </button>
+                            ) : (
+                              <span className="text-xs text-text-dim/60 italic font-mono px-2">Tracked</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -700,18 +722,21 @@ export default function PanelRawMaterials({
                           material={i}
                           refreshData={refreshData}
                           fetchAuditLogs={fetchAuditLogs}
+                          isAdmin={isAdmin}
                         />
                       </div>
                     </div>
 
-                    <div className="flex gap-2 w-full mt-2">
-                      <button
-                        onClick={() => setDeletingMaterial(i)}
-                        className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
-                      >
-                        Delete Material
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2 w-full mt-2">
+                        <button
+                          onClick={() => setDeletingMaterial(i)}
+                          className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
+                        >
+                          Delete Material
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })

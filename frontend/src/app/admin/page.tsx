@@ -26,6 +26,7 @@ import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
+import Pagination from '@/components/ui/Pagination';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -572,27 +573,13 @@ export default function AdminPage() {
                   </div>
 
                   {/* Pagination Controls */}
-                  {archivedTotalPages > 1 && (
-                    <div className="flex items-center justify-between mt-5 pt-4 border-t border-border-glass text-xs text-text-dim">
-                      <span>Showing page {archivedPage} of {archivedTotalPages} ({archivedTotal} orders)</span>
-                      <div className="flex gap-2">
-                        <button
-                          disabled={archivedPage <= 1}
-                          onClick={() => fetchArchivedOrders(historySearch, historyDate, archivedPage - 1)}
-                          className="px-3 py-1.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-text-main font-semibold cursor-pointer"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          disabled={archivedPage >= archivedTotalPages}
-                          onClick={() => fetchArchivedOrders(historySearch, historyDate, archivedPage + 1)}
-                          className="px-3 py-1.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-text-main font-semibold cursor-pointer"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <Pagination
+                    currentPage={archivedPage}
+                    totalItems={archivedTotal}
+                    pageSize={50}
+                    onPageChange={(p) => fetchArchivedOrders(historySearch, historyDate, p)}
+                    itemLabel="archived orders"
+                  />
                 </>
               )}
             </div>

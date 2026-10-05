@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
@@ -30,16 +30,34 @@ export default function PanelAuditTrail() {
   const [selectedEntity, setSelectedEntity] = useState('All');
   const [selectedLogForDetails, setSelectedLogForDetails] = useState<AuditLogEntry | null>(null);
 
-  // Pagination State
+  // Server-side Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const pageSize = 15;
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery) => {
     setIsLoading(true);
     try {
-      const res = await api.get<{ logs: AuditLogEntry[] }>('/api/admin/audit-logs?limit=150');
+      const params = new URLSearchParams();
+      params.append('page', String(page));
+      params.append('limit', String(pageSize));
+      if (entity && entity !== 'All') params.append('entity', entity);
+      if (search && search.trim()) params.append('search', search.trim());
+
+      const res = await api.get<{
+        logs: AuditLogEntry[];
+        pagination?: { totalCount: number; currentPage: number; totalPages: number };
+      }>(`/api/admin/audit-logs?${params.toString()}`);
+
       if (res && res.logs) {
         setLogs(res.logs);
+        if (res.pagination) {
+          setTotalCount(res.pagination.totalCount);
+          setCurrentPage(res.pagination.currentPage);
+        } else {
+          setTotalCount(res.logs.length);
+          setCurrentPage(page);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
@@ -49,66 +67,58 @@ export default function PanelAuditTrail() {
     }
   };
 
+  // Re-fetch on filter or search change with debounce
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchLogs(1, selectedEntity, searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [selectedEntity, searchQuery]);
 
   const entityTabs = ['All', 'Order', 'Inventory', 'Product', 'User', 'Settings'];
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesEntity = selectedEntity === 'All' || log.entity.toLowerCase() === selectedEntity.toLowerCase();
-      if (!matchesEntity) return false;
+  const handleExportCSV = async () => {
+    try {
+      showToast('Preparing audit trail export...', 'info');
+      const params = new URLSearchParams();
+      params.append('limit', '1000');
+      params.append('page', '1');
+      if (selectedEntity && selectedEntity !== 'All') params.append('entity', selectedEntity);
+      if (searchQuery && searchQuery.trim()) params.append('search', searchQuery.trim());
 
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      const actionMatch = log.action.toLowerCase().includes(q);
-      const entityMatch = log.entity.toLowerCase().includes(q);
-      const entityIdMatch = log.entityId?.toLowerCase().includes(q);
-      const userMatch = log.user?.username.toLowerCase().includes(q) || log.user?.email.toLowerCase().includes(q);
-      const ipMatch = log.ipAddress?.toLowerCase().includes(q);
+      const res = await api.get<{ logs: AuditLogEntry[] }>(`/api/admin/audit-logs?${params.toString()}`);
+      const exportLogs = res?.logs || logs;
 
-      return actionMatch || entityMatch || entityIdMatch || userMatch || ipMatch;
-    });
-  }, [logs, selectedEntity, searchQuery]);
+      if (exportLogs.length === 0) {
+        showToast('No logs available to export', 'info');
+        return;
+      }
 
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedEntity]);
+      const headers = ['Timestamp', 'Actor Username', 'Actor Role', 'Action', 'Entity', 'Entity ID', 'IP Address', 'Diff'];
+      const rows = exportLogs.map((log) => [
+        new Date(log.timestamp).toISOString(),
+        `"${log.user?.username || log.userId || 'System'}"`,
+        `"${log.userRole || 'System'}"`,
+        `"${log.action}"`,
+        `"${log.entity}"`,
+        `"${log.entityId || 'N/A'}"`,
+        `"${log.ipAddress || 'N/A'}"`,
+        `"${log.diff ? JSON.stringify(log.diff).replace(/"/g, '""') : ''}"`
+      ]);
 
-  const paginatedLogs = useMemo(() => {
-    return filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredLogs, currentPage, pageSize]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `audit_trail_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-  const handleExportCSV = () => {
-    if (filteredLogs.length === 0) {
-      showToast('No logs available to export', 'info');
-      return;
+      showToast(`Exported ${exportLogs.length} audit log entries to CSV`, 'success');
+    } catch {
+      showToast('Export failed', 'error');
     }
-
-    const headers = ['Timestamp', 'Actor Username', 'Actor Role', 'Action', 'Entity', 'Entity ID', 'IP Address', 'Diff'];
-    const rows = filteredLogs.map((log) => [
-      new Date(log.timestamp).toISOString(),
-      `"${log.user?.username || log.userId || 'System'}"`,
-      `"${log.userRole || 'System'}"`,
-      `"${log.action}"`,
-      `"${log.entity}"`,
-      `"${log.entityId || 'N/A'}"`,
-      `"${log.ipAddress || 'N/A'}"`,
-      `"${log.diff ? JSON.stringify(log.diff).replace(/"/g, '""') : ''}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `audit_trail_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showToast(`Exported ${filteredLogs.length} audit log entries to CSV`, 'success');
   };
 
   const getActionBadgeColor = (action: string) => {
@@ -136,7 +146,7 @@ export default function PanelAuditTrail() {
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Security & Audit Ledger</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary border border-primary/30">
-              {filteredLogs.length} Logged Events
+              {totalCount.toLocaleString()} Logged Events
             </span>
           </div>
           <p className="text-text-dim text-xs mt-1 max-w-2xl leading-relaxed">
@@ -146,7 +156,7 @@ export default function PanelAuditTrail() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchLogs}
+            onClick={() => fetchLogs(currentPage, selectedEntity, searchQuery)}
             disabled={isLoading}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white/5 text-text-main border border-border-glass hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
             title="Refresh logs"
@@ -179,14 +189,14 @@ export default function PanelAuditTrail() {
         {/* Entity Tabs */}
         <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
           {entityTabs.map((tab) => {
-            const count = tab === 'All' 
-              ? logs.length 
-              : logs.filter(l => l.entity.toLowerCase() === tab.toLowerCase()).length;
             const isSelected = selectedEntity === tab;
             return (
               <button
                 key={tab}
-                onClick={() => setSelectedEntity(tab)}
+                onClick={() => {
+                  setSelectedEntity(tab);
+                  setCurrentPage(1);
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                   isSelected
                     ? 'bg-primary text-white border-primary shadow-sm'
@@ -194,11 +204,6 @@ export default function PanelAuditTrail() {
                 }`}
               >
                 {tab}
-                <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
-                }`}>
-                  {count}
-                </span>
               </button>
             );
           })}
@@ -218,7 +223,10 @@ export default function PanelAuditTrail() {
             type="text"
             placeholder="Search action, actor, entity ID, IP..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full bg-white/5 border border-border-glass rounded-xl py-2 pl-9 pr-3 text-text-main text-xs outline-none focus:border-primary transition-all placeholder:text-text-dim/60"
           />
         </div>
@@ -247,14 +255,14 @@ export default function PanelAuditTrail() {
                   </div>
                 </td>
               </tr>
-            ) : filteredLogs.length === 0 ? (
+            ) : logs.length === 0 ? (
               <tr>
                 <td colSpan={6} className="glass-td text-center py-12 text-text-dim text-sm">
                   No audit log entries match your active filters.
                 </td>
               </tr>
             ) : (
-              paginatedLogs.map((log) => {
+              logs.map((log) => {
                 const dateObj = new Date(log.timestamp);
                 const hasDiff = log.diff && Object.keys(log.diff).length > 0;
                 return (
@@ -346,9 +354,9 @@ export default function PanelAuditTrail() {
       {/* Pagination Controls */}
       <Pagination
         currentPage={currentPage}
-        totalItems={filteredLogs.length}
+        totalItems={totalCount}
         pageSize={pageSize}
-        onPageChange={setCurrentPage}
+        onPageChange={(p) => fetchLogs(p, selectedEntity, searchQuery)}
         itemLabel="audit log entries"
       />
 

@@ -30,30 +30,39 @@ router.put('/users/:id', adminAuth(), auditLogger('User', 'UPDATE_USER'), adminC
 router.delete('/users/:id', adminAuth(), auditLogger('User', 'DELETE_USER'), adminController.deleteUser);
 router.get('/audit-logs', adminAuth(), adminController.getGlobalAuditLogs);
 router.get('/analytics', adminAuth(), adminController.getAnalytics);
-router.get('/settings', adminAuth(), adminController.getSettings);
+
+// Product Catalog & Pricing Management (Admin Only)
+router.post('/products', adminAuth(), upload.single('image'), auditLogger('Product', 'CREATE_PRODUCT'), adminController.createProduct);
+router.patch('/products/:id', adminAuth(), upload.single('image'), auditLogger('Product', 'UPDATE_PRODUCT'), adminController.updateProduct);
+router.delete('/products/:id', adminAuth(), auditLogger('Product', 'DELETE_PRODUCT'), adminController.deleteProduct);
+
+// Material Pool Deletion, Creation & Global Thresholds (Admin Only)
+router.post('/inventory', adminAuth(), auditLogger('Inventory', 'CREATE_INVENTORY'), adminController.createInventoryItem);
+router.delete('/inventory/:id', adminAuth(), auditLogger('Inventory', 'DELETE_INVENTORY'), adminController.deleteInventoryItem);
+router.patch('/inventory/global', adminAuth(), auditLogger('Inventory', 'UPDATE_GLOBAL_THRESHOLD'), adminController.updateGlobalThreshold);
+
+// Settings Mutation (Admin Only)
 router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.post('/settings/logo', adminAuth(), upload.single('logo'), auditLogger('Settings', 'UPLOAD_LOGO'), adminController.uploadBusinessLogo);
 router.post('/settings/gcash-qr', adminAuth(), upload.single('qr'), auditLogger('Settings', 'UPLOAD_GCASH_QR'), adminController.uploadGCashQr);
 router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
+
+// Intelligence & Forecasting (Admin Only)
 router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
 router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);
 router.post('/intelligence/decline', adminAuth(), forecastingController.declineSuggestionAction);
-
 router.get('/purchase-orders', adminAuth(), forecastingController.getPurchaseOrders);
 router.put('/purchase-orders/:id/approve', adminAuth(), forecastingController.approvePurchaseOrder);
 
 // --- Staff (Admin + Employee) Routes ---
+// Operational stockpile tracking, order processing, and read access
+router.get('/settings', staffAuth(), adminController.getSettings);
 router.get('/orders/history', staffAuth(), adminController.getOrderHistory);
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
-router.post('/products', staffAuth(), upload.single('image'), auditLogger('Product', 'CREATE_PRODUCT'), adminController.createProduct);
-router.patch('/products/:id', staffAuth(), upload.single('image'), auditLogger('Product', 'UPDATE_PRODUCT'), adminController.updateProduct);
-router.delete('/products/:id', staffAuth(), auditLogger('Product', 'DELETE_PRODUCT'), adminController.deleteProduct);
 router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
 router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.downloadShoppingListPdf);
-router.post('/inventory', staffAuth(), auditLogger('Inventory', 'CREATE_INVENTORY'), adminController.createInventoryItem);
-router.patch('/inventory/global', staffAuth(), auditLogger('Inventory', 'UPDATE_GLOBAL_THRESHOLD'), adminController.updateGlobalThreshold);
+// Stock count adjustment (+ / -) -> Staff permitted
 router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), adminController.updateInventoryItem);
-router.delete('/inventory/:id', adminAuth(), auditLogger('Inventory', 'DELETE_INVENTORY'), adminController.deleteInventoryItem);
 
 module.exports = router;

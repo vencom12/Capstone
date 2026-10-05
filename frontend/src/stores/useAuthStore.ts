@@ -255,25 +255,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user, 
         isAuthenticated: state.isAuthenticated,
         rememberMe: state.rememberMe
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (typeof window !== 'undefined' && state) {
-          const isSessionActive = sessionStorage.getItem('stitch-session-active');
-          const isStaff = state.user?.role === 'admin' || state.user?.role === 'employee';
-
-          // Security Rule: For privileged roles (Admin & Employee), closing the browser terminates the session.
-          // Relaunching the browser on a shared device MUST require re-authentication.
-          if (state.isAuthenticated && isStaff && !isSessionActive) {
-            state.logout();
-            return;
-          }
-
-          // Only force logout for customers if rememberMe is explicitly false AND there is no active session flag
-          if (state.rememberMe === false && !isSessionActive && state.isAuthenticated) {
-            state.logout();
-          }
-        }
-      }
+      })
     }
   )
 );

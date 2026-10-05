@@ -124,21 +124,19 @@ export default function PanelStaffing({
     try {
       const path = editingStaff ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
 
-      if (editingStaff) {
-        await api.put(path, payload);
-      } else {
-        await api.post(path, payload);
-      }
+      const res: any = editingStaff
+        ? await api.put(path, payload)
+        : await api.post(path, payload);
 
       showToast(
-        editingStaff ? 'Personnel details updated' : 'New staff credentials established successfully',
+        res?.message || (editingStaff ? 'Personnel details updated' : 'New staff credentials established successfully'),
         'success'
       );
       setIsOpen(false);
       refreshData();
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to save staff credentials details', 'error');
+    } catch (err: any) {
+      console.warn('Personnel submit notice:', err?.message || err);
+      showToast(err?.message || 'Failed to save staff credentials details', 'error');
     }
   };
 
@@ -157,9 +155,9 @@ export default function PanelStaffing({
       showToast(`Account "${disablingUser.username}" disabled successfully`, 'success');
       setDisablingUser(null);
       refreshData();
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to disable user account', 'error');
+    } catch (err: any) {
+      console.warn('Disable user notice:', err?.message || err);
+      showToast(err?.message || 'Failed to disable user account', 'error');
     }
   };
 
@@ -277,9 +275,13 @@ export default function PanelStaffing({
                             </span>
                           ) : customer ? (
                             <>
-                              <span className="text-[0.68rem] text-text-dim italic px-1" title="Customer credentials are self-managed">
-                                Self-Managed
-                              </span>
+                              <button
+                                onClick={() => openModal(u)}
+                                className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer border-none"
+                                title="Promote customer account to staff"
+                              >
+                                Promote / Edit
+                              </button>
                               <button
                                 onClick={() => setDisablingUser(u)}
                                 className="bg-danger/10 border border-danger/20 text-danger px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-danger/25 transition-all cursor-pointer border-none"
@@ -375,12 +377,20 @@ export default function PanelStaffing({
                       Protected Admin
                     </span>
                   ) : customer ? (
-                    <button
-                      onClick={() => setDisablingUser(u)}
-                      className="w-full bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
-                    >
-                      Disable Customer Account
-                    </button>
+                    <div className="flex gap-2 w-full">
+                      <button
+                        onClick={() => openModal(u)}
+                        className="flex-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-all cursor-pointer border-none"
+                      >
+                        Promote / Edit
+                      </button>
+                      <button
+                        onClick={() => setDisablingUser(u)}
+                        className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer border-none"
+                      >
+                        Disable
+                      </button>
+                    </div>
                   ) : (
                     <>
                       <button
@@ -418,7 +428,7 @@ export default function PanelStaffing({
       <GlassModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title={editingStaff ? 'Edit Personnel Details' : 'Add Staff Member'}
+        title={editingStaff ? (editingStaff.role === 'customer' ? 'Promote / Edit Customer Account' : 'Edit Personnel Details') : 'Add Staff Member'}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
           <div className="modal-section">
@@ -468,6 +478,7 @@ export default function PanelStaffing({
               >
                 <option value="employee">Artisan / Employee</option>
                 <option value="admin">Administrator</option>
+                <option value="customer">Customer</option>
               </select>
             </div>
           </div>
@@ -498,7 +509,7 @@ export default function PanelStaffing({
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
           >
-            {editingStaff ? 'Save Personnel Details' : 'Add Staff'}
+            {editingStaff ? (editingStaff.role === 'customer' ? 'Save & Update Role' : 'Save Personnel Details') : 'Add Staff'}
           </button>
         </form>
       </GlassModal>

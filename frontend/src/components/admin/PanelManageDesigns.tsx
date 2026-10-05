@@ -8,6 +8,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import { detectColorFromName } from '@/lib/colorUtils';
 import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
 import Pagination from '@/components/ui/Pagination';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -22,6 +23,8 @@ export default function PanelManageDesigns({
   isSyncing,
   refreshData
 }: PanelManageDesignsProps) {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
 
   // Design modal state
@@ -275,6 +278,10 @@ export default function PanelManageDesigns({
   // 4. Submit Design Forms
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      setIsOpen(false);
+      return;
+    }
 
     if (!name.trim()) return showToast('Design name is required', 'error');
     if (!price.trim() || isNaN(parseFloat(price))) return showToast('Valid price is required', 'error');
@@ -333,7 +340,7 @@ export default function PanelManageDesigns({
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
 
   const confirmDelete = async () => {
-    if (!deletingProduct) return;
+    if (!isAdmin || !deletingProduct) return;
     const id = deletingProduct.id || deletingProduct._id;
     try {
       await api.delete(`/api/admin/products/${id}`);
@@ -361,12 +368,14 @@ export default function PanelManageDesigns({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
           />
-          <button
-            onClick={() => openModal()}
-            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
-          >
-            + New Product
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => openModal()}
+              className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
+            >
+              + New Product
+            </button>
+          )}
         </div>
       </header>
 
@@ -408,7 +417,7 @@ export default function PanelManageDesigns({
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="glass-card text-center text-text-dim py-12">
-            No products match the selected filters. Click "+ New Product" to create one.
+            No products match the selected filters.{isAdmin ? ' Click "+ New Product" to create one.' : ''}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -489,18 +498,33 @@ export default function PanelManageDesigns({
                   </span>
                   
                   <div className="flex gap-2 w-full mt-auto pt-2">
-                    <button
-                      onClick={() => openModal(p)}
-                      className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2 rounded-lg text-[0.8rem] font-bold hover:bg-primary/20 transition-all cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeletingProduct(p)}
-                      className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2 rounded-lg text-[0.8rem] font-bold hover:bg-danger/20 transition-all cursor-pointer"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin ? (
+                      <>
+                        <button
+                          onClick={() => openModal(p)}
+                          className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2 rounded-lg text-[0.8rem] font-bold hover:bg-primary/20 transition-all cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeletingProduct(p)}
+                          className="flex-1 bg-danger/10 border border-danger/20 text-danger py-2 rounded-lg text-[0.8rem] font-bold hover:bg-danger/20 transition-all cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => openModal(p)}
+                        className="w-full bg-white/5 border border-border-glass text-text-main py-2 rounded-lg text-[0.8rem] font-semibold hover:bg-white/10 hover:border-primary/40 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <span>View Specs</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -517,7 +541,7 @@ export default function PanelManageDesigns({
         />
       </div>
 
-      {/* Modal: Create / Edit Product Form */}
+      {/* Modal: Create / Edit / Inspect Product Form */}
       <GlassModal
         isOpen={isOpen}
         onClose={() => {
@@ -525,7 +549,7 @@ export default function PanelManageDesigns({
           setVariantToDeleteIndex(null);
           setLastDeletedVariant(null);
         }}
-        title={editingDesign ? 'Edit Product Details' : 'Create New Product'}
+        title={!isAdmin ? 'Product Specifications' : (editingDesign ? 'Edit Product Details' : 'Create New Product')}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
           <div className="modal-section">
@@ -533,10 +557,11 @@ export default function PanelManageDesigns({
             <input
               type="text"
               required
+              disabled={!isAdmin}
               placeholder="e.g. Premium Embroidered Towel"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans disabled:opacity-75 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -547,18 +572,20 @@ export default function PanelManageDesigns({
                 type="number"
                 step="0.01"
                 required
+                disabled={!isAdmin}
                 placeholder="e.g. 19.99"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
             <div className="modal-section">
               <label className="modal-label">Product Categories</label>
               <select
                 value={tag}
+                disabled={!isAdmin}
                 onChange={(e) => setTag(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 <option value="towel">Towel</option>
                 <option value="bath towel">Bath Towel</option>
@@ -574,9 +601,10 @@ export default function PanelManageDesigns({
             <textarea
               placeholder="Explain stitched features or customization limitations..."
               rows={2}
+              disabled={!isAdmin}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full leading-relaxed font-sans"
+              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full leading-relaxed font-sans disabled:opacity-75 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -586,10 +614,11 @@ export default function PanelManageDesigns({
               <input
                 type="number"
                 required
+                disabled={!isAdmin}
                 placeholder="e.g. 50"
                 value={count}
                 onChange={(e) => setCount(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
             <div className="modal-section">
@@ -597,10 +626,11 @@ export default function PanelManageDesigns({
               <input
                 type="number"
                 required
+                disabled={!isAdmin}
                 placeholder="e.g. 5"
                 value={minThreshold}
                 onChange={(e) => setMinThreshold(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -610,93 +640,97 @@ export default function PanelManageDesigns({
             <label className="modal-label text-primary font-bold flex justify-between items-center mb-1">
               <span className="flex items-center gap-2">
                 <span>🎨 Product Variants / Colors</span>
-                {editingVariantIndex !== null && (
+                {isAdmin && editingVariantIndex !== null && (
                   <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
                     Editing Variant #{editingVariantIndex + 1}
                   </span>
                 )}
               </span>
-              <span className="text-[0.7rem] text-text-dim font-normal">Optional</span>
+              <span className="text-[0.7rem] text-text-dim font-normal">{isAdmin ? 'Optional' : 'Configured'}</span>
             </label>
-            <p className="text-xs text-text-dim mb-2.5">
-              Add or edit color options. Typing color names (e.g., <i>"Blue"</i>, <i>"Navy"</i>, <i>"Emerald"</i>, <i>"Rose Gold"</i>) automatically switches the color swatch!
-            </p>
+            {isAdmin && (
+              <>
+                <p className="text-xs text-text-dim mb-2.5">
+                  Add or edit color options. Typing color names (e.g., <i>"Blue"</i>, <i>"Navy"</i>, <i>"Emerald"</i>, <i>"Rose Gold"</i>) automatically switches the color swatch!
+                </p>
 
-            {/* Real-time Color Auto-Detection Toast/Banner */}
-            {colorNotice && (
-              <div className="mb-2 px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[0.75rem] font-medium flex items-center gap-2 animate-fade">
-                <span className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
-                <span>✨ {colorNotice}</span>
-              </div>
+                {/* Real-time Color Auto-Detection Toast/Banner */}
+                {colorNotice && (
+                  <div className="mb-2 px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[0.75rem] font-medium flex items-center gap-2 animate-fade">
+                    <span className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
+                    <span>✨ {colorNotice}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Variant Name (e.g. Royal Blue)"
+                      value={variantName}
+                      onChange={(e) => handleVariantNameInput(e.target.value)}
+                      className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-lg">
+                    <input
+                      type="color"
+                      value={variantColor}
+                      onChange={(e) => {
+                        setVariantColor(e.target.value);
+                        setColorNotice(null);
+                      }}
+                      className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0"
+                      title="Choose exact color swatch"
+                    />
+                    <span className="text-xs font-mono text-text-dim truncate">{variantColor}</span>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Price Override (₱)"
+                      value={variantPrice}
+                      onChange={(e) => setVariantPrice(e.target.value)}
+                      className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none font-mono w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveVariant}
+                    className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg cursor-pointer transition-all border ${
+                      editingVariantIndex !== null
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
+                        : 'bg-primary/20 hover:bg-primary/30 border-primary/30 text-primary'
+                    }`}
+                  >
+                    {editingVariantIndex !== null ? '✓ Save Changes to Variant' : '+ Add Variant Option'}
+                  </button>
+                  {editingVariantIndex !== null && (
+                    <button
+                      type="button"
+                      onClick={handleCancelVariantEdit}
+                      className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs py-2 px-3 rounded-lg cursor-pointer transition-all"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Variant Name (e.g. Royal Blue)"
-                  value={variantName}
-                  onChange={(e) => handleVariantNameInput(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none w-full"
-                />
-              </div>
-              <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-lg">
-                <input
-                  type="color"
-                  value={variantColor}
-                  onChange={(e) => {
-                    setVariantColor(e.target.value);
-                    setColorNotice(null);
-                  }}
-                  className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0"
-                  title="Choose exact color swatch"
-                />
-                <span className="text-xs font-mono text-text-dim truncate">{variantColor}</span>
-              </div>
-              <div>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Price Override (₱)"
-                  value={variantPrice}
-                  onChange={(e) => setVariantPrice(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none font-mono w-full"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 mb-3">
-              <button
-                type="button"
-                onClick={handleSaveVariant}
-                className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg cursor-pointer transition-all border ${
-                  editingVariantIndex !== null
-                    ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
-                    : 'bg-primary/20 hover:bg-primary/30 border-primary/30 text-primary'
-                }`}
-              >
-                {editingVariantIndex !== null ? '✓ Save Changes to Variant' : '+ Add Variant Option'}
-              </button>
-              {editingVariantIndex !== null && (
-                <button
-                  type="button"
-                  onClick={handleCancelVariantEdit}
-                  className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs py-2 px-3 rounded-lg cursor-pointer transition-all"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-
             {/* Current Variants List with Edit and Safe Delete actions */}
-            {variants.length > 0 && (
+            {variants.length > 0 ? (
               <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
                 <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
-                  Configured Variants ({variants.length})
+                  Available Color Options ({variants.length})
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {variants.map((v, idx) => (
-                    variantToDeleteIndex === idx ? (
+                    isAdmin && variantToDeleteIndex === idx ? (
                       /* Warning / Confirmation state before removal */
                       <div
                         key={idx}
@@ -730,7 +764,7 @@ export default function PanelManageDesigns({
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all ${
                           editingVariantIndex === idx
                             ? 'bg-primary/20 border-primary shadow-sm text-white'
-                            : 'bg-bg-surface border-border-glass text-text-main hover:border-white/20'
+                            : 'bg-bg-surface border-border-glass text-text-main'
                         }`}
                       >
                         <span
@@ -744,40 +778,41 @@ export default function PanelManageDesigns({
                           </span>
                         )}
                         
-                        {/* Clean Line Pen Edit Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditVariant(idx)}
-                          className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
-                          title="Edit variant"
-                          aria-label="Edit variant"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                            <path d="m15 5 4 4"/>
-                          </svg>
-                        </button>
-
-                        {/* Clean Line Cross Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleInitiateDeleteVariant(idx)}
-                          className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
-                          title="Remove variant"
-                          aria-label="Remove variant"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                          </svg>
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditVariant(idx)}
+                              className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
+                              title="Edit variant"
+                              aria-label="Edit variant"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                <path d="m15 5 4 4"/>
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleInitiateDeleteVariant(idx)}
+                              className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
+                              title="Remove variant"
+                              aria-label="Remove variant"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                              </svg>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )
                   ))}
                 </div>
 
                 {/* Inline Undo Notification Banner after removal */}
-                {lastDeletedVariant && (
+                {isAdmin && lastDeletedVariant && (
                   <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-text-dim animate-fadeIn mt-1">
                     <span className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
@@ -797,29 +832,51 @@ export default function PanelManageDesigns({
                   </div>
                 )}
               </div>
-            )}
+            ) : !isAdmin ? (
+              <p className="text-xs text-text-dim italic m-0 pt-2 border-t border-white/5">No specific color variants configured for this product.</p>
+            ) : null}
           </div>
 
-          <div className="modal-section">
-            <label className="modal-label">Upload Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setImageFile(e.target.files[0]);
-                }
-              }}
-              className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-dim text-xs cursor-pointer w-full file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer"
-            />
-          </div>
+          {isAdmin ? (
+            <div className="modal-section">
+              <label className="modal-label">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setImageFile(e.target.files[0]);
+                  }
+                }}
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-dim text-xs cursor-pointer w-full file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer"
+              />
+            </div>
+          ) : editingDesign?.imageUrl ? (
+            <div className="modal-section">
+              <label className="modal-label">Product Image</label>
+              <div 
+                className="w-full h-44 rounded-xl bg-cover bg-center border border-border-glass" 
+                style={{ backgroundImage: `url(${editingDesign.imageUrl})` }} 
+              />
+            </div>
+          ) : null}
 
-          <button
-            type="submit"
-            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
-          >
-            {editingDesign ? 'Save Product Details' : 'Create Product'}
-          </button>
+          {isAdmin ? (
+            <button
+              type="submit"
+              className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
+            >
+              {editingDesign ? 'Save Product Details' : 'Create Product'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="bg-white/10 border border-border-glass text-text-main font-bold py-3.5 rounded-xl mt-4 hover:bg-white/15 transition-all cursor-pointer shadow-sm text-center w-full text-sm font-sans"
+            >
+              Close Specifications
+            </button>
+          )}
         </form>
       </GlassModal>
 
