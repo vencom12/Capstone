@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import Pagination from '@/components/ui/Pagination';
 
 interface AuditLogEntry {
   id: string;
@@ -28,6 +29,10 @@ export default function PanelAuditTrail() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntity, setSelectedEntity] = useState('All');
   const [selectedLogForDetails, setSelectedLogForDetails] = useState<AuditLogEntry | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -66,6 +71,15 @@ export default function PanelAuditTrail() {
       return actionMatch || entityMatch || entityIdMatch || userMatch || ipMatch;
     });
   }, [logs, selectedEntity, searchQuery]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedEntity]);
+
+  const paginatedLogs = useMemo(() => {
+    return filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredLogs, currentPage, pageSize]);
 
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) {
@@ -240,7 +254,7 @@ export default function PanelAuditTrail() {
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log) => {
+              paginatedLogs.map((log) => {
                 const dateObj = new Date(log.timestamp);
                 const hasDiff = log.diff && Object.keys(log.diff).length > 0;
                 return (
@@ -328,6 +342,15 @@ export default function PanelAuditTrail() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredLogs.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        itemLabel="audit log entries"
+      />
 
       {/* Inspect Diff Modal */}
       {selectedLogForDetails && (

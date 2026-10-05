@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import { detectColorFromName } from '@/lib/colorUtils';
 import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
+import Pagination from '@/components/ui/Pagination';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -73,6 +74,19 @@ export default function PanelManageDesigns({
     const levelInfo = computeStockLevel(availableStock, p.minThreshold || 5);
     return levelInfo.tier === stockFilter;
   });
+
+  // Pagination for Products Grid
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 12;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, stockFilter]);
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Calculate stock metrics for all products
   const productStockMetrics = products.reduce(
@@ -398,7 +412,7 @@ export default function PanelManageDesigns({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredProducts.map((p) => {
+            {paginatedProducts.map((p) => {
               const id = p.id || p._id;
               const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
               const dynamicReserved = p.dynamicReserved !== undefined ? p.dynamicReserved : (p.reservedCount || 0);
@@ -493,6 +507,14 @@ export default function PanelManageDesigns({
             })}
           </div>
         )}
+
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredProducts.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="products"
+        />
       </div>
 
       {/* Modal: Create / Edit Product Form */}

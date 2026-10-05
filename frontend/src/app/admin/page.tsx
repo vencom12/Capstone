@@ -25,6 +25,7 @@ import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -70,9 +71,38 @@ export default function AdminPage() {
   const [dbType, setDbType] = useState<string>('supabase');
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Order History Panel specific filters
+  // Order History Panel specific filters & server-indexed state
   const [historySearch, setHistorySearch] = useState('');
   const [historyDate, setHistoryDate] = useState('');
+  const [archivedOrders, setArchivedOrders] = useState<any[]>([]);
+  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
+  const [archivedTotal, setArchivedTotal] = useState(0);
+  const [archivedPage, setArchivedPage] = useState(1);
+  const [archivedTotalPages, setArchivedTotalPages] = useState(1);
+
+  const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1) => {
+    setIsLoadingArchived(true);
+    try {
+      const params = new URLSearchParams();
+      if (query && query.trim()) params.append('search', query.trim());
+      if (date && date.trim()) params.append('date', date.trim());
+      params.append('page', String(page));
+      params.append('limit', '50');
+
+      const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      if (res && res.orders) {
+        setArchivedOrders(res.orders);
+        setArchivedTotal(res.total || 0);
+        setArchivedTotalPages(res.totalPages || 1);
+        setArchivedPage(res.page || page);
+      }
+    } catch (err) {
+      console.error('Failed to load archived orders:', err);
+      showToast('Failed to load archived orders', 'error');
+    } finally {
+      setIsLoadingArchived(false);
+    }
+  };
 
   // Receipt Modal in Order History
   const [historyReceiptOrder, setHistoryReceiptOrder] = useState<any>(null);
@@ -139,10 +169,12 @@ export default function AdminPage() {
     }
   };
 
-  // Hydration Check
+  // Hydration Check (Session-only tab state: resets securely on browser exit)
   useEffect(() => {
-    const savedTab = localStorage.getItem('stitch-admin-tab');
-    if (savedTab) setActiveTab(savedTab);
+    try {
+      const savedTab = sessionStorage.getItem('stitch-admin-tab');
+      if (savedTab) setActiveTab(savedTab);
+    } catch (e) {}
     setIsHydrated(true);
   }, []);
 
@@ -166,9 +198,22 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem('stitch-admin-tab', activeTab);
+      try {
+        sessionStorage.setItem('stitch-admin-tab', activeTab);
+      } catch (e) {}
     }
   }, [activeTab, isHydrated]);
+
+  // Trigger fast server-indexed order history query when history tab is active
+  useEffect(() => {
+    if (!isHydrated || !isAuthenticated || !checkAccess('admin')) return;
+    if (activeTab === 'history') {
+      const timer = setTimeout(() => {
+        fetchArchivedOrders(historySearch, historyDate, 1);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, historySearch, historyDate, isHydrated, isAuthenticated]);
 
   // Dynamic Live Socket.IO Event Handler
   useEffect(() => {
@@ -253,23 +298,7 @@ export default function AdminPage() {
     );
   }
 
-  // --- Filtering History Queue ---
-  const historyOrders = orders.filter((o) => {
-    // Only completed or canceled tickets in history panel
-    if (!['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
 
-    const matchesSearch =
-      !historySearch ||
-      o.orderId?.toLowerCase().includes(historySearch.toLowerCase()) ||
-      o.client?.toLowerCase().includes(historySearch.toLowerCase()) ||
-      o.status?.toLowerCase().includes(historySearch.toLowerCase());
-
-    const matchesDate =
-      !historyDate ||
-      new Date(o.date || o.createdAt).toISOString().split('T')[0] === historyDate;
-
-    return matchesSearch && matchesDate;
-  });
 
   const viewHistoryReceipt = async (order: any) => {
     const transactionId = order.transactionID || order.transactionId || order.receiptID || order.receiptId;
@@ -362,13 +391,16 @@ export default function AdminPage() {
         return <PanelAnalytics orders={orders} />;
 
       case 'history':
-        // Renders complete database logs for delivered tickets
+        // Renders complete database logs for delivered tickets via fast server indexing
         return (
           <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans">
             <header className="mb-6 flex justify-between items-center flex-wrap gap-4">
               <div>
                 <h1 className="text-3xl font-extrabold mb-1">Archived Order History</h1>
-                <p className="text-text-dim text-[0.95rem] m-0">Historical database logs of all delivered customer tickets.</p>
+                <p className="text-text-dim text-[0.95rem] m-0">
+                  Historical database logs of all delivered customer tickets.
+                  {archivedTotal > 0 && <span className="text-primary font-bold ml-1.5">({archivedTotal} orders archived)</span>}
+                </p>
               </div>
               <div className="flex gap-3 items-center flex-wrap">
                 <GlassDatePicker
@@ -378,134 +410,191 @@ export default function AdminPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Search ID or client..."
+                  placeholder="Search ID, client, or status..."
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
                 />
+                {(historySearch || historyDate) && (
+                  <button
+                    onClick={() => {
+                      setHistorySearch('');
+                      setHistoryDate('');
+                    }}
+                    className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             </header>
 
             <div className="glass-card p-5 border border-border-glass rounded-[24px] flex-1 pr-2">
-              {/* Desktop Table */}
-              <div className="glass-table-container max-[1024px]:hidden">
-                <table className="glass-table">
-                  <thead>
-                    <tr>
-                      <th className="glass-th text-left">Order ID</th>
-                      <th className="glass-th text-left">Client & Date Completed</th>
-                      <th className="glass-th text-left">Items Detailed</th>
-                      <th className="glass-th text-left">Receipt Amount</th>
-                      <th className="glass-th text-right">Archived Audit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyOrders.length === 0 ? (
-                      <tr className="glass-tr">
-                        <td colSpan={5} className="glass-td text-center text-text-dim py-4">
-                          No archived completed tickets matching filters.
-                        </td>
-                      </tr>
-                    ) : (
-                      historyOrders.map((o) => {
-                        const id = o.id || o._id;
-                        return (
-                          <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
-                            <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
-                              {o.orderId}
-                            </td>
-                            <td className="glass-td text-left text-sm">
-                              <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
-                              <div className="text-[0.75rem] text-text-dim mt-0.5">
-                                {new Date(o.date || o.createdAt).toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="glass-td text-left text-sm">
-                              {o.items && Array.isArray(o.items) ? (
-                                <div className="flex flex-col gap-0.5 truncate max-w-[250px]">
-                                  {o.items.map((item: any, idx: number) => {
-                                    const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
-                                    return (
-                                      <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
-                                        {item.selectedColor && (
-                                          <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                        )}
-                                        <span className="font-medium">{item.quantity}x {item.name}</span>
-                                        {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span>{o.design || 'Embroidery Design'}</span>
-                              )}
-                            </td>
-                            <td className="glass-td font-mono text-sm font-bold text-primary text-left">
-                              ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
-                            </td>
-                            <td className="glass-td text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => viewHistoryReceipt(o)}
-                                  className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                                >
-                                  View Receipt
-                                </button>
-                              </div>
+              {isLoadingArchived ? (
+                <>
+                  <div className="max-[1024px]:hidden">
+                    <TableSkeleton rows={7} cols={5} />
+                  </div>
+                  <div className="min-[1025px]:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <CardSkeleton key={i} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Desktop Table */}
+                  <div className="glass-table-container max-[1024px]:hidden">
+                    <table className="glass-table">
+                      <thead>
+                        <tr>
+                          <th className="glass-th text-left">Order ID</th>
+                          <th className="glass-th text-left">Client & Date Completed</th>
+                          <th className="glass-th text-left">Items Detailed</th>
+                          <th className="glass-th text-left">Receipt Amount</th>
+                          <th className="glass-th text-right">Archived Audit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedOrders.length === 0 ? (
+                          <tr className="glass-tr">
+                            <td colSpan={5} className="glass-td text-center text-text-dim py-6">
+                              No archived completed or canceled orders matching filters.
                             </td>
                           </tr>
+                        ) : (
+                          archivedOrders.map((o) => {
+                            const id = o.id || o._id;
+                            return (
+                              <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
+                                <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
+                                  {o.orderId}
+                                </td>
+                                <td className="glass-td text-left text-sm">
+                                  <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
+                                  <div className="text-[0.75rem] text-text-dim mt-0.5">
+                                    {new Date(o.date || o.createdAt).toLocaleString()}
+                                  </div>
+                                </td>
+                                <td className="glass-td text-left text-sm">
+                                  {o.items && Array.isArray(o.items) ? (
+                                    <div className="flex flex-col gap-0.5 truncate max-w-[250px]">
+                                      {o.items.map((item: any, idx: number) => {
+                                        const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                        return (
+                                          <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
+                                            {item.selectedColor && (
+                                              <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                            )}
+                                            <span className="font-medium">{item.quantity}x {item.name}</span>
+                                            {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <span>{o.design || 'Embroidery Design'}</span>
+                                  )}
+                                </td>
+                                <td className="glass-td font-mono text-sm font-bold text-primary text-left">
+                                  ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                                </td>
+                                <td className="glass-td text-right">
+                                  <div className="flex gap-2 justify-end">
+                                    <button
+                                      onClick={() => viewHistoryReceipt(o)}
+                                      className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                                    >
+                                      View Receipt
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card Blocks */}
+                  <div className="min-[1025px]:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {archivedOrders.length === 0 ? (
+                      <div className="col-span-full py-6 text-center text-text-dim text-sm">
+                        No archived completed or canceled orders matching filters.
+                      </div>
+                    ) : (
+                      archivedOrders.map((o) => {
+                        const id = o.id || o._id;
+                        return (
+                          <div
+                            key={id}
+                            onClick={() => viewHistoryReceipt(o)}
+                            className="bg-bg-card border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative cursor-pointer"
+                          >
+                            <div className="flex justify-between items-start">
+                              <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                              <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full border ${
+                                o.status === 'Order Canceled' ? 'text-danger bg-danger/15 border-danger/20' : 'text-success bg-success/15 border-success/20'
+                              }`}>
+                                {o.status}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 text-xs font-medium">
+                              <div>
+                                <span className="text-[0.65rem] text-text-dim block mb-0.5">Completed Date</span>
+                                <span className="text-text-main">
+                                  {new Date(o.date || o.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[0.65rem] text-text-dim block mb-0.5">Paid Total</span>
+                                <span className="font-mono text-primary font-bold text-sm">
+                                  ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                viewHistoryReceipt(o);
+                              }}
+                              className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
+                            >
+                              Archived Receipt Details
+                            </button>
+                          </div>
                         );
                       })
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
 
-              {/* Mobile Card Blocks */}
-              <div className="min-[1025px]:hidden grid grid-cols-2 gap-4">
-                {historyOrders.map((o) => {
-                  const id = o.id || o._id;
-                  return (
-                    <div
-                      key={id}
-                      onClick={() => viewHistoryReceipt(o)}
-                      className="bg-bg-card border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative cursor-pointer"
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                        <span className="text-[0.65rem] text-success font-bold bg-success/15 px-2 py-0.5 rounded-full border border-success/20">
-                          {o.status}
-                        </span>
+                  {/* Pagination Controls */}
+                  {archivedTotalPages > 1 && (
+                    <div className="flex items-center justify-between mt-5 pt-4 border-t border-border-glass text-xs text-text-dim">
+                      <span>Showing page {archivedPage} of {archivedTotalPages} ({archivedTotal} orders)</span>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={archivedPage <= 1}
+                          onClick={() => fetchArchivedOrders(historySearch, historyDate, archivedPage - 1)}
+                          className="px-3 py-1.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-text-main font-semibold cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          disabled={archivedPage >= archivedTotalPages}
+                          onClick={() => fetchArchivedOrders(historySearch, historyDate, archivedPage + 1)}
+                          className="px-3 py-1.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-text-main font-semibold cursor-pointer"
+                        >
+                          Next
+                        </button>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-xs font-medium">
-                        <div>
-                          <span className="text-[0.65rem] text-text-dim block mb-0.5">Completed Date</span>
-                          <span className="text-text-main">
-                            {new Date(o.date || o.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[0.65rem] text-text-dim block mb-0.5">Paid Total</span>
-                          <span className="font-mono text-primary font-bold text-sm">
-                            ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          viewHistoryReceipt(o);
-                        }}
-                        className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
-                      >
-                        Archived Receipt Details
-                      </button>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Modal: View Receipt Details */}

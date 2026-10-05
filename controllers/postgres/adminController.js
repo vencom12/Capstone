@@ -896,3 +896,57 @@ exports.getGlobalAuditLogs = async (req, res) => {
     }
 };
 
+exports.getOrderHistory = async (req, res) => {
+    try {
+        const { search, date, page = 1, limit = 50 } = req.query;
+        const pageNum = parseInt(page) || 1;
+        const take = Math.min(parseInt(limit) || 50, 100);
+        const skip = (pageNum - 1) * take;
+
+        const where = {
+            status: { in: ['Order Delivered', 'Completed', 'Order Canceled'] }
+        };
+
+        if (search && search.trim()) {
+            const query = search.trim();
+            where.OR = [
+                { orderId: { contains: query, mode: 'insensitive' } },
+                { client: { contains: query, mode: 'insensitive' } },
+                { status: { contains: query, mode: 'insensitive' } }
+            ];
+        }
+
+        if (date && date.trim()) {
+            const startOfDay = new Date(date.trim());
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date.trim());
+            endOfDay.setHours(23, 59, 59, 999);
+            where.date = {
+                gte: startOfDay,
+                lte: endOfDay
+            };
+        }
+
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                include: { transaction: true, receipt: true },
+                orderBy: { date: 'desc' },
+                skip,
+                take
+            }),
+            prisma.order.count({ where })
+        ]);
+
+        res.json({
+            orders,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / take)
+        });
+    } catch (err) {
+        console.error('getOrderHistory error:', err);
+        res.status(500).json({ message: 'Error retrieving archived order history' });
+    }
+};
+

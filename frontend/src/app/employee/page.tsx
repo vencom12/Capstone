@@ -18,6 +18,7 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
+import Pagination from '@/components/ui/Pagination';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -43,9 +44,40 @@ export default function EmployeePage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState('');
   const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
+  const [queuePage, setQueuePage] = useState(1);
+  const queuePageSize = 10;
 
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
+  const [archivedOrders, setArchivedOrders] = useState<any[]>([]);
+  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
+  const [archivedTotal, setArchivedTotal] = useState(0);
+  const [archivedPage, setArchivedPage] = useState(1);
+  const [archivedTotalPages, setArchivedTotalPages] = useState(1);
+
+  const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1) => {
+    setIsLoadingArchived(true);
+    try {
+      const params = new URLSearchParams();
+      if (query && query.trim()) params.append('search', query.trim());
+      if (date && date.trim()) params.append('date', date.trim());
+      params.append('page', String(page));
+      params.append('limit', '50');
+
+      const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      if (res && res.orders) {
+        setArchivedOrders(res.orders);
+        setArchivedTotal(res.total || 0);
+        setArchivedTotalPages(res.totalPages || 1);
+        setArchivedPage(res.page || page);
+      }
+    } catch (err) {
+      console.error('Failed to load archived orders:', err);
+      showToast('Failed to load archived orders', 'error');
+    } finally {
+      setIsLoadingArchived(false);
+    }
+  };
 
   // Modals for Actions
   const [selectedOrder, setSelectedOrder] = useState<any>(null); // For processing order
@@ -97,9 +129,12 @@ export default function EmployeePage() {
     }
   };
 
+  // Hydration Check (Session-only tab state: resets securely on browser exit)
   useEffect(() => {
-    const savedTab = localStorage.getItem('stitch-employee-tab');
-    if (savedTab) setActiveTab(savedTab);
+    try {
+      const savedTab = sessionStorage.getItem('stitch-employee-tab');
+      if (savedTab) setActiveTab(savedTab);
+    } catch (e) {}
     setIsHydrated(true);
   }, []);
 
@@ -122,9 +157,22 @@ export default function EmployeePage() {
 
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem('stitch-employee-tab', activeTab);
+      try {
+        sessionStorage.setItem('stitch-employee-tab', activeTab);
+      } catch (e) {}
     }
   }, [activeTab, isHydrated]);
+
+  // Trigger fast server-indexed order history query when history tab is active
+  useEffect(() => {
+    if (!isHydrated || !isAuthenticated || !checkAccess('employee')) return;
+    if (activeTab === 'history') {
+      const timer = setTimeout(() => {
+        fetchArchivedOrders(historySearchQuery, historyDateFilter, 1);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, historySearchQuery, historyDateFilter, isHydrated, isAuthenticated]);
 
   const autoAllotOrders = async () => {
     const unassignedOrders = orders.filter(
@@ -434,22 +482,15 @@ export default function EmployeePage() {
     return matchesSearch && matchesDate && matchesTab;
   });
 
-  const historyOrders = orders.filter(o => {
-    if (!['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
+  // Reset queue page on filter changes
+  useEffect(() => {
+    setQueuePage(1);
+  }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
 
-    const matchesSearch = !historySearchQuery || (
-      o.orderId.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
-      o.client?.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
-      o.status?.toLowerCase().includes(historySearchQuery.toLowerCase())
-    );
-
-    const matchesDate = !historyDateFilter || (
-      new Date(o.date || o.createdAt).toISOString().split('T')[0] === historyDateFilter
-    );
-
-    return matchesSearch && matchesDate;
-  });
-
+  const paginatedQueueOrders = activeOrders.slice(
+    (queuePage - 1) * queuePageSize,
+    queuePage * queuePageSize
+  );
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -748,7 +789,7 @@ export default function EmployeePage() {
                         {activeOrders.length === 0 ? (
                           <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
                         ) : (
-                          activeOrders.map((o) => {
+                          paginatedQueueOrders.map((o) => {
                          const isBatchMatched = o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim());
                          return (
                            <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
@@ -861,7 +902,7 @@ export default function EmployeePage() {
               ) : activeOrders.length === 0 ? (
                 <div className="glass-card p-6 text-center text-text-dim">No active orders in queue.</div>
               ) : (
-                activeOrders.map((o) => {
+                paginatedQueueOrders.map((o) => {
                   return (
                     <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
                       <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
@@ -961,6 +1002,15 @@ export default function EmployeePage() {
                 })
               )}
             </div>
+
+            {/* Queue Pagination */}
+            <Pagination
+              currentPage={queuePage}
+              totalItems={activeOrders.length}
+              pageSize={queuePageSize}
+              onPageChange={setQueuePage}
+              itemLabel="orders in queue"
+            />
           </section>
         );
 
@@ -989,28 +1039,53 @@ export default function EmployeePage() {
             <header className="mb-6 flex justify-between items-end flex-wrap gap-4">
               <div>
                 <h1 className="text-3xl font-extrabold mb-1">Order History</h1>
+                <p className="text-text-dim text-[0.95rem] m-0">
+                  Archived completed and canceled orders.
+                  {archivedTotal > 0 && <span className="text-primary font-bold ml-1.5">({archivedTotal} orders archived)</span>}
+                </p>
               </div>
-              <div className="flex gap-3 items-center">
-                 <GlassDatePicker 
-                    value={historyDateFilter}
-                    onChange={(val) => setHistoryDateFilter(val)}
-                    placeholder="Filter date"
-                  />
-                 <input 
-                   type="text" 
-                   placeholder="Search history..." 
-                   value={historySearchQuery}
-                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                   className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
-                 />
+              <div className="flex gap-3 items-center flex-wrap">
+                <GlassDatePicker 
+                  value={historyDateFilter}
+                  onChange={(val) => setHistoryDateFilter(val)}
+                  placeholder="Filter date"
+                />
+                <input 
+                  type="text" 
+                  placeholder="Search history ID, client..." 
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
+                />
+                {(historySearchQuery || historyDateFilter) && (
+                  <button
+                    onClick={() => {
+                      setHistorySearchQuery('');
+                      setHistoryDateFilter('');
+                    }}
+                    className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             </header>
-             {isSyncing && orders.length === 0 ? (
-               <div className="max-[1100px]:hidden mb-4 w-full">
-                 <TableSkeleton rows={5} cols={6} />
-               </div>
-             ) : (
-               <div className="glass-table-container max-[1100px]:hidden">
+
+            {isLoadingArchived ? (
+              <>
+                <div className="max-[1100px]:hidden mb-4 w-full">
+                  <TableSkeleton rows={6} cols={6} />
+                </div>
+                <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <CardSkeleton key={i} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="glass-table-container max-[1100px]:hidden">
                   <table className="glass-table">
                     <thead>
                       <tr>
@@ -1023,148 +1098,156 @@ export default function EmployeePage() {
                       </tr>
                     </thead>
                     <tbody>
-                       {historyOrders.length === 0 ? (
-                         <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No historical completed or canceled orders found.</td></tr>
-                       ) : (
-                         historyOrders.map((o) => {
-                        return (
-                          <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
-                            <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
-                              {o.orderId}
-                            </td>
-                            <td className="glass-td text-sm font-medium text-text-main text-left">
-                              {o.client || 'Valued Customer'}
-                            </td>
-                            <td className="glass-td text-sm text-text-main text-left">
-                              {o.items && Array.isArray(o.items) ? (
-                                <div className="flex flex-col gap-0.5">
-                                  {o.items.map((item: any, idx: number) => (
-                                    <span key={idx} className="line-clamp-1">
-                                      {item.quantity}x {item.name}
-                                    </span>
-                                  ))}
+                      {archivedOrders.length === 0 ? (
+                        <tr className="glass-tr">
+                          <td colSpan={6} className="glass-td text-center text-text-dim py-6">
+                            No historical completed or canceled orders found.
+                          </td>
+                        </tr>
+                      ) : (
+                        archivedOrders.map((o) => {
+                          return (
+                            <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
+                              <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
+                                {o.orderId}
+                              </td>
+                              <td className="glass-td text-sm font-medium text-text-main text-left">
+                                {o.client || 'Valued Customer'}
+                              </td>
+                              <td className="glass-td text-sm text-text-main text-left">
+                                {o.items && Array.isArray(o.items) ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    {o.items.map((item: any, idx: number) => (
+                                      <span key={idx} className="line-clamp-1">
+                                        {item.quantity}x {item.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span>{o.design || 'Custom Embroidery'}</span>
+                                )}
+                              </td>
+                              <td className="glass-td text-left">
+                                <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold
+                                  ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
+                                    'bg-danger/20 text-danger border border-danger/30'
+                                  }
+                                `}>
+                                  {o.status}
+                                </span>
+                              </td>
+                              <td className="glass-td text-text-dim text-sm text-left">
+                                {new Date(o.date || o.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="glass-td text-right">
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => {
+                                      setViewingReceiptOrder(o);
+                                      setIsReceiptModalOpen(true);
+                                    }}
+                                    className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    onClick={() => handleDownloadReceipt(o)}
+                                    className="bg-secondary/10 border border-secondary/20 text-secondary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-secondary/25 transition-all cursor-pointer"
+                                  >
+                                    Receipt
+                                  </button>
                                 </div>
-                              ) : (
-                                <span>{o.design || 'Custom Embroidery'}</span>
-                              )}
-                            </td>
-                            <td className="glass-td text-left">
-                              <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Tablet & Mobile Card Block View */}
+                <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
+                  {archivedOrders.length === 0 ? (
+                    <div className="glass-card p-6 text-center text-text-dim col-span-full">
+                      No historical completed or canceled orders found.
+                    </div>
+                  ) : (
+                    archivedOrders.map((o) => {
+                      return (
+                        <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
+                          <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
+                            {/* Left Side: ID & Timestamp, Status Badge, Client Name */}
+                            <div className="flex flex-col gap-2.5 text-left justify-between h-full">
+                              <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
                                 ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
                                   'bg-danger/20 text-danger border border-danger/30'
                                 }
                               `}>
                                 {o.status}
                               </span>
-                            </td>
-                            <td className="glass-td text-text-dim text-sm text-left">
-                              {new Date(o.date || o.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="glass-td text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => {
-                                    setViewingReceiptOrder(o);
-                                    setIsReceiptModalOpen(true);
-                                  }}
-                                  className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                                >
-                                  View
-                                </button>
-                                <button
-                                  onClick={() => handleDownloadReceipt(o)}
-                                  className="bg-secondary/10 border border-secondary/20 text-secondary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-secondary/25 transition-all cursor-pointer"
-                                >
-                                  Receipt
-                                </button>
+
+                              <div className="flex flex-col">
+                                <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
+                                <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleDateString()}</span>
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                 </tbody>
-               </table>
-            </div>
+
+                              <div className="flex flex-col text-left">
+                                <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">Client</span>
+                                <span className="font-bold text-text-main truncate max-w-[140px]">{o.client || 'Valued Customer'}</span>
+                              </div>
+                            </div>
+
+                            {/* Right Side: Orders / Items (Scrollable List) */}
+                            <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
+                              <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">Orders / Items</span>
+                              <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
+                                {o.items && Array.isArray(o.items) ? (
+                                  o.items.map((item: any, idx: number) => (
+                                    <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
+                                      {item.quantity}x {item.name}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="py-0.5">{o.design || 'Custom Embroidery'}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 w-full mt-1">
+                            <button
+                              onClick={() => {
+                                setViewingReceiptOrder(o);
+                                setIsReceiptModalOpen(true);
+                              }}
+                              className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
+                            >
+                              View Details
+                            </button>
+                            <button
+                              onClick={() => handleDownloadReceipt(o)}
+                              className="flex-1 bg-secondary/10 border border-secondary/20 text-secondary py-2.5 rounded-xl text-xs font-bold hover:bg-secondary/20 transition-all cursor-pointer text-center"
+                            >
+                              Receipt
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pagination Controls */}
+                <Pagination
+                  currentPage={archivedPage}
+                  totalItems={archivedTotal}
+                  pageSize={50}
+                  onPageChange={(p) => fetchArchivedOrders(historySearchQuery, historyDateFilter, p)}
+                  itemLabel="archived orders"
+                />
+              </>
             )}
-
-            {/* Tablet & Mobile Card Block View */}
-            <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
-              {isSyncing && orders.length === 0 ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <CardSkeleton key={i} />
-                ))
-              ) : historyOrders.length === 0 ? (
-                <div className="glass-card p-6 text-center text-text-dim">No historical completed or canceled orders found.</div>
-              ) : (
-                historyOrders.map((o) => {
-                  return (
-                    <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
-                      <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
-                        {/* Left Side: ID & Timestamp, Status Badge, Client Name */}
-                        <div className="flex flex-col gap-2.5 text-left justify-between h-full">
-                          {/* Status Badge */}
-                          <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
-                            ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
-                              'bg-danger/20 text-danger border border-danger/30'
-                            }
-                          `}>
-                            {o.status}
-                          </span>
-
-                          {/* Upper Left: ID & Timestamp */}
-                          <div className="flex flex-col">
-                            <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
-                            <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleDateString()}</span>
-                          </div>
-
-                          {/* Client Name */}
-                          <div className="flex flex-col text-left">
-                            <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">Client</span>
-                            <span className="font-bold text-text-main truncate max-w-[140px]">{o.client || 'Valued Customer'}</span>
-                          </div>
-                        </div>
-
-                        {/* Right Side: Orders / Items (Scrollable List) */}
-                        <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
-                          <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">Orders / Items</span>
-                          <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
-                            {o.items && Array.isArray(o.items) ? (
-                              o.items.map((item: any, idx: number) => (
-                                <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
-                                  {item.quantity}x {item.name}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="py-0.5">{o.design || 'Custom Embroidery'}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Underneath Designated Buttons */}
-                      <div className="flex gap-3 w-full mt-1">
-                        <button
-                          onClick={() => {
-                            setViewingReceiptOrder(o);
-                            setIsReceiptModalOpen(true);
-                          }}
-                          className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
-                        >
-                          View Details
-                        </button>
-                        <button
-                          onClick={() => handleDownloadReceipt(o)}
-                          className="flex-1 bg-secondary/10 border border-secondary/20 text-secondary py-2.5 rounded-xl text-xs font-bold hover:bg-secondary/20 transition-all cursor-pointer text-center"
-                        >
-                          Receipt
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
           </section>
         );
 

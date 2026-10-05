@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
+import Pagination from '@/components/ui/Pagination';
 
 interface InlineStockAdjusterProps {
   material: any;
@@ -360,6 +361,19 @@ export default function PanelRawMaterials({
     return level.tier === stockTierFilter;
   });
 
+  // Pagination for Inventory Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, stockTierFilter]);
+
+  const paginatedInventory = filteredInventory.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   const getComputedItemName = () => {
     if (materialCategory === 'Thread Spool') {
       const color = spoolColor === 'Custom' ? customColor.trim() : spoolColor;
@@ -572,7 +586,7 @@ export default function PanelRawMaterials({
                       </td>
                     </tr>
                   ) : (
-                    filteredInventory.map((i) => {
+                    paginatedInventory.map((i) => {
                     const id = i.id || i._id;
                     const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
                     return (
@@ -592,7 +606,7 @@ export default function PanelRawMaterials({
                               <div 
                                 className="h-full rounded-full transition-all duration-300"
                                 style={{ 
-                                  width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
+                                   width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
                                   backgroundColor: stockLevel.dotColor
                                 }}
                               />
@@ -643,7 +657,7 @@ export default function PanelRawMaterials({
             ) : filteredInventory.length === 0 ? (
               <div className="glass-card p-6 text-center text-text-dim col-span-full">No materials cataloged.</div>
             ) : (
-              filteredInventory.map((i) => {
+              paginatedInventory.map((i) => {
                 const id = i.id || i._id;
                 const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
                 return (
@@ -703,6 +717,15 @@ export default function PanelRawMaterials({
               })
             )}
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredInventory.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            itemLabel="materials"
+          />
         </div>
 
         {/* Right side: Stock audit logs trail */}

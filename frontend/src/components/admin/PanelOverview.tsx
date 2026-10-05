@@ -15,6 +15,7 @@ import WaybillModal from '@/components/dashboard/WaybillModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
+import Pagination from '@/components/ui/Pagination';
 
 interface PanelOverviewProps {
   orders: any[];
@@ -194,6 +195,19 @@ export default function PanelOverview({
 
     return matchesSearch && matchesDate && matchesTab;
   });
+
+  // Pagination for Active Orders Queue Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, dateFilter, queueTab]);
+
+  const paginatedOrders = activeOrders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // Calculate Queued and Realized Revenue
   const pendingOrders = orders.filter(o =>
@@ -511,7 +525,7 @@ export default function PanelOverview({
                       </td>
                     </tr>
                   ) : (
-                    activeOrders.map((o) => {
+                    paginatedOrders.map((o) => {
                     const id = o.id || o._id;
                     const isChecked = selectedIds.includes(id);
                     return (
@@ -606,7 +620,7 @@ export default function PanelOverview({
             ) : activeOrders.length === 0 ? (
               <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
             ) : (
-              activeOrders.map((o) => {
+              paginatedOrders.map((o) => {
               const id = o.id || o._id;
               const isChecked = selectedIds.includes(id);
               return (
@@ -712,6 +726,14 @@ export default function PanelOverview({
             })
           )}
           </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalItems={activeOrders.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            itemLabel="orders in queue"
+          />
         </div>
 
         {/* Right Column: Queue distribution donut chart (30%) */}

@@ -135,7 +135,9 @@ exports.login = async (req, res) => {
             sameSite: 'Lax'
         };
 
-        if (rememberMe) {
+        // Security: Privileged administrative and employee accounts must NEVER use persistent 30-day cookies.
+        // Sessions for staff are strictly session-only (destroyed by the browser upon closing the window).
+        if (rememberMe && user.role !== 'admin' && user.role !== 'employee') {
             cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
         }
         
@@ -743,9 +745,12 @@ exports.googleAuth = async (req, res) => {
         const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+            sameSite: 'Lax'
         };
+
+        if (user.role !== 'admin' && user.role !== 'employee') {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days for customers only
+        }
 
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions);
@@ -830,9 +835,11 @@ exports.googleComplete = async (req, res) => {
         const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000
+            sameSite: 'Lax'
         };
+        if (user.role !== 'admin' && user.role !== 'employee') {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000;
+        }
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions);
 

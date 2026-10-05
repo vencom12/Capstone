@@ -24,6 +24,7 @@ import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import BasketView from '@/components/dashboard/BasketView';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { getOrderStage } from '@/lib/orderStatus';
+import Pagination from '@/components/ui/Pagination';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -123,6 +124,12 @@ export default function DashboardPage() {
   // Date Filters
   const [ordersDateFilter, setOrdersDateFilter] = useState('');
   const [txDateFilter, setTxDateFilter] = useState('');
+  const [txPage, setTxPage] = useState(1);
+  const txPageSize = 8;
+
+  useEffect(() => {
+    setTxPage(1);
+  }, [txDateFilter]);
 
   const getFieldValue = (fieldKey: string): string => {
     switch (fieldKey) {
@@ -419,6 +426,11 @@ export default function DashboardPage() {
           }
         });
 
+        const paginatedTransactions = filteredTransactions.slice(
+          (txPage - 1) * txPageSize,
+          txPage * txPageSize
+        );
+
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
@@ -435,7 +447,7 @@ export default function DashboardPage() {
                 />
               </div>
             </header>
-            <div className="flex-1 pr-0 md:pr-2">
+            <div className="flex-1 pr-0 md:pr-2 pb-6">
             
             {isSyncing && transactions.length === 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
@@ -450,67 +462,77 @@ export default function DashboardPage() {
                 <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
-                {filteredTransactions.map((tx) => {
-                  const receipt = useProductStore.getState().receipts.find(r => r.orderID === tx.orderID);
-                  
-                  return (
-                    <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-primary font-bold m-0">{tx.transactionID}</h4>
-                          <p className="text-xs text-text-dim mt-1">
-                            {new Date(tx.timestamp).toLocaleString()} • Order {tx.orderID}
-                          </p>
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                  {paginatedTransactions.map((tx) => {
+                    const receipt = useProductStore.getState().receipts.find(r => r.orderID === tx.orderID);
+                    
+                    return (
+                      <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-primary font-bold m-0">{tx.transactionID}</h4>
+                            <p className="text-xs text-text-dim mt-1">
+                              {new Date(tx.timestamp).toLocaleString()} • Order {tx.orderID}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${
+                            tx.status === 'completed' ? 'bg-success/20 text-success' : 
+                            tx.status === 'processing' ? 'bg-primary/20 text-primary' :
+                            tx.status === 'canceled' ? 'bg-error/20 text-error' :
+                            'bg-warning/20 text-warning'
+                          }`}>
+                            {tx.status === 'completed' ? 'Payment Received' : 
+                             tx.status === 'processing' ? 'In Production' : 
+                             tx.status === 'canceled' ? 'Cancelled' : 
+                             tx.status}
+                          </span>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${
-                          tx.status === 'completed' ? 'bg-success/20 text-success' : 
-                          tx.status === 'processing' ? 'bg-primary/20 text-primary' :
-                          tx.status === 'canceled' ? 'bg-error/20 text-error' :
-                          'bg-warning/20 text-warning'
-                        }`}>
-                          {tx.status === 'completed' ? 'Payment Received' : 
-                           tx.status === 'processing' ? 'In Production' : 
-                           tx.status === 'canceled' ? 'Cancelled' : 
-                           tx.status}
-                        </span>
-                      </div>
 
-                      <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
-                        <div className="text-[0.85rem]">
-                          <span className="text-text-dim">Amount: </span>
-                          <span className="font-bold text-text-main">₱{tx.amount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex gap-4 items-center">
-                          <button 
-                            onClick={() => {
-                              setSelectedTransactionId(tx.transactionID);
-                              setIsReceiptOpen(true);
-                            }}
-                            className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-                          >
-                            View Details
-                          </button>
-                          {tx.receiptLink && (
+                        <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
+                          <div className="text-[0.85rem]">
+                            <span className="text-text-dim">Amount: </span>
+                            <span className="font-bold text-text-main">₱{tx.amount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex gap-4 items-center">
                             <button 
-                              onClick={async () => {
-                                try {
-                                  const { api } = await import('@/lib/api');
-                                  await api.download(tx.receiptLink!, `receipt-${tx.transactionID}.pdf`);
-                                } catch (err) {
-                                  showToast('Download failed. Please try again.', 'error');
-                                }
+                              onClick={() => {
+                                setSelectedTransactionId(tx.transactionID);
+                                setIsReceiptOpen(true);
                               }}
                               className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
                             >
-                              Receipt
+                              View Details
                             </button>
-                          )}
+                            {tx.receiptLink && (
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const { api } = await import('@/lib/api');
+                                    await api.download(tx.receiptLink!, `receipt-${tx.transactionID}.pdf`);
+                                  } catch (err) {
+                                    showToast('Download failed. Please try again.', 'error');
+                                  }
+                                }}
+                                className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
+                              >
+                                Receipt
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+
+                <Pagination
+                  currentPage={txPage}
+                  totalItems={filteredTransactions.length}
+                  pageSize={txPageSize}
+                  onPageChange={setTxPage}
+                  itemLabel="transactions"
+                />
               </div>
             )}
           </div>

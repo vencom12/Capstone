@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { useAuthStore } from '@/stores/useAuthStore';
+import Pagination from '@/components/ui/Pagination';
 
 interface PanelStaffingProps {
   users: any[];
@@ -22,6 +23,10 @@ export default function PanelStaffing({
 }: PanelStaffingProps) {
   const { user: currentAdmin } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Modals state
   const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +57,16 @@ export default function PanelStaffing({
       u.role?.toLowerCase().includes(query)
     );
   });
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   // 2. Open Modal
   const openModal = (staff?: any) => {
@@ -202,7 +217,7 @@ export default function PanelStaffing({
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((u) => {
+                  paginatedUsers.map((u) => {
                   const id = u.id || u._id;
                   const fellowAdmin = isFellowAdmin(u);
                   const customer = isCustomer(u);
@@ -308,7 +323,7 @@ export default function PanelStaffing({
           ) : filteredUsers.length === 0 ? (
             <div className="glass-card p-6 text-center text-text-dim">No personnel accounts found.</div>
           ) : (
-            filteredUsers.map((u) => {
+            paginatedUsers.map((u) => {
             const id = u.id || u._id;
             const fellowAdmin = isFellowAdmin(u);
             const customer = isCustomer(u);
@@ -388,6 +403,15 @@ export default function PanelStaffing({
           })
         )}
       </div>
+
+      {/* Pagination Controls */}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredUsers.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        itemLabel="personnel accounts"
+      />
     </div>
 
       {/* Modal: Create or Edit Staff Account */}

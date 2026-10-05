@@ -44,6 +44,7 @@ router.get('/purchase-orders', adminAuth(), forecastingController.getPurchaseOrd
 router.put('/purchase-orders/:id/approve', adminAuth(), forecastingController.approvePurchaseOrder);
 
 // --- Staff (Admin + Employee) Routes ---
+router.get('/orders/history', staffAuth(), adminController.getOrderHistory);
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
 router.post('/products', staffAuth(), upload.single('image'), auditLogger('Product', 'CREATE_PRODUCT'), adminController.createProduct);
 router.patch('/products/:id', staffAuth(), upload.single('image'), auditLogger('Product', 'UPDATE_PRODUCT'), adminController.updateProduct);

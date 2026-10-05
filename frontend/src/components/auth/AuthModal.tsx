@@ -23,7 +23,7 @@ export default function AuthModal() {
   const [username, setUsername] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

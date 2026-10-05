@@ -50,11 +50,13 @@ export const useAuthStore = create<AuthState>()(
           }
           const data = await api.post<{ user: User }>('/api/auth/login', payload);
           
-          if (!rememberMe) {
-            // Set a flag in sessionStorage to track this session
+          const isStaff = data.user.role === 'admin' || data.user.role === 'employee';
+
+          if (isStaff || !rememberMe) {
+            // Staff sessions are always tracked in sessionStorage so closing the browser terminates access
             sessionStorage.setItem('stitch-session-active', 'true');
           } else {
-            // Ensure session flag is removed if they chose to be remembered
+            // Ensure session flag is removed if customer chose to be remembered
             sessionStorage.removeItem('stitch-session-active');
           }
 
@@ -62,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
             user: data.user, 
             isAuthenticated: true, 
             isLoading: false,
-            rememberMe: rememberMe
+            rememberMe: isStaff ? false : rememberMe
           });
           return { success: true, user: data.user };
         } catch (err) {
@@ -201,6 +203,14 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('stitch-session-active');
+            sessionStorage.removeItem('stitch-admin-tab');
+            sessionStorage.removeItem('stitch-employee-tab');
+            localStorage.removeItem('stitch-admin-tab');
+            localStorage.removeItem('stitch-employee-tab');
+          }
+
           // Clear other stores first to ensure UI updates immediately
           useProductStore.getState().clearState();
           useBasketStore.getState().clearBasket();
@@ -209,7 +219,7 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // Ignore — still clear local state
         }
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, rememberMe: false });
       },
 
       checkAccess: (role) => {
@@ -249,8 +259,16 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state) => {
         if (typeof window !== 'undefined' && state) {
           const isSessionActive = sessionStorage.getItem('stitch-session-active');
-          
-          // Only force logout if rememberMe is explicitly false AND there is no active session flag
+          const isStaff = state.user?.role === 'admin' || state.user?.role === 'employee';
+
+          // Security Rule: For privileged roles (Admin & Employee), closing the browser terminates the session.
+          // Relaunching the browser on a shared device MUST require re-authentication.
+          if (state.isAuthenticated && isStaff && !isSessionActive) {
+            state.logout();
+            return;
+          }
+
+          // Only force logout for customers if rememberMe is explicitly false AND there is no active session flag
           if (state.rememberMe === false && !isSessionActive && state.isAuthenticated) {
             state.logout();
           }

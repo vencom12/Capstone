@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Order } from '@/lib/types';
+import Pagination from '@/components/ui/Pagination';
 import {
   getOrderStage,
   getOrderTitle,
@@ -105,6 +106,8 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
 
 export default function OrderList({ orders, onTrack, onDetails, onReorder }: OrderListProps) {
   const [tab, setTab] = useState<'active' | 'past'>('active');
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   const sorted = [...orders].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -112,6 +115,15 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
   const active = sorted.filter((o) => getOrderStage(o).isActive);
   const past = sorted.filter((o) => !getOrderStage(o).isActive);
   const visible = tab === 'active' ? active : past;
+
+  // Reset page when switching tabs
+  useEffect(() => {
+    setPage(1);
+  }, [tab]);
+
+  const paginatedOrders = useMemo(() => {
+    return visible.slice((page - 1) * pageSize, page * pageSize);
+  }, [visible, page, pageSize]);
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -144,17 +156,27 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
             : 'No completed orders yet.'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1">
-          {visible.map((o) => (
-            <OrderCard
-              key={o.id}
-              order={o}
-              onTrack={onTrack}
-              onDetails={onDetails}
-              onReorder={onReorder}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1">
+            {paginatedOrders.map((o) => (
+              <OrderCard
+                key={o.id}
+                order={o}
+                onTrack={onTrack}
+                onDetails={onDetails}
+                onReorder={onReorder}
+              />
+            ))}
+          </div>
+
+          <Pagination
+            currentPage={page}
+            totalItems={visible.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            itemLabel={tab === 'active' ? 'active orders' : 'completed orders'}
+          />
+        </>
       )}
     </div>
   );

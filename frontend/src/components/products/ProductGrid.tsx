@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import type { Product } from '@/lib/types';
 import { useProductStore } from '@/stores/useProductStore';
 import ProductCard from './ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
+import Pagination from '@/components/ui/Pagination';
 
 interface ProductGridProps {
   onQuickView: (product: Product) => void;
@@ -11,8 +13,20 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ onQuickView, products: customProducts }: ProductGridProps) {
-  const { isSyncing, getFilteredProducts } = useProductStore();
+  const { isSyncing, getFilteredProducts, searchQuery, selectedCategory } = useProductStore();
   const filteredProducts = customProducts || getFilteredProducts();
+
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+
+  // Reset to first page whenever search, category, or source list changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategory, customProducts, filteredProducts.length]);
+
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice((page - 1) * pageSize, page * pageSize);
+  }, [filteredProducts, page, pageSize]);
 
   // Loading skeletons
   if (isSyncing && filteredProducts.length === 0) {
@@ -40,14 +54,24 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-      {filteredProducts.map((product) => (
-        <ProductCard
-          key={product.id || product._id}
-          product={product}
-          onQuickView={onQuickView}
-        />
-      ))}
+    <div className="flex flex-col gap-6 pb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+        {paginatedProducts.map((product) => (
+          <ProductCard
+            key={product.id || product._id}
+            product={product}
+            onQuickView={onQuickView}
+          />
+        ))}
+      </div>
+
+      <Pagination
+        currentPage={page}
+        totalItems={filteredProducts.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        itemLabel="designs"
+      />
     </div>
   );
 }
