@@ -6,7 +6,6 @@ import StorefrontHeader from '@/components/layout/StorefrontHeader';
 import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
-import AuthModal from '@/components/auth/AuthModal';
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner';
 import dynamic from 'next/dynamic';
 
@@ -122,10 +121,6 @@ export default function StorefrontPage() {
         onClose={() => setIsModalOpen(false)}
         onBuyNow={() => setIsCheckoutOpen(true)}
       />
-
-      <Suspense fallback={null}>
-        <AuthModal />
-      </Suspense>
 
       {/* Right Panel / Drawer */}
       <div className={`

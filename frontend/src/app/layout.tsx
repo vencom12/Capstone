@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import ToastContainer from '@/components/ui/Toast';
 import DynamicFavicon from '@/components/ui/DynamicFavicon';
 import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
+import AuthModal from '@/components/auth/AuthModal';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -61,6 +63,9 @@ export default function RootLayout({
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
         <GlobalAuthListener />
         {children}
+        <Suspense fallback={null}>
+          <AuthModal />
+        </Suspense>
         <DynamicFavicon />
         <ToastContainer />
       </body>

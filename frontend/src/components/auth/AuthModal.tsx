@@ -8,14 +8,14 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect } from 'firebase/auth';
 
 export default function AuthModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authParam = searchParams.get('auth'); // 'login' or 'register'
   
-  const { isAuthOpen, authMode, setAuthOpen } = useUIStore();
+  const { isAuthOpen, authMode, setAuthOpen, googleSetupData, setGoogleSetupData } = useUIStore();
   const mode = authMode;
   
   const [email, setEmail] = useState('');
@@ -49,6 +49,16 @@ export default function AuthModal() {
     }
   }, [authParam, isAuthenticated, setAuthOpen]);
 
+  // Sync googleSetupData from global store (e.g. after return from Google redirect)
+  useEffect(() => {
+    if (googleSetupData) {
+      setGoogleSetup(googleSetupData);
+      setView('googleSetup');
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+  }, [googleSetupData]);
+
   // Reset submitting state and views whenever modal visibility changes
   useEffect(() => {
     if (!isAuthOpen) {
@@ -65,6 +75,7 @@ export default function AuthModal() {
     setView('main');
     setForgotSent(false);
     setGoogleSetup(null);
+    setGoogleSetupData(null);
     setNewPassword('');
     setConfirmPassword('');
     if (authParam) {
@@ -72,136 +83,21 @@ export default function AuthModal() {
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up with Instant Popup-Close Detection
+  // Handle 1-Click Google Sign-In & Sign-Up via Full-Page Redirect (whole screen)
   const handleGoogleSignIn = async () => {
     if (isSubmitting) return;
     setIsGoogleSubmitting(true);
 
-    let popupWindow: Window | null = null;
-    let isFinished = false;
-    let pollInterval: any = null;
-    let focusHandler: any = null;
-
-    const cleanup = () => {
-      if (pollInterval) clearInterval(pollInterval);
-      if (focusHandler && typeof window !== 'undefined') {
-        window.removeEventListener('focus', focusHandler);
-      }
-    };
-
-    // Watchdog Timer: Auto-release loading state after 15s max if completely hung
-    const watchdogTimer = setTimeout(() => {
-      if (!isFinished) {
-        isFinished = true;
-        cleanup();
-        setIsGoogleSubmitting(false);
-      }
-    }, 15000);
-
-    // Fast Popup-Close Detector:
-    // Firebase Auth has a built-in 3,000ms delay before rejecting auth/popup-closed-by-user.
-    // By hooking window.open temporarily, we capture the popup reference and poll .closed every 100ms.
-    // As soon as the user closes the popup, we reset the loading state in ~100ms instead of 3 seconds.
-    if (typeof window !== 'undefined') {
-      const originalWindowOpen = window.open;
-      window.open = function (...args) {
-        const win = originalWindowOpen.apply(this, args);
-        popupWindow = win;
-        window.open = originalWindowOpen; // Restore immediately
-        return win;
-      };
-
-      const checkPopupClosed = () => {
-        if (isFinished) return;
-        try {
-          if (popupWindow && popupWindow.closed) {
-            // Popup closed by user. Wait 200ms to allow OAuth completion handshake if login succeeded
-            setTimeout(() => {
-              if (!isFinished && !auth.currentUser) {
-                isFinished = true;
-                cleanup();
-                clearTimeout(watchdogTimer);
-                setIsGoogleSubmitting(false);
-                showToast('Google sign-in was cancelled.', 'info');
-              }
-            }, 200);
-          }
-        } catch {
-          // Cross-origin access restriction fallback
-        }
-      };
-
-      pollInterval = setInterval(checkPopupClosed, 100);
-
-      focusHandler = () => {
-        // When parent window regains focus, user likely closed the popup window
-        setTimeout(checkPopupClosed, 100);
-      };
-      window.addEventListener('focus', focusHandler);
-    }
-
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      isFinished = true;
-      cleanup();
-      clearTimeout(watchdogTimer);
-      const user = result.user;
-      
-      if (!user.email) {
-        showToast('No email associated with this Google account.', 'error');
-        return;
-      }
-
-      const res = await loginWithGoogle({
-        email: user.email,
-        displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
-        phoneNumber: user.phoneNumber || '',
-        uid: user.uid
-      });
-
-      if (res.success && res.needsPassword && res.setupToken) {
-        // First-time Google user: ask them to create a password before the account is made
-        setGoogleSetup({ token: res.setupToken, email: res.email || user.email, username: res.suggestedUsername || '' });
-        setNewPassword('');
-        setConfirmPassword('');
-        setView('googleSetup');
-        return;
-      }
-
-      if (res.success) {
-        showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
-        handleClose();
-        if (res.user?.role === 'admin') {
-          router.replace('/admin');
-        } else if (res.user?.role === 'employee') {
-          router.replace('/employee');
-        } else {
-          router.replace('/');
-          router.refresh();
-        }
-      } else {
-        showToast(res.message || 'Google sign-in failed on server.', 'error');
-      }
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
-      if (isFinished) return; // Already handled by instant detector
-      isFinished = true;
-      cleanup();
-      clearTimeout(watchdogTimer);
-      console.warn('Google Sign-In Notice:', err);
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        showToast('Google sign-in was cancelled.', 'info');
-      } else if (err.code === 'auth/popup-blocked') {
-        showToast('Sign-in popup was blocked by browser. Please allow popups.', 'error');
-      } else if (err.code === 'auth/unauthorized-domain') {
+      setIsGoogleSubmitting(false);
+      console.error('Google Sign-In Redirect Error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
         showToast('Domain is not authorized in Firebase Console.', 'error');
       } else {
-        showToast(err.message || 'Failed to sign in with Google.', 'error');
+        showToast(err.message || 'Failed to redirect to Google.', 'error');
       }
-    } finally {
-      cleanup();
-      clearTimeout(watchdogTimer);
-      setIsGoogleSubmitting(false);
     }
   };
 
