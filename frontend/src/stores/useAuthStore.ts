@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, type PersistStorage, type StorageValue } from 'zustand/middleware';
 import { api } from '@/lib/api';
 import type { User, AuthResponse } from '@/lib/types';
 import { useProductStore } from './useProductStore';
@@ -202,24 +202,28 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        try {
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('stitch-session-active');
-            sessionStorage.removeItem('stitch-admin-tab');
-            sessionStorage.removeItem('stitch-employee-tab');
-            localStorage.removeItem('stitch-admin-tab');
-            localStorage.removeItem('stitch-employee-tab');
-          }
+        // Immediate synchronous state reset to prevent exposing UI shell
+        set({ user: null, isAuthenticated: false, rememberMe: false });
 
-          // Clear other stores first to ensure UI updates immediately
-          useProductStore.getState().clearState();
-          useBasketStore.getState().clearBasket();
-          
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('stitch-session-active');
+          sessionStorage.removeItem('stitch-admin-tab');
+          sessionStorage.removeItem('stitch-employee-tab');
+          sessionStorage.removeItem('stitch-auth');
+          localStorage.removeItem('stitch-admin-tab');
+          localStorage.removeItem('stitch-employee-tab');
+          localStorage.removeItem('stitch-auth');
+        }
+
+        // Clear other stores first to ensure UI updates immediately
+        useProductStore.getState().clearState();
+        useBasketStore.getState().clearBasket();
+
+        try {
           await api.post('/api/auth/logout', {});
         } catch {
-          // Ignore — still clear local state
+          // Ignore network errors during logout
         }
-        set({ user: null, isAuthenticated: false, rememberMe: false });
       },
 
       checkAccess: (role) => {
@@ -251,11 +255,117 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'stitch-auth',
+      storage: {
+        getItem: (name: string): StorageValue<Pick<AuthState, 'user' | 'isAuthenticated' | 'rememberMe'>> | null => {
+          if (typeof window === 'undefined') return null;
+
+          // 1. Check sessionStorage (active tab / current browser window session)
+          const sessionStr = sessionStorage.getItem(name);
+          if (sessionStr) {
+            try {
+              const parsed: StorageValue<Pick<AuthState, 'user' | 'isAuthenticated' | 'rememberMe'>> = JSON.parse(sessionStr);
+              if (parsed?.state?.isAuthenticated) {
+                return parsed;
+              }
+            } catch {
+              sessionStorage.removeItem(name);
+            }
+          }
+
+          // 2. Check localStorage (persistent customer sessions ONLY)
+          const localStr = localStorage.getItem(name);
+          if (localStr) {
+            try {
+              const parsed: StorageValue<Pick<AuthState, 'user' | 'isAuthenticated' | 'rememberMe'>> = JSON.parse(localStr);
+              const user = parsed?.state?.user;
+              const rememberMe = parsed?.state?.rememberMe;
+
+              // CRITICAL SECURITY RULE:
+              // Privileged roles (Admin, Employee) must NEVER persist across browser relaunch.
+              // Also, non-remembered accounts must NEVER persist across browser relaunch.
+              if (user?.role === 'admin' || user?.role === 'employee' || !rememberMe) {
+                // Stale privileged or non-remembered session detected in persistent disk storage.
+                // Purge immediately to prevent exposing confidential admin/employee consoles!
+                localStorage.removeItem(name);
+                return null;
+              }
+
+              return parsed;
+            } catch {
+              localStorage.removeItem(name);
+            }
+          }
+
+          return null;
+        },
+
+        setItem: (name: string, value: StorageValue<Pick<AuthState, 'user' | 'isAuthenticated' | 'rememberMe'>>): void => {
+          if (typeof window === 'undefined') return;
+
+          const user = value?.state?.user;
+          const rememberMe = value?.state?.rememberMe;
+          const isStaff = user?.role === 'admin' || user?.role === 'employee';
+
+          if (!user || !value?.state?.isAuthenticated) {
+            sessionStorage.removeItem(name);
+            localStorage.removeItem(name);
+            sessionStorage.removeItem('stitch-session-active');
+            return;
+          }
+
+          const str = JSON.stringify(value);
+
+          if (isStaff || !rememberMe) {
+            // Privileged staff or non-remembered sessions are strictly session-only.
+            // Stored ONLY in sessionStorage (destroyed on browser close).
+            // Explicitly deleted from localStorage so relaunched browsers start completely logged out.
+            sessionStorage.setItem(name, str);
+            sessionStorage.setItem('stitch-session-active', 'true');
+            localStorage.removeItem(name);
+          } else {
+            // Remembered customer: persist to localStorage
+            localStorage.setItem(name, str);
+            sessionStorage.removeItem(name);
+          }
+        },
+
+        removeItem: (name: string): void => {
+          if (typeof window === 'undefined') return;
+          sessionStorage.removeItem(name);
+          localStorage.removeItem(name);
+          sessionStorage.removeItem('stitch-session-active');
+        },
+      } as PersistStorage<Pick<AuthState, 'user' | 'isAuthenticated' | 'rememberMe'>>,
       partialize: (state) => ({ 
         user: state.user, 
         isAuthenticated: state.isAuthenticated,
         rememberMe: state.rememberMe
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (typeof window !== 'undefined' && state) {
+          const isSessionActive = sessionStorage.getItem('stitch-session-active');
+          const isStaff = state.user?.role === 'admin' || state.user?.role === 'employee';
+
+          // Safeguard: If rehydrated state claims to be staff or non-remembered,
+          // but no active browser session exists (e.g. fresh window or relaunched browser),
+          // instantly reset state to logged-out so no admin layout is ever revealed.
+          if (state.isAuthenticated && (isStaff || !state.rememberMe) && !isSessionActive) {
+            state.user = null;
+            state.isAuthenticated = false;
+            state.rememberMe = false;
+            try {
+              sessionStorage.removeItem('stitch-auth');
+              localStorage.removeItem('stitch-auth');
+              sessionStorage.removeItem('stitch-session-active');
+            } catch {}
+          }
+        }
+      }
     }
   )
 );
+
+if (typeof window !== 'undefined') {
+  (window as any).__stitch_auth_store = useAuthStore;
+}
+

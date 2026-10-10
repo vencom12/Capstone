@@ -52,7 +52,11 @@ router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
 router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);
 router.post('/intelligence/decline', adminAuth(), forecastingController.declineSuggestionAction);
-router.get('/purchase-orders', adminAuth(), forecastingController.getPurchaseOrders);
+router.get('/purchase-orders', staffAuth(), forecastingController.getPurchaseOrders);
+router.post('/purchase-orders', staffAuth(), auditLogger('PurchaseOrder', 'CREATE_PURCHASE_ORDER'), forecastingController.createPurchaseOrder);
+router.put('/purchase-orders/:id/status', staffAuth(), auditLogger('PurchaseOrder', 'UPDATE_PO_STATUS'), forecastingController.updatePurchaseOrderStatus);
+router.post('/purchase-orders/:id/email', staffAuth(), auditLogger('PurchaseOrder', 'EMAIL_PO'), forecastingController.emailPurchaseOrder);
+router.get('/purchase-orders/:id/pdf', staffAuth(), forecastingController.downloadPurchaseOrderPdf);
 router.put('/purchase-orders/:id/approve', adminAuth(), forecastingController.approvePurchaseOrder);
 
 // --- Staff (Admin + Employee) Routes ---
@@ -64,5 +68,8 @@ router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
 router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.downloadShoppingListPdf);
 // Stock count adjustment (+ / -) -> Staff permitted
 router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), adminController.updateInventoryItem);
+
+// Walk-In Counter Mode Order Creation (Staff permitted)
+router.post('/orders/walk-in', staffAuth(), auditLogger('Order', 'CREATE_WALKIN_ORDER'), adminController.createWalkInOrder);
 
 module.exports = router;

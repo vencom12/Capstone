@@ -32,7 +32,7 @@ export default function ProductModal({
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
-  const [queueLoadCount, setQueueLoadCount] = useState<number>(3);
+  const [capacityData, setCapacityData] = useState<{ activeOrders: number; estimatedMinutes: number } | null>(null);
 
   // Custom Embroidery Lettering / Personalization state (Exclusive Cursive Script Font)
   const [isPersonalized, setIsPersonalized] = useState<boolean>(false);
@@ -76,14 +76,18 @@ export default function ProductModal({
         setSelectedSize('');
       }
       
-      // Fetch current business queue load for dynamic finishing time estimate
+      // Fetch real live shop queue load from backend capacity API
       import('@/lib/api').then(({ api }) => {
-        api.get<any>('/api/customer/dashboard-state').then((res) => {
-          if (res && res.orders) {
-            const activeQueue = res.orders.filter((o: any) => o.status === 'In Queue' || o.status === 'In Production').length;
-            setQueueLoadCount(activeQueue);
-          }
-        }).catch(() => {});
+        api.get<{ activeOrders: number; activeMachines: number; estimatedMinutes: number }>('/api/customer/capacity')
+          .then((res) => {
+            if (res) {
+              setCapacityData({
+                activeOrders: res.activeOrders ?? 0,
+                estimatedMinutes: res.estimatedMinutes ?? 15,
+              });
+            }
+          })
+          .catch(() => {});
       });
     }
   }, [product, isOpen]);
@@ -93,9 +97,10 @@ export default function ProductModal({
   const productId = product.id || product._id || '';
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
 
-  // Available stock calculation
-  const availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-  const isOutOfStock = product.isOutOfStock !== undefined ? product.isOutOfStock : availableStock <= 0;
+  // Unified pooled stock: supplies are acquired in assorted mixed colors, so all variants share the product stock pool
+  const overallStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+  const effectiveStock = overallStock;
+  const isOutOfStock = effectiveStock <= 0;
 
   // Check if product actually has defined sizes across variants
   const hasVariants = Boolean(product.variants && Array.isArray(product.variants) && product.variants.length > 0);
@@ -104,18 +109,7 @@ export default function ProductModal({
     : [];
   const hasSizes = availableSizes.length > 0;
 
-  // Calculate dynamic finishing / turnaround time based on business order load
-  const getEstimatedFinishingTime = () => {
-    if (queueLoadCount <= 3) {
-      return { time: '1–2 Business Days', status: 'Optimal Production Load', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
-    } else if (queueLoadCount <= 8) {
-      return { time: '2–3 Business Days', status: 'Standard Production Load', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' };
-    } else {
-      return { time: '4–5 Business Days', status: 'High Queue Demand', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
-    }
-  };
 
-  const estTimeInfo = getEstimatedFinishingTime();
 
   const handleAdd = () => {
     if (!isAuthenticated) {
@@ -142,8 +136,8 @@ export default function ProductModal({
         (i.personalization?.text || '') === (isPersonalized ? trimmedCustomText : '')
     );
     const existingQty = existing ? existing.quantity : 0;
-    if (existingQty + quantity > availableStock) {
-      showToast(`Sorry, only ${availableStock} units available for "${product.name}".`, 'error');
+    if (existingQty + quantity > effectiveStock) {
+      showToast(`Sorry, only ${effectiveStock} units available for ${selectedVariant?.name ? `variant "${selectedVariant.name}"` : `"${product.name}"`}.`, 'error');
       return false;
     }
 
@@ -228,27 +222,40 @@ export default function ProductModal({
               ₱{(effectivePrice * quantity).toFixed(2)}
               {quantity > 1 && <span className="text-xs text-text-dim font-sans ml-2">(₱{effectivePrice.toFixed(2)} each)</span>}
             </div>
-            <span className="text-xs text-text-dim font-medium">Stock: {availableStock} units</span>
+            <span className="text-xs text-text-dim font-medium">Stock: {effectiveStock} available</span>
           </div>
 
           <p className="text-text-dim leading-relaxed text-[0.88rem] m-0 max-[650px]:text-[0.8rem] line-clamp-3">
             {product.description || 'Professional embroidery design optimized for high-speed production.'}
           </p>
 
-          {/* Dynamic Order Load & Finishing Time Badge */}
-          <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-semibold ${estTimeInfo.color}`}>
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-              <span>Est. Finishing Time: <strong className="underline">{estTimeInfo.time}</strong></span>
-            </div>
-            <span className="text-[10px] opacity-80 uppercase tracking-wider font-bold hidden sm:inline">{estTimeInfo.status}</span>
+          {/* Live Shop Wait Time Indicator (Direct, grounded in active machine queue) */}
+          <div className="flex items-center gap-2 text-xs text-text-dim">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>
+              Estimated Wait Time:{' '}
+              <strong className="text-text-main font-semibold">
+                {capacityData ? (
+                  capacityData.estimatedMinutes <= 15
+                    ? '~10–15 mins'
+                    : capacityData.estimatedMinutes >= 60
+                      ? `~${Math.floor(capacityData.estimatedMinutes / 60)}h ${capacityData.estimatedMinutes % 60 > 0 ? `${capacityData.estimatedMinutes % 60}m` : ''}`.trim()
+                      : `~${capacityData.estimatedMinutes} mins`
+                ) : (
+                  'Checking wait time...'
+                )}
+              </strong>
+            </span>
           </div>
 
           {/* Variants & Swatches (Only shown if product has variants) */}
           {hasVariants && (
             <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
               <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                Variant / Option: <span className="text-primary font-bold normal-case ml-1">{selectedVariant?.name}</span>
+                Color / Variant: <span className="text-primary font-bold normal-case ml-1">{selectedVariant?.name}</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {product.variants!.map((variant, idx) => {
@@ -276,6 +283,11 @@ export default function ProductModal({
                         />
                       )}
                       <span>{variant.name}</span>
+                      {variant.priceOverride && (
+                        <span className="text-[10px] text-primary/80 font-mono">
+                          ₱{variant.priceOverride}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -283,11 +295,6 @@ export default function ProductModal({
             </div>
           )}
 
-          {/* Color Calibration Disclaimer */}
-          <div className="flex items-center gap-1.5 text-[0.68rem] text-text-dim/80 pt-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span>Thread shades calibrated to Madeira/Isacord industrial standards. Physical color may vary slightly under natural lighting.</span>
-          </div>
 
           {/* Size Selector (Only shown if variants explicitly specify sizes) */}
           {hasSizes && (
@@ -433,7 +440,7 @@ export default function ProductModal({
               <button
                 type="button"
                 suppressHydrationWarning
-                onClick={() => setQuantity((q) => Math.min(availableStock, q + 1))}
+                onClick={() => setQuantity((q) => Math.min(Math.max(1, effectiveStock), q + 1))}
                 className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer transition-all"
               >
                 +
@@ -449,7 +456,7 @@ export default function ProductModal({
               className="flex-1 py-3"
               disabled={isOutOfStock}
             >
-              Add to Basket
+              {isOutOfStock ? 'Variant Out of Stock' : 'Add to Basket'}
             </GlassButton>
             <GlassButton
               variant="primary"
@@ -457,7 +464,7 @@ export default function ProductModal({
               className="flex-1 py-3 font-bold shadow-sm"
               disabled={isOutOfStock}
             >
-              Buy Now
+              {isOutOfStock ? 'Variant Out of Stock' : 'Buy Now'}
             </GlassButton>
           </div>
         </div>

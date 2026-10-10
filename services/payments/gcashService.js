@@ -69,6 +69,7 @@ class GcashService {
       'eds towels',
       'eds towels & caps',
       'eds towels and caps',
+      'eds towels and caps embroidery',
       'eds embroidery',
       'stitch-opt',
       'stitch opt',

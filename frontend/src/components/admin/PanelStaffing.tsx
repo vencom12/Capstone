@@ -13,13 +13,15 @@ interface PanelStaffingProps {
   machines?: any[];
   isSyncing: boolean;
   refreshData: () => Promise<void>;
+  setUsers?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export default function PanelStaffing({
   users,
   machines = [],
   isSyncing,
-  refreshData
+  refreshData,
+  setUsers
 }: PanelStaffingProps) {
   const { user: currentAdmin } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,27 +43,40 @@ export default function PanelStaffing({
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
 
+  const [activeTab, setActiveTab] = useState<'staff' | 'customers' | 'all'>('staff');
+
   // Security Helper Rules
   const isTargetAdmin = (u: any) => u?.role === 'admin';
   const isCurrentAdmin = (u: any) => Boolean(u && currentAdmin?.id && (u.id || u._id) === currentAdmin.id);
   const isFellowAdmin = (u: any) => isTargetAdmin(u) && !isCurrentAdmin(u);
   const isCustomer = (u: any) => u?.role === 'customer';
 
-  // 1. Filter Personnel list
+  // Counts for tabs
+  const staffUsers = users.filter((u) => u.role === 'admin' || u.role === 'employee');
+  const customerUsers = users.filter((u) => u.role === 'customer');
+  const onShiftCount = staffUsers.filter((u) => u.shiftStatus === 'clocked_in').length;
+
+  // 1. Filter Personnel list based on activeTab and searchQuery
   const filteredUsers = users.filter((u) => {
+    // Tab filter
+    if (activeTab === 'staff' && u.role === 'customer') return false;
+    if (activeTab === 'customers' && u.role !== 'customer') return false;
+
+    // Search filter
     const query = searchQuery.toLowerCase();
     return (
       !searchQuery ||
       u.username?.toLowerCase().includes(query) ||
       u.email?.toLowerCase().includes(query) ||
+      u.phoneNumber?.toLowerCase().includes(query) ||
       u.role?.toLowerCase().includes(query)
     );
   });
 
-  // Reset to first page when search changes
+  // Reset to first page when search or tab changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, activeTab]);
 
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * pageSize,
@@ -121,22 +136,59 @@ export default function PanelStaffing({
       payload.password = password.trim();
     }
 
-    try {
-      const path = editingStaff ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
+    const isEdit = !!editingStaff;
+    const optimisticUser = {
+      ...(editingStaff || {}),
+      username: username.trim(),
+      email: email.trim(),
+      role,
+      phoneNumber: phone.trim(),
+      address: address.trim(),
+      shiftStatus: editingStaff?.shiftStatus || 'offline',
+      walletBalance: editingStaff?.walletBalance || 0
+    };
 
-      const res: any = editingStaff
+    const prevUsers = [...users];
+    const tempId = `temp_user_${Date.now()}`;
+
+    // Optimistically update users in state immediately (0ms UI latency)
+    if (setUsers) {
+      if (isEdit) {
+        const targetId = editingStaff.id || editingStaff._id;
+        setUsers((prev) =>
+          prev.map((u) => ((u.id || u._id) === targetId ? { ...u, ...optimisticUser } : u))
+        );
+      } else {
+        setUsers((prev) => [{ ...optimisticUser, id: tempId, _id: tempId }, ...prev]);
+      }
+    }
+
+    setIsOpen(false);
+    showToast(
+      isEdit ? 'Personnel details updated' : 'New staff credentials established successfully',
+      'success'
+    );
+
+    try {
+      const path = isEdit ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
+
+      const res: any = isEdit
         ? await api.put(path, payload)
         : await api.post(path, payload);
 
-      showToast(
-        res?.message || (editingStaff ? 'Personnel details updated' : 'New staff credentials established successfully'),
-        'success'
-      );
-      setIsOpen(false);
-      refreshData();
+      if (!isEdit && res?.user && setUsers) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === tempId || u._id === tempId ? { ...u, ...res.user } : u))
+        );
+      }
+
+      refreshData().catch(() => {});
     } catch (err: any) {
       console.warn('Personnel submit notice:', err?.message || err);
-      showToast(err?.message || 'Failed to save staff credentials details', 'error');
+      if (setUsers) {
+        setUsers(prevUsers);
+      }
+      showToast(err?.message || 'Failed to save staff credentials details — reverted', 'error');
     }
   };
 
@@ -150,44 +202,108 @@ export default function PanelStaffing({
       return;
     }
 
+    const prevUsers = [...users];
+
+    // Optimistically remove user from table immediately
+    if (setUsers) {
+      setUsers((prev) => prev.filter((u) => (u.id || u._id) !== id));
+    }
+    setDisablingUser(null);
+    showToast(`Account "${disablingUser.username}" disabled successfully`, 'success');
+
     try {
       await api.delete(`/api/admin/users/${id}`);
-      showToast(`Account "${disablingUser.username}" disabled successfully`, 'success');
-      setDisablingUser(null);
-      refreshData();
+      refreshData().catch(() => {});
     } catch (err: any) {
       console.warn('Disable user notice:', err?.message || err);
-      showToast(err?.message || 'Failed to disable user account', 'error');
+      if (setUsers) {
+        setUsers(prevUsers);
+      }
+      showToast(err?.message || 'Failed to disable user account — restored', 'error');
     }
   };
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
-      <header className="dash-header flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="dash-title">Personnel Management</h1>
-          <p className="dash-subtitle">Establish access credentials and assign organizational roles.</p>
-        </div>
-        <div className="flex gap-3 items-center">
-          <input
-            type="text"
-            placeholder="Search staff credentials..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
-          />
-          <button
-            onClick={() => openModal()}
-            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] shadow-sm hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
-          >
-            + Add Staff
-          </button>
-        </div>
-      </header>
+      {/* Compact Top Action Toolbar */}
+      <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search staff credentials..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+        />
+        <button
+          onClick={() => openModal()}
+          className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] shadow-sm hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
+        >
+          + Add Staff
+        </button>
+      </div>
 
       {/* Active staff registry table */}
       <div className="glass-card flex-1 pr-2">
         <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Personnel Registry</h3>
+
+        {/* Role Segregation Tabs */}
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4 border-b border-border-glass pb-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('staff')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-2 ${
+                activeTab === 'staff'
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Staff &amp; Operators</span>
+              <span className={`px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${activeTab === 'staff' ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary'}`}>
+                {staffUsers.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('customers')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-2 ${
+                activeTab === 'customers'
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Customers</span>
+              <span className={`px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${activeTab === 'customers' ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'}`}>
+                {customerUsers.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                activeTab === 'all'
+                  ? 'bg-white/20 text-text-main border-white/30'
+                  : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+              }`}
+            >
+              <span>All</span>
+              <span className="text-[0.65rem] text-text-dim">({users.length})</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/10 border border-success/20 text-success text-[0.7rem] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+              {onShiftCount} Active On-Shift
+            </span>
+          </div>
+        </div>
 
         {/* Desktop View */}
         {isSyncing && users.length === 0 ? (
@@ -199,11 +315,12 @@ export default function PanelStaffing({
             <table className="glass-table">
               <thead>
                 <tr>
-                  <th className="glass-th text-left">Username</th>
-                  <th className="glass-th text-left">Email Address</th>
-                  <th className="glass-th text-left">Shift Status</th>
-                  <th className="glass-th text-left">Assigned Machine</th>
-                  <th className="glass-th text-left">Access Level</th>
+                  <th className="glass-th text-left">User</th>
+                  <th className="glass-th text-left">Contact Info</th>
+                  {activeTab !== 'customers' && <th className="glass-th text-left">Shift Status</th>}
+                  {activeTab !== 'customers' && <th className="glass-th text-left">Assigned Machine</th>}
+                  {activeTab === 'customers' && <th className="glass-th text-left">Wallet Balance</th>}
+                  <th className="glass-th text-left">Access / Role</th>
                   <th className="glass-th text-right">Actions</th>
                 </tr>
               </thead>
@@ -211,7 +328,7 @@ export default function PanelStaffing({
                 {filteredUsers.length === 0 ? (
                   <tr className="glass-tr">
                     <td colSpan={7} className="glass-td text-center text-text-dim">
-                      No personnel accounts found.
+                      {activeTab === 'customers' ? 'No registered customers found.' : 'No personnel accounts found.'}
                     </td>
                   </tr>
                 ) : (
@@ -223,33 +340,59 @@ export default function PanelStaffing({
                   return (
                     <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
                       <td className="glass-td font-bold text-sm text-text-main text-left">
-                        {u.username}
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold uppercase">
+                            {(u.username || 'U')[0]}
+                          </span>
+                          <div>
+                            <div className="font-bold text-sm text-text-main">{u.username}</div>
+                            {customer && u.isEmailVerified && (
+                              <span className="text-[0.62rem] text-success flex items-center gap-0.5">
+                                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                <span>Verified Email</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="glass-td font-medium text-sm text-text-main text-left">
-                        {u.email}
+                        <div>{u.email}</div>
+                        {u.phoneNumber && <div className="text-[0.7rem] text-text-dim">{u.phoneNumber}</div>}
                       </td>
-                      <td className="glass-td text-left">
-                        <span
-                          className={`inline-block text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                            ${u.shiftStatus === 'clocked_in'
-                              ? 'bg-success/20 text-success border border-success/30'
-                              : 'bg-text-dim/20 text-text-dim border border-text-dim/30'
-                            }
-                          `}
-                        >
-                          {u.shiftStatus === 'clocked_in' ? '● On Shift' : '○ Offline'}
-                        </span>
-                      </td>
-                      <td className="glass-td text-left text-sm">
-                        {(() => {
-                          const assignedMachine = machines.find((m: any) => m.assignedUserId === (u.id || u._id));
-                          return assignedMachine ? (
-                            <span className="font-mono font-bold text-primary text-xs">{assignedMachine.name}</span>
-                          ) : (
-                            <span className="text-text-dim italic text-xs">Unassigned</span>
-                          );
-                        })()}
-                      </td>
+                      {activeTab !== 'customers' && (
+                        <td className="glass-td text-left">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[0.65rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                              ${u.shiftStatus === 'clocked_in'
+                                ? 'bg-success/20 text-success border border-success/30'
+                                : 'bg-text-dim/20 text-text-dim border border-text-dim/30'
+                              }
+                            `}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${u.shiftStatus === 'clocked_in' ? 'bg-success' : 'bg-text-dim'}`} />
+                            <span>{u.shiftStatus === 'clocked_in' ? 'On Shift' : 'Offline'}</span>
+                          </span>
+                        </td>
+                      )}
+                      {activeTab !== 'customers' && (
+                        <td className="glass-td text-left text-sm">
+                          {(() => {
+                            const assignedMachine = machines.find((m: any) => m.assignedUserId === (u.id || u._id));
+                            return assignedMachine ? (
+                              <span className="font-mono font-bold text-primary text-xs">{assignedMachine.name}</span>
+                            ) : (
+                              <span className="text-text-dim italic text-xs">Unassigned</span>
+                            );
+                          })()}
+                        </td>
+                      )}
+                      {activeTab === 'customers' && (
+                        <td className="glass-td text-left text-sm font-mono font-bold text-text-main">
+                          ₱{(u.walletBalance || 0).toFixed(2)}
+                        </td>
+                      )}
                       <td className="glass-td text-left">
                         <span
                           className={`inline-block text-[0.7rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider

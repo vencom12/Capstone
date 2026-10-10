@@ -189,7 +189,7 @@ exports.submitOrder = async (req, res) => {
                 const productId = item.productId || item.id;
                 // Execute SELECT FOR UPDATE to lock this product row
                 const products = await tx.$queryRaw`
-                    SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount", recipe, embedding::text FROM "Product" WHERE id = ${productId} FOR UPDATE
+                    SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount", recipe, variants, embedding::text FROM "Product" WHERE id = ${productId} FOR UPDATE
                 `;
                 const product = products[0];
                 if (!product) {
@@ -203,6 +203,8 @@ exports.submitOrder = async (req, res) => {
                 if (atp < needed) {
                     throw new Error(`OutOfStock:${product.name}`);
                 }
+
+                // Note: Variants share the product's unified stock pool since inventory is acquired in assorted colors.
 
                 // Check and lock recipe thread inventory items
                 if (product.recipe && Array.isArray(product.recipe)) {
@@ -271,13 +273,21 @@ exports.submitOrder = async (req, res) => {
                 ]
             };
 
-            // 4. Create Order
+            // 4. Create Order with descriptive design summary
+            const designSummary = Array.isArray(items) && items.length > 0
+                ? items.map(i => {
+                    const variantInfo = i.selectedVariant ? ` [${i.selectedVariant}]` : '';
+                    const textInfo = i.personalization?.text ? ` — "${i.personalization.text}"` : '';
+                    return `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}${variantInfo}${textInfo}`;
+                }).join('; ')
+                : "Cart Order";
+
             const order = await tx.order.create({
                 data: {
                     orderId: secureOrderId,
                     client: user.username,
                     userId: user.id,
-                    design: "Cart Order",
+                    design: designSummary,
                     items: items, // JSON field
                     totalAmount: numTotal,
                     paymentMethod,
@@ -369,6 +379,10 @@ exports.submitOrder = async (req, res) => {
             const productName = parts[0];
             const materialName = parts[1];
             return res.status(400).json({ message: `Sorry, "${productName}" cannot be ordered (insufficient "${materialName}" thread in inventory).` });
+        }
+        if (err.message && err.message.startsWith('OutOfStockVariant:')) {
+            const variantDetails = err.message.split('OutOfStockVariant:')[1];
+            return res.status(400).json({ message: `Sorry, ${variantDetails} is currently out of stock.` });
         }
         if (err.message && err.message.startsWith('OutOfStock:')) {
             const productName = err.message.split('OutOfStock:')[1];
@@ -474,20 +488,29 @@ exports.getReceipt = async (req, res) => {
 
 exports.getCapacity = async (req, res) => {
   try {
-    const activeOrders = await prisma.order.count({
+    // Only real production orders actively waiting for or on the embroidery machines
+    const queuedOrders = await prisma.order.findMany({
       where: {
-        status: { in: ['Pending Payment', 'Awaiting Payment', 'In Queue', 'Preparing Order', 'In Transit'] }
+        status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+      },
+      select: {
+        estimatedTime: true
       }
     });
 
+    const activeOrders = queuedOrders.length;
+
     const activeMachines = await prisma.machine.count({
       where: {
-        status: { in: ['Running', 'Idle'] } // Consider idle machines as capacity
+        status: { in: ['Running', 'Idle'] } // Active machines available in the shop
       }
     });
 
     const machineCount = Math.max(1, activeMachines);
-    const estimatedMinutes = Math.ceil((activeOrders * 30) / machineCount);
+
+    // Sum actual estimated stitch times recorded on queued orders, fallback 15 mins per order
+    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 15), 0);
+    const estimatedMinutes = activeOrders === 0 ? 10 : Math.ceil(totalQueueMinutes / machineCount);
 
     res.json({
       activeOrders,
@@ -497,6 +520,265 @@ exports.getCapacity = async (req, res) => {
   } catch (err) {
     console.error('Capacity error:', err);
     res.status(500).json({ error: 'Server error fetching capacity' });
+  }
+};
+
+exports.trackOrder = async (req, res) => {
+  try {
+    const rawCode = (req.params.code || '').trim();
+    if (!rawCode) return res.status(400).json({ error: 'Tracking code is required' });
+
+    const cleanCode = rawCode.replace(/^[#]/, '').trim();
+    const strippedCode = cleanCode.replace(/^A-/i, '').replace(/^WI-/i, '').replace(/^ORD-/i, '').trim();
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { orderId: { equals: cleanCode, mode: 'insensitive' } },
+          { orderId: { equals: `WI-${cleanCode}`, mode: 'insensitive' } },
+          { orderId: { equals: `ORD-${cleanCode}`, mode: 'insensitive' } },
+          { orderId: { endsWith: strippedCode, mode: 'insensitive' } }
+        ]
+      },
+      select: {
+        id: true,
+        orderId: true,
+        client: true,
+        design: true,
+        status: true,
+        isRush: true,
+        estimatedTime: true,
+        personalization: true,
+        items: true,
+        totalAmount: true,
+        paymentStatus: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: `Order '${rawCode}' not found. Please check your claim stub.` });
+    }
+
+    const sanitizeClient = (rawName) => {
+      if (!rawName) return 'Customer';
+      const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
+      if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In';
+      const parts = clean.split(' ');
+      if (parts.length === 1) return parts[0];
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    };
+
+    const getVerificationCode = (orderId) => {
+      if (!orderId) return '#A-000';
+      if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
+      const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+      return `#A-${suffix.toUpperCase()}`;
+    };
+
+    const parsePersonalizationText = (order) => {
+      if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
+        return order.personalization.text;
+      }
+      if (Array.isArray(order.items) && order.items.length > 0) {
+        const item = order.items[0];
+        if (item.personalization && item.personalization.text) return item.personalization.text;
+      }
+      return null;
+    };
+
+    // Calculate stage & wait
+    let stage = 'queue';
+    if (['Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
+      stage = 'stitching';
+    } else if (['Ready For Pick Up', 'Ready for Pickup'].includes(order.status)) {
+      stage = 'ready';
+    } else if (order.status === 'Completed') {
+      stage = 'completed';
+    }
+
+    let ordersAhead = 0;
+    if (stage === 'queue') {
+      ordersAhead = await prisma.order.count({
+        where: {
+          status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] },
+          createdAt: { lt: order.createdAt }
+        }
+      });
+    }
+
+    const estMins = order.estimatedTime || 15;
+    let estimatedMinutesLeft = estMins;
+    if (stage === 'stitching') {
+      const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
+      estimatedMinutesLeft = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
+    } else if (stage === 'queue') {
+      estimatedMinutesLeft = (ordersAhead + 1) * estMins;
+    } else {
+      estimatedMinutesLeft = 0;
+    }
+
+    res.json({
+      success: true,
+      order: {
+        orderId: order.orderId,
+        claimCode: getVerificationCode(order.orderId),
+        client: sanitizeClient(order.client),
+        design: order.design,
+        monogramText: parsePersonalizationText(order),
+        status: order.status,
+        stage,
+        ordersAhead,
+        estimatedMinutesLeft,
+        totalAmount: order.totalAmount,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (err) {
+    console.error('Error tracking order:', err);
+    res.status(500).json({ error: 'Server error tracking order' });
+  }
+};
+
+exports.getLiveQueue = async (req, res) => {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [activeOrders, completedTodayCount, activeMachines] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing', 'Ready For Pick Up', 'Ready for Pickup'] }
+        },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          orderId: true,
+          client: true,
+          design: true,
+          status: true,
+          progress: true,
+          isRush: true,
+          estimatedTime: true,
+          personalization: true,
+          items: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      }),
+      prisma.order.count({
+        where: {
+          status: 'Completed',
+          updatedAt: { gte: todayStart }
+        }
+      }),
+      prisma.machine.count({
+        where: { status: { in: ['Running', 'Idle'] } }
+      })
+    ]);
+
+    const sanitizeClient = (rawName) => {
+      if (!rawName) return 'Customer';
+      const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
+      if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In Customer';
+      const parts = clean.split(' ');
+      if (parts.length === 1) return parts[0];
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    };
+
+    const getVerificationCode = (orderId) => {
+      if (!orderId) return '#A-000';
+      if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
+      const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+      return `#A-${suffix.toUpperCase()}`;
+    };
+
+    const parsePersonalizationText = (order) => {
+      if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
+        return order.personalization.text;
+      }
+      if (Array.isArray(order.items) && order.items.length > 0) {
+        const item = order.items[0];
+        if (item.personalization && item.personalization.text) return item.personalization.text;
+      }
+      return null;
+    };
+
+    const getQuantity = (order) => {
+      if (Array.isArray(order.items)) {
+        return order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+      }
+      return 1;
+    };
+
+    const nowStitching = [];
+    const readyForPickup = [];
+    const upNext = [];
+
+    activeOrders.forEach(order => {
+      const isWorking = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
+      const isReady = ['Ready For Pick Up', 'Ready for Pickup'].includes(order.status);
+      const qty = getQuantity(order);
+      const isExpress = qty === 1;
+      const text = parsePersonalizationText(order);
+      const baseInfo = {
+        id: order.id,
+        orderId: order.orderId,
+        client: sanitizeClient(order.client),
+        design: order.design,
+        text,
+        quantity: qty,
+        isExpress,
+        isRush: order.isRush || false,
+        verificationCode: getVerificationCode(order.orderId),
+        createdAt: order.createdAt
+      };
+
+      if (isWorking) {
+        const estMins = order.estimatedTime || 15;
+        const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
+        const remainingMinutes = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
+        nowStitching.push({
+          ...baseInfo,
+          remainingMinutes,
+          progress: order.progress || Math.min(90, Math.max(20, Math.floor((elapsedMinutes / estMins) * 100)))
+        });
+      } else if (isReady) {
+        readyForPickup.push({
+          ...baseInfo,
+          readyAt: order.updatedAt
+        });
+      } else {
+        upNext.push({
+          ...baseInfo,
+          estimatedMinutes: order.estimatedTime || (isExpress ? 15 : 30)
+        });
+      }
+    });
+
+    const machineCount = Math.max(1, activeMachines);
+    const totalRemainingMinutes = nowStitching.reduce((acc, o) => acc + o.remainingMinutes, 0) +
+                                  upNext.reduce((acc, o) => acc + o.estimatedMinutes, 0);
+    const averageWaitMinutes = Math.ceil(totalRemainingMinutes / machineCount);
+
+    res.json({
+      success: true,
+      nowStitching,
+      readyForPickup,
+      upNext,
+      stats: {
+        activeCount: activeOrders.length,
+        completedTodayCount,
+        activeMachines: machineCount,
+        averageWaitMinutes: activeOrders.length === 0 ? 10 : averageWaitMinutes
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching live queue:', err);
+    res.status(500).json({ error: 'Server error fetching live queue' });
   }
 };
 

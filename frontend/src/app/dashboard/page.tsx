@@ -154,27 +154,39 @@ export default function DashboardPage() {
 
   const handleSaveField = async () => {
     if (!editingField) return;
-    setIsUpdating(true);
+    const fieldToUpdate = editingField;
+    const valueToUpdate = editValue;
+    const previousUser = useAuthStore.getState().user;
+
+    // 1. Instantly update UI and auth store state (0ms latency)
+    if (previousUser) {
+      useAuthStore.getState().setUser({
+        ...previousUser,
+        [fieldToUpdate]: valueToUpdate
+      });
+    }
+    setEditingField(null);
+    setEditValue('');
+    showToast('Profile updated successfully!', 'success');
+
+    // 2. Perform API update in background
     try {
       const { api } = await import('@/lib/api');
       const res = await api.patch<{ message: string; user: any }>('/api/customer/settings', {
-        [editingField]: editValue
+        [fieldToUpdate]: valueToUpdate
       });
-      if (res && res.user) {
+      if (res && res.user && useAuthStore.getState().user) {
         useAuthStore.getState().setUser({
           ...useAuthStore.getState().user!,
           ...res.user
         });
-      } else {
-        await refreshUser();
       }
-      showToast('Profile updated successfully!', 'success');
-      setEditingField(null);
-      setEditValue('');
     } catch (err) {
-      showToast('Failed to update profile', 'error');
-    } finally {
-      setIsUpdating(false);
+      // 3. Rollback on failure
+      if (previousUser) {
+        useAuthStore.getState().setUser(previousUser);
+      }
+      showToast('Failed to update profile — changes reverted', 'error');
     }
   };
 

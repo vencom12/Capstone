@@ -22,13 +22,15 @@ interface PanelOverviewProps {
   isSyncing: boolean;
   refreshData: () => Promise<void>;
   dbType?: string;
+  setOrders?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export default function PanelOverview({
   orders,
   isSyncing,
   refreshData,
-  dbType
+  dbType,
+  setOrders
 }: PanelOverviewProps) {
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -304,18 +306,30 @@ export default function PanelOverview({
     }
     if (!targetStatus) return;
 
+    const prevOrders = [...orders];
+    const targetIds = [...selectedIds];
+
+    // 1. Optimistic instant UI update (0ms)
+    if (setOrders) {
+      setOrders(prev => prev.map(o => targetIds.includes(o.id || o._id) ? { ...o, status: targetStatus } : o));
+    }
+    showToast(`Batch updated ${targetIds.length} orders to "${targetStatus}"`, 'success');
+    setSelectedIds([]);
+    setBatchStatus('');
+
+    // 2. Dispatch to server in background
     try {
       await api.post('/api/admin/orders/batch-status', {
-        ids: selectedIds,
+        ids: targetIds,
         status: targetStatus
       });
-      showToast(`Batch updated ${selectedIds.length} orders to "${targetStatus}"`, 'success');
-      setSelectedIds([]);
-      setBatchStatus('');
-      refreshData();
+      refreshData().catch(() => {});
     } catch (err) {
+      // 3. Rollback on error
+      if (setOrders) setOrders(prevOrders);
+      setSelectedIds(targetIds);
       console.error(err);
-      showToast('Failed to apply batch updates', 'error');
+      showToast('Failed to apply batch updates. Reverted.', 'error');
     }
   };
 
@@ -324,8 +338,20 @@ export default function PanelOverview({
     e.preventDefault();
     if (!editingOrder) return;
 
+    const prevOrders = [...orders];
+    const orderId = editingOrder.id || editingOrder._id;
+    const targetStatus = editStatus;
+    const targetNote = editNote.trim();
+
+    // 1. Optimistic instant UI update (0ms)
+    if (setOrders) {
+      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: targetStatus, notes: targetNote || o.notes } : o));
+    }
+    showToast('Order and logistics milestone updated!', 'success');
+    setEditingOrder(null);
+
+    // 2. Dispatch to server in background
     try {
-      const orderId = editingOrder.id || editingOrder._id;
       const hub = editStatus.includes('Transit') || editStatus.includes('Delivery')
         ? 'J&T Express South Luzon Sort Hub'
         : 'Eds Towels Pacific Mall Lucena Hub';
@@ -334,16 +360,16 @@ export default function PanelOverview({
         ids: [orderId],
         status: editStatus,
         trackingNumber: editTrackingNumber.trim() || undefined,
-        note: editNote.trim() || undefined,
+        note: targetNote || undefined,
         hub,
         courier: 'J&T Express'
       });
-      showToast('Order and logistics milestone updated!', 'success');
-      setEditingOrder(null);
-      refreshData();
+      refreshData().catch(() => {});
     } catch (err) {
+      // 3. Rollback on error
+      if (setOrders) setOrders(prevOrders);
       console.error(err);
-      showToast('Failed to save status update', 'error');
+      showToast('Failed to save status update. Reverted.', 'error');
     }
   };
 
@@ -741,8 +767,8 @@ export default function PanelOverview({
           <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-secondary/5 rounded-full blur-[50px] pointer-events-none"></div>
           <h3 className="text-xs font-bold text-text-dim uppercase tracking-wider mb-4">Queue Distribution</h3>
           {pendingOrders.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-text-dim text-xs italic">
-              ✨ Queue is clear! All orders fulfilled.
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-text-dim text-xs">
+              Queue is clear! All orders fulfilled.
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center">
@@ -890,9 +916,13 @@ export default function PanelOverview({
               <button
                 type="button"
                 onClick={() => setWaybillOrder(editingOrder)}
-                className="bg-[#e11d48]/20 hover:bg-[#e11d48]/30 border border-[#e11d48]/40 text-[#f43f5e] font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
-                <span>🏷️ Print Waybill</span>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Print Waybill</span>
               </button>
             </div>
 

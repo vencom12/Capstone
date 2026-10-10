@@ -322,13 +322,6 @@ export default function PanelSettings({
 
   return (
     <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
-      {/* Top Header */}
-      <header className="mb-6 flex flex-col">
-        <h1 className="text-3xl font-extrabold mb-1 tracking-tight text-text-main">Settings &amp; Configuration</h1>
-        <p className="text-text-dim text-sm m-0">
-          Manage your store branding, shipping channels, AI models, and dashboard appearance.
-        </p>
-      </header>
 
       {/* Sub-Tab Navigation Bar */}
       <div className="flex items-center gap-2 p-1.5 bg-white/5 border border-border-glass rounded-2xl mb-6 overflow-x-auto scrollbar-none">

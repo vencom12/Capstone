@@ -15,13 +15,15 @@ interface PanelManageDesignsProps {
   inventory: any[];
   isSyncing: boolean;
   refreshData: () => Promise<void>;
+  setProducts?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export default function PanelManageDesigns({
   products,
   inventory,
   isSyncing,
-  refreshData
+  refreshData,
+  setProducts
 }: PanelManageDesignsProps) {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
@@ -46,15 +48,25 @@ export default function PanelManageDesigns({
   const [materialQty, setMaterialQty] = useState('');
 
   // Variant Builder Fields
-  const [variants, setVariants] = useState<{ name: string; color: string; priceOverride?: string }[]>([]);
+  interface AdminVariantItem {
+    name: string;
+    color: string;
+    priceOverride?: string;
+    stock?: string | number;
+    materialId?: string;
+    materialName?: string;
+  }
+
+  const [variants, setVariants] = useState<AdminVariantItem[]>([]);
   const [variantName, setVariantName] = useState('');
   const [variantColor, setVariantColor] = useState('#6366f1');
   const [variantPrice, setVariantPrice] = useState('');
+  const [variantMaterialId, setVariantMaterialId] = useState('');
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
   const [colorNotice, setColorNotice] = useState<string | null>(null);
   const [variantToDeleteIndex, setVariantToDeleteIndex] = useState<number | null>(null);
   const [lastDeletedVariant, setLastDeletedVariant] = useState<{
-    variant: { name: string; color: string; priceOverride?: string };
+    variant: AdminVariantItem;
     index: number;
   } | null>(null);
 
@@ -162,10 +174,13 @@ export default function PanelManageDesigns({
       return;
     }
 
-    const updatedVariant = {
+    const selectedMat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
+    const updatedVariant: AdminVariantItem = {
       name: variantName.trim(),
       color: variantColor,
-      priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined
+      priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined,
+      materialId: variantMaterialId || undefined,
+      materialName: selectedMat ? selectedMat.item : undefined
     };
 
     if (editingVariantIndex !== null) {
@@ -187,6 +202,7 @@ export default function PanelManageDesigns({
     setVariantName(v.name);
     setVariantColor(v.color || '#6366f1');
     setVariantPrice(v.priceOverride ? v.priceOverride.toString() : '');
+    setVariantMaterialId(v.materialId || '');
     setColorNotice(null);
   };
 
@@ -195,6 +211,7 @@ export default function PanelManageDesigns({
     setVariantName('');
     setVariantColor('#6366f1');
     setVariantPrice('');
+    setVariantMaterialId('');
     setColorNotice(null);
   };
 
@@ -289,7 +306,9 @@ export default function PanelManageDesigns({
     const formattedVariants = variants.map((v) => ({
       name: v.name,
       color: v.color,
-      priceOverride: v.priceOverride ? parseFloat(v.priceOverride) : undefined
+      priceOverride: v.priceOverride ? parseFloat(v.priceOverride as any) : undefined,
+      materialId: v.materialId || undefined,
+      materialName: v.materialName || undefined
     }));
 
     // Auto-capitalize first letter of name and tag
@@ -310,9 +329,48 @@ export default function PanelManageDesigns({
       formData.append('image', imageFile);
     }
 
+    const numericPrice = parseFloat(price.trim());
+    const numericCount = count ? parseInt(count.trim(), 10) : (editingDesign?.count ?? 0);
+    const numericMin = minThreshold ? parseInt(minThreshold.trim(), 10) : (editingDesign?.minThreshold ?? 5);
+
+    const optimisticProduct = {
+      ...(editingDesign || {}),
+      name: capitalizedName,
+      price: numericPrice,
+      tag: capitalizedTag,
+      description: description.trim(),
+      recipe,
+      variants: formattedVariants,
+      count: numericCount,
+      minThreshold: numericMin,
+      ...(imageFile ? { imageUrl: URL.createObjectURL(imageFile) } : {})
+    };
+
+    const prevProducts = [...products];
+    const isEdit = !!editingDesign;
+    const tempId = `temp_${Date.now()}`;
+
+    // Optimistically update products immediately (0ms UI latency)
+    if (setProducts) {
+      if (isEdit) {
+        const targetId = editingDesign.id || editingDesign._id;
+        setProducts((prev) =>
+          prev.map((p) => ((p.id || p._id) === targetId ? { ...p, ...optimisticProduct } : p))
+        );
+      } else {
+        setProducts((prev) => [{ ...optimisticProduct, id: tempId, _id: tempId }, ...prev]);
+      }
+    }
+
+    setIsOpen(false);
+    showToast(
+      isEdit ? 'Catalog design details updated' : 'New storefront design published successfully',
+      'success'
+    );
+
     try {
-      const method = editingDesign ? 'PATCH' : 'POST';
-      const path = editingDesign ? `/api/admin/products/${editingDesign.id || editingDesign._id}` : '/api/admin/products';
+      const method = isEdit ? 'PATCH' : 'POST';
+      const path = isEdit ? `/api/admin/products/${editingDesign.id || editingDesign._id}` : '/api/admin/products';
 
       const response = await fetch(`${API_BASE}${path}`, {
         method,
@@ -324,15 +382,21 @@ export default function PanelManageDesigns({
         throw new Error('Server returned an error');
       }
 
-      showToast(
-        editingDesign ? 'Catalog design details updated' : 'New storefront design published successfully',
-        'success'
-      );
-      setIsOpen(false);
-      refreshData();
+      const resData = await response.json().catch(() => null);
+      if (!isEdit && resData?.product && setProducts) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === tempId || p._id === tempId ? { ...p, ...resData.product } : p))
+        );
+      }
+
+      // Quiet background synchronization
+      refreshData().catch(() => {});
     } catch (err) {
       console.error(err);
-      showToast('Failed to save storefront design', 'error');
+      if (setProducts) {
+        setProducts(prevProducts);
+      }
+      showToast('Failed to save storefront design — reverted', 'error');
     }
   };
 
@@ -342,69 +406,75 @@ export default function PanelManageDesigns({
   const confirmDelete = async () => {
     if (!isAdmin || !deletingProduct) return;
     const id = deletingProduct.id || deletingProduct._id;
+    const prevProducts = [...products];
+
+    // Optimistically remove product immediately
+    if (setProducts) {
+      setProducts((prev) => prev.filter((p) => (p.id || p._id) !== id));
+    }
+    setDeletingProduct(null);
+    showToast('Product deleted successfully', 'success');
+
     try {
       await api.delete(`/api/admin/products/${id}`);
-      showToast('Product deleted successfully', 'success');
-      setDeletingProduct(null);
-      refreshData();
+      refreshData().catch(() => {});
     } catch (err) {
       console.error(err);
-      showToast('Failed to delete product', 'error');
+      if (setProducts) {
+        setProducts(prevProducts);
+      }
+      showToast('Failed to delete product — restored', 'error');
     }
   };
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
-      <header className="dash-header flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="dash-title">Products</h1>
-          <p className="dash-subtitle">Manage catalog products, categories, pricing, and inventory stock levels.</p>
-        </div>
-        <div className="flex gap-3 items-center">
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
-          />
-          {isAdmin && (
-            <button
-              onClick={() => openModal()}
-              className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
-            >
-              + New Product
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Stock Level Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 flex-wrap">
-        <span className="text-xs text-text-dim font-medium whitespace-nowrap mr-1">Stock Level:</span>
-        {[
-          { id: 'all', label: 'All Products', count: products.length },
-          { id: 'critical', label: '🔴 Critical', count: productStockMetrics.critical },
-          { id: 'low', label: '🟡 Low Stock', count: productStockMetrics.low },
-          { id: 'moderate', label: '🔵 Moderate', count: productStockMetrics.moderate },
-          { id: 'high', label: '🟢 High Stock', count: productStockMetrics.high },
-        ].map((tier) => (
+      {/* Compact Top Filter & Action Toolbar */}
+      <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+        {isAdmin && (
           <button
-            key={tier.id}
-            type="button"
-            onClick={() => setStockFilter(tier.id as StockLevelTier)}
-            className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
-              stockFilter === tier.id
-                ? 'bg-primary text-white border-primary/40 shadow-sm'
-                : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-            }`}
+            onClick={() => openModal()}
+            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
           >
-            <span>{tier.label}</span>
-            <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
-              {tier.count}
-            </span>
+            + New Product
           </button>
-        ))}
+        )}
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+        />
+
+        {/* Stock Level Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 flex-wrap">
+          <span className="text-xs text-text-dim font-medium whitespace-nowrap mr-1">Stock:</span>
+          {[
+            { id: 'all', label: 'All Products', count: products.length },
+            { id: 'critical', label: 'Critical', count: productStockMetrics.critical },
+            { id: 'low', label: 'Low Stock', count: productStockMetrics.low },
+            { id: 'moderate', label: 'Moderate', count: productStockMetrics.moderate },
+            { id: 'high', label: 'High Stock', count: productStockMetrics.high },
+          ].map((tier) => (
+            <button
+              key={tier.id}
+              type="button"
+              onClick={() => setStockFilter(tier.id as StockLevelTier)}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
+                stockFilter === tier.id
+                  ? 'bg-primary text-white border-primary/40 shadow-sm'
+                  : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+              <span>{tier.label}</span>
+              <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
+                {tier.count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Product card grid layout */}
@@ -457,14 +527,14 @@ export default function PanelManageDesigns({
                         {p.variants.map((v: any, vi: number) => (
                           <div
                             key={vi}
-                            title={v.name + (v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : '')}
+                            title={`${v.name}${v.stock !== undefined ? ` (Stock: ${v.stock} pcs)` : ''}${v.materialName ? ` • Mat: ${v.materialName}` : ''}${v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : ''}`}
                             className="flex items-center gap-1 bg-white/5 border border-border-glass/50 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold text-text-dim"
                           >
                             <span
                               className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 inline-block"
                               style={{ backgroundColor: v.color || '#6366f1' }}
                             />
-                            {v.name}
+                            <span>{v.name}</span>
                           </div>
                         ))}
                       </div>
@@ -610,7 +680,9 @@ export default function PanelManageDesigns({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
-              <label className="modal-label">Stocks</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="modal-label m-0">Stocks (Total Available)</label>
+              </div>
               <input
                 type="number"
                 required
@@ -639,85 +711,118 @@ export default function PanelManageDesigns({
           <div className="modal-section border border-border-glass p-3.5 rounded-xl bg-white/5">
             <label className="modal-label text-primary font-bold flex justify-between items-center mb-1">
               <span className="flex items-center gap-2">
-                <span>🎨 Product Variants / Colors</span>
+                <span>Color / Style Variants (Assorted Supplies)</span>
                 {isAdmin && editingVariantIndex !== null && (
-                  <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
+                  <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/40">
                     Editing Variant #{editingVariantIndex + 1}
                   </span>
                 )}
               </span>
-              <span className="text-[0.7rem] text-text-dim font-normal">{isAdmin ? 'Optional' : 'Configured'}</span>
+              <span className="text-[0.7rem] text-text-dim font-normal">Pooled Stock</span>
             </label>
             {isAdmin && (
               <>
                 <p className="text-xs text-text-dim mb-2.5">
-                  Add or edit color options. Typing color names (e.g., <i>"Blue"</i>, <i>"Navy"</i>, <i>"Emerald"</i>, <i>"Rose Gold"</i>) automatically switches the color swatch!
+                  Supplies are acquired from suppliers in assorted mixed colors. Configure color swatches and options below — all variants automatically share this product's unified stock pool (<b>{count || 0} pcs</b>).
                 </p>
 
                 {/* Real-time Color Auto-Detection Toast/Banner */}
                 {colorNotice && (
                   <div className="mb-2 px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[0.75rem] font-medium flex items-center gap-2 animate-fade">
                     <span className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
-                    <span>✨ {colorNotice}</span>
+                    <span>{colorNotice}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Variant Name (e.g. Royal Blue)"
-                      value={variantName}
-                      onChange={(e) => handleVariantNameInput(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none w-full"
-                    />
+                {/* Variant Configuration Form Fields */}
+                <div className="bg-bg-surface/60 border border-border-glass rounded-xl p-3.5 mb-3 flex flex-col gap-3">
+                  {/* Row 1: Name & Color Swatch */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-8">
+                      <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                        Variant Name <span className="text-primary">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Royal Blue / 30x60cm"
+                        value={variantName}
+                        onChange={(e) => handleVariantNameInput(e.target.value)}
+                        className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full focus:border-primary/50 transition-all font-medium"
+                      />
+                    </div>
+                    <div className="sm:col-span-4">
+                      <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                        Color Swatch
+                      </label>
+                      <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-xl h-[38px]">
+                        <input
+                          type="color"
+                          value={variantColor}
+                          onChange={(e) => {
+                            setVariantColor(e.target.value);
+                            setColorNotice(null);
+                          }}
+                          className="w-7 h-7 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
+                          title="Choose exact color swatch"
+                        />
+                        <span className="text-xs font-mono font-bold text-text-main truncate">{variantColor}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-lg">
-                    <input
-                      type="color"
-                      value={variantColor}
-                      onChange={(e) => {
-                        setVariantColor(e.target.value);
-                        setColorNotice(null);
-                      }}
-                      className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0"
-                      title="Choose exact color swatch"
-                    />
-                    <span className="text-xs font-mono text-text-dim truncate">{variantColor}</span>
-                  </div>
+
+                  {/* Row 2: Price Override */}
                   <div>
+                    <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                      Price Override (₱ Optional — leave blank if same price)
+                    </label>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Price Override (₱)"
+                      placeholder="e.g. 250.00"
                       value={variantPrice}
                       onChange={(e) => setVariantPrice(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none font-mono w-full"
+                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all"
                     />
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveVariant}
-                    className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg cursor-pointer transition-all border ${
-                      editingVariantIndex !== null
-                        ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
-                        : 'bg-primary/20 hover:bg-primary/30 border-primary/30 text-primary'
-                    }`}
-                  >
-                    {editingVariantIndex !== null ? '✓ Save Changes to Variant' : '+ Add Variant Option'}
-                  </button>
-                  {editingVariantIndex !== null && (
+                  {/* Row 3: Linked Blank Material Dropdown */}
+                  <div>
+                    <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                      Linked Blank Material in Raw Inventory (Optional)
+                    </label>
+                    <select
+                      value={variantMaterialId}
+                      onChange={(e) => setVariantMaterialId(e.target.value)}
+                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all"
+                    >
+                      <option value="">— None (No direct blank material link) —</option>
+                      {inventory.map((item) => (
+                        <option key={item.id || item._id} value={item.id || item._id}>
+                          {item.item} ({item.count || 0} {item.unit || 'units'} available in stock)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={handleCancelVariantEdit}
-                      className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs py-2 px-3 rounded-lg cursor-pointer transition-all"
+                      onClick={handleSaveVariant}
+                      className="flex-1 font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-all border flex items-center justify-center gap-1.5 shadow-sm bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary"
                     >
-                      Cancel
+                      <span>{editingVariantIndex !== null ? 'Save Changes to Variant' : '+ Add Variant Option'}</span>
                     </button>
-                  )}
+                    {editingVariantIndex !== null && (
+                      <button
+                        type="button"
+                        onClick={handleCancelVariantEdit}
+                        className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-all font-semibold"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -726,7 +831,7 @@ export default function PanelManageDesigns({
             {variants.length > 0 ? (
               <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
                 <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
-                  Available Color Options ({variants.length})
+                  Configured Variants ({variants.length})
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {variants.map((v, idx) => (
@@ -772,6 +877,11 @@ export default function PanelManageDesigns({
                           style={{ backgroundColor: v.color || '#6366f1' }}
                         />
                         <span className="font-bold">{v.name}</span>
+                        {v.materialName && (
+                          <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[0.65rem] font-semibold" title={`Linked to Inventory Item: ${v.materialName}`}>
+                            {v.materialName}
+                          </span>
+                        )}
                         {v.priceOverride && (
                           <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
                             ₱{parseFloat(v.priceOverride as any).toFixed(2)}

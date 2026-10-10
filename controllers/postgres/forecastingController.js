@@ -640,6 +640,208 @@ exports.approvePurchaseOrder = async (req, res) => {
     }
 };
 
+exports.createPurchaseOrder = async (req, res) => {
+    try {
+        const { inventoryId, quantity, estimatedCost, status } = req.body;
+        if (!inventoryId || !quantity) {
+            return res.status(400).json({ message: 'inventoryId and quantity are required' });
+        }
+        const po = await prisma.purchaseOrder.create({
+            data: {
+                inventoryId,
+                quantity: parseInt(quantity),
+                estimatedCost: estimatedCost ? parseFloat(estimatedCost) : null,
+                status: status || 'Draft'
+            },
+            include: { inventory: true }
+        });
+        res.status(201).json(po);
+    } catch (err) {
+        console.error('createPurchaseOrder error:', err);
+        res.status(500).json({ message: 'Error creating purchase order' });
+    }
+};
+
+exports.updatePurchaseOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, deliveryReceipt, notes } = req.body;
+        if (!status) return res.status(400).json({ message: 'Status is required' });
+
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: { inventory: true }
+        });
+
+        if (!po) return res.status(404).json({ message: 'Purchase Order not found' });
+
+        let resultPo = po;
+        if (status === 'Received' && po.status !== 'Received') {
+            await prisma.$transaction(async (tx) => {
+                resultPo = await tx.purchaseOrder.update({
+                    where: { id },
+                    data: { status: 'Received' },
+                    include: { inventory: true }
+                });
+
+                // Replenish inventory stockpile automatically
+                const updatedInv = await tx.inventory.update({
+                    where: { id: po.inventoryId },
+                    data: { count: { increment: po.quantity } }
+                });
+
+                // Create inventory log
+                await tx.inventoryLog.create({
+                    data: {
+                        inventoryId: po.inventoryId,
+                        action: 'Add',
+                        amount: po.quantity,
+                        newTotal: updatedInv.count,
+                        userId: req.user?.username || 'admin'
+                    }
+                });
+
+                // Write to global audit log
+                await tx.globalAuditLog.create({
+                    data: {
+                        userId: req.user?.id || 'admin',
+                        userRole: req.user?.role || 'admin',
+                        action: 'SUPPLIER_PO_RECEIVED',
+                        entity: 'PurchaseOrder',
+                        entityId: id,
+                        ipAddress: req.ip || '127.0.0.1',
+                        diff: {
+                            item: po.inventory.item,
+                            quantityAdded: po.quantity,
+                            newTotal: updatedInv.count,
+                            deliveryReceipt: deliveryReceipt || 'N/A',
+                            notes: notes || null
+                        }
+                    }
+                });
+            });
+
+            // Real-time socket broadcast
+            const io = req.app.get('io');
+            if (io) {
+                const refreshedInv = await prisma.inventory.findMany();
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, refreshedInv);
+            }
+        } else {
+            resultPo = await prisma.purchaseOrder.update({
+                where: { id },
+                data: { status },
+                include: { inventory: true }
+            });
+        }
+
+        res.json(resultPo);
+    } catch (err) {
+        console.error('updatePurchaseOrderStatus error:', err);
+        res.status(500).json({ message: 'Error updating purchase order status' });
+    }
+};
+
+exports.emailPurchaseOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { supplierEmail } = req.body;
+
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: { inventory: true }
+        });
+        if (!po) return res.status(404).json({ message: 'Purchase Order not found' });
+
+        const targetEmail = supplierEmail || 'supplier@textilehub.ph';
+        const poNumber = `PO-${po.id.slice(-6).toUpperCase()}`;
+
+        console.log(`[Supplier PO Dispatch] Sending PO ${poNumber} to ${targetEmail}`);
+
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: { status: 'Ordered' },
+            include: { inventory: true }
+        });
+
+        res.json({
+            success: true,
+            message: `Purchase Order ${poNumber} dispatched to ${targetEmail}`,
+            po: updated
+        });
+    } catch (err) {
+        console.error('emailPurchaseOrder error:', err);
+        res.status(500).json({ message: 'Error emailing purchase order' });
+    }
+};
+
+exports.downloadPurchaseOrderPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const PDFDocument = require('pdfkit');
+
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: { inventory: true }
+        });
+        if (!po) return res.status(404).send('Purchase Order not found');
+
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+        const poNumber = `PO-${po.id.slice(-6).toUpperCase()}`;
+
+        const doc = new PDFDocument({ size: [320, 480], margin: 20 });
+        const isInline = req.query.download !== 'true';
+        const disposition = isInline ? 'inline' : 'attachment';
+
+        res.setHeader('Content-disposition', `${disposition}; filename=${poNumber}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+        doc.pipe(res);
+
+        // Header
+        doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
+        doc.font('Helvetica').fontSize(8).text('Pacific Mall Lucena • Custom Embroidery Operations', { align: 'center' });
+        doc.moveDown(0.4);
+        doc.font('Courier').fontSize(8).text('--------------------------------------------', { align: 'center' });
+        doc.moveDown(0.2);
+
+        doc.font('Helvetica-Bold').fontSize(11).text('OFFICIAL PURCHASE ORDER', { align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(12).fillColor('#4f46e5').text(poNumber, { align: 'center' }).fillColor('#000000');
+        doc.font('Helvetica').fontSize(8).text(`Date: ${new Date(po.createdAt).toLocaleDateString()}`, { align: 'center' });
+        doc.text(`Status: ${po.status.toUpperCase()}`, { align: 'center' });
+        doc.moveDown(0.4);
+        doc.font('Courier').fontSize(8).text('--------------------------------------------', { align: 'center' });
+        doc.moveDown(0.4);
+
+        // Item details
+        doc.font('Helvetica-Bold').fontSize(9).text('ORDER SPECIFICATIONS:');
+        doc.moveDown(0.2);
+        doc.font('Helvetica').fontSize(9).text(`Material: ${po.inventory.item}`);
+        doc.text(`Quantity: ${po.quantity} ${po.inventory.unit}`);
+        if (po.estimatedCost) {
+            doc.text(`Est. Total: PHP ${po.estimatedCost.toFixed(2)}`);
+        }
+        doc.moveDown(0.8);
+
+        // Delivery Instructions
+        doc.font('Helvetica-Bold').fontSize(8).text('DELIVERY & FULFILLMENT:');
+        doc.font('Helvetica').fontSize(8).text('Hub: Ground Floor, Pacific Mall Lucena City');
+        doc.text('Attn: Production Head / Artisan');
+        doc.text(`Contact: ${settings?.businessContact || '0917-888-THREAD'}`);
+        doc.moveDown(0.6);
+        doc.font('Helvetica-Oblique').fontSize(7).text('Please ensure spools are matched by uniform batch/dye lot code.');
+
+        doc.moveDown(1.5);
+        doc.font('Courier').fontSize(8).text('--------------------------------------------', { align: 'center' });
+        doc.font('Helvetica').fontSize(7).text('Authorized by Eds Towels & Caps Management', { align: 'center' });
+
+        doc.end();
+    } catch (err) {
+        console.error('downloadPurchaseOrderPdf error:', err);
+        res.status(500).send('Error generating Purchase Order PDF');
+    }
+};
+
 exports.trackProductView = async (req, res) => {
     try {
         const { id } = req.params;

@@ -10,7 +10,7 @@ interface BasketState {
   updateQuantity: (productId: string, quantity: number) => void;
   updateBasketItem: (
     basketItemId: string,
-    updates: Partial<Pick<BasketItem, 'selectedVariant' | 'selectedColor' | 'selectedSize' | 'price' | 'imageUrl'>>
+    updates: Partial<Pick<BasketItem, 'selectedVariant' | 'selectedColor' | 'selectedSize' | 'backupVariant' | 'backupColor' | 'price' | 'imageUrl'>>
   ) => void;
   clearBasket: () => void;
   getTotal: () => number;
@@ -30,6 +30,7 @@ export const useBasketStore = create<BasketState>()(
               i.productId === item.productId &&
               i.selectedVariant === item.selectedVariant &&
               i.selectedSize === item.selectedSize &&
+              i.backupVariant === item.backupVariant &&
               (i.personalization?.text || '') === itemText &&
               (i.personalization?.font || '') === (item.personalization?.font || '') &&
               (i.personalization?.threadColor || '') === (item.personalization?.threadColor || '')
@@ -56,6 +57,8 @@ export const useBasketStore = create<BasketState>()(
                 selectedVariant: item.selectedVariant,
                 selectedColor: item.selectedColor,
                 selectedSize: item.selectedSize,
+                backupVariant: item.backupVariant,
+                backupColor: item.backupColor,
                 personalization: item.personalization,
               },
             ],

@@ -12,6 +12,7 @@ import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
+import PanelCounterMode from '@/components/admin/PanelCounterMode';
 import PanelSettings from '@/components/admin/PanelSettings';
 import PanelAuditTrail from '@/components/admin/PanelAuditTrail';
 
@@ -163,6 +164,12 @@ export default function AdminPage() {
       // the failure and surface it instead of only writing to the console.
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to sync admin operations data:', err);
+      const lower = message.toLowerCase();
+      if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
+        logout();
+        router.replace('/?auth=login');
+        return;
+      }
       setLoadError(message);
       showToast(`Failed to load dashboard: ${message}`, 'error');
     } finally {
@@ -360,6 +367,16 @@ export default function AdminPage() {
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
             dbType={dbType}
+            setOrders={setOrders}
+          />
+        );
+      case 'counter':
+        return (
+          <PanelCounterMode
+            orders={orders}
+            refreshData={fetchAdminData}
+            isSyncing={isSyncing}
+            setOrders={setOrders}
           />
         );
       case 'products':
@@ -369,14 +386,17 @@ export default function AdminPage() {
             inventory={inventory}
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
+            setProducts={setProducts}
           />
         );
       case 'materials':
         return (
           <PanelRawMaterials
             inventory={inventory}
+            products={products}
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
+            setInventory={setInventory}
           />
         );
       case 'staffing':
@@ -386,49 +406,45 @@ export default function AdminPage() {
             machines={machines}
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
+            setUsers={setUsers}
           />
         );
       case 'analytics':
-        return <PanelAnalytics orders={orders} />;
+        return <PanelAnalytics orders={orders} inventory={inventory} />;
 
       case 'history':
         // Renders complete database logs for delivered tickets via fast server indexing
         return (
           <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans">
-            <header className="mb-6 flex justify-between items-center flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-extrabold mb-1">Archived Order History</h1>
-                <p className="text-text-dim text-[0.95rem] m-0">
-                  Historical database logs of all delivered customer tickets.
-                  {archivedTotal > 0 && <span className="text-primary font-bold ml-1.5">({archivedTotal} orders archived)</span>}
-                </p>
-              </div>
-              <div className="flex gap-3 items-center flex-wrap">
-                <GlassDatePicker
-                  value={historyDate}
-                  onChange={(val) => setHistoryDate(val)}
-                  placeholder="Filter dropoff date"
-                />
-                <input
-                  type="text"
-                  placeholder="Search ID, client, or status..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
-                />
-                {(historySearch || historyDate) && (
-                  <button
-                    onClick={() => {
-                      setHistorySearch('');
-                      setHistoryDate('');
-                    }}
-                    className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            </header>
+            {/* Compact Top Filter Toolbar */}
+            <div className="mb-4 flex justify-start items-center flex-wrap gap-3">
+              <GlassDatePicker
+                value={historyDate}
+                onChange={(val) => setHistoryDate(val)}
+                placeholder="Filter dropoff date"
+              />
+              <input
+                type="text"
+                placeholder="Search ID, client, or status..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+              />
+              {(historySearch || historyDate) && (
+                <button
+                  onClick={() => {
+                    setHistorySearch('');
+                    setHistoryDate('');
+                  }}
+                  className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/5 text-text-dim border border-border-glass">
+                {archivedTotal.toLocaleString()} Orders Archived
+              </span>
+            </div>
 
             <div className="glass-card p-5 border border-border-glass rounded-[24px] flex-1 pr-2">
               {isLoadingArchived ? (

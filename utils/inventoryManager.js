@@ -35,10 +35,20 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     // CASE 1: Transition from RESERVED to PROCESSED
     if (isOldReserved && isNewProcessed) {
         for (const item of items) {
-            const productId = item.productId || item.id;
-            if (!productId) continue;
-
-            const product = await tx.product.findUnique({ where: { id: productId } });
+            let productId = item.productId || item.id;
+            let product = productId ? await tx.product.findUnique({ where: { id: productId } }) : null;
+            if (!product && item.name) {
+                // Fallback: match by product name or base name before hyphen
+                const baseName = item.name.split(' - ')[0].trim();
+                product = await tx.product.findFirst({
+                    where: {
+                        OR: [
+                            { name: { equals: item.name.trim(), mode: 'insensitive' } },
+                            { name: { equals: baseName, mode: 'insensitive' } }
+                        ]
+                    }
+                });
+            }
             if (!product) continue;
 
             const garmentQuantity = item.quantity || 1;
@@ -58,13 +68,77 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
 
             // Deduct physical blanks and release reservation lock
             const newReserved = Math.max(0, (product.reservedCount || 0) - garmentQuantity);
+
+            // Check if product has variants and deduct variant stock + linked raw blank material
+            let updatedVariants = null;
+            let matchedMaterialId = null;
+            let matchedMaterialName = null;
+
+            if (product.variants) {
+                let variantsList = product.variants;
+                if (typeof variantsList === 'string') {
+                    try { variantsList = JSON.parse(variantsList); } catch(e) { variantsList = []; }
+                }
+                if (Array.isArray(variantsList)) {
+                    const variantTarget = item.selectedVariant || item.variant || item.sku;
+                    let variantFound = false;
+                    updatedVariants = variantsList.map(v => {
+                        if (v && (v.name === variantTarget || v.sku === variantTarget || v.id === variantTarget)) {
+                            variantFound = true;
+                            if (v.materialId) {
+                                matchedMaterialId = v.materialId;
+                                matchedMaterialName = v.materialName || v.name;
+                            }
+                            const currentVStock = v.stock !== undefined ? Number(v.stock) : null;
+                            if (currentVStock !== null) {
+                                return {
+                                    ...v,
+                                    stock: Math.max(0, currentVStock - garmentQuantity)
+                                };
+                            }
+                        }
+                        return v;
+                    });
+                    if (!variantFound) {
+                        updatedVariants = null;
+                    }
+                }
+            }
+
+            const updateProductData = {
+                count: { decrement: garmentQuantity },
+                reservedCount: newReserved
+            };
+            if (updatedVariants) {
+                updateProductData.variants = updatedVariants;
+            }
+
             await tx.product.update({
                 where: { id: product.id },
-                data: {
-                    count: { decrement: garmentQuantity },
-                    reservedCount: newReserved
-                }
+                data: updateProductData
             });
+
+            // If variant is explicitly linked to raw materials (blank garments), deduct from Inventory stockpile
+            if (matchedMaterialId) {
+                const invBlank = await tx.inventory.findUnique({ where: { id: matchedMaterialId } });
+                if (invBlank) {
+                    const updatedInv = await tx.inventory.update({
+                        where: { id: matchedMaterialId },
+                        data: { count: { decrement: garmentQuantity } }
+                    });
+                    if (logEnabled) {
+                        await tx.inventoryLog.create({
+                            data: {
+                                inventoryId: matchedMaterialId,
+                                action: 'Deduct',
+                                amount: garmentQuantity,
+                                newTotal: updatedInv.count,
+                                userId: `${username} (Blank: ${matchedMaterialName || 'Variant'})`
+                            }
+                        });
+                    }
+                }
+            }
 
             // Explode Recipe BOM and deduct threads
             if (product.recipe && Array.isArray(product.recipe)) {
@@ -126,11 +200,75 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
 
             const garmentQuantity = item.quantity || 1;
 
-            // Restore physical blanks count
+            // Restore physical blanks count + variant stocks + linked blank material
+            let rollbackVariants = null;
+            let matchedMaterialId = null;
+            let matchedMaterialName = null;
+
+            if (product.variants) {
+                let variantsList = product.variants;
+                if (typeof variantsList === 'string') {
+                    try { variantsList = JSON.parse(variantsList); } catch(e) { variantsList = []; }
+                }
+                if (Array.isArray(variantsList)) {
+                    const variantTarget = item.selectedVariant || item.variant || item.sku;
+                    let variantFound = false;
+                    rollbackVariants = variantsList.map(v => {
+                        if (v && (v.name === variantTarget || v.sku === variantTarget || v.id === variantTarget)) {
+                            variantFound = true;
+                            if (v.materialId) {
+                                matchedMaterialId = v.materialId;
+                                matchedMaterialName = v.materialName || v.name;
+                            }
+                            const currentVStock = v.stock !== undefined ? Number(v.stock) : null;
+                            if (currentVStock !== null) {
+                                return {
+                                    ...v,
+                                    stock: currentVStock + garmentQuantity
+                                };
+                            }
+                        }
+                        return v;
+                    });
+                    if (!variantFound) {
+                        rollbackVariants = null;
+                    }
+                }
+            }
+
+            const rollbackData = {
+                count: { increment: garmentQuantity }
+            };
+            if (rollbackVariants) {
+                rollbackData.variants = rollbackVariants;
+            }
+
             await tx.product.update({
                 where: { id: product.id },
-                data: { count: { increment: garmentQuantity } }
+                data: rollbackData
             });
+
+            // Restore linked blank raw material in inventory
+            if (matchedMaterialId) {
+                const invBlank = await tx.inventory.findUnique({ where: { id: matchedMaterialId } });
+                if (invBlank) {
+                    const updatedInv = await tx.inventory.update({
+                        where: { id: matchedMaterialId },
+                        data: { count: { increment: garmentQuantity } }
+                    });
+                    if (logEnabled) {
+                        await tx.inventoryLog.create({
+                            data: {
+                                inventoryId: matchedMaterialId,
+                                action: 'Add',
+                                amount: garmentQuantity,
+                                newTotal: updatedInv.count,
+                                userId: `Rollback (${username}) (Blank: ${matchedMaterialName || 'Variant'})`
+                            }
+                        });
+                    }
+                }
+            }
 
             // Restore raw thread spools
             if (product.recipe && Array.isArray(product.recipe)) {

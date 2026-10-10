@@ -102,7 +102,14 @@ export default function EmployeePage() {
         setMachines(data.machines || []);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to fetch employee state:', err);
+      const lower = message.toLowerCase();
+      if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
+        useAuthStore.getState().logout();
+        router.replace('/?auth=login');
+        return;
+      }
     } finally {
       setIsSyncing(false);
     }

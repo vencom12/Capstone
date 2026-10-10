@@ -1,9 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import { showToast } from '@/components/ui/Toast';
-import { AnalyticsSkeleton } from '@/components/ui/Skeletons';
+import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -12,444 +9,512 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  BarChart,
-  Bar
 } from 'recharts';
 
 interface PanelAnalyticsProps {
   orders: any[];
+  inventory?: any[];
 }
 
-export default function PanelAnalytics({ orders }: PanelAnalyticsProps) {
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [biData, setBiData] = useState<any>(null);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
-  const [isLoadingBI, setIsLoadingBI] = useState(false);
-  const [executingId, setExecutingId] = useState<string | null>(null);
+type TimeRange = 'today' | 'week' | 'month' | 'all';
 
-  // 1. Fetch Business Analytics Data
-  const fetchAnalytics = async (isBackground = false) => {
-    if (!isBackground) setIsLoadingAnalytics(true);
-    try {
-      const data = await api.get<any>('/api/admin/analytics');
-      if (data) {
-        setAnalytics(data);
+export default function PanelAnalytics({ orders = [], inventory = [] }: PanelAnalyticsProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>('today');
+
+  // Build a name->supplierUnitCost map from real inventory data
+  const inventoryCostMap = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    inventory.forEach((inv) => {
+      if (inv.item && inv.supplierUnitCost != null) {
+        map[inv.item.toLowerCase()] = inv.supplierUnitCost;
       }
-    } catch (err) {
-      console.error('Failed to load business analytics:', err);
-    } finally {
-      if (!isBackground) setIsLoadingAnalytics(false);
-    }
-  };
-
-  // 2. Fetch Business Intelligence suggestions & projections
-  const fetchBI = async (isBackground = false) => {
-    if (!isBackground) setIsLoadingBI(true);
-    try {
-      const data = await api.get<any>('/api/admin/intelligence/suggestions');
-      if (data) {
-        setBiData(data);
-      }
-    } catch (err) {
-      console.error('Failed to load BI suggestions:', err);
-    } finally {
-      if (!isBackground) setIsLoadingBI(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAnalytics();
-    fetchBI();
-  }, [orders]);
-
-  const handleExecuteAction = async (suggestion: any) => {
-    setExecutingId(suggestion.id);
-    const previousState = biData;
-    
-    setBiData((prev: any) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        suggestions: prev.suggestions.filter((s: any) => s.id !== suggestion.id)
-      };
     });
+    return map;
+  }, [inventory]);
 
-    try {
-      showToast(`Applying update: ${suggestion.title}...`, 'info');
-      const res = await api.post<any>('/api/admin/intelligence/execute', {
-        actionType: suggestion.action.type,
-        payload: suggestion.action.payload
+  // Check if owner has configured any real costs (to show a data quality badge)
+  const hasRealCosts = useMemo(() => Object.keys(inventoryCostMap).length > 0, [inventoryCostMap]);
+
+  // Helper: look up real cost from inventory first, then fall back to category estimate
+  const getRealOrEstimatedCost = (itemName: string, itemPrice: number, isByog: boolean, qty: number): number => {
+    if (isByog) return 12 * qty; // BYOG: only thread/stabilizer cost
+
+    const lowerName = itemName.toLowerCase();
+
+    // Try to match against real inventory items
+    for (const [invName, cost] of Object.entries(inventoryCostMap)) {
+      if (cost != null && lowerName.includes(invName.replace('(', '').replace(')', '').split(' ')[0].toLowerCase())) {
+        return cost * qty;
+      }
+    }
+
+    // Fallback category estimates
+    if (lowerName.includes('bath towel')) return 80 * qty;
+    if (lowerName.includes('hand towel') || lowerName.includes('towel')) return 45 * qty;
+    if (lowerName.includes('cap') || lowerName.includes('hat')) return 75 * qty;
+    if (lowerName.includes('shirt') || lowerName.includes('polo')) return 90 * qty;
+    if (lowerName.includes('hoodie') || lowerName.includes('jacket')) return 180 * qty;
+    return Math.round(itemPrice * 0.35) * qty;
+  };
+
+
+  // Filter orders by selected time window
+  const filteredOrders = useMemo(() => {
+    const nonCanceled = (orders || []).filter((o) => o.status !== 'Order Canceled');
+    if (timeRange === 'all') return nonCanceled;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (timeRange === 'today') {
+      return nonCanceled.filter((o) => {
+        const orderDate = new Date(o.createdAt || o.date);
+        return orderDate >= startOfToday;
       });
-      showToast(res.message || 'Action executed successfully!', 'success');
-      fetchAnalytics(true);
-      fetchBI(true);
-    } catch (err: any) {
-      console.error(err);
-      showToast(err.message || 'Failed to execute action', 'error');
-      setBiData(previousState);
-    } finally {
-      setExecutingId(null);
     }
-  };
 
-  const handleDeclineAction = async (suggestionId: string) => {
-    setExecutingId(suggestionId);
-    const previousState = biData;
-    
-    setBiData((prev: any) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        suggestions: prev.suggestions.filter((s: any) => s.id !== suggestionId)
-      };
+    if (timeRange === 'week') {
+      const startOfWeek = new Date(startOfToday);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      return nonCanceled.filter((o) => {
+        const orderDate = new Date(o.createdAt || o.date);
+        return orderDate >= startOfWeek;
+      });
+    }
+
+    if (timeRange === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return nonCanceled.filter((o) => {
+        const orderDate = new Date(o.createdAt || o.date);
+        return orderDate >= startOfMonth;
+      });
+    }
+
+    return nonCanceled;
+  }, [orders, timeRange]);
+
+  // Order status subsets
+  const completedOrders = useMemo(() => {
+    return filteredOrders.filter((o) =>
+      ['Order Delivered', 'Completed', 'Ready For Pick Up', 'Ready for Pickup'].includes(o.status)
+    );
+  }, [filteredOrders]);
+
+  const activeOrders = useMemo(() => {
+    return filteredOrders.filter((o) =>
+      ['In Queue', 'Preparing Order', 'In Transit'].includes(o.status)
+    );
+  }, [filteredOrders]);
+
+  // Financial calculations
+  const totalRevenue = useMemo(() => {
+    return filteredOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+  }, [filteredOrders]);
+
+  // Real-or-estimated material cost calculation
+  const estimatedMaterialCosts = useMemo(() => {
+    return filteredOrders.reduce((sum, o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      if (items.length > 0) {
+        let orderCost = 0;
+        items.forEach((item: any) => {
+          const qty = item.quantity || 1;
+          const name = item.name || '';
+          const isByogItem = item.isByog || o.isByog;
+          const itemPrice = item.price || (o.totalAmount / items.length) || 0;
+          orderCost += getRealOrEstimatedCost(name, itemPrice, isByogItem, qty);
+        });
+        return sum + orderCost;
+      }
+      // Fallback if items array is empty
+      if (o.isByog) return sum + 12;
+      const amt = o.totalAmount || o.amount || 0;
+      return sum + Math.round(amt * 0.35);
+    }, 0);
+  }, [filteredOrders, inventoryCostMap]);
+
+
+  const netProfit = useMemo(() => {
+    return Math.max(0, totalRevenue - estimatedMaterialCosts);
+  }, [totalRevenue, estimatedMaterialCosts]);
+
+  const profitMargin = useMemo(() => {
+    if (totalRevenue === 0) return 0;
+    return Math.round((netProfit / totalRevenue) * 100);
+  }, [netProfit, totalRevenue]);
+
+  // Payment Breakdown: Physical Cash in Drawer vs Digital GCash
+  const paymentBreakdown = useMemo(() => {
+    let cashTotal = 0;
+    let cashCount = 0;
+    let gcashTotal = 0;
+    let gcashCount = 0;
+
+    filteredOrders.forEach((o) => {
+      const method = (o.paymentMethod || '').toLowerCase();
+      const amt = o.totalAmount || o.amount || 0;
+      if (method.includes('cash')) {
+        cashTotal += amt;
+        cashCount++;
+      } else if (method.includes('gcash') || method.includes('qr') || method.includes('online')) {
+        gcashTotal += amt;
+        gcashCount++;
+      } else {
+        cashTotal += amt;
+        cashCount++;
+      }
     });
 
-    try {
-      await api.post<any>('/api/admin/intelligence/decline', { suggestionId });
-      showToast('Alert dismissed.', 'info');
-      fetchAnalytics(true);
-      fetchBI(true);
-    } catch (err: any) {
-      console.error(err);
-      showToast(err.message || 'Failed to dismiss alert', 'error');
-      setBiData(previousState);
-    } finally {
-      setExecutingId(null);
-    }
-  };
+    return { cashTotal, cashCount, gcashTotal, gcashCount };
+  }, [filteredOrders]);
 
-  if (isLoadingAnalytics || !analytics) {
-    return (
-      <section className="animate-fade flex flex-col min-h-full text-left font-sans pb-10">
-        <header className="mb-6 flex flex-col">
-          <h1 className="text-3xl font-extrabold mb-1 tracking-tight text-text-main">Business Analytics</h1>
-          <p className="text-text-dim text-sm m-0">Real-time revenue performance, order volume, and catalog demand.</p>
-        </header>
-        <AnalyticsSkeleton />
-      </section>
-    );
-  }
+  // Product / Service Category Performance
+  const categoryPerformance = useMemo(() => {
+    const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
+      'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Bath Towels': { category: 'Bath Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Caps & Headwear': { category: 'Caps & Headwear', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Client Garments (BYOG)': { category: 'Client Garments (BYOG)', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Apparel & Shirts': { category: 'Apparel & Shirts', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Custom & Other': { category: 'Custom & Other', units: 0, revenue: 0, cost: 0, profit: 0 },
+    };
 
-  // Active Queue Value Calculation from live orders prop
-  const pendingOrders = (orders || []).filter(o =>
-    ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'].includes(o.status)
-  );
-  const activeQueueValue = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
-  const activeOrdersCount = pendingOrders.length;
+    filteredOrders.forEach((o) => {
+      const items = Array.isArray(o.items) && o.items.length > 0 ? o.items : [{ name: o.design || 'Custom Item', quantity: 1, price: o.totalAmount }];
+      items.forEach((item: any) => {
+        const qty = item.quantity || 1;
+        const name = (item.name || '').toLowerCase();
+        const price = item.price || (o.totalAmount / items.length) || 0;
+        const total = price * qty;
+        const isByog = item.isByog || o.isByog;
 
-  const totalVisits = analytics.totalVisits || 0;
-  const avgOrderValue = parseFloat(analytics.avgOrderValue || 0);
+        let key = 'Custom & Other';
+        if (isByog) key = 'Client Garments (BYOG)';
+        else if (name.includes('bath towel')) key = 'Bath Towels';
+        else if (name.includes('hand towel') || name.includes('towel')) key = 'Hand Towels';
+        else if (name.includes('cap') || name.includes('hat')) key = 'Caps & Headwear';
+        else if (name.includes('shirt') || name.includes('polo') || name.includes('hoodie')) key = 'Apparel & Shirts';
 
-  // Clean Chart Data (Pure Real Revenue, No Synthetic Multipliers)
-  const trendsData = (analytics.orderTrends || []).map((t: any) => ({
-    name: `${t._id.month}/${t._id.year}`,
-    revenue: t.revenue || 0
-  }));
+        const cost = getRealOrEstimatedCost(item.name || '', price, isByog, qty);
+        groups[key].units += qty;
+        groups[key].revenue += total;
+        groups[key].cost += cost;
+        groups[key].profit += (total - cost);
+      });
+    });
 
-  const pieData = (analytics.statusDistribution || []).map((d: any) => ({
-    name: d._id || 'Unknown',
-    value: d.count || 0
-  }));
+    return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.profit - a.profit);
+  }, [filteredOrders, inventoryCostMap]);
 
-  const topOrderedData = (analytics.topOrdered || []).map((d: any) => ({
-    name: d._id || 'Custom Design',
-    count: d.count || 0
-  }));
+  // Chart data: daily breakdown for the current view
+  const chartData = useMemo(() => {
+    const dailyMap: Record<string, { date: string; revenue: number; profit: number }> = {};
 
-  const topLikedData = (analytics.topLiked || []).map((d: any) => ({
-    name: d._id || 'Storefront Item',
-    count: d.count || 0
-  }));
+    filteredOrders.forEach((o) => {
+      const d = new Date(o.createdAt || o.date);
+      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      const rev = o.totalAmount || o.amount || 0;
+      const items = Array.isArray(o.items) && o.items.length > 0 ? o.items : [];
+      let cost = 0;
+      if (items.length > 0) {
+        items.forEach((item: any) => {
+          cost += getRealOrEstimatedCost(item.name || '', item.price || rev, item.isByog || o.isByog, item.quantity || 1);
+        });
+      } else {
+        cost = o.isByog ? 12 : Math.round(rev * 0.35);
+      }
+      const prof = Math.max(0, rev - cost);
 
-  // Clean, modern chart color palette
-  const STATUS_PALETTE = ['#a855f7', '#6366f1', '#10b981', '#fbbf24', '#06b6d4', '#f43f5e'];
+      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: 0, profit: 0 };
+      dailyMap[key].revenue += rev;
+      dailyMap[key].profit += prof;
+    });
 
-  const CustomCurrencyTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#1e293b]/95 border border-border-glass p-3 rounded-xl shadow-lg text-xs">
-          <p className="text-text-dim m-0 font-semibold mb-1">{label}</p>
-          {payload.map((p: any, idx: number) => (
-            <p key={idx} className="font-bold m-0 text-white">
-              {p.name}: <strong className="text-emerald-400">₱{parseFloat(p.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const CustomCountTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#1e293b]/95 border border-border-glass p-3 rounded-xl shadow-lg text-xs">
-          <p className="text-text-dim m-0 font-semibold mb-1">{label}</p>
-          {payload.map((p: any, idx: number) => (
-            <p key={idx} className="font-bold m-0 text-white">
-              {p.name}: <strong className="text-primary">{p.value}</strong>
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const inventoryAlerts = (biData?.suggestions || []).filter(
-    (s: any) => s.category === 'Inventory' || s.severity === 'critical' || s.severity === 'warning'
-  );
+    const entries = Object.values(dailyMap);
+    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: netProfit }];
+    return entries;
+  }, [filteredOrders, totalRevenue, netProfit, inventoryCostMap]);
 
   return (
-    <section className="animate-fade flex flex-col min-h-full text-left font-sans pb-10">
-      {/* Header */}
-      <header className="mb-6 flex flex-col">
-        <h1 className="text-3xl font-extrabold mb-1 tracking-tight text-text-main">Business Analytics</h1>
-        <p className="text-text-dim text-sm m-0">
-          Core sales revenue, order fulfillment distribution, and design popularity.
-        </p>
-      </header>
-
-      {/* 4 Clean Minimal KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Card 1: Total Realized Sales */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col text-left">
-          <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">Total Sales</span>
-          <span className="text-2xl font-black text-emerald-400 mt-1.5 font-mono">
-            ₱{parseFloat(analytics.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-xs text-text-dim mt-1">Across all completed orders</span>
+    <section className="flex flex-col min-h-full text-left font-sans pb-16 max-w-6xl mx-auto">
+      {/* Compact Top Filter Toolbar */}
+      <div className="mb-4 flex items-center justify-start gap-3 flex-wrap">
+        {/* Tactile Time Frame Selector */}
+        <div className="flex bg-bg-surface border border-border-glass rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setTimeRange('today')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+              timeRange === 'today'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeRange('week')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+              timeRange === 'week'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main'
+            }`}
+          >
+            This Week
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeRange('month')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+              timeRange === 'month'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main'
+            }`}
+          >
+            This Month
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeRange('all')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+              timeRange === 'all'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main'
+            }`}
+          >
+            All Time
+          </button>
         </div>
 
-        {/* Card 2: Active Pipeline Value */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col text-left">
-          <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">Active Queue Value</span>
-          <span className="text-2xl font-black text-primary mt-1.5 font-mono">
-            ₱{activeQueueValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-xs text-text-dim mt-1">{activeOrdersCount} order{activeOrdersCount === 1 ? '' : 's'} in progress</span>
-        </div>
-
-        {/* Card 3: Average Order Value */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col text-left">
-          <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">Average Order Value</span>
-          <span className="text-2xl font-black text-indigo-400 mt-1.5 font-mono">
-            ₱{avgOrderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-xs text-text-dim mt-1">Per transaction average</span>
-        </div>
-
-        {/* Card 4: Total Orders */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col text-left">
-          <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider">Total Orders</span>
-          <span className="text-2xl font-black text-purple-400 mt-1.5">
-            {(analytics.totalOrders || 0).toLocaleString()}
-          </span>
-          <span className="text-xs text-text-dim mt-1">{totalVisits.toLocaleString()} 30-day visits</span>
-        </div>
-      </div>
-
-      {/* Main Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        
-        {/* Chart 1: Monthly Revenue Trend */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col h-[360px]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-main m-0 uppercase tracking-wider">Monthly Revenue (PHP)</h3>
-            <span className="text-xs text-text-dim">Last 6 Months</span>
-          </div>
-          <div className="flex-1 w-full text-xs text-text-dim font-medium">
-            {trendsData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-text-dim italic">No sales recorded yet.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="name" stroke="var(--text-dim)" tick={{ fontSize: 11 }} />
-                  <YAxis 
-                    stroke="var(--text-dim)" 
-                    tickFormatter={(v) => `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} 
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip content={<CustomCurrencyTooltip />} />
-                  <Area
-                    name="Revenue"
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#revenueFill)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Chart 2: Order Status Distribution */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col h-[360px]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-main m-0 uppercase tracking-wider">Order Status Distribution</h3>
-            <span className="text-xs text-text-dim">Active &amp; Delivered</span>
-          </div>
-          <div className="flex-1 w-full text-xs text-text-dim font-medium flex items-center justify-center">
-            {pieData.length === 0 ? (
-              <div className="text-text-dim italic">No orders cataloged.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {pieData.map((_entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={STATUS_PALETTE[index % STATUS_PALETTE.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomCountTooltip />} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Chart 3: Top Ordered Stitched Designs */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col h-[360px]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-main m-0 uppercase tracking-wider">Top Ordered Stitched Items</h3>
-            <span className="text-xs text-text-dim">By Quantity Ordered</span>
-          </div>
-          <div className="flex-1 w-full text-xs text-text-dim font-medium">
-            {topOrderedData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-text-dim italic">No custom designs ordered yet.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topOrderedData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="var(--text-dim)" 
-                    tick={{ fontSize: 10 }}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                  />
-                  <YAxis stroke="var(--text-dim)" tick={{ fontSize: 11 }} />
-                  <Tooltip content={<CustomCountTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar name="Units Ordered" dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]}>
-                    {topOrderedData.map((_entry: any, index: number) => (
-                      <Cell key={`bar-${index}`} fill={STATUS_PALETTE[(index + 1) % STATUS_PALETTE.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Chart 4: Most Favorited Designs */}
-        <div className="glass-card p-5 border border-border-glass rounded-2xl flex flex-col h-[360px]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-text-main m-0 uppercase tracking-wider">Most Favorited Designs</h3>
-            <span className="text-xs text-text-dim">Customer Wishlists</span>
-          </div>
-          <div className="flex-1 w-full text-xs text-text-dim font-medium">
-            {topLikedData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-text-dim italic">No customer favorites recorded yet.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topLikedData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="var(--text-dim)" 
-                    tick={{ fontSize: 10 }}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                  />
-                  <YAxis stroke="var(--text-dim)" tick={{ fontSize: 11 }} />
-                  <Tooltip content={<CustomCountTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar name="Favorites Count" dataKey="count" fill="#f43f5e" radius={[6, 6, 0, 0]}>
-                    {topLikedData.map((_entry: any, index: number) => (
-                      <Cell key={`fav-bar-${index}`} fill={STATUS_PALETTE[(index + 3) % STATUS_PALETTE.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Optional: Compact Inventory & Material Alerts (Only shown when actual alerts exist) */}
-      {inventoryAlerts.length > 0 && (
-        <div className="glass-card p-5 border border-amber-500/20 bg-amber-500/[0.03] rounded-2xl flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <h3 className="text-sm font-bold text-text-main m-0">Inventory &amp; Thread Stock Alerts</h3>
-            <span className="text-[10px] bg-amber-500/15 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30 ml-auto">
-              {inventoryAlerts.length} Action{inventoryAlerts.length === 1 ? '' : 's'} Required
+        <div className="flex items-center gap-2">
+          {hasRealCosts ? (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 whitespace-nowrap flex items-center gap-1">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Real Costs Active</span>
             </span>
-          </div>
+          ) : (
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white/10 text-text-dim border border-border-glass whitespace-nowrap" title="Set supplier costs in Raw Materials to get accurate profit">
+              Estimated Costs
+            </span>
+          )}
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-            {inventoryAlerts.map((s: any) => {
-              const isExecuting = executingId === s.id;
-              return (
-                <div key={s.id} className="bg-white/5 border border-border-glass p-3.5 rounded-xl flex flex-col justify-between gap-3 text-left">
-                  <div>
-                    <span className="font-bold text-xs text-text-main block">{s.title}</span>
-                    <p className="text-[11px] text-text-dim m-0 mt-1 leading-relaxed">{s.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-auto">
-                    {s.action && (
-                      <button
-                        type="button"
-                        onClick={() => handleExecuteAction(s)}
-                        disabled={isExecuting || !!executingId}
-                        className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {isExecuting ? 'Applying...' : s.actionText || 'Resolve'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeclineAction(s.id)}
-                      disabled={isExecuting || !!executingId}
-                      className="text-xs font-semibold bg-white/5 hover:bg-white/10 text-text-dim px-2.5 py-1.5 rounded-lg cursor-pointer transition-all active:scale-95"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+      {/* Primary Financial Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {/* Card 1: Net Take-Home Profit (The Main Number) */}
+        <div className="bg-bg-surface border border-emerald-500/30 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                Net Take-Home Profit
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-400/90 bg-emerald-500/10 px-2 py-0.5 rounded">
+                {profitMargin}% Margin
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight mt-1">
+              ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="text-[11px] text-text-dim mt-3 pt-2.5 border-t border-border-glass">
+            Revenue (₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}) − Supplies (₱{estimatedMaterialCosts.toLocaleString(undefined, { minimumFractionDigits: 2 })})
           </div>
         </div>
-      )}
+
+        {/* Card 2: Gross Sales Collected */}
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold text-text-dim uppercase tracking-wider mb-1">
+              Gross Sales Collected
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-text-main font-mono tracking-tight mt-1">
+              ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="text-[11px] text-text-dim mt-3 pt-2.5 border-t border-border-glass flex justify-between">
+            <span>Orders Handled:</span>
+            <strong className="text-text-main font-mono">{filteredOrders.length} orders</strong>
+          </div>
+        </div>
+
+        {/* Card 3: Material & Garment Blank Costs */}
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold text-text-dim uppercase tracking-wider mb-1">
+              Garment &amp; Supplies Cost
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-text-main font-mono tracking-tight mt-1">
+              ₱{estimatedMaterialCosts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="text-[11px] text-text-dim mt-3 pt-2.5 border-t border-border-glass flex justify-between">
+            <span>Purchased blanks &amp; thread spools</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Register Drawer Reconciliation & Machine Output */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {/* Cash in Register */}
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+          <div className="text-xs text-text-dim font-medium">Physical Cash in Drawer</div>
+          <div className="text-xl font-bold text-text-main font-mono mt-1">
+            ₱{paymentBreakdown.cashTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-[11px] text-text-dim mt-1">
+            Count in cash box at closing ({paymentBreakdown.cashCount} transactions)
+          </div>
+        </div>
+
+        {/* GCash Digital Wallet */}
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+          <div className="text-xs text-text-dim font-medium">GCash Received (Digital)</div>
+          <div className="text-xl font-bold text-blue-400 font-mono mt-1">
+            ₱{paymentBreakdown.gcashTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-[11px] text-text-dim mt-1">
+            Verified in merchant account ({paymentBreakdown.gcashCount} transactions)
+          </div>
+        </div>
+
+        {/* Machine Output */}
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+          <div className="text-xs text-text-dim font-medium">Single Machine Workload</div>
+          <div className="text-xl font-bold text-text-main font-mono mt-1">
+            {completedOrders.length} Finished
+          </div>
+          <div className="text-[11px] text-text-dim mt-1">
+            {activeOrders.length} currently active on the floor
+          </div>
+        </div>
+      </div>
+
+      {/* Clean Category Breakdown Table */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-5 mb-6 shadow-sm">
+        <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-glass">
+          <div>
+            <h2 className="text-sm font-bold text-text-main m-0">Profit Breakdown by Product &amp; Service</h2>
+            <p className="text-xs text-text-dim m-0 mt-0.5">Where your profit was made during this period</p>
+          </div>
+          <span className="text-xs text-text-dim font-mono">{categoryPerformance.length} Active Categories</span>
+        </div>
+
+        {categoryPerformance.length === 0 ? (
+          <div className="py-8 text-center text-xs text-text-dim">
+            No orders recorded in this time window.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-border-glass text-text-dim font-semibold">
+                  <th className="py-2.5 px-3">Service / Garment</th>
+                  <th className="py-2.5 px-3 text-right">Units</th>
+                  <th className="py-2.5 px-3 text-right">Total Sales</th>
+                  <th className="py-2.5 px-3 text-right">Supply Cost</th>
+                  <th className="py-2.5 px-3 text-right font-bold text-text-main">Net Profit</th>
+                  <th className="py-2.5 px-3 text-right">Margin</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-glass">
+                {categoryPerformance.map((item, idx) => {
+                  const marginPct = item.revenue > 0 ? Math.round((item.profit / item.revenue) * 100) : 0;
+                  return (
+                    <tr key={idx} className="hover:bg-white/5 transition">
+                      <td className="py-2.5 px-3 font-semibold text-text-main">
+                        {item.category}
+                        {item.category.includes('BYOG') && (
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-normal">
+                            Zero blank cost
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-text-dim">{item.units} pcs</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-text-main">
+                        ₱{item.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-amber-400/90">
+                        ₱{item.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                        ₱{item.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-text-main">
+                        {marginPct}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Revenue & Profit Timeline Curve */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-5 shadow-sm">
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h2 className="text-sm font-bold text-text-main m-0">Earnings Trend</h2>
+            <p className="text-xs text-text-dim m-0 mt-0.5">Daily sales and estimated profit for the period</p>
+          </div>
+        </div>
+
+        <div className="h-56 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" stroke="#888888" tick={{ fontSize: 11 }} />
+              <YAxis
+                stroke="#888888"
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => `₱${v}`}
+              />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-bg-surface border border-border-glass p-2.5 rounded-lg shadow-lg text-xs font-mono">
+                        <div className="text-text-dim mb-1 font-sans">{label}</div>
+                        <div className="text-emerald-400 font-bold">
+                          Profit: ₱{parseFloat(payload[0]?.value as any || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </div>
+                        {payload[1] && (
+                          <div className="text-text-main">
+                            Revenue: ₱{parseFloat(payload[1]?.value as any || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area
+                name="Profit"
+                type="monotone"
+                dataKey="profit"
+                stroke="#10b981"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#profitGrad)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </section>
   );
 }

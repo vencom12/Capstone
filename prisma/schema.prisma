@@ -128,13 +128,14 @@ model Order {
 }
 
 model Inventory {
-  id            String   @id @default(uuid())
-  item          String   @unique
-  count         Int      @default(0)
-  reservedCount Int      @default(0)
-  unit          String   @default("Cones")
-  minThreshold  Int      @default(10)
-  lastUpdated   DateTime @default(now()) @updatedAt
+  id               String   @id @default(uuid())
+  item             String   @unique
+  count            Int      @default(0)
+  reservedCount    Int      @default(0)
+  unit             String   @default("Cones")
+  minThreshold     Int      @default(10)
+  supplierUnitCost Float?   // Actual cost paid to supplier per unit (for real profit calculation)
+  lastUpdated      DateTime @default(now()) @updatedAt
 
   logs           InventoryLog[]
   purchaseOrders PurchaseOrder[]

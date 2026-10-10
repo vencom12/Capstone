@@ -64,7 +64,31 @@ export async function apiFetch<T = unknown>(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => {
+    try {
+      controller.abort(new DOMException('Request timed out after 30000ms', 'AbortError'));
+    } catch {
+      controller.abort();
+    }
+  }, 30000);
+
+  if (options.signal) {
+    if (options.signal.aborted) {
+      try {
+        controller.abort(options.signal.reason);
+      } catch {
+        controller.abort();
+      }
+    } else {
+      options.signal.addEventListener('abort', () => {
+        try {
+          controller.abort(options.signal?.reason);
+        } catch {
+          controller.abort();
+        }
+      }, { once: true });
+    }
+  }
 
   try {
     let response: Response;
@@ -86,6 +110,7 @@ export async function apiFetch<T = unknown>(
           signal: controller.signal,
         });
       } else {
+        clearTimeout(timeout);
         throw fetchErr;
       }
     }
@@ -108,6 +133,30 @@ export async function apiFetch<T = unknown>(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
+
+      // Security Auto-Eject: On 401 Unauthorized (invalid, missing, or expired token)
+      if (response.status === 401 && !url.includes('/api/auth/login')) {
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('stitch-session-active');
+            sessionStorage.removeItem('stitch-admin-tab');
+            sessionStorage.removeItem('stitch-employee-tab');
+            sessionStorage.removeItem('stitch-auth');
+            localStorage.removeItem('stitch-auth');
+
+            const authStore = (window as any).__stitch_auth_store;
+            if (authStore?.getState) {
+              authStore.getState().logout?.();
+            }
+          } catch {}
+
+          const pathname = window.location.pathname;
+          if (pathname.startsWith('/admin') || pathname.startsWith('/employee') || pathname.startsWith('/dashboard')) {
+            window.location.replace('/?auth=login');
+          }
+        }
+      }
+
       throw new Error(error.message || `HTTP ${response.status}`);
     }
 
@@ -170,5 +219,19 @@ export const api = {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(blobUrl);
+  },
+
+  getBlob: async (url: string): Promise<Blob> => {
+    const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+    const response = await fetch(fullUrl, {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-Token': _csrfToken || '',
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) throw new Error(`Failed to load document: ${response.statusText}`);
+    return await response.blob();
   }
 };

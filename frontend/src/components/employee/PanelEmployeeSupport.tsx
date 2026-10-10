@@ -310,19 +310,11 @@ export default function PanelEmployeeSupport() {
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left gap-6 pb-8">
-      {/* Header */}
-      <header className="dash-header flex justify-between items-center flex-wrap gap-4 border-b border-border-glass pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="dash-title">Workshop Support & Helpdesk</h1>
-            <span className="text-[0.7rem] px-2.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30 uppercase tracking-wider">
-              Real-Time Workshop
-            </span>
-          </div>
-          <p className="dash-subtitle">
-            Manage customer feedback reviews, report machine breakdowns to maintenance, and access dynamic shop escalations.
-          </p>
-        </div>
+      {/* Compact Top Action Toolbar */}
+      <div className="flex justify-start items-center flex-wrap gap-3 pb-2 border-b border-border-glass">
+        <span className="text-[0.7rem] px-2.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30 uppercase tracking-wider">
+          Real-Time Workshop Support
+        </span>
 
         <div className="flex items-center gap-2">
           {activeMainTab === 'maintenance' && (
@@ -360,7 +352,7 @@ export default function PanelEmployeeSupport() {
             <span>{isSyncing ? 'Syncing...' : 'Sync Data'}</span>
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Main Tab Navigation Switcher */}
       <div className="flex border-b border-border-glass gap-2 pb-1">

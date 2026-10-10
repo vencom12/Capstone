@@ -25,7 +25,9 @@ export default function AuthModal() {
   
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const isSubmitting = isFormSubmitting || isGoogleSubmitting;
 
   // Alternate views: normal login/register, forgot-password, or first-time Google password setup
   const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
@@ -47,7 +49,18 @@ export default function AuthModal() {
     }
   }, [authParam, isAuthenticated, setAuthOpen]);
 
+  // Reset submitting state and views whenever modal visibility changes
+  useEffect(() => {
+    if (!isAuthOpen) {
+      setIsFormSubmitting(false);
+      setIsGoogleSubmitting(false);
+      setView('main');
+    }
+  }, [isAuthOpen]);
+
   const handleClose = () => {
+    setIsFormSubmitting(false);
+    setIsGoogleSubmitting(false);
     setAuthOpen(false);
     setView('main');
     setForgotSent(false);
@@ -59,11 +72,79 @@ export default function AuthModal() {
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up
+  // Handle 1-Click Google Sign-In & Sign-Up with Instant Popup-Close Detection
   const handleGoogleSignIn = async () => {
-    setIsSubmitting(true);
+    if (isSubmitting) return;
+    setIsGoogleSubmitting(true);
+
+    let popupWindow: Window | null = null;
+    let isFinished = false;
+    let pollInterval: any = null;
+    let focusHandler: any = null;
+
+    const cleanup = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      if (focusHandler && typeof window !== 'undefined') {
+        window.removeEventListener('focus', focusHandler);
+      }
+    };
+
+    // Watchdog Timer: Auto-release loading state after 15s max if completely hung
+    const watchdogTimer = setTimeout(() => {
+      if (!isFinished) {
+        isFinished = true;
+        cleanup();
+        setIsGoogleSubmitting(false);
+      }
+    }, 15000);
+
+    // Fast Popup-Close Detector:
+    // Firebase Auth has a built-in 3,000ms delay before rejecting auth/popup-closed-by-user.
+    // By hooking window.open temporarily, we capture the popup reference and poll .closed every 100ms.
+    // As soon as the user closes the popup, we reset the loading state in ~100ms instead of 3 seconds.
+    if (typeof window !== 'undefined') {
+      const originalWindowOpen = window.open;
+      window.open = function (...args) {
+        const win = originalWindowOpen.apply(this, args);
+        popupWindow = win;
+        window.open = originalWindowOpen; // Restore immediately
+        return win;
+      };
+
+      const checkPopupClosed = () => {
+        if (isFinished) return;
+        try {
+          if (popupWindow && popupWindow.closed) {
+            // Popup closed by user. Wait 200ms to allow OAuth completion handshake if login succeeded
+            setTimeout(() => {
+              if (!isFinished && !auth.currentUser) {
+                isFinished = true;
+                cleanup();
+                clearTimeout(watchdogTimer);
+                setIsGoogleSubmitting(false);
+                showToast('Google sign-in was cancelled.', 'info');
+              }
+            }, 200);
+          }
+        } catch {
+          // Cross-origin access restriction fallback
+        }
+      };
+
+      pollInterval = setInterval(checkPopupClosed, 100);
+
+      focusHandler = () => {
+        // When parent window regains focus, user likely closed the popup window
+        setTimeout(checkPopupClosed, 100);
+      };
+      window.addEventListener('focus', focusHandler);
+    }
+
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      isFinished = true;
+      cleanup();
+      clearTimeout(watchdogTimer);
       const user = result.user;
       
       if (!user.email) {
@@ -103,9 +184,13 @@ export default function AuthModal() {
         showToast(res.message || 'Google sign-in failed on server.', 'error');
       }
     } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        showToast('Sign-in popup was closed.', 'info');
+      if (isFinished) return; // Already handled by instant detector
+      isFinished = true;
+      cleanup();
+      clearTimeout(watchdogTimer);
+      console.warn('Google Sign-In Notice:', err);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        showToast('Google sign-in was cancelled.', 'info');
       } else if (err.code === 'auth/popup-blocked') {
         showToast('Sign-in popup was blocked by browser. Please allow popups.', 'error');
       } else if (err.code === 'auth/unauthorized-domain') {
@@ -114,7 +199,9 @@ export default function AuthModal() {
         showToast(err.message || 'Failed to sign in with Google.', 'error');
       }
     } finally {
-      setIsSubmitting(false);
+      cleanup();
+      clearTimeout(watchdogTimer);
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -131,7 +218,7 @@ export default function AuthModal() {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsFormSubmitting(true);
     try {
       const res = await register(
         username.trim(),
@@ -150,7 +237,7 @@ export default function AuthModal() {
     } catch (err: any) {
       showToast(err.message || 'Registration error occurred.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsFormSubmitting(false);
     }
   };
 
@@ -162,7 +249,7 @@ export default function AuthModal() {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsFormSubmitting(true);
     try {
       const res = await login(email.trim(), password, rememberMe);
       
@@ -185,7 +272,7 @@ export default function AuthModal() {
     } catch {
       showToast('An unexpected error occurred during sign-in.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsFormSubmitting(false);
     }
   };
 
@@ -201,14 +288,14 @@ export default function AuthModal() {
       showToast('Please enter the email address of your account.', 'error');
       return;
     }
-    setIsSubmitting(true);
+    setIsFormSubmitting(true);
     try {
       await forgotPassword(target.toLowerCase());
       setForgotSent(true);
     } catch (err: any) {
       showToast(err.message || 'Could not send reset email.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsFormSubmitting(false);
     }
   };
 
@@ -223,7 +310,7 @@ export default function AuthModal() {
       showToast('Passwords do not match.', 'error');
       return;
     }
-    setIsSubmitting(true);
+    setIsFormSubmitting(true);
     try {
       const res = await completeGoogleSignup(googleSetup.token, newPassword, googleSetup.username);
       if (res.success) {
@@ -235,7 +322,7 @@ export default function AuthModal() {
         showToast(res.message || 'Could not finish sign-up.', 'error');
       }
     } finally {
-      setIsSubmitting(false);
+      setIsFormSubmitting(false);
     }
   };
 
@@ -260,7 +347,7 @@ export default function AuthModal() {
                 <input type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
               </div>
               <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
-                {isSubmitting ? 'Sending...' : 'Send Reset Link'}
+                {isFormSubmitting ? 'Sending...' : 'Send Reset Link'}
               </GlassButton>
             </form>
           )}
@@ -300,7 +387,7 @@ export default function AuthModal() {
               <span>Show password</span>
             </label>
             <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Account...' : 'Create Account'}
+              {isFormSubmitting ? 'Creating Account...' : 'Create Account'}
             </GlassButton>
           </form>
           <button type="button" onClick={handleClose} className="bg-transparent border-none text-text-dim hover:underline cursor-pointer p-0 text-xs">
@@ -438,7 +525,7 @@ export default function AuthModal() {
             className="mt-2 font-bold text-sm tracking-wide shadow-sm"
             disabled={isSubmitting}
           >
-            {isSubmitting 
+            {isFormSubmitting 
               ? (mode === 'login' ? 'Signing In...' : 'Creating Account...') 
               : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </GlassButton>
@@ -459,13 +546,22 @@ export default function AuthModal() {
           disabled={isSubmitting}
           className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
-            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z" />
-            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15Z" />
-            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z" />
-          </svg>
-          <span>{mode === 'login' ? 'Continue with Google' : 'Sign Up with Google'}</span>
+          {isGoogleSubmitting ? (
+            <>
+              <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span>Connecting with Google...</span>
+            </>
+          ) : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z" />
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15Z" />
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z" />
+              </svg>
+              <span>{mode === 'login' ? 'Continue with Google' : 'Sign Up with Google'}</span>
+            </>
+          )}
         </button>
 
         <div className="text-center pt-1 border-t border-border-glass flex flex-col gap-2">

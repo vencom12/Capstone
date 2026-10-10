@@ -35,7 +35,7 @@ exports.getDashboardState = async (req, res) => {
         const revenueAggregate = await prisma.order.aggregate({
             _sum: { totalAmount: true },
             _count: { id: true },
-            where: { 
+            where: {
                 NOT: { status: 'Order Canceled' }
             }
         });
@@ -120,13 +120,13 @@ exports.getDashboardState = async (req, res) => {
                 lowStock: inventory.filter(i => i.count <= (i.minThreshold || 10)).length,
                 totalOrders: revenueAggregate._count.id || 0,
                 totalVisits: totalVisits30D || 0,
-                avgOrderValue: (revenueAggregate._count.id > 0) 
-                    ? (revenueAggregate._sum.totalAmount / revenueAggregate._count.id) 
+                avgOrderValue: (revenueAggregate._count.id > 0)
+                    ? (revenueAggregate._sum.totalAmount / revenueAggregate._count.id)
                     : 0,
                 orderTrends,
                 statusDistribution,
                 topOrdered: designStats,
-                topLiked: topLiked, 
+                topLiked: topLiked,
                 traffic: trafficData
             }
         });
@@ -369,12 +369,12 @@ exports.createProduct = async (req, res) => {
         const embedding = await generateEmbedding(`${name} ${formattedTag} ${description || ''}`);
 
         const newProduct = await prisma.product.create({
-            data: { 
-                name, 
-                price: parseFloat(price), 
-                tag: formattedTag, 
-                description, 
-                imageUrl, 
+            data: {
+                name,
+                price: parseFloat(price),
+                tag: formattedTag,
+                description,
+                imageUrl,
                 recipe,
                 variants,
                 count: count !== undefined ? parseInt(count) : 0,
@@ -401,7 +401,7 @@ exports.updateProduct = async (req, res) => {
     try {
         const { name, price, tag, description, count, minThreshold } = req.body;
         const updateData = {};
-        
+
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = parseFloat(price);
         if (tag !== undefined) updateData.tag = formatCategoryTag(tag);
@@ -480,8 +480,8 @@ exports.deleteProduct = async (req, res) => {
 
 exports.updateInventoryItem = async (req, res) => {
     try {
-        const { count, minThreshold, action, amount, userId, item, unit } = req.body;
-        
+        const { count, minThreshold, action, amount, userId, item, unit, supplierUnitCost } = req.body;
+
         // Find existing to know what changed
         const existing = await prisma.inventory.findUnique({ where: { id: req.params.id } });
         if (!existing) return res.status(404).json({ message: 'Item not found' });
@@ -503,6 +503,10 @@ exports.updateInventoryItem = async (req, res) => {
             if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
             if (item !== undefined) updateData.item = item;
             if (unit !== undefined) updateData.unit = unit;
+            // Allow admins to set/update the actual supplier cost per unit
+            if (supplierUnitCost !== undefined) {
+                updateData.supplierUnitCost = supplierUnitCost === '' || supplierUnitCost === null ? null : parseFloat(supplierUnitCost);
+            }
         }
 
         let newCount = existing.count;
@@ -533,21 +537,59 @@ exports.updateInventoryItem = async (req, res) => {
 
         // Create audit log if an action was provided
         if (action && amount !== undefined) {
+            const operator = req.user?.username || userId || 'Admin';
+            const logParts = [operator];
+            if (req.body.supplier) logParts.push(`Supplier: ${req.body.supplier}`);
+            if (req.body.deliveryReceipt) logParts.push(`DR#: ${req.body.deliveryReceipt}`);
+            if (req.body.dyeLot) logParts.push(`Lot: ${req.body.dyeLot}`);
+
+            const fullLogUser = logParts.join(' | ');
+
             await prisma.inventoryLog.create({
                 data: {
                     inventoryId: inventory.id,
                     action: action,
                     amount: parseInt(amount),
                     newTotal: inventory.count,
-                    userId: userId || req.user?.username || 'Admin'
+                    userId: fullLogUser
                 }
             });
+
+            // If this was a formal supplier intake, also write to GlobalAuditLog
+            if (req.body.supplier || req.body.deliveryReceipt) {
+                await prisma.globalAuditLog.create({
+                    data: {
+                        userId: req.user?.id || 'staff',
+                        userRole: req.user?.role || 'staff',
+                        action: 'SUPPLIER_SHIPMENT_RECEIVED',
+                        entity: 'Inventory',
+                        entityId: inventory.id,
+                        ipAddress: req.ip || '127.0.0.1',
+                        diff: {
+                            item: inventory.item,
+                            deliveredQuantity: parseInt(amount),
+                            previousCount: existing.count,
+                            newCount: inventory.count,
+                            supplier: req.body.supplier || 'N/A',
+                            deliveryReceipt: req.body.deliveryReceipt || 'N/A',
+                            dyeLot: req.body.dyeLot || null,
+                            unitCost: req.body.unitCost || null,
+                            notes: req.body.notes || null
+                        }
+                    }
+                }).catch(err => console.error("Global audit log fail:", err));
+            }
+
             // Emit log update to clients
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, 'INVENTORY_LOG', {});
         }
 
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, inventory);
-        res.json(inventory);
+        res.json({
+            ...inventory,
+            receivedDelivery: !!(req.body.supplier || req.body.deliveryReceipt),
+            addedAmount: amount ? parseInt(amount) : 0
+        });
     } catch (err) {
         console.error("Error updating inventory:", err);
         res.status(500).json({ message: 'Error updating inventory' });
@@ -556,7 +598,7 @@ exports.updateInventoryItem = async (req, res) => {
 
 exports.createInventoryItem = async (req, res) => {
     try {
-        const { item, count, unit, minThreshold } = req.body;
+        const { item, count, unit, minThreshold, supplierUnitCost } = req.body;
         if (!item) return res.status(400).json({ message: 'Item name is required' });
 
         const inventory = await prisma.inventory.create({
@@ -564,7 +606,8 @@ exports.createInventoryItem = async (req, res) => {
                 item,
                 count: parseInt(count) || 0,
                 unit: unit || 'Cones',
-                minThreshold: parseInt(minThreshold) || 10
+                minThreshold: parseInt(minThreshold) || 10,
+                supplierUnitCost: supplierUnitCost ? parseFloat(supplierUnitCost) : null
             }
         });
 
@@ -583,8 +626,8 @@ exports.createInventoryItem = async (req, res) => {
         res.json(inventory);
     } catch (err) {
         console.error("Error creating inventory item:", err);
-        res.status(500).json({ 
-            message: 'Error creating inventory item', 
+        res.status(500).json({
+            message: 'Error creating inventory item',
             error: err.message,
             code: err.code // Prisma error codes (e.g., P2002 for unique constraint)
         });
@@ -652,32 +695,57 @@ exports.updateOrdersStatus = async (req, res) => {
             }
         }
 
-        // Broadcast changes
+        // Broadcast immediate order change to staff
         const io = req.app.get('io');
         io.to('staff').emit('ordersUpdated');
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status });
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-        const productsList = await prisma.product.findMany();
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const enrichedProducts = await enrichProductsWithStock(productsList);
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
-        // Recalculate AI Queue priorities asynchronously
-        const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
-        setImmediate(() => {
-            recalculateQueuePriorities(io).catch(err => {
-                console.error('[AI Queue Background Error] Recalculation failed:', err);
-            });
-        });
-
+        // Respond immediately to the client (<25ms) so the UI is unblocked
         if (errors.length > 0) {
-            return res.json({
-                message: `Processed ${results.length - errors.length} orders successfully. ${errors.length} orders had insufficient base garment stock and were routed to the Hold Queue.`,
-                errors
+            res.json({
+                message: `Processed ${results.length - errors.length} orders successfully. ${errors.length} orders had insufficient stock and were routed to Hold Queue.`,
+                errors,
+                results
             });
+        } else {
+            res.json({ message: 'Orders updated successfully', results });
         }
 
-        res.json({ message: 'Orders updated successfully', results });
+        // Run secondary table broadcasts, AI scheduler recalculation, and emails non-blocking in background
+        setImmediate(async () => {
+            try {
+                // Secondary socket broadcasts for full tables
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+                const productsList = await prisma.product.findMany();
+                const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+                const enrichedProducts = await enrichProductsWithStock(productsList);
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
+
+                // Recalculate AI Queue priorities asynchronously
+                const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+                recalculateQueuePriorities(io).catch(err => {
+                    console.error('[AI Queue Background Error] Recalculation failed:', err);
+                });
+
+                // Send order ready / in-transit email notifications asynchronously
+                const NOTIFY_STATUSES = ['ready for pick up', 'ready for pickup', 'in transit', 'out for delivery', 'order delivered'];
+                if (NOTIFY_STATUSES.includes(status?.toLowerCase())) {
+                    const { sendOrderStatusReadyEmail } = require('../../utils/emailService');
+                    results.forEach(updatedOrder => {
+                        if (!updatedOrder || !updatedOrder.userId) return;
+                        prisma.user.findUnique({ where: { id: updatedOrder.userId } }).then(cust => {
+                            if (cust && cust.email) {
+                                sendOrderStatusReadyEmail(cust.email, cust.username || cust.name, updatedOrder, status).catch(err => {
+                                    console.error('[EmailService] Ready email failed:', err.message);
+                                });
+                            }
+                        }).catch(() => {});
+                    });
+                }
+            } catch (bgErr) {
+                console.error('[Background Broadcast Error]:', bgErr);
+            }
+        });
     } catch (err) {
         console.error('Update Orders Error:', err);
         res.status(500).json({ message: 'Error updating order status' });
@@ -772,7 +840,7 @@ exports.deleteInventoryItem = async (req, res) => {
     try {
         const { id } = req.params;
         await prisma.inventory.delete({ where: { id } });
-        
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', await prisma.inventory.findMany());
         res.json({ message: 'Inventory item deleted' });
     } catch (err) {
@@ -812,18 +880,18 @@ exports.testAISettings = async (req, res) => {
         const apiKey = process.env.GROQ_API_KEY;
 
         if (!apiKey) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "No GROQ_API_KEY registered in environment. Cannot verify dynamic connection pings." 
+            return res.status(400).json({
+                success: false,
+                message: "No GROQ_API_KEY registered in environment. Cannot verify dynamic connection pings."
             });
         }
 
         const fetch = global.fetch || require('node-fetch');
         const response = await fetch(aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${apiKey}`, 
-                'Content-Type': 'application/json' 
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: aiChatModel || 'llama-3.3-70b-versatile',
@@ -833,7 +901,7 @@ exports.testAISettings = async (req, res) => {
         });
 
         const data = await response.json();
-        
+
         if (response.ok && data.choices && data.choices[0]) {
             res.json({
                 success: true,
@@ -849,9 +917,9 @@ exports.testAISettings = async (req, res) => {
         }
     } catch (err) {
         console.error('Test AI settings error:', err);
-        res.status(500).json({ 
-            success: false, 
-            message: `Connection diagnostic error: ${err.message}` 
+        res.status(500).json({
+            success: false,
+            message: `Connection diagnostic error: ${err.message}`
         });
     }
 };
@@ -859,7 +927,7 @@ exports.testAISettings = async (req, res) => {
 exports.downloadShoppingListPdf = async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');
-        
+
         // Fetch all inventory items
         const inventory = await prisma.inventory.findMany();
         const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
@@ -873,9 +941,11 @@ exports.downloadShoppingListPdf = async (req, res) => {
         const pageHeight = Math.max(260, 160 + itemsCount * 45 + 50);
         const doc = new PDFDocument({ size: [300, pageHeight], margin: 15 });
 
-        // Set response headers for downloading a PDF file
+        // Set response headers: inline for previewing in modal/browser, attachment for forced download
         const dateStr = new Date().toISOString().split('T')[0];
-        res.setHeader('Content-disposition', `attachment; filename=STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
+        const isInline = req.query.inline === 'true' || req.query.preview === 'true' || req.query.view === 'inline';
+        const disposition = isInline ? 'inline' : 'attachment';
+        res.setHeader('Content-disposition', `${disposition}; filename=STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
         res.setHeader('Content-type', 'application/pdf');
 
         doc.pipe(res);
@@ -889,7 +959,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
         doc.moveDown(0.2);
         doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
         doc.text(`Operator: ${req.user?.username || 'Administrator'}`, { align: 'center' });
-        
+
         doc.moveDown(0.5);
         doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
         doc.moveDown(0.3);
@@ -915,9 +985,9 @@ exports.downloadShoppingListPdf = async (req, res) => {
             const name = item.item.substring(0, 17).padEnd(18);
             const current = `${item.count}`.padStart(8);
             const order = `+${suggestedOrder}`.padStart(10);
-            
+
             doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
-            
+
             // Subtext showing the safety threshold and unit details
             doc.font('Courier-Oblique').fontSize(7);
             const subtext = `  (safety limit: ${minVal} / unit: ${item.unit})`.padEnd(36);
@@ -946,7 +1016,7 @@ exports.uploadBusinessLogo = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No image provided' });
         }
-        
+
         const logoUrl = req.file.path;
 
         const updated = await prisma.systemSettings.upsert({
@@ -967,7 +1037,7 @@ exports.uploadGCashQr = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No image provided' });
         }
-        
+
         const qrUrl = req.file.path;
 
         const updated = await prisma.systemSettings.upsert({
@@ -1107,4 +1177,181 @@ exports.getOrderHistory = async (req, res) => {
         res.status(500).json({ message: 'Error retrieving archived order history', error: err.message });
     }
 };
+
+/**
+ * Creates a walk-in counter order with instant local AI queue wait estimation,
+ * ticket generation, and Cash or GCash settlement.
+ */
+exports.createWalkInOrder = async (req, res) => {
+    try {
+        const {
+            clientName,
+            clientPhone,
+            clientEmail,
+            items,
+            design,
+            totalAmount,
+            paymentMethod,
+            paymentStatus,
+            isByog,
+            isRush,
+            dueDate,
+            personalizationText,
+            threadColor,
+            notes
+        } = req.body;
+
+        const trimmedName = clientName && clientName.trim() ? clientName.trim() : '';
+        const now = new Date();
+        const randHex = Math.random().toString(16).substring(2, 6).toUpperCase();
+        const orderId = `WI-${randHex}`;
+        const secureTransactionId = `TX-WI-${Date.now().toString(36).toUpperCase()}-${randHex}`;
+        const secureReceiptId = `RC-WI-${Date.now().toString(36).toUpperCase()}-${randHex}`;
+
+        let walkInUserId = req.user?.id || 'admin';
+        // Auto-link to existing customer (e.g. Google Login account) if email or phone matches
+        if (clientEmail || clientPhone) {
+            try {
+                const searchFilters = [];
+                if (clientEmail && clientEmail.trim()) {
+                    searchFilters.push({ email: { equals: clientEmail.trim(), mode: 'insensitive' } });
+                }
+                if (clientPhone && clientPhone.trim()) {
+                    searchFilters.push({ phoneNumber: clientPhone.trim() });
+                }
+                if (searchFilters.length > 0) {
+                    const matchedUser = await prisma.user.findFirst({
+                        where: { OR: searchFilters },
+                        select: { id: true, username: true, email: true }
+                    });
+                    if (matchedUser) {
+                        walkInUserId = matchedUser.id;
+                    }
+                }
+            } catch (userMatchErr) {
+                console.warn('[Walk-In User Match Notice]:', userMatchErr.message);
+            }
+        }
+
+        const customerDisplayName = trimmedName || (personalizationText && personalizationText.trim() ? `Walk-In (${personalizationText.trim()})` : `Walk-In #${randHex}`);
+        const numTotal = parseFloat(totalAmount) || 0;
+        const isCompleted = Boolean(req.body.isAlreadyCompleted);
+        const isPaid = isCompleted || paymentStatus === 'paid' || paymentMethod === 'Cash';
+
+        const initialStatus = isPaid ? 'In Queue' : 'Pending Payment';
+        const initialProgress = isPaid ? 5 : 0;
+
+        const orderData = {
+            orderId,
+            client: customerDisplayName,
+            userId: walkInUserId,
+            design: design || 'Walk-In Embroidery',
+            items: Array.isArray(items) && items.length > 0 ? items : [{ name: design || 'Custom Embroidery', quantity: 1, price: numTotal }],
+            totalAmount: numTotal,
+            paymentMethod: paymentMethod || 'Cash',
+            paymentStatus: isPaid ? 'paid' : 'unpaid',
+            status: initialStatus,
+            address: 'Physical Store (Eds Towels & Caps Pacific Mall Lucena)',
+            deliveryTime: isCompleted ? 'Completed On-Site' : (isRush ? 'Rush Walk-In' : 'Standard Walk-In'),
+            notes: notes || (isCompleted ? 'Quick Walk-In slip punch' : 'Walk-in counter order'),
+            progress: initialProgress,
+            isByog: Boolean(isByog),
+            waiverSigned: true,
+            isRush: Boolean(isRush),
+            dueDate: dueDate ? new Date(dueDate) : null,
+            personalization: {
+                fulfillmentType: 'pickup',
+                courier: 'Store Pick-up',
+                trackingNumber: `WI-${orderId}`,
+                customerPhone: clientPhone || null,
+                customerEmail: clientEmail || null,
+                text: personalizationText || '',
+                color: threadColor || '',
+                statusHistory: [
+                    {
+                        status: initialStatus,
+                        timestamp: now.toISOString(),
+                        actor: req.user?.username || 'Shop Counter',
+                        hub: 'Eds Towels Pacific Mall Lucena Hub',
+                        note: isCompleted
+                            ? `Quick Slip Punch: Recorded completed on-site embroidery. Payment: ${paymentMethod || 'Cash'} (Paid).`
+                            : `Walk-in order registered at counter. Payment: ${paymentMethod || 'Cash'} (${isPaid ? 'Paid' : 'Unpaid'}).`
+                    }
+                ]
+            }
+        };
+
+        // Estimate production time using our local AI scheduler
+        const { estimateProductionTime, recalculateQueuePriorities } = require('../../utils/aiScheduler');
+        orderData.estimatedTime = Math.ceil(estimateProductionTime(orderData));
+
+        const createdOrder = await prisma.$transaction(async (tx) => {
+            const order = await tx.order.create({ data: orderData });
+
+            const transaction = await tx.transaction.create({
+                data: {
+                    transactionID: secureTransactionId,
+                    orderID: orderId,
+                    amount: numTotal,
+                    status: 'completed',
+                    receiptLink: `/api/customer/receipt/${secureReceiptId}/download`,
+                    receiptId: secureReceiptId,
+                    userId: walkInUserId
+                }
+            });
+
+            const receipt = await tx.receipt.create({
+                data: {
+                    receiptID: secureReceiptId,
+                    orderID: orderId,
+                    paymentMethod: paymentMethod || 'Cash',
+                    amount: numTotal,
+                    status: 'Paid',
+                    aiVerificationStatus: 'verified',
+                    userId: walkInUserId
+                }
+            });
+
+            // If the order was already physically finished by Nanay from a paper slip,
+            // immediately trigger inventory status transition so blanks & variant stock are deducted!
+            if (isCompleted) {
+                const { handleOrderStateTransition } = require('../../utils/inventoryManager');
+                await handleOrderStateTransition(tx, order.id, 'Completed', req.user?.username || 'Shop Counter');
+            }
+
+            return await tx.order.update({
+                where: { id: order.id },
+                data: { transactionId: transaction.id, receiptId: receipt.id }
+            });
+        });
+
+        // Trigger queue recalculation & socket updates
+        const io = req.app.get('io');
+        setImmediate(() => {
+            recalculateQueuePriorities(io).catch(err => {
+                console.error('[Walk-In AI Queue Error]:', err);
+            });
+        });
+
+        // If client provided email and is paid, send confirmation email
+        if (clientEmail && clientEmail.includes('@')) {
+            const { sendOrderConfirmationEmail } = require('../../utils/emailService');
+            if (typeof sendOrderConfirmationEmail === 'function') {
+                sendOrderConfirmationEmail(clientEmail, clientName, createdOrder).catch(err => {
+                    console.warn('[Walk-In Email Notice]:', err.message);
+                });
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Walk-in order created successfully and added to production queue',
+            order: createdOrder
+        });
+    } catch (err) {
+        console.error('createWalkInOrder Error:', err);
+        res.status(500).json({ message: 'Failed to create walk-in order', error: err.message });
+    }
+};
+
 

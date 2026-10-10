@@ -169,12 +169,10 @@ export default function AddressBookModal({
       // Identify default address for legacy field synchronization
       const primary = updatedList.find((a) => a.isDefault) || updatedList[0];
 
-      // Save to backend
-      const res = await api.patch<{ message: string; user: any }>('/api/customer/settings', {
-        savedAddresses: updatedList,
-        ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
-      });
+      const prevAddresses = [...addresses];
+      const prevUser = user ? { ...user } : null;
 
+      // 1. Optimistically update local and global user state immediately (0ms UI latency)
       if (user) {
         setUser({
           ...user,
@@ -188,12 +186,22 @@ export default function AddressBookModal({
       setViewMode('list');
       setEditingId(null);
 
-      // If called from checkout and we just added/edited, auto-select it
+      // If called from checkout and we just added/edited, auto-select it immediately
       if (onSelectAddress && primary) {
         onSelectAddress(editingId ? updatedList.find(a => a.id === editingId) || primary : primary);
       }
-    } catch (err: any) {
-      showToast(err?.message || 'Failed to save address', 'error');
+
+      // 2. Perform API patch in background
+      try {
+        await api.patch<{ message: string; user: any }>('/api/customer/settings', {
+          savedAddresses: updatedList,
+          ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
+        });
+      } catch (err: any) {
+        if (prevUser) setUser(prevUser);
+        setAddresses(prevAddresses);
+        showToast(err?.message || 'Failed to save address — reverted', 'error');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -206,23 +214,29 @@ export default function AddressBookModal({
     }));
     const primary = updated.find((a) => a.id === addrId);
 
+    const prevAddresses = [...addresses];
+    const prevUser = user ? { ...user } : null;
+
+    // Optimistically update default address immediately
+    if (user) {
+      setUser({
+        ...user,
+        savedAddresses: updated,
+        ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
+      });
+    }
+    setAddresses(updated);
+    showToast(`Set "${primary?.recipientName}" as default address`, 'success');
+
     try {
       await api.patch('/api/customer/settings', {
         savedAddresses: updated,
         ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
       });
-
-      if (user) {
-        setUser({
-          ...user,
-          savedAddresses: updated,
-          ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
-        });
-      }
-      setAddresses(updated);
-      showToast(`Set "${primary?.recipientName}" as default address`, 'success');
     } catch {
-      showToast('Failed to set default address', 'error');
+      if (prevUser) setUser(prevUser);
+      setAddresses(prevAddresses);
+      showToast('Failed to set default address — reverted', 'error');
     }
   };
 
@@ -241,23 +255,29 @@ export default function AddressBookModal({
     }
     const primary = filtered.find((a) => a.isDefault) || filtered[0];
 
+    const prevAddresses = [...addresses];
+    const prevUser = user ? { ...user } : null;
+
+    // Optimistically remove address from state immediately
+    if (user) {
+      setUser({
+        ...user,
+        savedAddresses: filtered,
+        ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
+      });
+    }
+    setAddresses(filtered);
+    showToast('Address removed', 'info');
+
     try {
       await api.patch('/api/customer/settings', {
         savedAddresses: filtered,
         ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
       });
-
-      if (user) {
-        setUser({
-          ...user,
-          savedAddresses: filtered,
-          ...(primary ? { address: primary.fullAddress, phoneNumber: primary.phoneNumber } : {})
-        });
-      }
-      setAddresses(filtered);
-      showToast('Address removed', 'info');
     } catch {
-      showToast('Failed to delete address', 'error');
+      if (prevUser) setUser(prevUser);
+      setAddresses(prevAddresses);
+      showToast('Failed to delete address — restored', 'error');
     }
   };
 

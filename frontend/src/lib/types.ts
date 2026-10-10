@@ -37,6 +37,9 @@ export interface ProductVariant {
   size?: string;
   imageUrl?: string;
   priceOverride?: number;
+  stock?: number; // Optional legacy field (stock is unified at product level for assorted supplies)
+  materialId?: string; // Linked blank/raw material in Inventory
+  materialName?: string; // Name of linked raw material
 }
 
 export interface Product {
@@ -74,6 +77,8 @@ export interface OrderItem {
   selectedVariant?: string;
   selectedColor?: string;
   selectedSize?: string;
+  backupVariant?: string; // 2nd choice color for assorted supply batches
+  backupColor?: string;
   personalization?: {
     text: string;
     font?: string;
@@ -164,6 +169,8 @@ export interface BasketItem {
   selectedVariant?: string;
   selectedColor?: string;
   selectedSize?: string;
+  backupVariant?: string; // 2nd choice color for assorted supply batches
+  backupColor?: string;
   personalization?: {
     text: string;
     font?: string;

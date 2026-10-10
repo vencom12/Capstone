@@ -46,6 +46,8 @@ router.get('/dashboard-state', (req, res, next) => {
 }, customerController.getDashboardState);
 
 router.get('/capacity', customerController.getCapacity);
+router.get('/track/:code', customerController.trackOrder);
+router.get('/live-queue', customerController.getLiveQueue);
 router.get('/settings', customerController.getPublicSettings);
 router.get('/manifest.json', customerController.getManifest);
 router.get('/favicon.ico', customerController.getFavicon);

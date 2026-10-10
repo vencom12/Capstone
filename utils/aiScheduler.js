@@ -39,7 +39,7 @@ function estimateProductionTime(order) {
     } else if (typeof order.items === 'object' && order.items !== null) {
         quantity = order.items.quantity || 1;
     }
-    
+
     // Total time scale by quantity, with a slight batch discount
     return baseTime * quantity * 0.9;
 }
@@ -52,14 +52,14 @@ function estimateProductionTime(order) {
 async function recalculateQueuePriorities(io) {
     try {
         console.log('[AI Queue] Starting queue prioritization analysis...');
-        
+
         // Fetch all active/pending orders in the queue lifecycle
         const activeOrders = await prisma.order.findMany({
-          where: {
-            status: {
-              in: ['Pending Payment', 'In Queue', 'Preparing Order']
+            where: {
+                status: {
+                    in: ['Pending Payment', 'In Queue', 'Preparing Order']
+                }
             }
-          }
         });
 
         if (activeOrders.length === 0) {
@@ -102,7 +102,7 @@ async function recalculateQueuePriorities(io) {
                 const dueTime = new Date(order.dueDate).getTime();
                 const nowTime = now.getTime();
                 const totalWindow = dueTime - createdTime;
-                
+
                 if (totalWindow <= 0) {
                     urgencyScore = 40; // Overdue or immediate due date gets max points
                 } else {
@@ -176,7 +176,7 @@ async function recalculateQueuePriorities(io) {
             ],
             take: 100
         });
-        
+
         if (io) {
             socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, allOrders);
         }

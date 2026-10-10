@@ -1,5 +1,12 @@
 [
   {
+    "id": "538CWX0",
+    "timestamp": "2026-10-05T08:34:44.611Z",
+    "user": "Admin (BI)",
+    "action": "Prioritize Order",
+    "details": "Set order ORD-B0145948 to Rush priority (Score: 20)"
+  },
+  {
     "id": "J16YO89",
     "timestamp": "2026-06-29T01:32:49.678Z",
     "user": "ryven",
