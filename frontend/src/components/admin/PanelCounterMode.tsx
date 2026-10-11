@@ -567,7 +567,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>Nanay Slips</span>
+            <span>Quick Slips</span>
           </button>
           <button
             type="button"
@@ -992,7 +992,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase tracking-wider font-bold text-text-dim block">
-                  Nanay's Cash Tin
+                  Register Cash Tin
                 </span>
                 <span className="text-[11px] text-text-dim">
                   {punchedSlipsToday.length} slip(s) logged
@@ -1256,7 +1256,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span>{isBusy ? 'Starting...' : 'Start Stitching (Nanay)'}</span>
+                          <span>{isBusy ? 'Starting...' : 'Start Stitching'}</span>
                         </button>
                       )}
 
@@ -1470,7 +1470,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               <div className="pt-2 text-[10px] text-zinc-700 font-bold uppercase leading-relaxed">
-                Pakiprisinta ang claim stub na ito sa pag-claim.
+                Please present this claim stub upon pickup.
                 <div className="font-normal normal-case text-zinc-500 text-[9px] mt-0.5">
                   Anti-fraud verification protection.
                 </div>

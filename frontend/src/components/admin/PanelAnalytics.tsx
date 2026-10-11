@@ -480,7 +480,7 @@ export default function PanelAnalytics({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-extrabold text-emerald-400">
-                  💵 End-of-Day Cash Drawer Verification (Nanay's Cash Box)
+                  💵 End-of-Day Cash Drawer Verification (Register Cash Box)
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300">
                   Phase 3 Standard
@@ -859,17 +859,17 @@ export default function PanelAnalytics({
 
               {/* Formula Callout */}
               <div className="bg-black/40 border border-purple-500/30 rounded-xl p-3.5 mb-4 font-mono text-xs text-purple-200">
-                <div className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-1">
-                  Trained Linear Regression Model:
+                <div className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-1 font-sans">
+                  Machine Stitching Time Calculation:
                 </div>
-                <div className="text-sm font-black text-white py-1">
-                  Time = β₀ (Setup: 3.5m) + β_item + (Letters × 0.55m)
+                <div className="text-sm font-black text-white py-1 font-sans">
+                  Total Time = Setup Time (3.5 mins) + Garment Time + (0.55 mins per Letter)
                 </div>
-                <div className="text-[11px] text-text-dim mt-2 grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10">
-                  <span>Chinese Fan: <strong>+1.2m (~4.2m)</strong></span>
-                  <span>Cap / Hat: <strong>+4.2m (~8.5m)</strong></span>
-                  <span>Bath Towel: <strong>+8.5m (~14.2m)</strong></span>
-                  <span>BYOG Garment: <strong>+5.5m (~10.0m)</strong></span>
+                <div className="text-[11px] text-text-dim mt-2 grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10 font-sans">
+                  <span>Chinese Fan: <strong>~4.2 mins average</strong></span>
+                  <span>Cap / Hat: <strong>~8.5 mins average</strong></span>
+                  <span>Bath Towel: <strong>~14.2 mins average</strong></span>
+                  <span>Client Garment (BYOG): <strong>~10.0 mins average</strong></span>
                 </div>
               </div>
 

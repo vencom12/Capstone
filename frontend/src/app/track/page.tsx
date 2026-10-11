@@ -110,14 +110,14 @@ function OrderTrackerContent() {
         <div>
           <h2 className="text-xl font-black text-white">Track Your Embroidery</h2>
           <p className="text-xs text-slate-400 mt-1 max-w-xs">
-            I-type ang iyong Ticket Number o Claim Code na nakasulat sa iyong paper stub (hal. <strong className="text-white font-mono">WI-582B</strong> o <strong className="text-white font-mono">A-582B</strong>).
+            Type your Ticket Number or Claim Code written on your paper stub (e.g. <strong className="text-white font-mono">WI-582B</strong> or <strong className="text-white font-mono">A-582B</strong>).
           </p>
         </div>
 
         <form onSubmit={handleManualSearch} className="w-full flex flex-col gap-3">
           <input
             type="text"
-            placeholder="Hal. WI-582B o A-582B"
+            placeholder="e.g. WI-582B or A-582B"
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value.toUpperCase())}
             className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-2xl text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-blue-500 transition shadow-inner"
@@ -129,7 +129,7 @@ function OrderTrackerContent() {
             type="submit"
             className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-blue-950/50 cursor-pointer"
           >
-            Suriin ang Status ng Order
+            Check Order Status
           </button>
         </form>
 
@@ -280,33 +280,33 @@ function OrderTrackerContent() {
         {isReady ? (
           <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-xl p-3.5 text-center">
             <div className="text-sm font-black text-emerald-300">
-              🎉 Tapos na po ang order niyo!
+              🎉 Your order is ready for pickup!
             </div>
             <p className="text-xs text-emerald-100/80 mt-1 leading-relaxed">
-              Pumunta lamang po sa counter at ipakita ang inyong paper stub{' '}
-              <strong className="text-white font-mono">{order.claimCode}</strong> para makuha ang inyong bag.
+              Please proceed to the counter and show your claim code{' '}
+              <strong className="text-white font-mono">{order.claimCode}</strong> to collect your items.
             </p>
           </div>
         ) : isStitching ? (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 text-center">
             <span className="text-xs text-blue-300 font-bold block">
-              🧵 Kasalukuyang tinatahi sa makina
+              🧵 Currently stitching on the machine
             </span>
             <span className="text-[11px] text-slate-400">
-              Tinatayang matatapos sa loob ng <strong>~{order.estimatedMinutesLeft} minuto</strong>.
+              Estimated completion in <strong>~{order.estimatedMinutesLeft} minutes</strong>.
             </span>
           </div>
         ) : isCompleted ? (
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center text-xs text-slate-300">
-            ✓ Nakuha na ang order. Maraming salamat po!
+            ✓ Order collected. Thank you for your business!
           </div>
         ) : (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
             <span className="text-xs text-amber-300 font-bold block">
-              ⏳ Nakapila sa makina ({order.ordersAhead} nauna)
+              ⏳ In machine queue ({order.ordersAhead} orders ahead)
             </span>
             <span className="text-[11px] text-slate-400">
-              Tinatayang oras ng paghihintay: <strong>~{order.estimatedMinutesLeft} minuto</strong>.
+              Estimated wait time: <strong>~{order.estimatedMinutesLeft} minutes</strong>.
             </span>
           </div>
         )}
@@ -347,7 +347,7 @@ function OrderTrackerContent() {
 
       {/* Customer Mall Tip */}
       <div className="mt-auto bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-xs text-slate-400 text-center leading-relaxed">
-        💡 <strong>Tip para sa customer:</strong> Maaari po kayong mamasyal sa mall habang naghihintay. Kusang magre-refresh ang pahinang ito at tutunog kapag handa na ang inyong order!
+        💡 <strong>Customer Tip:</strong> Feel free to browse around Pacific Mall while you wait. This tracker automatically updates and plays a chime once your order is ready for pickup!
       </div>
     </main>
   );
