@@ -28,6 +28,9 @@ export default function OrderDetailsModal({
 
   if (!order) return null;
 
+  const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
+  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[620px]">
       <div className="modal-stack">
@@ -70,7 +73,7 @@ export default function OrderDetailsModal({
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            <span>Logistics & Shipping Tracking</span>
+            <span>{isPickup ? 'Pick-up & Claim Tracking' : 'Logistics & Shipping Tracking'}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
           </button>
         </div>
@@ -118,8 +121,8 @@ export default function OrderDetailsModal({
                 <span className="font-bold uppercase">{order.paymentMethod}</span>
               </div>
               <div className="flex justify-between text-[0.8rem]">
-                <span className="text-text-dim">Delivery Preferences</span>
-                <span className="font-bold">{order.deliveryTime || 'As soon as possible'}</span>
+                <span className="text-text-dim">{isPickup ? 'Fulfillment Type' : 'Delivery Preferences'}</span>
+                <span className="font-bold">{isPickup ? 'Store Pick-up (Pacific Mall Lucena)' : (order.deliveryTime || 'As soon as possible')}</span>
               </div>
               <div className="flex justify-between text-base pt-2 border-t border-border-glass/50">
                 <span className="font-bold">Total Amount</span>
@@ -131,13 +134,13 @@ export default function OrderDetailsModal({
             <div className="modal-section">
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-center">
-                  <span className="modal-label">Shipping Address</span>
+                  <span className="modal-label">{isPickup ? 'Store Pick-up Location' : 'Shipping Address'}</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('tracking')}
                     className="text-[0.7rem] text-primary hover:underline bg-transparent border-none cursor-pointer font-semibold"
                   >
-                    Track Delivery →
+                    {isPickup ? 'Track Pick-up →' : 'Track Delivery →'}
                   </button>
                 </div>
                 <div className="modal-box text-[0.85rem]">

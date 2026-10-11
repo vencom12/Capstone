@@ -155,10 +155,10 @@ exports.submitOrder = async (req, res) => {
 
             serverTotal += itemUnitPrice * (item.quantity || 1);
         }
+        const globalSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         // Add gift packaging if selected
         if (giftPackaging) {
-            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-            serverTotal += settings ? settings.giftPackagingPrice : 5.00;
+            serverTotal += globalSettings ? globalSettings.giftPackagingPrice : 5.00;
         }
         const numTotal = Math.round(serverTotal * 100) / 100; // Round to 2 decimal places
 
@@ -249,17 +249,22 @@ exports.submitOrder = async (req, res) => {
                 });
             }
 
-            // Detect pickup fulfillment
-            const isPickup = personalization?.fulfillmentType === 'pickup' || (typeof address === 'string' && address.toLowerCase().includes('pick-up'));
+            // Detect pickup fulfillment (strictly enforced as store pickup when delivery is disabled)
+            const isDeliveryActive = globalSettings?.deliveryEnabled ?? false;
+            const isPickup = !isDeliveryActive || personalization?.fulfillmentType === 'pickup' || (typeof address === 'string' && address.toLowerCase().includes('pick-up'));
             const courier = isPickup ? 'Store Pick-up' : (personalization?.courier || 'J&T Express');
             const cleanId = secureOrderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
             const initialTracking = isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`;
+            const verificationClaimCode = secureOrderId.startsWith('WI-')
+                ? `#${secureOrderId.replace('WI-', 'A-')}`
+                : `#A-${secureOrderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`;
 
             const orderPersonalization = {
                 ...(personalization && typeof personalization === 'object' ? personalization : {}),
                 fulfillmentType: isPickup ? 'pickup' : 'delivery',
                 courier,
                 trackingNumber: initialTracking,
+                claimCode: verificationClaimCode,
                 statusHistory: [
                     {
                         status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',

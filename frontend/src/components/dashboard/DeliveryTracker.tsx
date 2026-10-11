@@ -315,7 +315,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         </div>
       </div>
 
-      {/* 4. Recipient Delivery Address Card */}
+      {/* 4. Recipient / Claimant Location Card */}
       <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col gap-2">
         <div className="flex items-start gap-2.5">
           <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5">
@@ -326,11 +326,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
           <div className="text-xs leading-relaxed flex-1">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="font-extrabold text-text-main">{order.client || 'Recipient'}</span>
-              <span className="text-text-dim text-[0.7rem]">(Delivery Recipient)</span>
+              <span className="font-extrabold text-text-main">{order.client || (isPickup ? 'Claimant' : 'Recipient')}</span>
+              <span className="text-text-dim text-[0.7rem]">{isPickup ? '(Store Pick-up Claimant)' : '(Delivery Recipient)'}</span>
             </div>
             <p className="text-text-dim m-0">
-              {order.address?.split('(Landmark:')[0]?.trim() || order.address || 'Standard Delivery Address'}
+              {order.address?.split('(Landmark:')[0]?.trim() || order.address || (isPickup ? 'Eds Towels & Caps, Ground Floor, Pacific Mall Lucena' : 'Standard Delivery Address')}
             </p>
           </div>
         </div>

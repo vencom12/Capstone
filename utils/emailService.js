@@ -310,7 +310,13 @@ async function sendOrderStatusReadyEmail(recipientEmail, recipientName, order, n
   const orderId = order.orderId || order.id || 'N/A';
   const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
-  const claimCode = personalization.trackingNumber || `PU-LUC-${orderId.slice(-6).toUpperCase()}`;
+  const getVerificationCode = (id) => {
+    if (!id) return '#A-000';
+    if (id.startsWith('WI-')) return `#${id.replace('WI-', 'A-')}`;
+    const suffix = id.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+    return `#A-${suffix.toUpperCase()}`;
+  };
+  const claimCode = personalization.claimCode || (isPickup ? getVerificationCode(orderId) : (personalization.trackingNumber || `JNT-${orderId.slice(-6).toUpperCase()}`));
 
   const isReadyForPickup = newStatus ? (newStatus.toLowerCase().includes('pick') || isPickup) : isPickup;
 

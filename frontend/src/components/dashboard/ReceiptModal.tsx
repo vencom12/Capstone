@@ -68,6 +68,16 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
                 <span className="text-text-dim">Order ID</span>
                 <span className="font-bold">{data.orderID || 'N/A'}</span>
              </div>
+             {data.orderID && (
+               <div className="flex justify-between mb-2 text-xs">
+                  <span className="text-text-dim">Claim Code</span>
+                  <span className="font-mono font-bold text-primary">
+                    {data.orderID.startsWith('WI-') 
+                      ? `#${data.orderID.replace('WI-', 'A-')}` 
+                      : `#A-${data.orderID.slice(-4).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`}
+                  </span>
+               </div>
+             )}
              <div className="flex justify-between mb-2 text-xs">
                 <span className="text-text-dim">Date & Time</span>
                 <span className="font-bold">{new Date(data.timestamp).toLocaleString()}</span>
