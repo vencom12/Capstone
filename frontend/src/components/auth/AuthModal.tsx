@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithRedirect } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -83,21 +83,64 @@ export default function AuthModal() {
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up via Full-Page Redirect (whole screen)
+  // Handle 1-Click Google Sign-In & Sign-Up with reliable popup authentication
   const handleGoogleSignIn = async () => {
     if (isSubmitting) return;
     setIsGoogleSubmitting(true);
 
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      if (!user.email) {
+        showToast('No email associated with this Google account.', 'error');
+        return;
+      }
+
+      const res = await loginWithGoogle({
+        email: user.email,
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        phoneNumber: user.phoneNumber || '',
+        uid: user.uid
+      });
+
+      if (res.success && res.needsPassword && res.setupToken) {
+        // First-time Google user: ask them to create a password before account creation
+        setGoogleSetup({ token: res.setupToken, email: res.email || user.email, username: res.suggestedUsername || '' });
+        setNewPassword('');
+        setConfirmPassword('');
+        setView('googleSetup');
+        return;
+      }
+
+      if (res.success) {
+        showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
+        handleClose();
+        if (res.user?.role === 'admin') {
+          router.replace('/admin');
+        } else if (res.user?.role === 'employee') {
+          router.replace('/employee');
+        } else {
+          router.replace('/');
+          router.refresh();
+        }
+      } else {
+        showToast(res.message || 'Google sign-in failed on server.', 'error');
+      }
     } catch (err: any) {
-      setIsGoogleSubmitting(false);
-      console.error('Google Sign-In Redirect Error:', err);
-      if (err.code === 'auth/unauthorized-domain') {
+      console.warn('Google Sign-In Notice:', err);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        showToast('Google sign-in was cancelled.', 'info');
+      } else if (err.code === 'auth/popup-blocked') {
+        showToast('Sign-in popup was blocked by browser. Please allow popups.', 'error');
+      } else if (err.code === 'auth/unauthorized-domain') {
         showToast('Domain is not authorized in Firebase Console.', 'error');
       } else {
-        showToast(err.message || 'Failed to redirect to Google.', 'error');
+        showToast(err.message || 'Failed to sign in with Google.', 'error');
       }
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   };
 
