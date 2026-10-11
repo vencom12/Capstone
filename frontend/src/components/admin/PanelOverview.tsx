@@ -12,6 +12,7 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
 import WaybillModal from '@/components/dashboard/WaybillModal';
+import ClaimStubModal from '@/components/admin/ClaimStubModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
@@ -51,6 +52,7 @@ export default function PanelOverview({
   const [editTrackingNumber, setEditTrackingNumber] = useState('');
   const [editNote, setEditNote] = useState('');
   const [waybillOrder, setWaybillOrder] = useState<any>(null);
+  const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
   const [deliveryEnabled, setDeliveryEnabled] = useState(false);
 
   useEffect(() => {
@@ -973,7 +975,13 @@ export default function PanelOverview({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setWaybillOrder(editingOrder)}
+                  onClick={() => {
+                    if (isPickup) {
+                      setClaimStubOrder(editingOrder);
+                    } else {
+                      setWaybillOrder(editingOrder);
+                    }
+                  }}
                   className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border ${
                     isPickup
                       ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
@@ -1110,6 +1118,13 @@ export default function PanelOverview({
         isOpen={!!waybillOrder}
         onClose={() => setWaybillOrder(null)}
         order={waybillOrder}
+      />
+
+      {/* Single Order Claim Stub (Thermal Receipt Format for Store Pickups) */}
+      <ClaimStubModal
+        isOpen={!!claimStubOrder}
+        onClose={() => setClaimStubOrder(null)}
+        order={claimStubOrder}
       />
 
       {/* Batch Thermal Dispatch Labels Modal (Continuous 4x6 Roll Printing) */}
