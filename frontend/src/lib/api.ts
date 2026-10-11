@@ -16,10 +16,7 @@ const getApiBase = () => {
       }
       return `${window.location.protocol}//${hostname}:5001`;
     }
-    // In production or when served by Express, always use the current domain origin
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
+    // In production (e.g. on Render or custom domain), the Express backend and frontend are hosted together
     return window.location.origin;
   }
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
