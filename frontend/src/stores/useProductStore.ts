@@ -54,8 +54,9 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
     try {
       const products = await api.get<Product[]>('/api/products');
       set({ products, isSyncing: false });
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.warn('Failed to fetch products:', err);
       set({ isSyncing: false });
     }
   },

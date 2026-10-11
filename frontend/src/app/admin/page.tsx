@@ -160,9 +160,12 @@ export default function AdminPage() {
           setMachines(machineData);
         }
       }
-    } catch (err) {
-      // A failed fetch must never look identical to an empty database, so record
-      // the failure and surface it instead of only writing to the console.
+    } catch (err: any) {
+      // AbortError or background tab timeouts should not pop up a fatal dev modal
+      if (err?.name === 'AbortError' || err?.message?.includes('timed out') || err?.message?.includes('aborted')) {
+        console.warn('[Admin] Sync request aborted or timed out during background pause');
+        return;
+      }
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to sync admin operations data:', err);
       const lower = message.toLowerCase();

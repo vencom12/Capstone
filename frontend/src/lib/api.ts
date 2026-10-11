@@ -62,12 +62,17 @@ export async function apiFetch<T = unknown>(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => {
+    // If the browser tab is hidden in the background, Chrome throttles timers and TCP.
+    // Avoid aborting while the user is simply tabbed out.
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
     try {
-      controller.abort(new DOMException('Request timed out after 30000ms', 'AbortError'));
+      controller.abort(new DOMException('Request timed out after 60000ms', 'AbortError'));
     } catch {
       controller.abort();
     }
-  }, 30000);
+  }, 60000);
 
   if (options.signal) {
     if (options.signal.aborted) {
