@@ -34,7 +34,6 @@ export default function PanelAnalytics({
 }: PanelAnalyticsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [activeCategory, setActiveCategory] = useState<DetailCategory>('money');
-  const [showDrawerReconciler, setShowDrawerReconciler] = useState(false);
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
   const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Daily Pacific Mall stall rent & electricity
 
@@ -384,31 +383,6 @@ export default function PanelAnalytics({
     return (basePrep + catOffset + letterTime).toFixed(1);
   }, [simCategory, simLetters]);
 
-  // Drawer cash check
-  const [directCountedCash, setDirectCountedCash] = useState<string>('');
-  const [denom, setDenom] = useState({ b1000: 0, b500: 0, b200: 0, b100: 0, b50: 0, b20: 0, coins: 0 });
-  const [useDenom, setUseDenom] = useState(false);
-  const [lockedTime, setLockedTime] = useState<string | null>(null);
-
-  const countedCash = useMemo(() => {
-    if (useDenom) {
-      return (
-        denom.b1000 * 1000 +
-        denom.b500 * 500 +
-        denom.b200 * 200 +
-        denom.b100 * 100 +
-        denom.b50 * 50 +
-        denom.b20 * 20 +
-        (Number(denom.coins) || 0)
-      );
-    }
-    const val = parseFloat(directCountedCash);
-    return isNaN(val) ? 0 : val;
-  }, [useDenom, denom, directCountedCash]);
-
-  const variance = countedCash - paymentBreakdown.cashTotal;
-  const isCountEntered = useDenom ? Object.values(denom).some((v) => v > 0) : directCountedCash.trim() !== '';
-
   const handlePrintSlip = () => {
     const printWindow = window.open('', '_blank', 'width=380,height=600');
     if (!printWindow) {
@@ -431,22 +405,17 @@ export default function PanelAnalytics({
       <body>
         <div class="center bold" style="font-size: 14px;">EDS TOWELS & CAPS</div>
         <div class="center">Pacific Mall Lucena</div>
-        <div class="center">Daily Sales & Cash Report</div>
+        <div class="center">Daily Sales & Profit Summary</div>
         <div class="center">${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
         <div class="divider"></div>
         <div class="row"><span>Total Orders:</span><span class="bold">${filteredOrders.length}</span></div>
-        <div class="row"><span>Cash in Drawer:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>Cash Collected:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
         <div class="row"><span>GCash Received:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
         <div class="divider"></div>
         <div class="row bold"><span>TOTAL SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
         <div class="row"><span>Item Costs:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
         <div class="row"><span>Stall Rent & Power:</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
         <div class="row bold"><span>REAL PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
-        <div class="divider"></div>
-        <div class="center bold">DRAWER CASH CHECK</div>
-        <div class="row"><span>Counted Cash:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
-        <div class="row"><span>Expected Cash:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
-        <div class="row bold"><span>Difference:</span><span>${variance === 0 ? 'Exact match' : variance > 0 ? `+₱${variance.toFixed(2)} (Over)` : `-₱${Math.abs(variance).toFixed(2)} (Short)`}</span></div>
       </body>
       </html>
     `;
@@ -495,19 +464,6 @@ export default function PanelAnalytics({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowDrawerReconciler(!showDrawerReconciler)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${
-              showDrawerReconciler
-                ? 'bg-white/10 border-white/20 text-text-main'
-                : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
-            }`}
-          >
-            <span>Count Drawer Cash</span>
-            <span className="text-[10px]">{showDrawerReconciler ? '▲' : '▼'}</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handlePrintSlip}
             className="px-3 py-1.5 rounded-lg border border-border-glass bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main text-xs font-semibold transition flex items-center gap-1.5"
           >
@@ -547,132 +503,6 @@ export default function PanelAnalytics({
             >
               Save
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Cash Drawer Check Popdown */}
-      {showDrawerReconciler && (
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 mb-5 text-xs">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-border-glass">
-            <span className="font-bold text-text-main">Count Cash in Drawer (Closing Check)</span>
-            <button
-              type="button"
-              onClick={() => setUseDenom(!useDenom)}
-              className="text-text-dim hover:text-text-main underline"
-            >
-              {useDenom ? 'Type Total Cash' : 'Count Bills One by One'}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-            <div className="md:col-span-5 bg-black/30 border border-border-glass rounded-lg p-3 flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="text-text-dim">Expected in Drawer:</span>
-                <span className="font-mono font-bold text-text-main">
-                  ₱{paymentBreakdown.cashTotal.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-text-dim">Your Counted Cash:</span>
-                <span className="font-mono font-bold text-text-main">
-                  ₱{countedCash.toFixed(2)}
-                </span>
-              </div>
-              <div className="h-px bg-white/5 my-0.5"></div>
-              <div className="flex justify-between items-center">
-                <span className="text-text-dim">Status:</span>
-                {isCountEntered ? (
-                  <span className={`font-mono font-bold ${
-                    variance === 0 ? 'text-emerald-400' : variance > 0 ? 'text-blue-400' : 'text-rose-400'
-                  }`}>
-                    {variance === 0
-                      ? 'Exact match (Balanced)'
-                      : variance > 0
-                      ? `+₱${variance.toFixed(2)} (Over)`
-                      : `-₱${Math.abs(variance).toFixed(2)} (Short)`}
-                  </span>
-                ) : (
-                  <span className="text-text-dim italic">Type counted cash</span>
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-7 flex flex-col gap-2">
-              {useDenom ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: '₱1,000', key: 'b1000' },
-                    { label: '₱500', key: 'b500' },
-                    { label: '₱200', key: 'b200' },
-                    { label: '₱100', key: 'b100' },
-                    { label: '₱50', key: 'b50' },
-                    { label: '₱20', key: 'b20' },
-                  ].map(({ label, key }) => (
-                    <div key={key} className="flex items-center justify-between bg-black/20 border border-border-glass rounded px-2 py-1">
-                      <span className="text-text-dim font-mono">{label}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={(denom as any)[key] || ''}
-                        placeholder="0"
-                        onChange={(e) =>
-                          setDenom({ ...denom, [key]: Math.max(0, parseInt(e.target.value) || 0) })
-                        }
-                        className="w-8 bg-transparent text-right font-mono font-bold text-text-main outline-none"
-                      />
-                    </div>
-                  ))}
-                  <div className="col-span-3 flex items-center justify-between bg-black/20 border border-border-glass rounded px-2 py-1">
-                    <span className="text-text-dim font-mono">Coins (₱)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      value={denom.coins || ''}
-                      placeholder="0.00"
-                      onChange={(e) =>
-                        setDenom({ ...denom, coins: Math.max(0, parseFloat(e.target.value) || 0) })
-                      }
-                      className="w-16 bg-transparent text-right font-mono font-bold text-text-main outline-none"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">₱</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="Type counted money in drawer"
-                      value={directCountedCash}
-                      onChange={(e) => setDirectCountedCash(e.target.value)}
-                      className="w-full bg-black/20 border border-border-glass pl-7 pr-3 py-2 rounded-lg text-text-main font-mono text-xs outline-none"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      setLockedTime(time);
-                      showToast(`Drawer checked at ${time}`, 'success');
-                    }}
-                    disabled={!isCountEntered}
-                    className="py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-30 text-white font-medium text-xs whitespace-nowrap"
-                  >
-                    Save Check
-                  </button>
-                </div>
-              )}
-
-              {lockedTime && (
-                <div className="text-[11px] text-text-dim">
-                  Saved at {lockedTime} ({variance === 0 ? 'Exact match' : variance > 0 ? `+₱${variance.toFixed(2)} over` : `-₱${Math.abs(variance).toFixed(2)} short`})
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -826,7 +656,7 @@ export default function PanelAnalytics({
               <div className="text-xs text-text-dim font-medium">Cash on Hand</div>
               <div className="space-y-0.5 my-1">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim">Drawer:</span>
+                  <span className="text-text-dim">Cash:</span>
                   <span className="font-mono font-bold text-text-main">₱{paymentBreakdown.cashTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
