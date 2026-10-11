@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
@@ -74,7 +74,7 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
              </div>
              <div className="flex justify-between mb-3 text-xs">
                 <span className="text-text-dim">Payment Method</span>
-                <span className="font-bold uppercase">{data.paymentMethod || 'Wallet'}</span>
+                <span className="font-bold uppercase">{data.paymentMethod || 'Cash / GCash'}</span>
              </div>
 
              <div className="mt-4">

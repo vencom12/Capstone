@@ -334,13 +334,30 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
     try {
         if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot delete self' });
+
+        const targetUser = await prisma.user.findUnique({
+            where: { id: req.params.id }
+        });
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+        // Unassign machines if assigned to this user
+        await prisma.machine.updateMany({
+            where: { assignedUserId: targetUser.id },
+            data: { assignedUserId: null }
+        });
+
+        // Clean up linked dependencies
+        await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id } });
+        await prisma.feedback.deleteMany({ where: { userId: targetUser.id } });
+        await prisma.order.deleteMany({ where: { userId: targetUser.id } });
+        await prisma.transaction.deleteMany({ where: { userId: targetUser.id } });
+        await prisma.receipt.deleteMany({ where: { userId: targetUser.id } });
+        await prisma.globalAuditLog.deleteMany({ where: { userId: targetUser.id } });
+
         await prisma.user.delete({ where: { id: req.params.id } });
-        res.json({ message: 'User deleted' });
+        res.json({ message: 'User deleted successfully' });
     } catch (err) {
         console.error('deleteUser error:', err);
-        if (err.code === 'P2003') {
-            return res.status(400).json({ message: 'Cannot delete user because they have existing order history, transactions, or assigned machine records.' });
-        }
         res.status(500).json({ message: err.message || 'Server error deleting user' });
     }
 };

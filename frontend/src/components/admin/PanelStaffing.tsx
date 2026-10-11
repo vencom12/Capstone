@@ -145,7 +145,7 @@ export default function PanelStaffing({
       phoneNumber: phone.trim(),
       address: address.trim(),
       shiftStatus: editingStaff?.shiftStatus || 'offline',
-      walletBalance: editingStaff?.walletBalance || 0
+      isEmailVerified: editingStaff?.isEmailVerified ?? false
     };
 
     const prevUsers = [...users];
@@ -319,7 +319,8 @@ export default function PanelStaffing({
                   <th className="glass-th text-left">Contact Info</th>
                   {activeTab !== 'customers' && <th className="glass-th text-left">Shift Status</th>}
                   {activeTab !== 'customers' && <th className="glass-th text-left">Assigned Machine</th>}
-                  {activeTab === 'customers' && <th className="glass-th text-left">Wallet Balance</th>}
+                  {activeTab === 'customers' && <th className="glass-th text-left">Email Verification</th>}
+                  {activeTab === 'customers' && <th className="glass-th text-left">Registered Date</th>}
                   <th className="glass-th text-left">Access / Role</th>
                   <th className="glass-th text-right">Actions</th>
                 </tr>
@@ -346,14 +347,6 @@ export default function PanelStaffing({
                           </span>
                           <div>
                             <div className="font-bold text-sm text-text-main">{u.username}</div>
-                            {customer && u.isEmailVerified && (
-                              <span className="text-[0.62rem] text-success flex items-center gap-0.5">
-                                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                                <span>Verified Email</span>
-                              </span>
-                            )}
                           </div>
                         </div>
                       </td>
@@ -389,8 +382,24 @@ export default function PanelStaffing({
                         </td>
                       )}
                       {activeTab === 'customers' && (
-                        <td className="glass-td text-left text-sm font-mono font-bold text-text-main">
-                          ₱{(u.walletBalance || 0).toFixed(2)}
+                        <td className="glass-td text-left">
+                          {u.isEmailVerified ? (
+                            <span className="inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-success/15 text-success border border-success/30">
+                              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                              <span>Verified Email</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              <span>Unverified Email</span>
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {activeTab === 'customers' && (
+                        <td className="glass-td text-left text-xs font-mono text-text-dim">
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
                         </td>
                       )}
                       <td className="glass-td text-left">
@@ -496,7 +505,16 @@ export default function PanelStaffing({
 
                 <div className="flex flex-col gap-1 text-xs">
                   <span className="text-[0.65rem] text-text-dim block mb-0.5">Email</span>
-                  <span className="text-text-main font-semibold">{u.email}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-text-main font-semibold">{u.email}</span>
+                    {customer && (
+                      u.isEmailVerified ? (
+                        <span className="text-[0.65rem] font-bold text-success">✓ Verified</span>
+                      ) : (
+                        <span className="text-[0.65rem] font-bold text-amber-400">⚠️ Unverified</span>
+                      )
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-xs font-medium">
