@@ -666,6 +666,224 @@ export default function PanelRawMaterials({
   const [pdfPreviewTitle, setPdfPreviewTitle] = useState('Procurement Document Preview');
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 
+  // Image Restock Slip State
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [shoppingListImageUrl, setShoppingListImageUrl] = useState<string | null>(null);
+  const [shoppingListImageBlob, setShoppingListImageBlob] = useState<Blob | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  const generateShoppingListImage = (): Promise<{ blob: Blob; dataUrl: string } | null> => {
+    return new Promise((resolve) => {
+      const items = lowStockItems.length > 0 ? lowStockItems : inventory;
+      if (!items || items.length === 0) {
+        showToast('No materials to generate list for', 'error');
+        resolve(null);
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+
+      const scale = 2; // High-res retina
+      const width = 560;
+      const baseHeaderHeight = 175;
+      const itemRowHeight = 44;
+      const footerHeight = 135;
+      const height = baseHeaderHeight + (items.length * itemRowHeight) + footerHeight;
+
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      ctx.scale(scale, scale);
+
+      // Background
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+
+      // Top Brand Banner Accent
+      ctx.fillStyle = '#059669'; // Emerald brand accent
+      ctx.fillRect(0, 0, width, 6);
+
+      // Header
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      ctx.fillText('EDS TOWELS & CAPS', width / 2, 38);
+
+      ctx.fillStyle = '#64748B';
+      ctx.font = '500 11px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Ground Floor, Pacific Mall Lucena City • 0928 810 3928', width / 2, 56);
+
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+      ctx.fillText('SUPPLIER RESTOCK ORDER / SHOPPING LIST', width / 2, 85);
+
+      const dateStr = new Date().toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      const timeStr = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      ctx.fillStyle = '#64748B';
+      ctx.font = '11px system-ui, -apple-system, sans-serif';
+      ctx.fillText(`Date: ${dateStr} at ${timeStr}`, width / 2, 103);
+
+      // Divider line
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(25, 118);
+      ctx.lineTo(width - 25, 118);
+      ctx.stroke();
+
+      // Table Header
+      ctx.fillStyle = '#F8FAFC';
+      ctx.fillRect(25, 128, width - 50, 30);
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.strokeRect(25, 128, width - 50, 30);
+
+      ctx.fillStyle = '#475569';
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('MATERIAL / ITEM', 38, 147);
+
+      ctx.textAlign = 'center';
+      ctx.fillText('CURRENT', 330, 147);
+
+      ctx.textAlign = 'right';
+      ctx.fillText('ORDER QTY', width - 38, 147);
+
+      // Items list
+      let currentY = 176;
+      items.forEach((item, index) => {
+        // Alternating row background
+        if (index % 2 === 1) {
+          ctx.fillStyle = '#F8FAFC';
+          ctx.fillRect(25, currentY - 14, width - 50, itemRowHeight);
+        }
+
+        const minVal = item.minThreshold || 10;
+        const target = minVal * 2;
+        const suggestedQty = Math.max(1, target - item.count);
+        const unit = item.unit || 'units';
+
+        // Material name
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#0F172A';
+        ctx.font = '600 12px system-ui, -apple-system, sans-serif';
+        const truncatedName = item.item.length > 34 ? `${item.item.slice(0, 32)}...` : item.item;
+        ctx.fillText(truncatedName, 38, currentY + 5);
+
+        // Current stock
+        ctx.textAlign = 'center';
+        ctx.fillStyle = item.count <= minVal ? '#EF4444' : '#64748B';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`${item.count} ${unit}`, 330, currentY + 5);
+
+        // Order qty
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText(`+${suggestedQty} ${unit}`, width - 38, currentY + 5);
+
+        // Row separator
+        ctx.strokeStyle = '#F1F5F9';
+        ctx.beginPath();
+        ctx.moveTo(25, currentY + 22);
+        ctx.lineTo(width - 25, currentY + 22);
+        ctx.stroke();
+
+        currentY += itemRowHeight;
+      });
+
+      // Summary & Footer
+      currentY += 12;
+      ctx.strokeStyle = '#CBD5E1';
+      ctx.beginPath();
+      ctx.moveTo(25, currentY);
+      ctx.lineTo(width - 25, currentY);
+      ctx.stroke();
+
+      currentY += 22;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
+      ctx.fillText(`TOTAL ITEMS NEEDED: ${items.length} ${items.length === 1 ? 'item' : 'items'}`, 38, currentY);
+
+      currentY += 20;
+      ctx.fillStyle = '#64748B';
+      ctx.font = '11px system-ui, -apple-system, sans-serif';
+      ctx.fillText('• Delivery to: Eds Towels & Caps, Ground Floor, Pacific Mall Lucena City', 38, currentY);
+
+      currentY += 16;
+      ctx.fillText('• Please reply with price quotation and expected delivery date. Salamat!', 38, currentY);
+
+      // Export as blob and dataUrl
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(null);
+          return;
+        }
+        const dataUrl = canvas.toDataURL('image/png');
+        resolve({ blob, dataUrl });
+      }, 'image/png');
+    });
+  };
+
+  const handleOpenShoppingListImage = async () => {
+    setIsGeneratingImage(true);
+    try {
+      const result = await generateShoppingListImage();
+      if (result) {
+        setShoppingListImageUrl(result.dataUrl);
+        setShoppingListImageBlob(result.blob);
+        setIsImageModalOpen(true);
+      }
+    } catch (err) {
+      console.error('Failed to generate image:', err);
+      showToast('Failed to create shopping list image', 'error');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleCopyShoppingListImage = async () => {
+    if (!shoppingListImageBlob) {
+      showToast('Image not ready yet', 'error');
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && typeof window !== 'undefined' && 'ClipboardItem' in window) {
+        await navigator.clipboard.write([
+          new (window as any).ClipboardItem({ 'image/png': shoppingListImageBlob })
+        ]);
+        showToast('✓ Image copied! Paste directly in Messenger or Viber (Ctrl+V)', 'success');
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Clipboard write image failed:', err);
+    }
+    showToast('Right-click or press and hold the image below to copy', 'info');
+  };
+
+  const handleDownloadShoppingListImage = () => {
+    if (!shoppingListImageUrl) return;
+    const dateStr = new Date().toISOString().split('T')[0];
+    const a = document.createElement('a');
+    a.href = shoppingListImageUrl;
+    a.download = `EDS_RESTOCK_LIST_${dateStr}.png`;
+    a.click();
+    showToast('Image saved', 'success');
+  };
+
   const fetchPurchaseOrders = async () => {
     setIsLoadingPOs(true);
     try {
@@ -1351,17 +1569,17 @@ export default function PanelRawMaterials({
                 </button>
                 <button
                   type="button"
-                  onClick={handlePreviewRestockList}
-                  disabled={isLoadingPdf}
-                  className="bg-white/5 border border-border-glass text-text-dim hover:text-text-main font-semibold px-3 py-1.5 rounded-xl text-xs hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="View formatted PDF procurement shopping list"
+                  onClick={handleOpenShoppingListImage}
+                  disabled={isGeneratingImage}
+                  className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/25 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Generate restock slip image to copy directly to Messenger or Viber"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="6 9 6 2 18 2 18 9" />
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                    <rect x="6" y="14" width="12" height="8" />
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
                   </svg>
-                  <span>Shopping List PDF</span>
+                  <span>{isGeneratingImage ? 'Creating Image...' : '📷 Copy Order Image'}</span>
                 </button>
               </div>
             </div>
@@ -2015,6 +2233,71 @@ export default function PanelRawMaterials({
         </form>
       </GlassModal>
 
+      {/* --- Image Restock Slip Modal (Direct Copy for Messenger / Viber) --- */}
+      {isImageModalOpen && shoppingListImageUrl && (
+        <GlassModal
+          isOpen={isImageModalOpen}
+          onClose={() => setIsImageModalOpen(false)}
+          title="Supplier Restock Slip"
+        >
+          <div className="flex flex-col gap-3.5 text-left max-w-xl w-full">
+            <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-white/10">
+              <span className="text-xs text-text-dim">
+                Copy and paste directly into Messenger or Viber without saving files.
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleCopyShoppingListImage}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Copy image to clipboard so you can press Ctrl+V in Messenger"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  <span>📋 Copy Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadShoppingListImage}
+                  className="px-3 py-2 rounded-xl bg-white/5 border border-border-glass hover:bg-white/10 text-text-main text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                  title="Download image to your device"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Save Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLowStockRequisition}
+                  className="px-3 py-2 rounded-xl bg-white/5 border border-border-glass hover:bg-white/10 text-text-dim hover:text-text-main text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                  title="Copy formatted text message as backup"
+                >
+                  <span>💬 Copy Text</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-black/30 border border-white/10 rounded-2xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
+              <img
+                src={shoppingListImageUrl}
+                alt="Supplier Restock Slip"
+                className="w-full max-w-md rounded-xl shadow-md border border-white/10 object-contain cursor-pointer"
+                title="Right-click or press and hold to copy"
+              />
+            </div>
+            
+            <div className="text-[11px] text-text-dim text-center">
+              💡 Tip: Click <b>Copy Image</b>, open <b>Messenger</b> or <b>Viber</b>, and press <b>Ctrl + V</b> (or Paste) to send!
+            </div>
+          </div>
+        </GlassModal>
+      )}
+
       {/* --- PDF Preview Modal (No download required) --- */}
       {isPdfModalOpen && pdfPreviewUrl && (
         <GlassModal
@@ -2094,16 +2377,17 @@ export default function PanelRawMaterials({
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={handlePreviewRestockList}
-                  disabled={isLoadingPdf || lowStockItems.length === 0}
-                  className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                  title="Preview printable restock procurement PDF slip"
+                  onClick={handleOpenShoppingListImage}
+                  disabled={isGeneratingImage || lowStockItems.length === 0}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                  title="Generate restock slip image to copy directly to Messenger or Viber"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
                   </svg>
-                  <span>Preview PDF Slip</span>
+                  <span>📷 Copy Order Image</span>
                 </button>
                 <button
                   type="button"
