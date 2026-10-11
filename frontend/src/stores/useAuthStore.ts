@@ -4,6 +4,8 @@ import { api } from '@/lib/api';
 import type { User, AuthResponse } from '@/lib/types';
 import { useProductStore } from './useProductStore';
 import { useBasketStore } from './useBasketStore';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 interface AuthState {
   user: User | null;
@@ -218,6 +220,14 @@ export const useAuthStore = create<AuthState>()(
         // Clear other stores first to ensure UI updates immediately
         useProductStore.getState().clearState();
         useBasketStore.getState().clearBasket();
+
+        try {
+          if (auth) {
+            await signOut(auth);
+          }
+        } catch {
+          // Ignore firebase signout errors
+        }
 
         try {
           await api.post('/api/auth/logout', {});
