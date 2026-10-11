@@ -211,25 +211,60 @@ exports.updateProfile = async (req, res) => {
         const { username, email } = req.body;
         const userId = req.user.id;
 
-        const existingUser = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { username },
-                    { email }
-                ],
-                NOT: { id: userId }
-            }
-        });
+        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-        if (existingUser) {
-            return res.status(400).json({ message: 'Username or Email already in use' });
+        const searchCriteria = [];
+        if (username) searchCriteria.push({ username: username.trim() });
+        if (email) searchCriteria.push({ email: email.trim().toLowerCase() });
+
+        if (searchCriteria.length > 0) {
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    OR: searchCriteria,
+                    NOT: { id: userId }
+                }
+            });
+
+            if (existingUser) {
+                return res.status(400).json({ message: 'Username or Email already in use' });
+            }
+        }
+
+        const isEmailChanged = email && email.trim().toLowerCase() !== currentUser.email.toLowerCase();
+        const updateData = {};
+        if (username) updateData.username = username.trim();
+        if (email) {
+            updateData.email = email.trim().toLowerCase();
+            if (isEmailChanged) {
+                // Security: Changing email immediately revokes verification until verified on new address
+                updateData.isEmailVerified = false;
+                updateData.tokenVersion = { increment: 1 };
+            }
         }
 
         const user = await prisma.user.update({
             where: { id: userId },
-            data: { username, email },
-            select: { id: true, username: true, role: true, email: true }
+            data: updateData,
+            select: { id: true, username: true, role: true, email: true, isEmailVerified: true, tokenVersion: true }
         });
+
+        // Dispatch verification link to the NEW email address if changed
+        if (isEmailChanged) {
+            await prisma.emailVerification.deleteMany({ where: { userId } });
+            const emailToken = generateVerificationToken();
+            await prisma.emailVerification.create({
+                data: {
+                    userId,
+                    email: user.email,
+                    token: emailToken,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                }
+            });
+            await sendVerificationEmail(user.email, user.username, emailToken).catch(err => {
+                console.error('[Update Profile] Failed to send verification email:', err);
+            });
+        }
 
         const token = jwt.sign({ id: user.id, role: user.role, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
         
@@ -240,7 +275,13 @@ exports.updateProfile = async (req, res) => {
             path: '/'
         });
 
-        res.json({ user });
+        res.json({ 
+            user, 
+            emailChanged: isEmailChanged,
+            message: isEmailChanged 
+                ? 'Email updated. A verification link has been sent to your new email address.' 
+                : 'Profile updated successfully' 
+        });
     } catch (err) {
         console.error('Update Profile Error:', err);
         res.status(500).json({ message: 'Server error during profile update' });
