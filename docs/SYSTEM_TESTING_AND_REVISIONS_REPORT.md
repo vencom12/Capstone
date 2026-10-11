@@ -165,6 +165,17 @@ This document compiles all chronological revisions, architectural refactors, bug
 
 ---
 
+### 12. Active Orders Queue Full-Width Expansion & Donut Chart Removal
+* **Classification:** UI/UX Reconstruction & Screen Real Estate Optimization
+* **Context & Problem:** The Overview panel split the screen 70/30, placing a redundant "Queue Distribution" donut chart on the right that merely converted the status counts (`In Queue 2`, `Preparing Order 1`, `Ready For Pick Up 1`) into percentages, while severely compressing the Active Orders Queue table and squeezing column contents.
+* **Solution:**
+  - Removed the redundant Queue Distribution donut chart and stripped unused `recharts` dependencies from the panel.
+  - Expanded the **Active Orders Queue** table to **100% full width**, giving customer names, item breakdowns, custom design notes, amounts, and action buttons comfortable breathing room without horizontal cramping.
+* **Key Files:**
+  - `frontend/src/components/admin/PanelOverview.tsx`
+
+---
+
 ## 3. Comprehensive Verification & Testing Results
 
 | Test ID | Testing Target | Scope & Methodology | Verification Result | Operational Status |
