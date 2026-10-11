@@ -1,13 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip
-} from 'recharts';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
@@ -267,25 +260,6 @@ export default function PanelOverview({
   const totalProjected = realizedRevenue + queuedRevenue;
   const progressPercent = totalProjected > 0 ? (realizedRevenue / totalProjected) * 100 : 0;
 
-  // Group pending orders by status for Pie Chart
-  const statusCounts = pendingOrders.reduce((acc: Record<string, number>, order) => {
-    const status = order.status || 'In Queue';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
-
-  const pieData = Object.entries(statusCounts).map(([status, count]) => ({
-    name: status,
-    value: count
-  }));
-
-  const STATUS_COLORS: Record<string, string> = {
-    'In Queue': '#a855f7',         // Purple
-    'Preparing Order': '#6366f1',  // Indigo/Primary
-    'In Transit': '#fbbf24',       // Amber/Warning
-    'Ready For Pick Up': '#10b981'  // Emerald/Success
-  };
-
 
   // 2. Fetch Receipt Details
   const viewReceipt = async (order: any) => {
@@ -438,10 +412,8 @@ export default function PanelOverview({
     <section className="animate-fade flex flex-col min-h-full text-left">
 
 
-      {/* Main split grid */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start mb-6 w-full">
-        {/* Left Column: Active orders queue (70%) */}
-        <div className="glass-card flex-1 w-full min-w-0 p-5 border border-border-glass rounded-[24px]">
+      {/* Active orders queue (Full Width) */}
+      <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-[24px]">
           <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
@@ -810,70 +782,6 @@ export default function PanelOverview({
             itemLabel="orders in queue"
           />
         </div>
-
-        {/* Right Column: Queue distribution donut chart (30%) */}
-        <div className="glass-card w-full lg:w-[350px] shrink-0 p-5 flex flex-col relative overflow-hidden text-left min-h-[350px] border border-border-glass rounded-[24px]">
-          <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-secondary/5 rounded-full blur-[50px] pointer-events-none"></div>
-          <h3 className="text-xs font-bold text-text-dim uppercase tracking-wider mb-4">Queue Distribution</h3>
-          {pendingOrders.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-text-dim text-xs">
-              Queue is clear! All orders fulfilled.
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="w-full h-[180px] text-xs font-medium">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || '#a855f7'} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      content={({ active, payload }: any) => {
-                        if (active && payload && payload.length) {
-                          const p = payload[0];
-                          return (
-                            <div className="bg-[#1e293b]/90 backdrop-blur-[12px] border border-border-glass px-2.5 py-1.5 rounded-lg shadow-md text-xs font-bold">
-                              <span className="text-white">{p.name}: {p.value} order(s)</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Status Labels Legend */}
-              <div className="w-full flex flex-col gap-1.5 mt-3 pt-3 border-t border-border-glass/40">
-                {pieData.map((entry, idx) => {
-                  const color = STATUS_COLORS[entry.name] || '#a855f7';
-                  const pct = ((entry.value / pendingOrders.length) * 100).toFixed(0);
-                  return (
-                    <div key={idx} className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2 text-text-main font-semibold font-sans">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="truncate max-w-[180px]">{entry.name}</span>
-                      </div>
-                      <span className="font-mono text-text-dim font-bold">{entry.value} ({pct}%)</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Modal: View Receipt Details */}
       <GlassModal
