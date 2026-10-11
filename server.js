@@ -517,6 +517,7 @@ server.listen(PORT, async () => {
 
 // Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination
 // Fallback for Next.js Clean URLs (SPA Router Fallback)
+const frontendOutPath = path.join(__dirname, 'frontend', 'out');
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.includes('.')) {
         return next();
