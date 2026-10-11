@@ -23,7 +23,7 @@ interface PanelAnalyticsProps {
 }
 
 type TimeRange = 'today' | 'week' | 'month' | 'all';
-type AnalyticsView = 'all' | 'finance' | 'ai';
+type AnalyticsView = 'all' | 'finance' | 'production';
 
 export default function PanelAnalytics({
   orders = [],
@@ -36,9 +36,9 @@ export default function PanelAnalytics({
   const [activeView, setActiveView] = useState<AnalyticsView>('all');
   const [showDrawerReconciler, setShowDrawerReconciler] = useState(false);
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
-  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Default Pacific Mall stall daily overhead (rent + power)
+  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500);
 
-  // 1. Build inventory cost map from real inventory
+  // 1. Inventory cost mapping
   const inventoryCostMap = useMemo(() => {
     const map: Record<string, number | null> = {};
     (inventory || []).forEach((inv) => {
@@ -51,9 +51,8 @@ export default function PanelAnalytics({
 
   const hasRealCosts = useMemo(() => Object.keys(inventoryCostMap).length > 0, [inventoryCostMap]);
 
-  // Cost lookup helper
   const getRealOrEstimatedCost = (itemName: string, itemPrice: number, isByog: boolean, qty: number): number => {
-    if (isByog) return 12 * qty; // BYOG only incurs thread and backing stabilizer cost
+    if (isByog) return 12 * qty;
 
     const lowerName = itemName.toLowerCase();
     for (const [invName, cost] of Object.entries(inventoryCostMap)) {
@@ -70,7 +69,7 @@ export default function PanelAnalytics({
     return Math.round(itemPrice * 0.35) * qty;
   };
 
-  // 2. Filter orders by selected time window
+  // 2. Filter orders
   const filteredOrders = useMemo(() => {
     const nonCanceled = (orders || []).filter((o) => o.status !== 'Order Canceled');
     if (timeRange === 'all') return nonCanceled;
@@ -113,7 +112,7 @@ export default function PanelAnalytics({
     );
   }, [orders]);
 
-  // 3. Financial Aggregates
+  // 3. Financial calculations
   const totalRevenue = useMemo(() => {
     return filteredOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.amount) || 0), 0);
   }, [filteredOrders]);
@@ -138,40 +137,30 @@ export default function PanelAnalytics({
     }, 0);
   }, [filteredOrders, inventoryCostMap]);
 
-  // Operating Overhead calculation according to time window
   const operatingOverhead = useMemo(() => {
     if (timeRange === 'today') return dailyStallOverhead;
     if (timeRange === 'week') return dailyStallOverhead * 7;
     if (timeRange === 'month') return dailyStallOverhead * 30;
-    return dailyStallOverhead * 30; // 1 month baseline for all-time scale
+    return dailyStallOverhead * 30;
   }, [timeRange, dailyStallOverhead]);
 
-  // Total Expenses (COGS + Operating Overhead)
   const totalExpenses = useMemo(() => {
     return estimatedMaterialCosts + operatingOverhead;
   }, [estimatedMaterialCosts, operatingOverhead]);
 
-  // Gross Profit (Revenue - Material COGS)
   const grossProfit = useMemo(() => {
     return Math.max(0, totalRevenue - estimatedMaterialCosts);
   }, [totalRevenue, estimatedMaterialCosts]);
 
-  // Net Take-Home Profit (Revenue - Total Expenses)
   const netProfit = useMemo(() => {
     return Math.max(0, totalRevenue - totalExpenses);
   }, [totalRevenue, totalExpenses]);
-
-  const grossMargin = useMemo(() => {
-    if (totalRevenue === 0) return 0;
-    return Math.round((grossProfit / totalRevenue) * 100);
-  }, [grossProfit, totalRevenue]);
 
   const netMargin = useMemo(() => {
     if (totalRevenue === 0) return 0;
     return Math.round((netProfit / totalRevenue) * 100);
   }, [netProfit, totalRevenue]);
 
-  // Break-Even Analysis
   const breakEvenProgress = useMemo(() => {
     if (operatingOverhead === 0) return 100;
     return Math.min(200, Math.round((grossProfit / operatingOverhead) * 100));
@@ -181,7 +170,6 @@ export default function PanelAnalytics({
     return grossProfit - operatingOverhead;
   }, [grossProfit, operatingOverhead]);
 
-  // Physical Cash in Drawer vs Digital GCash Split
   const paymentBreakdown = useMemo(() => {
     let cashTotal = 0;
     let cashCount = 0;
@@ -206,7 +194,6 @@ export default function PanelAnalytics({
     return { cashTotal, cashCount, gcashTotal, gcashCount };
   }, [filteredOrders]);
 
-  // 4. Inventory Capital & Locked Working Capital
   const inventoryAssetStats = useMemo(() => {
     let totalLockedValue = 0;
     let totalPieces = 0;
@@ -226,10 +213,9 @@ export default function PanelAnalytics({
     return { totalLockedValue, totalPieces, lowStockCount };
   }, [inventory]);
 
-  // 5. Predictive Upcoming Restock Outflow (Next 7-14 Days)
   const restockOutflowForecast = useMemo(() => {
     let budgetNeeded = 0;
-    const criticalItems: { name: string; count: number; threshold: number; cost: number; units: number }[] = [];
+    let lowCount = 0;
 
     (inventory || []).forEach((inv) => {
       const count = Number(inv.count) || 0;
@@ -238,22 +224,14 @@ export default function PanelAnalytics({
 
       if (count <= threshold) {
         const units = Math.max(1, threshold * 2 - count);
-        const cost = units * unitCost;
-        budgetNeeded += cost;
-        criticalItems.push({
-          name: inv.item,
-          count,
-          threshold,
-          cost,
-          units,
-        });
+        budgetNeeded += units * unitCost;
+        lowCount++;
       }
     });
 
-    return { budgetNeeded, criticalItems };
+    return { budgetNeeded, lowCount };
   }, [inventory]);
 
-  // 6. Category Performance
   const categoryPerformance = useMemo(() => {
     const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
       'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
@@ -290,9 +268,8 @@ export default function PanelAnalytics({
     return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.profit - a.profit);
   }, [filteredOrders, inventoryCostMap]);
 
-  // 7. Timeline Chart Data
   const chartData = useMemo(() => {
-    const dailyMap: Record<string, { date: string; revenue: number; profit: number; cogs: number }> = {};
+    const dailyMap: Record<string, { date: string; revenue: number; profit: number }> = {};
     filteredOrders.forEach((o) => {
       const d = new Date(o.createdAt || o.date);
       const key = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -308,22 +285,19 @@ export default function PanelAnalytics({
       }
       const prof = Math.max(0, rev - cost);
 
-      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: 0, profit: prof, cogs: cost };
+      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: rev, profit: prof };
       else {
         dailyMap[key].revenue += rev;
         dailyMap[key].profit += prof;
-        dailyMap[key].cogs += cost;
       }
     });
 
     const entries = Object.values(dailyMap);
-    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: grossProfit, cogs: estimatedMaterialCosts }];
+    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: grossProfit }];
     return entries;
-  }, [filteredOrders, totalRevenue, grossProfit, estimatedMaterialCosts, inventoryCostMap]);
+  }, [filteredOrders, totalRevenue, grossProfit, inventoryCostMap]);
 
-  // 8. Predictive 7-Day Forward Projections (Linear Trend on Recent Velocity)
   const forwardForecast = useMemo(() => {
-    // Generate daily revenues over past 14 days
     const days14: number[] = [];
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -343,7 +317,6 @@ export default function PanelAnalytics({
       days14.push(dayTotal);
     }
 
-    // Linear regression on past 14 days
     const n = days14.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
     for (let i = 0; i < n; i++) {
@@ -356,7 +329,6 @@ export default function PanelAnalytics({
     const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
     const intercept = (sumY - slope * sumX) / n;
 
-    // Projected next 7 days
     const projectionList: { dayLabel: string; projectedRevenue: number }[] = [];
     let totalProjected7d = 0;
     for (let j = 0; j < 7; j++) {
@@ -366,7 +338,7 @@ export default function PanelAnalytics({
       const fut = new Date();
       fut.setDate(now.getDate() + j + 1);
       projectionList.push({
-        dayLabel: `+${j + 1}d (${fut.getMonth() + 1}/${fut.getDate()})`,
+        dayLabel: `${fut.getMonth() + 1}/${fut.getDate()}`,
         projectedRevenue: proj,
       });
     }
@@ -378,7 +350,6 @@ export default function PanelAnalytics({
     };
   }, [orders]);
 
-  // Phase 4: Thread Spool Clustering
   const threadBatches = useMemo(() => {
     const map: Record<string, any[]> = {};
     activeQueueOrders.forEach((ord) => {
@@ -395,27 +366,21 @@ export default function PanelAnalytics({
       .map(([color, list]) => ({
         color,
         count: list.length,
-        orders: list,
         savedMins: Math.max(0, (list.length - 1) * 7),
       }))
       .sort((a, b) => b.count - a.count);
   }, [activeQueueOrders]);
 
-  // Phase 4: Job-Shop Time Estimation Simulator
   const [simCategory, setSimCategory] = useState<'fan' | 'cap' | 'towel' | 'byog'>('towel');
   const [simLetters, setSimLetters] = useState<number>(6);
   const predictedSimMinutes = useMemo(() => {
-    // Empirical Shop Model:
-    // Setup & 1st letter: 2.0 mins (1.5m hooping + 0.5m 1st letter)
-    // Anti-rush comfort buffer: +1.0 min added to base prep
-    // Proceeding letters: 0.5 mins (30 seconds) per letter
-    const basePrep = 2.5; // 1.5m hooping + 1.0m comfort buffer
+    const basePrep = 2.5;
     const catOffset = { fan: 0.0, towel: 0.5, cap: 0.5, byog: 0.5 }[simCategory];
-    const letterTime = simLetters * 0.5; // 30s per letter
+    const letterTime = simLetters * 0.5;
     return (basePrep + catOffset + letterTime).toFixed(1);
   }, [simCategory, simLetters]);
 
-  // End-of-Day 30-Second Cash Drawer Reconciler State
+  // Drawer reconciler
   const [directCountedCash, setDirectCountedCash] = useState<string>('');
   const [denom, setDenom] = useState({ b1000: 0, b500: 0, b200: 0, b100: 0, b50: 0, b20: 0, coins: 0 });
   const [useDenom, setUseDenom] = useState(false);
@@ -450,7 +415,7 @@ export default function PanelAnalytics({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Daily Financial Summary - Eds Towels & Caps</title>
+        <title>Daily Summary - Eds Towels & Caps</title>
         <style>
           body { font-family: monospace; padding: 15px; font-size: 12px; color: #000; }
           .center { text-align: center; }
@@ -461,25 +426,23 @@ export default function PanelAnalytics({
       </head>
       <body>
         <div class="center bold" style="font-size: 14px;">EDS TOWELS & CAPS</div>
-        <div class="center">Pacific Mall Lucena • Embroidery Studio</div>
-        <div class="center">DAILY FINANCIAL & PRODUCTION SUMMARY</div>
+        <div class="center">Pacific Mall Lucena</div>
+        <div class="center">Daily Financial Report</div>
         <div class="center">${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
         <div class="divider"></div>
-        <div class="row"><span>Total Orders Handled:</span><span class="bold">${filteredOrders.length}</span></div>
-        <div class="row"><span>Cash in Drawer:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
-        <div class="row"><span>GCash Received:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>Total Orders:</span><span class="bold">${filteredOrders.length}</span></div>
+        <div class="row"><span>Cash:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>GCash:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
         <div class="divider"></div>
-        <div class="row bold" style="font-size: 13px;"><span>GROSS REVENUE:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
-        <div class="row"><span>Material Blanks & Supplies:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
-        <div class="row"><span>Stall Overhead (Rent & Power):</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
-        <div class="row bold" style="font-size: 13px;"><span>NET TAKE-HOME PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
+        <div class="row bold"><span>REVENUE:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
+        <div class="row"><span>Materials:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
+        <div class="row"><span>Stall Overhead:</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
+        <div class="row bold"><span>NET PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
         <div class="divider"></div>
-        <div class="center bold">DRAWER RECONCILIATION</div>
-        <div class="row"><span>Counted in Cash Tin:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
-        <div class="row"><span>Expected in Drawer:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
-        <div class="row bold"><span>Variance:</span><span>${variance === 0 ? '₱0.00 (EXACT BALANCED)' : variance > 0 ? `+₱${variance.toFixed(2)} (OVER)` : `-₱${Math.abs(variance).toFixed(2)} (SHORT)`}</span></div>
-        <div class="divider"></div>
-        <div class="center" style="margin-top: 15px;">Verified by: _______________________</div>
+        <div class="center bold">DRAWER CHECK</div>
+        <div class="row"><span>Counted:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
+        <div class="row"><span>Expected:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row bold"><span>Variance:</span><span>${variance === 0 ? '₱0.00 (Balanced)' : variance > 0 ? `+₱${variance.toFixed(2)}` : `-₱${Math.abs(variance).toFixed(2)}`}</span></div>
       </body>
       </html>
     `;
@@ -493,161 +456,128 @@ export default function PanelAnalytics({
   };
 
   return (
-    <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full text-left font-sans max-w-6xl mx-auto pb-16">
-      {/* Top Header & Sub-Navigation */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-border-glass">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30">
-              Admin Analytics &amp; Foresight
-            </span>
-            <span className="text-xs text-text-dim">Financial Management &amp; Operations Intelligence</span>
-          </div>
-          <h1 className="text-2xl font-black text-text-main tracking-tight m-0 flex items-center gap-2">
-            <span>Shop Financials &amp; Operations Foresight</span>
-            {isSyncing && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>}
-          </h1>
-          <p className="text-xs text-text-dim m-0 mt-0.5">
-            Monitor profit, expenses, revenue, spendable working capital, and predictive restock needs.
-          </p>
-        </div>
-
-        {/* Action Buttons & Filter Controls */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* View Filter Pill */}
-          <div className="flex bg-white/5 border border-border-glass rounded-xl p-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setActiveView('all')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                activeView === 'all' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              All Overview
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('finance')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'finance' ? 'bg-emerald-600 text-white shadow-sm' : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <line x1="2" y1="10" x2="22" y2="10" />
-              </svg>
-              <span>Financial Health &amp; Budget</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('ai')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                activeView === 'ai' ? 'bg-purple-600 text-white shadow-sm' : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-              <span>AI Operations &amp; Foresight</span>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handlePrintSlip}
-            className="px-3 py-2 rounded-xl bg-white/5 border border-border-glass hover:bg-white/10 text-text-main text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg>
-            <span>Print Daily Slip</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Time Range Bar & Quick Drawer Check Toggle */}
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
-        <div className="flex items-center gap-2">
-          <div className="flex bg-bg-surface border border-border-glass rounded-xl p-1">
+    <div className="flex flex-col h-full text-left font-sans max-w-6xl mx-auto pb-16">
+      {/* Top Filter & Action Toolbar (Header removed per user request) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-5 pb-3 border-b border-border-glass">
+        {/* Left: Time Filter & Views */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Time Filter */}
+          <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs">
             {(['today', 'week', 'month', 'all'] as TimeRange[]).map((tr) => (
               <button
                 key={tr}
                 type="button"
                 onClick={() => setTimeRange(tr)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition cursor-pointer ${
-                  timeRange === tr ? 'bg-white/15 text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                className={`px-3 py-1 rounded-md font-semibold capitalize transition ${
+                  timeRange === tr
+                    ? 'bg-white/10 text-text-main shadow-xs'
+                    : 'text-text-dim hover:text-text-main'
                 }`}
               >
-                {tr === 'today' ? 'Today' : tr === 'week' ? 'This Week' : tr === 'month' ? 'This Month' : 'All Time'}
+                {tr === 'today' ? 'Today' : tr === 'week' ? 'Week' : tr === 'month' ? 'Month' : 'All'}
               </button>
             ))}
           </div>
 
-          {hasRealCosts ? (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 whitespace-nowrap flex items-center gap-1">
-              ✓ Real Supplier Costs Active
-            </span>
-          ) : (
-            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/5 text-text-dim border border-border-glass whitespace-nowrap">
-              Estimated Blank Costs
-            </span>
-          )}
+          {/* View Filter */}
+          <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveView('all')}
+              className={`px-3 py-1 rounded-md font-semibold transition ${
+                activeView === 'all'
+                  ? 'bg-white/10 text-text-main shadow-xs'
+                  : 'text-text-dim hover:text-text-main'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('finance')}
+              className={`px-3 py-1 rounded-md font-semibold transition ${
+                activeView === 'finance'
+                  ? 'bg-white/10 text-text-main shadow-xs'
+                  : 'text-text-dim hover:text-text-main'
+              }`}
+            >
+              Financials
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('production')}
+              className={`px-3 py-1 rounded-md font-semibold transition ${
+                activeView === 'production'
+                  ? 'bg-white/10 text-text-main shadow-xs'
+                  : 'text-text-dim hover:text-text-main'
+              }`}
+            >
+              Production
+            </button>
+          </div>
 
           <button
             type="button"
             onClick={() => setShowOverheadSettings(!showOverheadSettings)}
-            className="text-[11px] text-text-dim hover:text-text-main border border-border-glass px-2.5 py-1 rounded-lg bg-white/[0.02] flex items-center gap-1 transition"
+            className="text-xs text-text-dim hover:text-text-main px-2.5 py-1 rounded-md border border-border-glass bg-bg-surface transition"
           >
-            <span>Overhead: ₱{dailyStallOverhead}/day</span>
-            <span className="text-[10px]">⚙️</span>
+            Overhead: ₱{dailyStallOverhead}/day
           </button>
         </div>
 
-        {/* Toggle 30-Second End-of-Day Drawer Check */}
-        <button
-          type="button"
-          onClick={() => setShowDrawerReconciler(!showDrawerReconciler)}
-          className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            showDrawerReconciler
-              ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400'
-              : 'bg-white/5 border-border-glass hover:bg-white/10 text-text-main'
-          }`}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-          </svg>
-          <span>30-Sec Cash Drawer Reconciler</span>
-          <span className="text-[10px] ml-1">{showDrawerReconciler ? '▲ Hide' : '▼ Show'}</span>
-        </button>
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDrawerReconciler(!showDrawerReconciler)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${
+              showDrawerReconciler
+                ? 'bg-white/10 border-white/20 text-text-main'
+                : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
+            }`}
+          >
+            <span>Cash Drawer Check</span>
+            <span className="text-[10px]">{showDrawerReconciler ? '▲' : '▼'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrintSlip}
+            className="px-3 py-1.5 rounded-lg border border-border-glass bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main text-xs font-semibold transition flex items-center gap-1.5"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            <span>Print Slip</span>
+          </button>
+        </div>
       </div>
 
-      {/* Optional Overhead Customizer */}
+      {/* Overhead Settings Popdown */}
       {showOverheadSettings && (
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-6 flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-text-main">Daily Stall Overhead (Pacific Mall Rent &amp; Power):</span>
-            <span className="text-text-dim">Used to calculate break-even and net profit.</span>
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-4 flex items-center justify-between text-xs">
+          <div className="text-text-dim">
+            Daily fixed stall rent &amp; electricity allowance (used for break-even and net profit):
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-text-dim">₱</span>
+            <span className="text-text-dim">₱</span>
             <input
               type="number"
               min="0"
               step="50"
               value={dailyStallOverhead}
               onChange={(e) => setDailyStallOverhead(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-24 bg-black/40 border border-border-glass px-2.5 py-1 rounded-lg text-white font-mono font-bold text-xs outline-none"
+              className="w-20 bg-black/40 border border-border-glass px-2 py-1 rounded text-white font-mono text-xs outline-none"
             />
             <button
               type="button"
               onClick={() => {
                 setShowOverheadSettings(false);
-                showToast('Overhead budget saved', 'success');
+                showToast('Overhead updated', 'success');
               }}
-              className="px-2.5 py-1 bg-primary text-white rounded-lg font-bold text-xs"
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/15 text-white rounded font-medium text-xs"
             >
               Done
             </button>
@@ -655,77 +585,54 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* Collapsible 30-Second End-of-Day Cash Drawer Check */}
+      {/* Cash Drawer Reconciler */}
       {showDrawerReconciler && (
-        <div className="bg-bg-surface border border-emerald-500/30 rounded-2xl p-5 mb-6 shadow-lg animate-[fadeIn_0.2s_ease-out]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-border-glass">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-extrabold text-emerald-400 flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="6" width="20" height="12" rx="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <path d="M6 12h.01M18 12h.01" />
-                  </svg>
-                  <span>End-of-Day Cash Drawer Verification (Register Cash Box)</span>
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300">
-                  Phase 3 Standard
-                </span>
-              </div>
-              <p className="text-xs text-text-dim m-0 mt-0.5">
-                Count the physical cash in the shop register at closing to match against today's tickets.
-              </p>
-            </div>
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 mb-5 text-xs">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-border-glass">
+            <span className="font-bold text-text-main">End-of-Day Cash Drawer Check</span>
             <button
               type="button"
               onClick={() => setUseDenom(!useDenom)}
-              className="text-xs text-primary hover:underline font-bold cursor-pointer"
+              className="text-text-dim hover:text-text-main underline"
             >
-              {useDenom ? 'Switch to Quick Total Input' : 'Switch to Denomination Breakdown'}
+              {useDenom ? 'Quick Total Mode' : 'Denomination Mode'}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-            {/* Left: Comparison readout */}
-            <div className="md:col-span-5 bg-black/40 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-text-dim">Expected Cash in Drawer:</span>
-                <span className="font-mono font-black text-emerald-400 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+            <div className="md:col-span-5 bg-black/30 border border-border-glass rounded-lg p-3 flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-text-dim">Expected in Drawer:</span>
+                <span className="font-mono font-bold text-text-main">
                   ₱{paymentBreakdown.cashTotal.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-text-dim">Counted Cash in Box:</span>
-                <span className="font-mono font-black text-white text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-text-dim">Counted Cash:</span>
+                <span className="font-mono font-bold text-text-main">
                   ₱{countedCash.toFixed(2)}
                 </span>
               </div>
-              <div className="h-px bg-white/10 my-0.5"></div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-text-dim">Variance Status:</span>
+              <div className="h-px bg-white/5 my-0.5"></div>
+              <div className="flex justify-between items-center">
+                <span className="text-text-dim">Variance:</span>
                 {isCountEntered ? (
-                  variance === 0 ? (
-                    <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold font-mono text-xs">
-                      ✓ ₱0.00 EXACT BALANCED
-                    </span>
-                  ) : variance > 0 ? (
-                    <span className="px-2.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold font-mono text-xs">
-                      +₱{variance.toFixed(2)} (OVER)
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold font-mono text-xs">
-                      -₱{Math.abs(variance).toFixed(2)} (SHORT)
-                    </span>
-                  )
+                  <span className={`font-mono font-bold ${
+                    variance === 0 ? 'text-emerald-400' : variance > 0 ? 'text-blue-400' : 'text-rose-400'
+                  }`}>
+                    {variance === 0
+                      ? '₱0.00 (Balanced)'
+                      : variance > 0
+                      ? `+₱${variance.toFixed(2)} (Over)`
+                      : `-₱${Math.abs(variance).toFixed(2)} (Short)`}
+                  </span>
                 ) : (
-                  <span className="text-text-dim italic text-xs">Enter count to calculate</span>
+                  <span className="text-text-dim italic">Enter count</span>
                 )}
               </div>
             </div>
 
-            {/* Right: Inputs */}
-            <div className="md:col-span-7 flex flex-col gap-3">
+            <div className="md:col-span-7 flex flex-col gap-2">
               {useDenom ? (
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -736,8 +643,8 @@ export default function PanelAnalytics({
                     { label: '₱50', key: 'b50' },
                     { label: '₱20', key: 'b20' },
                   ].map(({ label, key }) => (
-                    <div key={key} className="flex items-center justify-between bg-white/[0.03] border border-border-glass rounded-lg px-2.5 py-1.5">
-                      <span className="text-[11px] font-bold text-text-dim font-mono">{label}</span>
+                    <div key={key} className="flex items-center justify-between bg-black/20 border border-border-glass rounded px-2 py-1">
+                      <span className="text-text-dim font-mono">{label}</span>
                       <input
                         type="number"
                         min="0"
@@ -746,12 +653,12 @@ export default function PanelAnalytics({
                         onChange={(e) =>
                           setDenom({ ...denom, [key]: Math.max(0, parseInt(e.target.value) || 0) })
                         }
-                        className="w-10 bg-transparent text-right font-mono text-xs font-bold text-text-main outline-none"
+                        className="w-8 bg-transparent text-right font-mono font-bold text-text-main outline-none"
                       />
                     </div>
                   ))}
-                  <div className="col-span-3 flex items-center justify-between bg-white/[0.03] border border-border-glass rounded-lg px-2.5 py-1.5">
-                    <span className="text-[11px] font-bold text-text-dim font-mono">Coins Total (₱)</span>
+                  <div className="col-span-3 flex items-center justify-between bg-black/20 border border-border-glass rounded px-2 py-1">
+                    <span className="text-text-dim font-mono">Coins (₱)</span>
                     <input
                       type="number"
                       min="0"
@@ -761,22 +668,22 @@ export default function PanelAnalytics({
                       onChange={(e) =>
                         setDenom({ ...denom, coins: Math.max(0, parseFloat(e.target.value) || 0) })
                       }
-                      className="w-20 bg-transparent text-right font-mono text-xs font-bold text-text-main outline-none"
+                      className="w-16 bg-transparent text-right font-mono font-bold text-text-main outline-none"
                     />
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-text-dim text-sm">₱</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold">₱</span>
                     <input
                       type="number"
                       min="0"
                       step="1"
-                      placeholder="Type counted cash total (e.g. 3450)"
+                      placeholder="Counted cash in box"
                       value={directCountedCash}
                       onChange={(e) => setDirectCountedCash(e.target.value)}
-                      className="w-full bg-white/[0.03] border border-border-glass pl-9 pr-3 py-2.5 rounded-xl text-text-main font-mono text-sm font-bold outline-none focus:border-emerald-500 transition"
+                      className="w-full bg-black/20 border border-border-glass pl-7 pr-3 py-2 rounded-lg text-text-main font-mono text-xs outline-none"
                     />
                   </div>
                   <button
@@ -784,261 +691,164 @@ export default function PanelAnalytics({
                     onClick={() => {
                       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       setLockedTime(time);
-                      showToast(`Cash drawer verified at ${time}`, 'success');
+                      showToast(`Drawer checked at ${time}`, 'success');
                     }}
                     disabled={!isCountEntered}
-                    className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-extrabold transition cursor-pointer shadow-md whitespace-nowrap flex items-center gap-1.5"
+                    className="py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-30 text-white font-medium text-xs whitespace-nowrap"
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                    <span>Verify &amp; Lock Drawer</span>
+                    Lock Check
                   </button>
                 </div>
               )}
 
               {lockedTime && (
-                <span className="text-[11px] text-emerald-400 font-bold">
-                  ✓ Drawer locked at {lockedTime} with {variance === 0 ? 'zero discrepancy' : variance > 0 ? `+₱${variance.toFixed(2)} surplus` : `-₱${Math.abs(variance).toFixed(2)} shortage`}.
-                </span>
+                <div className="text-[11px] text-text-dim">
+                  Checked at {lockedTime} ({variance === 0 ? 'Exact' : variance > 0 ? `+₱${variance.toFixed(2)}` : `-₱${Math.abs(variance).toFixed(2)}`})
+                </div>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* SECTION 1: CORE FINANCIAL OVERVIEW (PROFIT, EXPENSES, REVENUE, WORKING CAPITAL) */}
+      {/* Financial Overview (Clean, Human Design) */}
       {(activeView === 'all' || activeView === 'finance') && (
-        <div className="mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
-            {/* 1. Gross Revenue */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider">
-                  Gross Revenue (Top Line)
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-text-main font-bold">
-                  {filteredOrders.length} Orders
-                </span>
+        <div className="space-y-4 mb-6">
+          {/* Main 4 Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Revenue */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="text-xs text-text-dim font-medium">Gross Revenue</div>
+              <div className="text-2xl font-bold font-mono text-text-main my-1">
+                ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div>
-                <div className="text-2xl font-black font-mono text-text-main tracking-tight">
-                  ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Total collected sales
-                </div>
+              <div className="text-xs text-text-dim">
+                {filteredOrders.length} orders
               </div>
             </div>
 
-            {/* 2. Total Expenses (COGS + Stall Overhead) */}
-            <div className="bg-bg-surface border border-amber-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider">
-                  Total Expenses
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold">
-                  Blanks + Overhead
-                </span>
+            {/* Expenses */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="text-xs text-text-dim font-medium">Total Expenses</div>
+              <div className="text-2xl font-bold font-mono text-text-main my-1">
+                ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div>
-                <div className="text-2xl font-black font-mono text-amber-300 tracking-tight">
-                  ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1 flex items-center justify-between">
-                  <span>Blanks: ₱{estimatedMaterialCosts.toFixed(0)}</span>
-                  <span>Rent: ₱{operatingOverhead.toFixed(0)}</span>
-                </div>
+              <div className="text-xs text-text-dim">
+                Blanks ₱{estimatedMaterialCosts.toFixed(0)} • Stall ₱{operatingOverhead.toFixed(0)}
               </div>
             </div>
 
-            {/* 3. Net Take-Home Profit */}
-            <div className="bg-bg-surface border border-emerald-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider">
-                  Net Take-Home Profit
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-bold">
-                  {netMargin}% Margin
-                </span>
+            {/* Net Profit */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-dim font-medium">Net Profit</span>
+                <span className="text-xs font-mono font-medium text-emerald-400">{netMargin}% margin</span>
               </div>
-              <div>
-                <div className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
-                  ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Revenue − All Production &amp; Overhead Costs
-                </div>
+              <div className="text-2xl font-bold font-mono text-emerald-400 my-1">
+                ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                After materials &amp; stall overhead
               </div>
             </div>
 
-            {/* 4. Spendable Working Capital (Cash vs GCash) */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider">
-                  Spendable Cash on Hand
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 font-bold">
-                  Available Now
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
+            {/* Cash on Hand */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="text-xs text-text-dim font-medium">Cash on Hand</div>
+              <div className="space-y-0.5 my-1">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
-                      <rect x="2" y="6" width="20" height="12" rx="2" />
-                      <circle cx="12" cy="12" r="2" />
-                    </svg>
-                    <span>Cash Tin:</span>
-                  </span>
-                  <span className="font-mono font-bold text-emerald-400">
-                    ₱{paymentBreakdown.cashTotal.toFixed(2)}
-                  </span>
+                  <span className="text-text-dim">Drawer:</span>
+                  <span className="font-mono font-bold text-text-main">₱{paymentBreakdown.cashTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#007df2]">
-                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                      <line x1="12" y1="18" x2="12.01" y2="18" />
-                    </svg>
-                    <span>GCash QR:</span>
-                  </span>
-                  <span className="font-mono font-bold text-[#007df2]">
-                    ₱{paymentBreakdown.gcashTotal.toFixed(2)}
-                  </span>
+                  <span className="text-text-dim">GCash:</span>
+                  <span className="font-mono font-bold text-text-main">₱{paymentBreakdown.gcashTotal.toFixed(2)}</span>
                 </div>
+              </div>
+              <div className="text-[11px] text-text-dim">
+                Total ₱{(paymentBreakdown.cashTotal + paymentBreakdown.gcashTotal).toFixed(2)}
               </div>
             </div>
           </div>
 
-          {/* SECONDARY ROW: FORESIGHT & WORKING CAPITAL ASSETS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
-            {/* A. Capital Tied Up in Inventory */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  </svg>
-                  <span>Inventory Capital Locked</span>
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-text-dim font-bold">
-                  {inventoryAssetStats.totalPieces} Items on Shelves
-                </span>
+          {/* Secondary 3 Cards: Stock Value, Restock Need, Break-Even */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Inventory Asset Value */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
+              <div className="text-xs text-text-dim font-medium">Stock Asset Value</div>
+              <div className="text-lg font-bold font-mono text-text-main my-1">
+                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div>
-                <div className="text-xl font-black font-mono text-white tracking-tight">
-                  ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Cash physically trapped in unsold blank towels, fans &amp; thread
-                </div>
+              <div className="text-xs text-text-dim">
+                {inventoryAssetStats.totalPieces} items in stock
               </div>
             </div>
 
-            {/* B. Upcoming Restock Outflow (Next 7-14 Days) */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-400">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span>Forecasted Restock Outflow</span>
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 font-bold">
-                  {restockOutflowForecast.criticalItems.length} Low Stocks
-                </span>
+            {/* Restock Budget */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-dim font-medium">Upcoming Restock</span>
+                {restockOutflowForecast.lowCount > 0 && (
+                  <span className="text-[11px] text-amber-400">{restockOutflowForecast.lowCount} low items</span>
+                )}
               </div>
-              <div>
-                <div className="text-xl font-black font-mono text-rose-300 tracking-tight">
-                  ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Estimated budget to reserve for next supplier restocking
-                </div>
+              <div className="text-lg font-bold font-mono text-text-main my-1">
+                ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                Estimated budget for low items
               </div>
             </div>
 
-            {/* C. Daily Break-Even Target Progress */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m9 12 2 2 4-4" />
-                  </svg>
-                  <span>Stall Break-Even Status</span>
-                </span>
-                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                  breakEvenProgress >= 100 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
-                }`}>
-                  {breakEvenProgress}% of Stall Cost
-                </span>
+            {/* Break-Even Status */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-dim font-medium">Stall Break-Even</span>
+                <span className="font-mono text-text-dim">{breakEvenProgress}%</span>
               </div>
-              <div>
-                <div className="w-full bg-white/5 rounded-full h-2 mb-2 overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      breakEvenProgress >= 100 ? 'bg-emerald-500' : 'bg-amber-400'
-                    }`}
-                    style={{ width: `${Math.min(100, breakEvenProgress)}%` }}
-                  />
-                </div>
-                <div className="text-[11px] text-text-dim flex items-center justify-between">
-                  <span>Gross Profit: ₱{grossProfit.toFixed(0)}</span>
-                  <span className={breakEvenSurplus >= 0 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                    {breakEvenSurplus >= 0
-                      ? `+₱${breakEvenSurplus.toFixed(0)} Pure Profit Zone`
-                      : `₱${Math.abs(breakEvenSurplus).toFixed(0)} to break even`}
-                  </span>
-                </div>
+              <div className="w-full bg-white/5 rounded-full h-1.5 my-2 overflow-hidden border border-white/5">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  style={{ width: `${Math.min(100, breakEvenProgress)}%` }}
+                />
+              </div>
+              <div className="text-xs text-text-dim flex justify-between">
+                <span>Gross: ₱{grossProfit.toFixed(0)}</span>
+                <span className={breakEvenSurplus >= 0 ? 'text-emerald-400' : 'text-text-dim'}>
+                  {breakEvenSurplus >= 0 ? `+₱${breakEvenSurplus.toFixed(0)} surplus` : `₱${Math.abs(breakEvenSurplus).toFixed(0)} to break even`}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Product Profit Table & Timeline Area Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
-            {/* Profit by Category Table (7 cols) */}
-            <div className="lg:col-span-7 bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-glass">
-                <div>
-                  <h2 className="text-sm font-extrabold text-text-main m-0">Profit Breakdown by Garment Category</h2>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">Which items generated the highest margins</p>
-                </div>
-                <span className="text-xs text-text-dim font-mono">{categoryPerformance.length} Categories</span>
-              </div>
+          {/* Table & Chart Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Category Breakdown Table */}
+            <div className="lg:col-span-7 bg-bg-surface border border-border-glass rounded-xl p-4">
+              <div className="text-xs font-bold text-text-main mb-3">Profit by Category</div>
 
               {categoryPerformance.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text-dim">No orders recorded in this time window.</div>
+                <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this period.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 text-[10px] text-text-dim uppercase tracking-wider">
-                        <th className="pb-2 font-bold">Category</th>
-                        <th className="pb-2 font-bold text-center">Units</th>
-                        <th className="pb-2 font-bold text-right">Revenue</th>
-                        <th className="pb-2 font-bold text-right">Blank Cost</th>
-                        <th className="pb-2 font-bold text-right text-emerald-400">Net Profit</th>
+                      <tr className="border-b border-white/5 text-[11px] text-text-dim">
+                        <th className="pb-2 font-medium">Category</th>
+                        <th className="pb-2 font-medium text-center">Units</th>
+                        <th className="pb-2 font-medium text-right">Revenue</th>
+                        <th className="pb-2 font-medium text-right">Cost</th>
+                        <th className="pb-2 font-medium text-right">Profit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                    <tbody className="divide-y divide-white/5">
                       {categoryPerformance.map((row) => (
-                        <tr key={row.category} className="hover:bg-white/[0.02] transition">
-                          <td className="py-2.5 font-bold text-text-main">{row.category}</td>
-                          <td className="py-2.5 text-center font-mono text-text-dim">{row.units} pcs</td>
-                          <td className="py-2.5 text-right font-mono font-semibold text-text-main">
-                            ₱{row.revenue.toFixed(2)}
-                          </td>
-                          <td className="py-2.5 text-right font-mono text-text-dim">
-                            ₱{row.cost.toFixed(2)}
-                          </td>
-                          <td className="py-2.5 text-right font-mono font-bold text-emerald-400">
-                            ₱{row.profit.toFixed(2)}
-                          </td>
+                        <tr key={row.category} className="hover:bg-white/[0.02]">
+                          <td className="py-2 text-text-main font-medium">{row.category}</td>
+                          <td className="py-2 text-center text-text-dim font-mono">{row.units}</td>
+                          <td className="py-2 text-right font-mono text-text-main">₱{row.revenue.toFixed(2)}</td>
+                          <td className="py-2 text-right font-mono text-text-dim">₱{row.cost.toFixed(2)}</td>
+                          <td className="py-2 text-right font-mono font-medium text-emerald-400">₱{row.profit.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1047,43 +857,33 @@ export default function PanelAnalytics({
               )}
             </div>
 
-            {/* Revenue vs Profit Timeline Area Chart (5 cols) */}
-            <div className="lg:col-span-5 bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-sm flex flex-col">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-glass">
-                <div>
-                  <h2 className="text-sm font-extrabold text-text-main m-0">Revenue &amp; Profit Trend</h2>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">Historical profit growth</p>
-                </div>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Profit
-                  </span>
-                  <span className="flex items-center gap-1 text-primary font-bold">
-                    <span className="w-2 h-2 rounded-full bg-primary"></span> Sales
-                  </span>
-                </div>
+            {/* Revenue Trend Chart */}
+            <div className="lg:col-span-5 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-bold text-text-main">Profit Trend</span>
+                <span className="text-[11px] text-emerald-400 font-mono">Net Profit</span>
               </div>
 
-              <div className="h-48 w-full mt-auto">
+              <div className="h-44 w-full mt-auto">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                     <defs>
                       <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                    <XAxis dataKey="date" stroke="#888888" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#888888" fontSize={10} tickLine={false} />
+                    <XAxis dataKey="date" stroke="#666666" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#666666" fontSize={10} tickLine={false} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-bg-surface border border-border-glass p-2.5 rounded-lg shadow-lg text-xs font-mono">
-                              <div className="text-text-dim mb-1 font-sans">{label}</div>
+                            <div className="bg-bg-surface border border-border-glass p-2 rounded text-xs font-mono">
+                              <div className="text-text-dim">{label}</div>
                               <div className="text-emerald-400 font-bold">
-                                Profit: ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
+                                ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
                               </div>
                             </div>
                           );
@@ -1107,159 +907,93 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* SECTION 2: OPERATIONS FORESIGHT & AI WORKFLOW INTELLIGENCE (PHASE 4) */}
-      {(activeView === 'all' || activeView === 'ai') && (
-        <div className="mb-6 animate-[fadeIn_0.3s_ease-out]">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-border-glass">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-extrabold text-purple-400 m-0 flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  </svg>
-                  <span>Operations Foresight &amp; Job-Shop Intelligence</span>
-                </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300">
-                  Phase 4 Capstone Standard
-                </span>
-              </div>
-              <p className="text-xs text-text-dim m-0 mt-0.5">
-                Job-shop turnaround estimation, thread spool batching, and 7-day predictive demand forecasting.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
-            {/* Left: Job-Shop Turnaround Formula & Live Simulator (6 cols) */}
-            <div className="lg:col-span-6 bg-bg-surface border border-purple-500/30 rounded-2xl p-5 shadow-sm flex flex-col">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-glass">
-                <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <span>Job-Shop Turnaround Time Estimator</span>
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold font-mono">
-                  Calibrated: ±30s MAE
-                </span>
-              </div>
-
-              {/* Formula Callout */}
-              <div className="bg-black/40 border border-purple-500/30 rounded-xl p-3.5 mb-4 font-mono text-xs text-purple-200">
-                <div className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-1 font-sans">
-                  Machine Stitching Time Calculation (Includes +1m Anti-Rush Comfort Buffer):
+      {/* Production Tools & Forecast */}
+      {(activeView === 'all' || activeView === 'production') && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Machine Stitching Time Estimator */}
+            <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-text-main">Production Time Estimator</span>
+                  <span className="text-[11px] font-mono text-text-dim">3m base + 30s/letter</span>
                 </div>
-                <div className="text-sm font-black text-white py-1 font-sans">
-                  Total Time = 3.0 mins (Setup &amp; 1st Letter + 1m Buffer) + 30s (0.5 mins) per Proceeding Letter
-                </div>
-                <div className="text-[11px] text-text-dim mt-2 grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10 font-sans">
-                  <span>1 Letter (with buffer): <strong>~3.0 mins</strong></span>
-                  <span>4 Letters (e.g. name): <strong>~4.5 mins</strong></span>
-                  <span>6 Letters: <strong>~5.5 mins</strong></span>
-                  <span>10 Letters: <strong>~7.5 mins</strong></span>
+                <div className="text-xs text-text-dim mb-3">
+                  Calculates machine time based on hooping prep, garment type, and letter count.
                 </div>
               </div>
 
-              {/* Interactive Simulator */}
-              <div className="bg-white/[0.02] border border-border-glass rounded-xl p-3.5 flex flex-col gap-3 mt-auto">
-                <span className="text-[11px] font-extrabold text-text-main uppercase tracking-wider">
-                  Test Live Job-Shop Estimator:
-                </span>
+              <div className="bg-black/20 border border-border-glass rounded-lg p-3 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] text-text-dim uppercase font-bold">Item Type</label>
+                  <div>
+                    <label className="text-[11px] text-text-dim block mb-1">Item</label>
                     <select
                       value={simCategory}
                       onChange={(e) => setSimCategory(e.target.value as any)}
-                      className="bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-xs text-text-main outline-none font-bold"
+                      className="w-full bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-xs text-text-main outline-none"
                     >
-                      <option value="fan">Chinese Fan (Fast)</option>
-                      <option value="cap">Cap / Hat (Standard)</option>
-                      <option value="towel">Bath Towel (Dense)</option>
-                      <option value="byog">BYOG Garment (Custom)</option>
+                      <option value="fan">Chinese Fan</option>
+                      <option value="cap">Cap / Hat</option>
+                      <option value="towel">Bath Towel</option>
+                      <option value="byog">Client Garment (BYOG)</option>
                     </select>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] text-text-dim uppercase font-bold">Letters ({simLetters})</label>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-text-dim">Letters</label>
+                      <span className="text-[11px] font-mono text-text-main">{simLetters}</span>
+                    </div>
                     <input
                       type="range"
                       min="1"
                       max="20"
                       value={simLetters}
                       onChange={(e) => setSimLetters(parseInt(e.target.value) || 1)}
-                      className="mt-1"
+                      className="w-full mt-1.5"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs">
-                  <span className="text-purple-300 font-bold">Estimated Machine Stitching Duration:</span>
-                  <span className="font-mono font-black text-sm text-purple-200">
-                    ~{predictedSimMinutes} Minutes
-                  </span>
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                  <span className="text-text-dim">Estimated Stitching Duration:</span>
+                  <span className="font-mono font-bold text-text-main">~{predictedSimMinutes} mins</span>
                 </div>
               </div>
             </div>
 
-            {/* Right: Smart Thread Spool Batching Advisor (6 cols) */}
-            <div className="lg:col-span-6 bg-bg-surface border border-amber-500/30 rounded-2xl p-5 shadow-sm flex flex-col">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-glass">
-                <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span>Thread Spool Batching Advisor</span>
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold">
-                  {threadBatches.length} Color Clusters
-                </span>
+            {/* Thread Batching Advisor */}
+            <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-text-main">Thread Color Batching</span>
+                <span className="text-[11px] text-text-dim font-mono">{threadBatches.length} active colors</span>
+              </div>
+              <div className="text-xs text-text-dim mb-3">
+                Groups queue items by spool color to save needle re-threading time.
               </div>
 
               {threadBatches.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center text-text-dim my-auto">
-                  <div className="w-8 h-8 rounded-full bg-white/5 border border-border-glass flex items-center justify-center mb-2 text-emerald-400">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <span className="text-xs font-bold text-text-main">No active orders in machine queue</span>
-                  <span className="text-[11px] mt-0.5">When orders enter queue, the algorithm clusters them to save needle re-threadings.</span>
+                <div className="py-6 text-center text-xs text-text-dim my-auto">
+                  No orders currently waiting in queue.
                 </div>
               ) : (
-                <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[300px] pr-1">
+                <div className="space-y-2 overflow-y-auto max-h-[170px] pr-1">
                   {threadBatches.map((b) => (
-                    <div key={b.color} className="bg-white/[0.03] border border-border-glass rounded-xl p-3 flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-text-main flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full bg-primary inline-block"></span>
-                          <span>Spool: {b.color}</span>
-                        </span>
-                        <span className="text-[11px] font-mono font-bold bg-white/10 px-2 py-0.5 rounded text-text-main">
-                          {b.count} order{b.count === 1 ? '' : 's'}
-                        </span>
+                    <div key={b.color} className="bg-black/20 border border-border-glass rounded-lg p-2.5 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-semibold text-text-main">{b.color}</span>
+                        <span className="text-text-dim ml-2 font-mono">({b.count} orders)</span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-text-dim">
-                        <span>
-                          {b.savedMins > 0 ? (
-                            <strong className="text-emerald-400 flex items-center gap-1">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                              </svg>
-                              <span>Saves ~{b.savedMins}m needle re-threadings</span>
-                            </strong>
-                          ) : (
-                            <span>Single spool run</span>
-                          )}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        {b.savedMins > 0 && (
+                          <span className="text-[11px] text-emerald-400 font-mono">Saves ~{b.savedMins}m</span>
+                        )}
                         <button
                           type="button"
-                          onClick={() => showToast(`Batch recommendation for ${b.color} prioritized`, 'info')}
-                          className="text-primary hover:underline text-[11px] font-bold cursor-pointer"
+                          onClick={() => showToast(`Prioritized ${b.color} batch`, 'info')}
+                          className="text-text-dim hover:text-text-main underline text-[11px]"
                         >
-                          Prioritize Batch →
+                          Prioritize
                         </button>
                       </div>
                     </div>
@@ -1269,53 +1003,39 @@ export default function PanelAnalytics({
             </div>
           </div>
 
-          {/* 7-Day Forward Predictive Demand & Revenue Forecast */}
-          <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-sm">
+          {/* 7-Day Forward Forecast */}
+          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <div>
-                <h3 className="text-sm font-extrabold text-text-main m-0 flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                    <polyline points="16 7 22 7 22 13" />
-                  </svg>
-                  <span>7-Day Forward Predictive Demand &amp; Revenue Projection</span>
-                </h3>
-                <p className="text-xs text-text-dim m-0 mt-0.5">
-                  Calculated from 14-day historical order velocity using linear trend projection to foresee upcoming cash flow.
-                </p>
+                <div className="text-xs font-bold text-text-main">7-Day Demand Forecast</div>
+                <div className="text-xs text-text-dim">Projected sales trend based on recent order velocity.</div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-text-dim px-2.5 py-1 rounded-lg bg-white/5 border border-white/10">
-                  Daily Velocity: ~₱{forwardForecast.daily14Velocity.toLocaleString()}/day
-                </span>
-                <span className="text-xs font-mono font-bold text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  7-Day Forecast: ₱{forwardForecast.totalProjected7d.toLocaleString()}
-                </span>
+              <div className="text-xs text-text-dim font-mono">
+                Projected 7-day revenue: <strong className="text-text-main">₱{forwardForecast.totalProjected7d.toLocaleString()}</strong>
               </div>
             </div>
 
-            <div className="h-44 w-full">
+            <div className="h-40 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={forwardForecast.projectionList} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                <LineChart data={forwardForecast.projectionList} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="dayLabel" stroke="#888888" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#888888" fontSize={10} tickLine={false} />
+                  <XAxis dataKey="dayLabel" stroke="#666666" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#666666" fontSize={10} tickLine={false} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#121217',
                       borderColor: '#2e2e38',
-                      borderRadius: '0.75rem',
+                      borderRadius: '0.5rem',
                       fontSize: '11px',
                     }}
-                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Projected Revenue']}
+                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Projected']}
                   />
                   <Line
                     type="monotone"
                     dataKey="projectedRevenue"
-                    name="Projected Revenue (₱)"
-                    stroke="#6366f1"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#6366f1' }}
+                    stroke="#818cf8"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#818cf8' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1323,6 +1043,6 @@ export default function PanelAnalytics({
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
