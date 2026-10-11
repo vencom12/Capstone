@@ -79,31 +79,6 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
       )
     },
     {
-      id: 'finance',
-      label: 'Finance & Cash Tally',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-          <line x1="2" y1="10" x2="22" y2="10"></line>
-          <circle cx="7" cy="15" r="1"></circle>
-          <circle cx="12" cy="15" r="1"></circle>
-          <circle cx="17" cy="15" r="1"></circle>
-        </svg>
-      )
-    },
-    {
-      id: 'ai-workflow',
-      label: 'AI Workflow Learning',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2a4 4 0 0 0-4 4v1H6a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v1a4 4 0 0 0 8 0v-1h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4Z"></path>
-          <path d="M9 10h.01"></path>
-          <path d="M15 10h.01"></path>
-          <path d="M9.5 15a3.5 3.5 0 0 0 5 0"></path>
-        </svg>
-      )
-    },
-    {
       id: 'products',
       label: 'Products',
       icon: (

@@ -13,8 +13,6 @@ import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
 import PanelCounterMode from '@/components/admin/PanelCounterMode';
-import PanelFinanceTally from '@/components/admin/PanelFinanceTally';
-import PanelAiWorkflow from '@/components/admin/PanelAiWorkflow';
 import PanelSettings from '@/components/admin/PanelSettings';
 import PanelAuditTrail from '@/components/admin/PanelAuditTrail';
 
@@ -43,8 +41,6 @@ export default function AdminPage() {
   const tabTitles: Record<string, string> = {
     overview: 'Overview',
     counter: 'Walk-In Counter',
-    finance: 'Finance & Cash Tally',
-    'ai-workflow': 'AI Workflow Learning',
     products: 'Products',
     materials: 'Materials',
     staffing: 'Personnel',
@@ -384,24 +380,6 @@ export default function AdminPage() {
             setOrders={setOrders}
           />
         );
-      case 'finance':
-        return (
-          <PanelFinanceTally
-            orders={orders}
-            inventory={inventory}
-            isSyncing={isSyncing}
-            refreshData={fetchAdminData}
-          />
-        );
-      case 'ai-workflow':
-        return (
-          <PanelAiWorkflow
-            orders={orders}
-            machines={machines}
-            refreshData={fetchAdminData}
-            isSyncing={isSyncing}
-          />
-        );
       case 'products':
         return (
           <PanelManageDesigns
@@ -433,7 +411,15 @@ export default function AdminPage() {
           />
         );
       case 'analytics':
-        return <PanelAnalytics orders={orders} inventory={inventory} />;
+        return (
+          <PanelAnalytics
+            orders={orders}
+            inventory={inventory}
+            machines={machines}
+            refreshData={fetchAdminData}
+            isSyncing={isSyncing}
+          />
+        );
 
       case 'history':
         // Renders complete database logs for delivered tickets via fast server indexing
