@@ -35,6 +35,8 @@ export default function PanelAnalytics({
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [activeView, setActiveView] = useState<AnalyticsView>('all');
   const [showDrawerReconciler, setShowDrawerReconciler] = useState(false);
+  const [showOverheadSettings, setShowOverheadSettings] = useState(false);
+  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Default Pacific Mall stall daily overhead (rent + power)
 
   // 1. Build inventory cost map from real inventory
   const inventoryCostMap = useMemo(() => {
@@ -105,21 +107,13 @@ export default function PanelAnalytics({
     return nonCanceled;
   }, [orders, timeRange]);
 
-  // Order status sets
-  const completedOrders = useMemo(() => {
-    return filteredOrders.filter((o) =>
-      ['Order Delivered', 'Completed', 'Ready For Pick Up', 'Ready for Pickup'].includes(o.status) ||
-      o.isAlreadyCompleted
-    );
-  }, [filteredOrders]);
-
   const activeQueueOrders = useMemo(() => {
     return (orders || []).filter((o) =>
       ['In Queue', 'Preparing Order', 'In Production', 'Processing'].includes(o.status)
     );
   }, [orders]);
 
-  // Financial aggregates
+  // 3. Financial Aggregates
   const totalRevenue = useMemo(() => {
     return filteredOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.amount) || 0), 0);
   }, [filteredOrders]);
@@ -144,14 +138,48 @@ export default function PanelAnalytics({
     }, 0);
   }, [filteredOrders, inventoryCostMap]);
 
-  const netProfit = useMemo(() => {
+  // Operating Overhead calculation according to time window
+  const operatingOverhead = useMemo(() => {
+    if (timeRange === 'today') return dailyStallOverhead;
+    if (timeRange === 'week') return dailyStallOverhead * 7;
+    if (timeRange === 'month') return dailyStallOverhead * 30;
+    return dailyStallOverhead * 30; // 1 month baseline for all-time scale
+  }, [timeRange, dailyStallOverhead]);
+
+  // Total Expenses (COGS + Operating Overhead)
+  const totalExpenses = useMemo(() => {
+    return estimatedMaterialCosts + operatingOverhead;
+  }, [estimatedMaterialCosts, operatingOverhead]);
+
+  // Gross Profit (Revenue - Material COGS)
+  const grossProfit = useMemo(() => {
     return Math.max(0, totalRevenue - estimatedMaterialCosts);
   }, [totalRevenue, estimatedMaterialCosts]);
 
-  const profitMargin = useMemo(() => {
+  // Net Take-Home Profit (Revenue - Total Expenses)
+  const netProfit = useMemo(() => {
+    return Math.max(0, totalRevenue - totalExpenses);
+  }, [totalRevenue, totalExpenses]);
+
+  const grossMargin = useMemo(() => {
+    if (totalRevenue === 0) return 0;
+    return Math.round((grossProfit / totalRevenue) * 100);
+  }, [grossProfit, totalRevenue]);
+
+  const netMargin = useMemo(() => {
     if (totalRevenue === 0) return 0;
     return Math.round((netProfit / totalRevenue) * 100);
   }, [netProfit, totalRevenue]);
+
+  // Break-Even Analysis
+  const breakEvenProgress = useMemo(() => {
+    if (operatingOverhead === 0) return 100;
+    return Math.min(200, Math.round((grossProfit / operatingOverhead) * 100));
+  }, [grossProfit, operatingOverhead]);
+
+  const breakEvenSurplus = useMemo(() => {
+    return grossProfit - operatingOverhead;
+  }, [grossProfit, operatingOverhead]);
 
   // Physical Cash in Drawer vs Digital GCash Split
   const paymentBreakdown = useMemo(() => {
@@ -178,7 +206,54 @@ export default function PanelAnalytics({
     return { cashTotal, cashCount, gcashTotal, gcashCount };
   }, [filteredOrders]);
 
-  // Category breakdown
+  // 4. Inventory Capital & Locked Working Capital
+  const inventoryAssetStats = useMemo(() => {
+    let totalLockedValue = 0;
+    let totalPieces = 0;
+    let lowStockCount = 0;
+
+    (inventory || []).forEach((inv) => {
+      const count = Number(inv.count) || 0;
+      const threshold = Number(inv.minThreshold) || 10;
+      const unitCost = inv.supplierUnitCost != null ? Number(inv.supplierUnitCost) : 45;
+      totalLockedValue += count * unitCost;
+      totalPieces += count;
+      if (count <= threshold) {
+        lowStockCount++;
+      }
+    });
+
+    return { totalLockedValue, totalPieces, lowStockCount };
+  }, [inventory]);
+
+  // 5. Predictive Upcoming Restock Outflow (Next 7-14 Days)
+  const restockOutflowForecast = useMemo(() => {
+    let budgetNeeded = 0;
+    const criticalItems: { name: string; count: number; threshold: number; cost: number; units: number }[] = [];
+
+    (inventory || []).forEach((inv) => {
+      const count = Number(inv.count) || 0;
+      const threshold = Number(inv.minThreshold) || 10;
+      const unitCost = inv.supplierUnitCost != null ? Number(inv.supplierUnitCost) : 50;
+
+      if (count <= threshold) {
+        const units = Math.max(1, threshold * 2 - count);
+        const cost = units * unitCost;
+        budgetNeeded += cost;
+        criticalItems.push({
+          name: inv.item,
+          count,
+          threshold,
+          cost,
+          units,
+        });
+      }
+    });
+
+    return { budgetNeeded, criticalItems };
+  }, [inventory]);
+
+  // 6. Category Performance
   const categoryPerformance = useMemo(() => {
     const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
       'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
@@ -215,9 +290,9 @@ export default function PanelAnalytics({
     return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.profit - a.profit);
   }, [filteredOrders, inventoryCostMap]);
 
-  // Chart data: daily breakdown
+  // 7. Timeline Chart Data
   const chartData = useMemo(() => {
-    const dailyMap: Record<string, { date: string; revenue: number; profit: number }> = {};
+    const dailyMap: Record<string, { date: string; revenue: number; profit: number; cogs: number }> = {};
     filteredOrders.forEach((o) => {
       const d = new Date(o.createdAt || o.date);
       const key = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -233,15 +308,75 @@ export default function PanelAnalytics({
       }
       const prof = Math.max(0, rev - cost);
 
-      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: 0, profit: 0 };
-      dailyMap[key].revenue += rev;
-      dailyMap[key].profit += prof;
+      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: 0, profit: prof, cogs: cost };
+      else {
+        dailyMap[key].revenue += rev;
+        dailyMap[key].profit += prof;
+        dailyMap[key].cogs += cost;
+      }
     });
 
     const entries = Object.values(dailyMap);
-    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: netProfit }];
+    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: grossProfit, cogs: estimatedMaterialCosts }];
     return entries;
-  }, [filteredOrders, totalRevenue, netProfit, inventoryCostMap]);
+  }, [filteredOrders, totalRevenue, grossProfit, estimatedMaterialCosts, inventoryCostMap]);
+
+  // 8. Predictive 7-Day Forward Projections (Linear Trend on Recent Velocity)
+  const forwardForecast = useMemo(() => {
+    // Generate daily revenues over past 14 days
+    const days14: number[] = [];
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+      const dayTotal = (orders || []).reduce((sum, o) => {
+        if (o.status === 'Order Canceled') return sum;
+        const oTime = new Date(o.createdAt || o.date).getTime();
+        if (oTime >= startOfDay && oTime < endOfDay) {
+          return sum + (Number(o.totalAmount || o.amount) || 0);
+        }
+        return sum;
+      }, 0);
+      days14.push(dayTotal);
+    }
+
+    // Linear regression on past 14 days
+    const n = days14.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += i;
+      sumY += days14[i];
+      sumXY += i * days14[i];
+      sumXX += i * i;
+    }
+    const denom = n * sumXX - sumX * sumX;
+    const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
+    const intercept = (sumY - slope * sumX) / n;
+
+    // Projected next 7 days
+    const projectionList: { dayLabel: string; projectedRevenue: number }[] = [];
+    let totalProjected7d = 0;
+    for (let j = 0; j < 7; j++) {
+      const x = n + j;
+      const proj = Math.max(200, Math.round(slope * x + intercept));
+      totalProjected7d += proj;
+      const fut = new Date();
+      fut.setDate(now.getDate() + j + 1);
+      projectionList.push({
+        dayLabel: `+${j + 1}d (${fut.getMonth() + 1}/${fut.getDate()})`,
+        projectedRevenue: proj,
+      });
+    }
+
+    return {
+      daily14Velocity: Math.round(sumY / 14),
+      totalProjected7d,
+      projectionList,
+    };
+  }, [orders]);
 
   // Phase 4: Thread Spool Clustering
   const threadBatches = useMemo(() => {
@@ -266,7 +401,7 @@ export default function PanelAnalytics({
       .sort((a, b) => b.count - a.count);
   }, [activeQueueOrders]);
 
-  // Phase 4: Interactive ML Simulation
+  // Phase 4: Job-Shop Time Estimation Simulator
   const [simCategory, setSimCategory] = useState<'fan' | 'cap' | 'towel' | 'byog'>('towel');
   const [simLetters, setSimLetters] = useState<number>(6);
   const predictedSimMinutes = useMemo(() => {
@@ -279,15 +414,6 @@ export default function PanelAnalytics({
     const letterTime = simLetters * 0.5; // 30s per letter
     return (basePrep + catOffset + letterTime).toFixed(1);
   }, [simCategory, simLetters]);
-
-  // Phase 4: Machine Learning Error Reduction Curve Data
-  const learningCurveData = [
-    { sampleBatch: 'Batch 1 (10 orders)', errorMins: 3.2 },
-    { sampleBatch: 'Batch 2 (25 orders)', errorMins: 2.1 },
-    { sampleBatch: 'Batch 3 (50 orders)', errorMins: 1.4 },
-    { sampleBatch: 'Batch 4 (80 orders)', errorMins: 0.8 },
-    { sampleBatch: 'Live Production', errorMins: 0.5 },
-  ];
 
   // End-of-Day 30-Second Cash Drawer Reconciler State
   const [directCountedCash, setDirectCountedCash] = useState<string>('');
@@ -343,9 +469,10 @@ export default function PanelAnalytics({
         <div class="row"><span>Cash in Drawer:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
         <div class="row"><span>GCash Received:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
         <div class="divider"></div>
-        <div class="row bold" style="font-size: 13px;"><span>GROSS SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
-        <div class="row"><span>Est. Material/Blank Costs:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
-        <div class="row bold"><span>NET TAKE-HOME PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
+        <div class="row bold" style="font-size: 13px;"><span>GROSS REVENUE:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
+        <div class="row"><span>Material Blanks & Supplies:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
+        <div class="row"><span>Stall Overhead (Rent & Power):</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
+        <div class="row bold" style="font-size: 13px;"><span>NET TAKE-HOME PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
         <div class="divider"></div>
         <div class="center bold">DRAWER RECONCILIATION</div>
         <div class="row"><span>Counted in Cash Tin:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
@@ -372,16 +499,16 @@ export default function PanelAnalytics({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30">
-              Admin Analytics &amp; Intelligence
+              Admin Analytics &amp; Foresight
             </span>
-            <span className="text-xs text-text-dim">Financial Monitoring &amp; AI Workflow Learning</span>
+            <span className="text-xs text-text-dim">Financial Management &amp; Operations Intelligence</span>
           </div>
           <h1 className="text-2xl font-black text-text-main tracking-tight m-0 flex items-center gap-2">
-            <span>Shop Analytics &amp; Operations Intelligence</span>
+            <span>Shop Financials &amp; Operations Foresight</span>
             {isSyncing && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>}
           </h1>
           <p className="text-xs text-text-dim m-0 mt-0.5">
-            Real-time financial tracking, cash tin reconciliation, and machine learning turnaround optimization.
+            Monitor profit, expenses, revenue, spendable working capital, and predictive restock needs.
           </p>
         </div>
 
@@ -409,7 +536,7 @@ export default function PanelAnalytics({
                 <rect x="2" y="5" width="20" height="14" rx="2" />
                 <line x1="2" y1="10" x2="22" y2="10" />
               </svg>
-              <span>Finance &amp; Cash (Phase 3)</span>
+              <span>Financial Health &amp; Budget</span>
             </button>
             <button
               type="button"
@@ -421,7 +548,7 @@ export default function PanelAnalytics({
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
               </svg>
-              <span>AI Workflow (Phase 4)</span>
+              <span>AI Operations &amp; Foresight</span>
             </button>
           </div>
 
@@ -467,6 +594,15 @@ export default function PanelAnalytics({
               Estimated Blank Costs
             </span>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowOverheadSettings(!showOverheadSettings)}
+            className="text-[11px] text-text-dim hover:text-text-main border border-border-glass px-2.5 py-1 rounded-lg bg-white/[0.02] flex items-center gap-1 transition"
+          >
+            <span>Overhead: ₱{dailyStallOverhead}/day</span>
+            <span className="text-[10px]">⚙️</span>
+          </button>
         </div>
 
         {/* Toggle 30-Second End-of-Day Drawer Check */}
@@ -487,6 +623,37 @@ export default function PanelAnalytics({
           <span className="text-[10px] ml-1">{showDrawerReconciler ? '▲ Hide' : '▼ Show'}</span>
         </button>
       </div>
+
+      {/* Optional Overhead Customizer */}
+      {showOverheadSettings && (
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-6 flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-text-main">Daily Stall Overhead (Pacific Mall Rent &amp; Power):</span>
+            <span className="text-text-dim">Used to calculate break-even and net profit.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-text-dim">₱</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              value={dailyStallOverhead}
+              onChange={(e) => setDailyStallOverhead(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-24 bg-black/40 border border-border-glass px-2.5 py-1 rounded-lg text-white font-mono font-bold text-xs outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setShowOverheadSettings(false);
+                showToast('Overhead budget saved', 'success');
+              }}
+              className="px-2.5 py-1 bg-primary text-white rounded-lg font-bold text-xs"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Collapsible 30-Second End-of-Day Cash Drawer Check */}
       {showDrawerReconciler && (
@@ -617,7 +784,7 @@ export default function PanelAnalytics({
                     onClick={() => {
                       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       setLockedTime(time);
-                      showToast(`✓ Cash drawer verified and recorded at ${time}!`, 'success');
+                      showToast(`Cash drawer verified at ${time}`, 'success');
                     }}
                     disabled={!isCountEntered}
                     className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-extrabold transition cursor-pointer shadow-md whitespace-nowrap flex items-center gap-1.5"
@@ -641,35 +808,15 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* SECTION 1: FINANCIAL OVERVIEW CARDS (PHASE 3) */}
+      {/* SECTION 1: CORE FINANCIAL OVERVIEW (PROFIT, EXPENSES, REVENUE, WORKING CAPITAL) */}
       {(activeView === 'all' || activeView === 'finance') && (
         <div className="mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
-            {/* Net Profit Card */}
-            <div className="bg-bg-surface border border-emerald-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider">
-                  Net Take-Home Profit
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-bold">
-                  {profitMargin}% Margin
-                </span>
-              </div>
-              <div>
-                <div className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
-                  ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Revenue − Blanks &amp; Supplies
-                </div>
-              </div>
-            </div>
-
-            {/* Gross Sales */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+            {/* 1. Gross Revenue */}
             <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider">
-                  Gross Sales Collected
+                  Gross Revenue (Top Line)
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-text-main font-bold">
                   {filteredOrders.length} Orders
@@ -680,39 +827,60 @@ export default function PanelAnalytics({
                   ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <div className="text-[11px] text-text-dim mt-1">
-                  Total revenue in selected period
+                  Total collected sales
                 </div>
               </div>
             </div>
 
-            {/* Supplies & Blank Cost */}
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+            {/* 2. Total Expenses (COGS + Stall Overhead) */}
+            <div className="bg-bg-surface border border-amber-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider">
-                  Garment &amp; Blank Costs
+                <span className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider">
+                  Total Expenses
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold">
-                  COGS
+                  Blanks + Overhead
                 </span>
               </div>
               <div>
                 <div className="text-2xl font-black font-mono text-amber-300 tracking-tight">
-                  ₱{estimatedMaterialCosts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <div className="text-[11px] text-text-dim mt-1">
-                  Blanks &amp; thread consumables
+                <div className="text-[11px] text-text-dim mt-1 flex items-center justify-between">
+                  <span>Blanks: ₱{estimatedMaterialCosts.toFixed(0)}</span>
+                  <span>Rent: ₱{operatingOverhead.toFixed(0)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Cash vs GCash Split */}
+            {/* 3. Net Take-Home Profit */}
+            <div className="bg-bg-surface border border-emerald-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider">
+                  Net Take-Home Profit
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 font-bold">
+                  {netMargin}% Margin
+                </span>
+              </div>
+              <div>
+                <div className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
+                  ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] text-text-dim mt-1">
+                  Revenue − All Production &amp; Overhead Costs
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Spendable Working Capital (Cash vs GCash) */}
             <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider">
-                  Payment Channels
+                  Spendable Cash on Hand
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 font-bold">
-                  Split
+                  Available Now
                 </span>
               </div>
               <div className="flex flex-col gap-1">
@@ -722,10 +890,10 @@ export default function PanelAnalytics({
                       <rect x="2" y="6" width="20" height="12" rx="2" />
                       <circle cx="12" cy="12" r="2" />
                     </svg>
-                    <span>Cash Register:</span>
+                    <span>Cash Tin:</span>
                   </span>
                   <span className="font-mono font-bold text-emerald-400">
-                    ₱{paymentBreakdown.cashTotal.toFixed(2)} ({paymentBreakdown.cashCount})
+                    ₱{paymentBreakdown.cashTotal.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
@@ -737,7 +905,94 @@ export default function PanelAnalytics({
                     <span>GCash QR:</span>
                   </span>
                   <span className="font-mono font-bold text-[#007df2]">
-                    ₱{paymentBreakdown.gcashTotal.toFixed(2)} ({paymentBreakdown.gcashCount})
+                    ₱{paymentBreakdown.gcashTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECONDARY ROW: FORESIGHT & WORKING CAPITAL ASSETS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
+            {/* A. Capital Tied Up in Inventory */}
+            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  </svg>
+                  <span>Inventory Capital Locked</span>
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-text-dim font-bold">
+                  {inventoryAssetStats.totalPieces} Items on Shelves
+                </span>
+              </div>
+              <div>
+                <div className="text-xl font-black font-mono text-white tracking-tight">
+                  ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] text-text-dim mt-1">
+                  Cash physically trapped in unsold blank towels, fans &amp; thread
+                </div>
+              </div>
+            </div>
+
+            {/* B. Upcoming Restock Outflow (Next 7-14 Days) */}
+            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-400">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>Forecasted Restock Outflow</span>
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 font-bold">
+                  {restockOutflowForecast.criticalItems.length} Low Stocks
+                </span>
+              </div>
+              <div>
+                <div className="text-xl font-black font-mono text-rose-300 tracking-tight">
+                  ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] text-text-dim mt-1">
+                  Estimated budget to reserve for next supplier restocking
+                </div>
+              </div>
+            </div>
+
+            {/* C. Daily Break-Even Target Progress */}
+            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  <span>Stall Break-Even Status</span>
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                  breakEvenProgress >= 100 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
+                }`}>
+                  {breakEvenProgress}% of Stall Cost
+                </span>
+              </div>
+              <div>
+                <div className="w-full bg-white/5 rounded-full h-2 mb-2 overflow-hidden border border-white/10">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      breakEvenProgress >= 100 ? 'bg-emerald-500' : 'bg-amber-400'
+                    }`}
+                    style={{ width: `${Math.min(100, breakEvenProgress)}%` }}
+                  />
+                </div>
+                <div className="text-[11px] text-text-dim flex items-center justify-between">
+                  <span>Gross Profit: ₱{grossProfit.toFixed(0)}</span>
+                  <span className={breakEvenSurplus >= 0 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                    {breakEvenSurplus >= 0
+                      ? `+₱${breakEvenSurplus.toFixed(0)} Pure Profit Zone`
+                      : `₱${Math.abs(breakEvenSurplus).toFixed(0)} to break even`}
                   </span>
                 </div>
               </div>
@@ -760,62 +1015,56 @@ export default function PanelAnalytics({
                 <div className="py-8 text-center text-xs text-text-dim">No orders recorded in this time window.</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-border-glass text-text-dim font-semibold text-[11px]">
-                        <th className="py-2.5 px-2">Garment / Service</th>
-                        <th className="py-2.5 px-2 text-right">Units</th>
-                        <th className="py-2.5 px-2 text-right">Sales</th>
-                        <th className="py-2.5 px-2 text-right">Cost</th>
-                        <th className="py-2.5 px-2 text-right font-bold text-text-main">Profit</th>
-                        <th className="py-2.5 px-2 text-right">Margin</th>
+                      <tr className="border-b border-white/5 text-[10px] text-text-dim uppercase tracking-wider">
+                        <th className="pb-2 font-bold">Category</th>
+                        <th className="pb-2 font-bold text-center">Units</th>
+                        <th className="pb-2 font-bold text-right">Revenue</th>
+                        <th className="pb-2 font-bold text-right">Blank Cost</th>
+                        <th className="pb-2 font-bold text-right text-emerald-400">Net Profit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5 text-xs">
-                      {categoryPerformance.map((item, idx) => {
-                        const marginPct = item.revenue > 0 ? Math.round((item.profit / item.revenue) * 100) : 0;
-                        return (
-                          <tr key={idx} className="hover:bg-white/[0.02] transition">
-                            <td className="py-2.5 px-2 font-semibold text-text-main">
-                              {item.category}
-                              {item.category.includes('BYOG') && (
-                                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-normal">
-                                  Zero blank
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-mono text-text-dim">{item.units} pcs</td>
-                            <td className="py-2.5 px-2 text-right font-mono text-text-main">
-                              ₱{item.revenue.toFixed(2)}
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-mono text-amber-400/90">
-                              ₱{item.cost.toFixed(2)}
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-mono font-bold text-emerald-400">
-                              ₱{item.profit.toFixed(2)}
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-mono font-bold text-text-main">
-                              {marginPct}%
-                            </td>
-                          </tr>
-                        );
-                      })}
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {categoryPerformance.map((row) => (
+                        <tr key={row.category} className="hover:bg-white/[0.02] transition">
+                          <td className="py-2.5 font-bold text-text-main">{row.category}</td>
+                          <td className="py-2.5 text-center font-mono text-text-dim">{row.units} pcs</td>
+                          <td className="py-2.5 text-right font-mono font-semibold text-text-main">
+                            ₱{row.revenue.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-right font-mono text-text-dim">
+                            ₱{row.cost.toFixed(2)}
+                          </td>
+                          <td className="py-2.5 text-right font-mono font-bold text-emerald-400">
+                            ₱{row.profit.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
 
-            {/* Earnings Trend Curve (5 cols) */}
+            {/* Revenue vs Profit Timeline Area Chart (5 cols) */}
             <div className="lg:col-span-5 bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-sm flex flex-col">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-border-glass">
                 <div>
-                  <h2 className="text-sm font-extrabold text-text-main m-0">Earnings Trend</h2>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">Daily profit curve</p>
+                  <h2 className="text-sm font-extrabold text-text-main m-0">Revenue &amp; Profit Trend</h2>
+                  <p className="text-xs text-text-dim m-0 mt-0.5">Historical profit growth</p>
+                </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Profit
+                  </span>
+                  <span className="flex items-center gap-1 text-primary font-bold">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span> Sales
+                  </span>
                 </div>
               </div>
 
-              <div className="h-52 w-full mt-auto">
+              <div className="h-48 w-full mt-auto">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <defs>
@@ -824,9 +1073,9 @@ export default function PanelAnalytics({
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" stroke="#888888" tick={{ fontSize: 10 }} />
-                    <YAxis stroke="#888888" tick={{ fontSize: 10 }} tickFormatter={(v) => `₱${v}`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                    <XAxis dataKey="date" stroke="#888888" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#888888" fontSize={10} tickLine={false} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
@@ -858,7 +1107,7 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* SECTION 2: AI PRODUCTION INTELLIGENCE & WORKFLOW LEARNING (PHASE 4) */}
+      {/* SECTION 2: OPERATIONS FORESIGHT & AI WORKFLOW INTELLIGENCE (PHASE 4) */}
       {(activeView === 'all' || activeView === 'ai') && (
         <div className="mb-6 animate-[fadeIn_0.3s_ease-out]">
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-border-glass">
@@ -868,20 +1117,20 @@ export default function PanelAnalytics({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                   </svg>
-                  <span>AI Production Intelligence &amp; Adaptive Workflow Learning</span>
+                  <span>Operations Foresight &amp; Job-Shop Intelligence</span>
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300">
                   Phase 4 Capstone Standard
                 </span>
               </div>
               <p className="text-xs text-text-dim m-0 mt-0.5">
-                Explainable machine learning turnaround estimation, thread spool batching, and queue optimization.
+                Job-shop turnaround estimation, thread spool batching, and 7-day predictive demand forecasting.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
-            {/* Left: Explainable ML Regression Model & Live Simulator (6 cols) */}
+            {/* Left: Job-Shop Turnaround Formula & Live Simulator (6 cols) */}
             <div className="lg:col-span-6 bg-bg-surface border border-purple-500/30 rounded-2xl p-5 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-glass">
                 <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
@@ -889,10 +1138,10 @@ export default function PanelAnalytics({
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
-                  <span>Explainable ML Turnaround Formula</span>
+                  <span>Job-Shop Turnaround Time Estimator</span>
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold font-mono">
-                  Accuracy: ±0.5m (±30s)
+                  Calibrated: ±30s MAE
                 </span>
               </div>
 
@@ -915,7 +1164,7 @@ export default function PanelAnalytics({
               {/* Interactive Simulator */}
               <div className="bg-white/[0.02] border border-border-glass rounded-xl p-3.5 flex flex-col gap-3 mt-auto">
                 <span className="text-[11px] font-extrabold text-text-main uppercase tracking-wider">
-                  Test Live ML Duration Predictor:
+                  Test Live Job-Shop Estimator:
                 </span>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
@@ -946,7 +1195,7 @@ export default function PanelAnalytics({
                 </div>
 
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs">
-                  <span className="text-purple-300 font-bold">ML Estimated Stitching Duration:</span>
+                  <span className="text-purple-300 font-bold">Estimated Machine Stitching Duration:</span>
                   <span className="font-mono font-black text-sm text-purple-200">
                     ~{predictedSimMinutes} Minutes
                   </span>
@@ -977,7 +1226,7 @@ export default function PanelAnalytics({
                     </svg>
                   </div>
                   <span className="text-xs font-bold text-text-main">No active orders in machine queue</span>
-                  <span className="text-[11px] mt-0.5">When orders enter queue, the AI clusters them to save needle re-threadings.</span>
+                  <span className="text-[11px] mt-0.5">When orders enter queue, the algorithm clusters them to save needle re-threadings.</span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[300px] pr-1">
@@ -1007,7 +1256,7 @@ export default function PanelAnalytics({
                         </span>
                         <button
                           type="button"
-                          onClick={() => showToast(`Batch recommendation for ${b.color} prioritized!`, 'info')}
+                          onClick={() => showToast(`Batch recommendation for ${b.color} prioritized`, 'info')}
                           className="text-primary hover:underline text-[11px] font-bold cursor-pointer"
                         >
                           Prioritize Batch →
@@ -1020,31 +1269,36 @@ export default function PanelAnalytics({
             </div>
           </div>
 
-          {/* Machine Learning Adaptive Learning Curve (Proof of ML convergence) */}
+          {/* 7-Day Forward Predictive Demand & Revenue Forecast */}
           <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <div>
                 <h3 className="text-sm font-extrabold text-text-main m-0 flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
                     <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
                     <polyline points="16 7 22 7 22 13" />
                   </svg>
-                  <span>Model Adaptive Learning Curve (Historical Error Reduction)</span>
+                  <span>7-Day Forward Predictive Demand &amp; Revenue Projection</span>
                 </h3>
                 <p className="text-xs text-text-dim m-0 mt-0.5">
-                  Demonstrates how estimation error converged to ±30 seconds (±0.5 mins) calibrated against empirical shop timing.
+                  Calculated from 14-day historical order velocity using linear trend projection to foresee upcoming cash flow.
                 </p>
               </div>
-              <span className="text-xs font-mono font-bold text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                Converged: ±0.5m MAE
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-text-dim px-2.5 py-1 rounded-lg bg-white/5 border border-white/10">
+                  Daily Velocity: ~₱{forwardForecast.daily14Velocity.toLocaleString()}/day
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-400 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  7-Day Forecast: ₱{forwardForecast.totalProjected7d.toLocaleString()}
+                </span>
+              </div>
             </div>
 
             <div className="h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={learningCurveData} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
+                <LineChart data={forwardForecast.projectionList} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="sampleBatch" stroke="#888888" fontSize={10} tickLine={false} />
+                  <XAxis dataKey="dayLabel" stroke="#888888" fontSize={10} tickLine={false} />
                   <YAxis stroke="#888888" fontSize={10} tickLine={false} />
                   <Tooltip
                     contentStyle={{
@@ -1053,14 +1307,15 @@ export default function PanelAnalytics({
                       borderRadius: '0.75rem',
                       fontSize: '11px',
                     }}
+                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Projected Revenue']}
                   />
                   <Line
                     type="monotone"
-                    dataKey="errorMins"
-                    name="Error Margin (Minutes)"
-                    stroke="#a855f7"
+                    dataKey="projectedRevenue"
+                    name="Projected Revenue (₱)"
+                    stroke="#6366f1"
                     strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#a855f7' }}
+                    dot={{ r: 4, fill: '#6366f1' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
