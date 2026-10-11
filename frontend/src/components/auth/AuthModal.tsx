@@ -7,6 +7,7 @@ import GlassButton from '@/components/ui/GlassButton';
 import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithRedirect } from 'firebase/auth';
 
@@ -28,6 +29,11 @@ export default function AuthModal() {
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const isSubmitting = isFormSubmitting || isGoogleSubmitting;
+
+  // Contextual inline errors
+  const [formError, setFormError] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   // Alternate views: normal login/register, forgot-password, or first-time Google password setup
   const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
@@ -104,12 +110,15 @@ export default function AuthModal() {
   // Handle Registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     if (!username.trim() || !email.trim() || !password) {
+      setFormError('Please fill in all required fields.');
       showToast('Please fill in all required fields.', 'error');
       return;
     }
 
     if (password.length < 6) {
+      setFormError('Password must be at least 6 characters.');
       showToast('Password must be at least 6 characters.', 'error');
       return;
     }
@@ -128,9 +137,11 @@ export default function AuthModal() {
         handleClose();
         router.refresh();
       } else {
+        setFormError(res.message || 'Registration failed.');
         showToast(res.message || 'Registration failed.', 'error');
       }
     } catch (err: any) {
+      setFormError(err.message || 'Registration error occurred.');
       showToast(err.message || 'Registration error occurred.', 'error');
     } finally {
       setIsFormSubmitting(false);
@@ -140,7 +151,9 @@ export default function AuthModal() {
   // Smart Unified Login: Single clean toast, automatic role-based routing
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     if (!email.trim() || !password) {
+      setFormError('Please enter your username/email and password.');
       showToast('Please enter your username/email and password.', 'error');
       return;
     }
@@ -163,9 +176,11 @@ export default function AuthModal() {
           router.refresh();
         }
       } else {
+        setFormError(res.message || 'Invalid username or password.');
         showToast(res.message || 'Invalid username or password.', 'error');
       }
     } catch {
+      setFormError('An unexpected error occurred during sign-in.');
       showToast('An unexpected error occurred during sign-in.', 'error');
     } finally {
       setIsFormSubmitting(false);
@@ -174,13 +189,16 @@ export default function AuthModal() {
 
   const handleForgotPassword = () => {
     setForgotSent(false);
+    setForgotError(null);
     setView('forgot');
   };
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setForgotError(null);
     const target = email.trim();
     if (!target || !target.includes('@')) {
+      setForgotError('Please enter the email address of your account.');
       showToast('Please enter the email address of your account.', 'error');
       return;
     }
@@ -189,6 +207,7 @@ export default function AuthModal() {
       await forgotPassword(target.toLowerCase());
       setForgotSent(true);
     } catch (err: any) {
+      setForgotError(err.message || 'Could not send reset email.');
       showToast(err.message || 'Could not send reset email.', 'error');
     } finally {
       setIsFormSubmitting(false);
@@ -197,12 +216,15 @@ export default function AuthModal() {
 
   const handleGoogleSetupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSetupError(null);
     if (!googleSetup) return;
     if (newPassword.length < 6) {
+      setSetupError('Password must be at least 6 characters.');
       showToast('Password must be at least 6 characters.', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
+      setSetupError('Passwords do not match.');
       showToast('Passwords do not match.', 'error');
       return;
     }
@@ -215,6 +237,7 @@ export default function AuthModal() {
         router.replace('/');
         router.refresh();
       } else {
+        setSetupError(res.message || 'Could not finish sign-up.');
         showToast(res.message || 'Could not finish sign-up.', 'error');
       }
     } finally {
@@ -245,6 +268,7 @@ export default function AuthModal() {
               <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
                 {isFormSubmitting ? 'Sending...' : 'Send Reset Link'}
               </GlassButton>
+              <InlineError error={forgotError} />
             </form>
           )}
           <button type="button" onClick={() => setView('main')} className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs">
@@ -268,15 +292,15 @@ export default function AuthModal() {
           <form onSubmit={handleGoogleSetupSubmit} className="flex flex-col gap-3.5">
             <div className="flex flex-col gap-1">
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username</label>
-              <input type="text" value={googleSetup.username} onChange={(e) => setGoogleSetup({ ...googleSetup, username: e.target.value })} className={inputCls} />
+              <input type="text" value={googleSetup.username} onChange={(e) => { setGoogleSetup({ ...googleSetup, username: e.target.value }); if (setupError) setSetupError(null); }} className={inputCls} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Password *</label>
-              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="At least 6 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputCls} />
+              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="At least 6 characters" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); if (setupError) setSetupError(null); }} className={inputCls} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Confirm Password *</label>
-              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="Re-enter password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputCls} />
+              <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="Re-enter password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); if (setupError) setSetupError(null); }} className={inputCls} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer ml-1 select-none text-xs text-text-dim">
               <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} className="accent-primary rounded cursor-pointer w-4 h-4" />
@@ -285,6 +309,7 @@ export default function AuthModal() {
             <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
               {isFormSubmitting ? 'Creating Account...' : 'Create Account'}
             </GlassButton>
+            <InlineError error={setupError} />
           </form>
           <button type="button" onClick={handleClose} className="bg-transparent border-none text-text-dim hover:underline cursor-pointer p-0 text-xs">
             Cancel
@@ -320,7 +345,7 @@ export default function AuthModal() {
                 required 
                 placeholder="e.g. johndoe"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); if (formError) setFormError(null); }}
                 className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
@@ -335,7 +360,7 @@ export default function AuthModal() {
               required 
               placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); if (formError) setFormError(null); }}
               className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
             />
           </div>
@@ -351,7 +376,7 @@ export default function AuthModal() {
                 maxLength={13}
                 placeholder="0917 123 4567"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
+                onChange={(e) => { setPhoneNumber(e.target.value.replace(/[^\d+]/g, '')); if (formError) setFormError(null); }}
                 className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
@@ -377,7 +402,7 @@ export default function AuthModal() {
                 minLength={6}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); if (formError) setFormError(null); }}
                 className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 pr-11 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
               <button 
@@ -425,6 +450,7 @@ export default function AuthModal() {
               ? (mode === 'login' ? 'Signing In...' : 'Creating Account...') 
               : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </GlassButton>
+          <InlineError error={formError} />
         </form>
 
         {/* 1-Click Google Sign-In */}

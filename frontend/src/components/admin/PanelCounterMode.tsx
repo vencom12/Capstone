@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 import type { Product, ProductVariant } from '@/lib/types';
 
 interface PanelCounterModeProps {
@@ -73,6 +74,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   // Processing & Print Stub states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdOrderTicket, setCreatedOrderTicket] = useState<any | null>(null);
+  const [intakeError, setIntakeError] = useState<string | null>(null);
+  const [quickPunchError, setQuickPunchError] = useState<string | null>(null);
 
   // Turn-Over Desk state
   const [turnOverSearch, setTurnOverSearch] = useState('');
@@ -227,8 +230,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   // Submit Intake Order
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIntakeError(null);
 
     if (!monogramText.trim() && !activeSelectedItem.isByog) {
+      setIntakeError('Please type the name or text to embroider.');
       showToast('Please type the name or text to embroider.', 'error');
       return;
     }
@@ -303,6 +308,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       }
     } catch (err: any) {
       console.error('Walk-in intake error:', err);
+      setIntakeError(err.message || 'Failed to register order');
       showToast(err.message || 'Failed to register order', 'error');
     } finally {
       setIsSubmitting(false);
@@ -317,6 +323,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   }, [punchedSlipsToday]);
 
   const handleQuickSlipPunch = async () => {
+    setQuickPunchError(null);
     const itemName = activeQuickItem.name;
     const totalAmount = (quickPrice || 0) * (quickQuantity || 1);
     const cleanText = quickText.trim().toUpperCase();
@@ -372,6 +379,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       // 3. Rollback on error
       setPunchedSlipsToday(prev => prev.filter(s => s.id !== tempSlipId));
       console.error('Quick punch error:', err);
+      setQuickPunchError(err.message || 'Failed to punch slip. Reverted.');
       showToast(err.message || 'Failed to punch slip. Reverted.', 'error');
     }
   };
@@ -712,7 +720,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   type="text"
                   placeholder="TYPE NAME FROM PAPER SLIP (e.g. SOPHIA)"
                   value={monogramText}
-                  onChange={(e) => setMonogramText(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setMonogramText(e.target.value.toUpperCase());
+                    if (intakeError) setIntakeError(null);
+                  }}
                   className="w-full bg-white/[0.03] border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
                 />
               </div>
@@ -844,6 +855,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </svg>
                 <span>{isSubmitting ? 'Queueing...' : 'Punch Order & Print Claim Stub'}</span>
               </button>
+              <InlineError error={intakeError} />
             </div>
           </div>
         </form>
@@ -977,6 +989,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     : `Log Finished Sale — ₱${((quickPrice || 0) * (quickQuantity || 1)).toFixed(2)} (${quickPayment})`}
                 </span>
               </button>
+              <InlineError error={quickPunchError} />
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 
@@ -41,6 +42,8 @@ export default function ProductModal({
     name: 'Metallic Gold',
     hex: '#d4af37',
   });
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [monogramError, setMonogramError] = useState<string | null>(null);
   
   // Studio Machine Standard: One default formal cursive script
   const DEFAULT_FONT = {
@@ -65,6 +68,8 @@ export default function ProductModal({
       setQuantity(1);
       setIsPersonalized(false);
       setCustomText('');
+      setActionError(null);
+      setMonogramError(null);
       setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         setSelectedVariant(product.variants[0]);
@@ -112,18 +117,26 @@ export default function ProductModal({
 
 
   const handleAdd = () => {
+    setActionError(null);
+    setMonogramError(null);
+
     if (!isAuthenticated) {
+      setActionError('Please sign in to add items to your basket.');
       showToast('Please sign in to add items to your basket', 'info');
       setAuthOpen(true, 'login');
       return false;
     }
     if (isOutOfStock) {
-      showToast(`Sorry, "${product.name}" is currently out of stock.`, 'error');
+      const err = `Sorry, "${product.name}" is currently out of stock.`;
+      setActionError(err);
+      showToast(err, 'error');
       return false;
     }
 
     const trimmedCustomText = customText.trim();
     if (isPersonalized && !trimmedCustomText) {
+      setMonogramError('Please enter the name or monogram text to embroider.');
+      setActionError('Personalization text is required before adding to basket.');
       showToast('Please enter the name or monogram text to embroider.', 'error');
       return false;
     }
@@ -137,7 +150,9 @@ export default function ProductModal({
     );
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + quantity > effectiveStock) {
-      showToast(`Sorry, only ${effectiveStock} units available for ${selectedVariant?.name ? `variant "${selectedVariant.name}"` : `"${product.name}"`}.`, 'error');
+      const err = `Sorry, only ${effectiveStock} units available for ${selectedVariant?.name ? `variant "${selectedVariant.name}"` : `"${product.name}"`}.`;
+      setActionError(err);
+      showToast(err, 'error');
       return false;
     }
 
@@ -354,10 +369,17 @@ export default function ProductModal({
                     type="text"
                     maxLength={25}
                     value={customText}
-                    onChange={(e) => setCustomText(e.target.value)}
+                    onChange={(e) => {
+                      setCustomText(e.target.value);
+                      if (monogramError) setMonogramError(null);
+                      if (actionError) setActionError(null);
+                    }}
                     placeholder="e.g. Dr. Rafael Santos or R.S."
-                    className="w-full bg-bg-surface border border-border-glass focus:border-primary p-2.5 rounded-xl text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium"
+                    className={`w-full bg-bg-surface border ${
+                      monogramError ? 'border-rose-500/60 ring-1 ring-rose-500/30' : 'border-border-glass'
+                    } focus:border-primary p-2.5 rounded-xl text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
                   />
+                  <InlineError message={monogramError} className="mt-1" />
                 </div>
 
                 {/* Live Stitch Typography Preview */}
@@ -449,23 +471,26 @@ export default function ProductModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mt-auto pt-4 max-[650px]:gap-2">
-            <GlassButton
-              variant="secondary"
-              onClick={handleAddToBasket}
-              className="flex-1 py-3"
-              disabled={isOutOfStock}
-            >
-              {isOutOfStock ? 'Variant Out of Stock' : 'Add to Basket'}
-            </GlassButton>
-            <GlassButton
-              variant="primary"
-              onClick={handleBuyNow}
-              className="flex-1 py-3 font-bold shadow-sm"
-              disabled={isOutOfStock}
-            >
-              {isOutOfStock ? 'Variant Out of Stock' : 'Buy Now'}
-            </GlassButton>
+          <div className="flex flex-col gap-2 mt-auto pt-4">
+            <div className="flex gap-3 max-[650px]:gap-2">
+              <GlassButton
+                variant="secondary"
+                onClick={handleAddToBasket}
+                className="flex-1 py-3"
+                disabled={isOutOfStock}
+              >
+                {isOutOfStock ? 'Variant Out of Stock' : 'Add to Basket'}
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                onClick={handleBuyNow}
+                className="flex-1 py-3 font-bold shadow-sm"
+                disabled={isOutOfStock}
+              >
+                {isOutOfStock ? 'Variant Out of Stock' : 'Buy Now'}
+              </GlassButton>
+            </div>
+            <InlineError message={actionError} className="text-center" />
           </div>
         </div>
       </div>
