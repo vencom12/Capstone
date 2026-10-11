@@ -536,7 +536,7 @@ export default function PanelRawMaterials({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Smart Material Form Fields
-  const [materialCategory, setMaterialCategory] = useState('Thread Spool');
+  const [materialCategory, setMaterialCategory] = useState('Bath Towel');
   const [spoolColor, setSpoolColor] = useState('Black');
   const [customColor, setCustomColor] = useState('');
   const [customName, setCustomName] = useState('');
@@ -1192,7 +1192,7 @@ export default function PanelRawMaterials({
 
     showToast(`Added ${resolvedName}`, 'success');
     setIsAddOpen(false);
-    setMaterialCategory('Thread Spool');
+    setMaterialCategory('Bath Towel');
     setSpoolColor('Black');
     setCustomColor('');
     setCustomName('');
@@ -1789,19 +1789,55 @@ export default function PanelRawMaterials({
         <form onSubmit={handleCreateSubmit} className="modal-stack text-left">
           {/* Material Category Selector */}
           <div className="modal-section">
-            <label className="modal-label">Material Name / Category</label>
+            <label className="modal-label">Product / Material Category</label>
             <select
               value={materialCategory}
-              onChange={(e) => setMaterialCategory(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMaterialCategory(val);
+                if (val === 'Thread Spool') {
+                  setItemUnit('Cones');
+                } else {
+                  setItemUnit('PCs');
+                }
+              }}
               className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
             >
-              <option value="Thread Spool">Thread Spool</option>
-              <option value="Pillion / Pillow Insert">Pillion / Pillow Insert</option>
-              <option value="Machine Oil">Machine Oil</option>
-              <option value="Paper Bag">Paper Bag</option>
-              <option value="Gift Bag">Gift Bag</option>
-              <option value="Eco Bag">Eco Bag</option>
-              <option value="Custom">Custom Material...</option>
+              <optgroup label="Products Being Sold (Blanks & Garments)">
+                <option value="Bath Towel">Bath Towel</option>
+                <option value="Hand Towel / Face Towel">Hand Towel / Face Towel</option>
+                <option value="Cap / Hat">Cap / Hat</option>
+                <option value="Chinese Fan">Chinese Fan</option>
+                <option value="Regular Fan">Regular Fan</option>
+                <option value="Pillow / Pillowcase">Pillow / Pillowcase</option>
+                <option value="Eco Bag / Tote Bag">Eco Bag / Tote Bag</option>
+                <option value="Gift Bag / Paper Bag">Gift Bag / Paper Bag</option>
+              </optgroup>
+
+              {products && products.length > 0 && (
+                <optgroup label="Store Catalog Products">
+                  {Array.from(new Set(products.map((p: any) => p.name)))
+                    .filter((name: any) => ![
+                      'Bath Towel',
+                      'Hand Towel / Face Towel',
+                      'Cap / Hat',
+                      'Chinese Fan',
+                      'Regular Fan',
+                      'Pillow / Pillowcase',
+                      'Eco Bag / Tote Bag',
+                      'Gift Bag / Paper Bag'
+                    ].includes(name))
+                    .map((pName: any) => (
+                      <option key={pName} value={pName}>{pName}</option>
+                    ))}
+                </optgroup>
+              )}
+
+              <optgroup label="Embroidery Supplies">
+                <option value="Thread Spool">Thread Spool</option>
+              </optgroup>
+
+              <option value="Custom">Custom Product / Material...</option>
             </select>
           </div>
 
@@ -1844,11 +1880,11 @@ export default function PanelRawMaterials({
           {/* Custom Material Name if Custom is chosen */}
           {materialCategory === 'Custom' && (
             <div className="modal-section animate-fade">
-              <label className="modal-label">Custom Material Name</label>
+              <label className="modal-label">Custom Product / Material Name</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Backing Paper, Needles #14"
+                placeholder="e.g. Sports Cap, Canvas Tote Bag, Face Towel"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
@@ -1876,6 +1912,8 @@ export default function PanelRawMaterials({
               >
                 <option value="PCs">PCs</option>
                 <option value="Ea">Ea</option>
+                <option value="Cones">Cones</option>
+                <option value="Rolls">Rolls</option>
               </select>
             </div>
           </div>
