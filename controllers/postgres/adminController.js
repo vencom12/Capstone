@@ -1028,6 +1028,165 @@ exports.downloadShoppingListPdf = async (req, res) => {
     }
 };
 
+exports.getProductShoppingList = async (req, res) => {
+    try {
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
+        const enrichedProducts = await enrichProductsWithStock(products);
+
+        const lowStockProducts = enrichedProducts.filter(p => {
+            const minVal = p.minThreshold || 5;
+            return p.availableStock <= minVal;
+        }).map(p => {
+            const minVal = p.minThreshold || 5;
+            const target = minVal * 2;
+            const suggestedOrder = Math.max(1, target - p.availableStock);
+            return {
+                id: p.id,
+                name: p.name,
+                tag: p.tag || 'General',
+                price: p.price,
+                imageUrl: p.imageUrl,
+                count: p.count,
+                reservedCount: p.dynamicReserved || p.reservedCount || 0,
+                availableStock: p.availableStock,
+                minThreshold: minVal,
+                suggestedOrder,
+                isOutOfStock: p.availableStock <= 0
+            };
+        });
+
+        res.json({
+            totalLowStock: lowStockProducts.length,
+            items: lowStockProducts
+        });
+    } catch (err) {
+        console.error('getProductShoppingList error:', err);
+        res.status(500).json({ message: 'Error retrieving product restock list' });
+    }
+};
+
+exports.downloadProductShoppingListPdf = async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+
+        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
+        const enrichedProducts = await enrichProductsWithStock(products);
+
+        const lowStockProducts = enrichedProducts.filter((p) => {
+            const minVal = p.minThreshold || 5;
+            return p.availableStock <= minVal;
+        });
+
+        if (lowStockProducts.length === 0) {
+            return res.status(400).send('All product blanks are healthy above safety thresholds. No restocks required!');
+        }
+
+        const itemsCount = lowStockProducts.length;
+        const pageHeight = Math.max(280, 170 + itemsCount * 48 + 50);
+        const doc = new PDFDocument({ size: [320, pageHeight], margin: 15 });
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        const isInline = req.query.inline === 'true' || req.query.preview === 'true' || req.query.view === 'inline';
+        const disposition = isInline ? 'inline' : 'attachment';
+
+        res.setHeader('Content-disposition', `${disposition}; filename=PRODUCT_SUPPLIER_RESTOCK_${dateStr}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+
+        doc.pipe(res);
+
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+
+        doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(9).text('SUPPLIER REQUISITION SHEET', { align: 'center' });
+        doc.moveDown(0.2);
+        doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+        doc.text(`Location: Pacific Mall Lucena | Operator: ${req.user?.username || 'Administrator'}`, { align: 'center' });
+
+        doc.moveDown(0.4);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.3);
+
+        doc.font('Helvetica-Bold').fontSize(9).text('PRODUCT BLANKS RESTOCK LIST', { align: 'center' });
+        doc.moveDown(0.3);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.4);
+
+        doc.font('Courier-Bold').fontSize(8);
+        const headerLine = 'PRODUCT BLANK'.padEnd(18) + 'AVAIL'.padStart(7) + 'TO BUY'.padStart(9);
+        doc.text(headerLine, { align: 'center' });
+        doc.font('Courier').fontSize(8);
+        doc.moveDown(0.4);
+
+        lowStockProducts.forEach((item) => {
+            const minVal = item.minThreshold || 5;
+            const target = minVal * 2;
+            const suggestedOrder = Math.max(1, target - item.availableStock);
+
+            const name = item.name.substring(0, 17).padEnd(18);
+            const current = `${item.availableStock}`.padStart(7);
+            const order = `+${suggestedOrder} pcs`.padStart(9);
+
+            doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
+
+            doc.font('Courier-Oblique').fontSize(7);
+            const subtext = `  (Tag: ${item.tag || 'General'} | On-Hand: ${item.count} | Min: ${minVal})`.padEnd(38);
+            doc.text(subtext, { align: 'center' });
+            doc.fontSize(8);
+            doc.moveDown(0.35);
+        });
+
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.4);
+
+        doc.font('Helvetica-Oblique').fontSize(6.5);
+        doc.text('* Suggested quantities restore stock to 2x safety threshold level.', { align: 'left', indent: 10 });
+        doc.text('* Present this list to blank garment suppliers for procurement.', { align: 'left', indent: 10 });
+        doc.end();
+
+    } catch (err) {
+        console.error('downloadProductShoppingListPdf error:', err);
+        res.status(500).send('Error generating product restock PDF');
+    }
+};
+
+exports.downloadProductShoppingListCsv = async (req, res) => {
+    try {
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+
+        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
+        const enrichedProducts = await enrichProductsWithStock(products);
+
+        const lowStockProducts = enrichedProducts.filter((p) => {
+            const minVal = p.minThreshold || 5;
+            return p.availableStock <= minVal;
+        });
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        res.setHeader('Content-disposition', `attachment; filename=PRODUCT_SUPPLIER_RESTOCK_${dateStr}.csv`);
+        res.setHeader('Content-type', 'text/csv; charset=utf-8');
+
+        let csv = 'Product Name,Category,On-Hand Stock,Reserved for Orders,Available Stock,Safety Threshold,Recommended Purchase (Pcs),Stock Status\n';
+        lowStockProducts.forEach((p) => {
+            const minVal = p.minThreshold || 5;
+            const target = minVal * 2;
+            const suggestedOrder = Math.max(1, target - p.availableStock);
+            const status = p.availableStock <= 0 ? 'OUT OF STOCK (CRITICAL)' : 'LOW STOCK';
+            const cleanName = `"${p.name.replace(/"/g, '""')}"`;
+            const cleanTag = `"${(p.tag || 'General').replace(/"/g, '""')}"`;
+
+            csv += `${cleanName},${cleanTag},${p.count},${p.dynamicReserved || 0},${p.availableStock},${minVal},${suggestedOrder},${status}\n`;
+        });
+
+        res.send(csv);
+    } catch (err) {
+        console.error('downloadProductShoppingListCsv error:', err);
+        res.status(500).send('Error generating product restock CSV');
+    }
+};
+
 exports.uploadBusinessLogo = async (req, res) => {
     try {
         if (!req.file) {

@@ -73,6 +73,74 @@ export default function PanelManageDesigns({
   // Stock Filter State
   const [stockFilter, setStockFilter] = useState<StockLevelTier>('all');
 
+  // Supplier Acquisition & Restock Modal State
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
+  const [pdfPreviewTitle, setPdfPreviewTitle] = useState('');
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [restockFilterQuery, setRestockFilterQuery] = useState('');
+
+  // Products at or below safety stock threshold
+  const lowStockProducts = products.filter((p) => {
+    const availableStock = p.availableStock !== undefined
+      ? p.availableStock
+      : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
+    const threshold = p.minThreshold !== undefined ? p.minThreshold : 5;
+    return availableStock <= threshold;
+  });
+
+  const handlePreviewProductRestockPdf = async () => {
+    if (lowStockProducts.length === 0) {
+      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      return;
+    }
+    setIsLoadingPdf(true);
+    try {
+      showToast('Generating supplier acquisition list preview...', 'info');
+      const blob = await api.getBlob('/api/admin/products/shopping-list/pdf?inline=true');
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+      setPdfPreviewTitle('Product Blanks Supplier Requisition (PDF)');
+      setIsPdfModalOpen(true);
+    } catch (err: any) {
+      console.error('PDF Preview failed:', err);
+      showToast(err.message || 'Failed to generate procurement PDF preview', 'error');
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
+  const handleDownloadProductRestockPdf = async () => {
+    if (lowStockProducts.length === 0) {
+      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      return;
+    }
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      await api.download('/api/admin/products/shopping-list/pdf', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.pdf`);
+      showToast('Product restock PDF downloaded successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to download product restock PDF', 'error');
+    }
+  };
+
+  const handleDownloadProductRestockCsv = async () => {
+    if (lowStockProducts.length === 0) {
+      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      return;
+    }
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      await api.download('/api/admin/products/shopping-list/csv', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.csv`);
+      showToast('Product restock CSV exported successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to export product restock CSV', 'error');
+    }
+  };
+
   // 1. Filtering Designs
   const filteredProducts = products.filter((p) => {
     const query = searchQuery.toLowerCase();
@@ -429,6 +497,87 @@ export default function PanelManageDesigns({
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
+      {/* Smart Supplier Purchase Requisition Alert Banner */}
+      {lowStockProducts.length > 0 ? (
+        <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-danger/15 flex items-center justify-center text-danger shrink-0">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-danger">Stock Alert: Product Blanks Restock Required!</span>
+              <span className="text-xs text-text-dim mt-0.5">
+                {lowStockProducts.length} product blank{lowStockProducts.length === 1 ? '' : 's'} hit safety thresholds and need replenishment from suppliers.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsRestockModalOpen(true)}
+              className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="View items to be bought for supplier replenishment"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>View Requisition List ({lowStockProducts.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePreviewProductRestockPdf}
+              disabled={isLoadingPdf}
+              className="bg-primary/20 border border-primary/30 text-primary font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-primary/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Preview printable supplier procurement sheet"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Preview PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadProductRestockPdf}
+              className="bg-danger/20 border border-danger/30 text-danger font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-danger/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Download procurement PDF sheet"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Download PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadProductRestockCsv}
+              className="bg-white/10 border border-white/20 text-text-main font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-white/15 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Export procurement CSV file for spreadsheet or supplier upload"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center justify-between flex-wrap gap-2 mb-4 text-left animate-fade">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-success"></span>
+            <span className="text-xs font-bold text-success">Stock Healthy! All product blanks are above safety margins.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsRestockModalOpen(true)}
+            className="text-xs text-text-dim hover:text-text-main underline cursor-pointer bg-transparent border-none"
+          >
+            Check Requisition Status
+          </button>
+        </div>
+      )}
+
       {/* Compact Top Filter & Action Toolbar */}
       <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
         {isAdmin && (
@@ -439,6 +588,22 @@ export default function PanelManageDesigns({
             + New Product
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setIsRestockModalOpen(true)}
+          className="bg-bg-surface border border-border-glass text-text-main hover:bg-white/10 font-bold px-3.5 py-2.5 rounded-xl text-[0.85rem] flex items-center gap-2 cursor-pointer transition-all"
+          title="View restock list and procurement sheets"
+        >
+          <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Supplier Restock</span>
+          {lowStockProducts.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-danger/20 text-danger border border-danger/30">
+              {lowStockProducts.length}
+            </span>
+          )}
+        </button>
         <input
           type="text"
           placeholder="Search products..."
@@ -1021,6 +1186,258 @@ export default function PanelManageDesigns({
           </div>
         </div>
       </GlassModal>
+
+      {/* Product Supplier Requisition Modal */}
+      <GlassModal
+        isOpen={isRestockModalOpen}
+        onClose={() => setIsRestockModalOpen(false)}
+        title="Product Blanks Supplier Requisition"
+      >
+        <div className="flex flex-col gap-4 text-left max-w-4xl w-full">
+          {/* Header Summary & Filter Bar */}
+          <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-white/10">
+            <div>
+              <div className="text-sm font-bold text-text-main">
+                Required Products for Restock ({lowStockProducts.length} Item{lowStockProducts.length === 1 ? '' : 's'})
+              </div>
+              <div className="text-xs text-text-dim">
+                Blanks currently at or below their safety reorder thresholds. Quantities are calculated to restore safety buffers.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handlePreviewProductRestockPdf}
+                disabled={isLoadingPdf || lowStockProducts.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Preview PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadProductRestockPdf}
+                disabled={lowStockProducts.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-danger/20 border border-danger/30 text-danger text-xs font-bold hover:bg-danger/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Download PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadProductRestockCsv}
+                disabled={lowStockProducts.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-text-main text-xs font-bold hover:bg-white/15 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar inside modal if list is long */}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Filter requisition items..."
+              value={restockFilterQuery}
+              onChange={(e) => setRestockFilterQuery(e.target.value)}
+              className="bg-bg-surface border border-border-glass p-2 rounded-xl text-text-main text-xs outline-none w-full max-w-sm"
+            />
+          </div>
+
+          {/* Requisition Table */}
+          {lowStockProducts.length === 0 ? (
+            <div className="p-8 text-center bg-bg-surface/40 rounded-2xl border border-dashed border-border-glass flex flex-col items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-success"></span>
+              <span className="text-sm font-bold text-text-main">No Products Need Restocking</span>
+              <span className="text-xs text-text-dim">
+                All inventory blanks currently have available stock exceeding their minimum safety thresholds.
+              </span>
+            </div>
+          ) : (
+            <div className="max-h-[50vh] overflow-y-auto border border-border-glass rounded-xl overflow-hidden bg-bg-surface/50">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-white/5 border-b border-border-glass text-text-dim font-bold">
+                    <th className="p-3">Product</th>
+                    <th className="p-3 text-center">Tag</th>
+                    <th className="p-3 text-center">On-Hand</th>
+                    <th className="p-3 text-center">Reserved</th>
+                    <th className="p-3 text-center">Available</th>
+                    <th className="p-3 text-center">Threshold</th>
+                    <th className="p-3 text-center font-extrabold text-primary">To Buy</th>
+                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {lowStockProducts
+                    .filter((p) => {
+                      if (!restockFilterQuery.trim()) return true;
+                      const q = restockFilterQuery.toLowerCase();
+                      return (
+                        p.name.toLowerCase().includes(q) ||
+                        (p.tag && p.tag.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((item) => {
+                      const avail = item.availableStock !== undefined
+                        ? item.availableStock
+                        : Math.max(0, (item.count || 0) - (item.reservedCount || 0));
+                      const threshold = item.minThreshold !== undefined ? item.minThreshold : 5;
+                      const target = threshold * 2;
+                      const toBuy = Math.max(1, target - avail);
+                      const isZero = avail <= 0;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-8 h-8 rounded-lg object-cover border border-white/10 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-text-dim shrink-0 font-bold">
+                                  {item.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="flex flex-col">
+                                <span className="font-bold text-text-main line-clamp-1">{item.name}</span>
+                                <span className="text-[10px] text-text-dim font-mono">ID: {item.id.slice(-6).toUpperCase()}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 border border-white/10 capitalize">
+                              {item.tag || 'General'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center font-mono text-text-main">{item.count || 0}</td>
+                          <td className="p-3 text-center font-mono text-amber-400">{item.reservedCount || 0}</td>
+                          <td className="p-3 text-center font-mono font-bold">
+                            <span className={isZero ? 'text-danger' : 'text-amber-400'}>{avail}</span>
+                          </td>
+                          <td className="p-3 text-center font-mono text-text-dim">{threshold}</td>
+                          <td className="p-3 text-center">
+                            <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-primary/20 text-primary border border-primary/30">
+                              +{toBuy} pcs
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                isZero
+                                  ? 'bg-danger/20 text-danger border border-danger/30'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              }`}
+                            >
+                              {isZero ? 'Out of Stock' : 'Low Stock'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsRestockModalOpen(false);
+                                openModal(item);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-text-main text-[11px] font-bold cursor-pointer transition"
+                            >
+                              Edit Stock
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-2 border-t border-white/10 flex-wrap gap-2 text-xs text-text-dim">
+            <span>Formula: Reorder targets 2x threshold buffer to prevent operational stockouts during peak shifts.</span>
+            <button
+              type="button"
+              onClick={() => setIsRestockModalOpen(false)}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-text-main font-bold cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </GlassModal>
+
+      {/* PDF Document Preview Modal */}
+      {isPdfModalOpen && pdfPreviewUrl && (
+        <GlassModal
+          isOpen={isPdfModalOpen}
+          onClose={() => {
+            setIsPdfModalOpen(false);
+            if (pdfPreviewUrl) {
+              URL.revokeObjectURL(pdfPreviewUrl);
+              setPdfPreviewUrl('');
+            }
+          }}
+          title={pdfPreviewTitle}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="w-full h-[65vh] rounded-xl overflow-hidden border border-border-glass bg-neutral-900 shadow-inner">
+              <iframe
+                src={pdfPreviewUrl}
+                title="Product Restock Requisition Preview"
+                className="w-full h-full border-0"
+              />
+            </div>
+            <div className="flex justify-between items-center gap-3 pt-2 flex-wrap">
+              <div className="text-xs text-text-dim">
+                Document previewed directly on screen without downloading to your computer.
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const iframe = document.querySelector('iframe');
+                    iframe?.contentWindow?.print();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-bg-surface border border-border-glass hover:bg-white/10 text-text-main text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M6 14h12v8H6z" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = pdfPreviewUrl;
+                    a.download = `${pdfPreviewTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+                    a.click();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Save File</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </GlassModal>
+      )}
     </section>
   );
 }

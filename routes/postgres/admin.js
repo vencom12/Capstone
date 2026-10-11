@@ -66,6 +66,9 @@ router.get('/orders/history', staffAuth(), adminController.getOrderHistory);
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
 router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
 router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.downloadShoppingListPdf);
+router.get('/products/shopping-list', staffAuth(), adminController.getProductShoppingList);
+router.get('/products/shopping-list/pdf', staffAuth(), adminController.downloadProductShoppingListPdf);
+router.get('/products/shopping-list/csv', staffAuth(), adminController.downloadProductShoppingListCsv);
 // Stock count adjustment (+ / -) -> Staff permitted
 router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), adminController.updateInventoryItem);
 
