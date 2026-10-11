@@ -81,6 +81,18 @@ export default function PanelManageDesigns({
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [restockFilterQuery, setRestockFilterQuery] = useState('');
 
+  const [businessPhone, setBusinessPhone] = useState('0928 810 3928');
+
+  useEffect(() => {
+    api.get<any>('/api/admin/settings')
+      .then((settings) => {
+        if (settings?.businessContact) {
+          setBusinessPhone(settings.businessContact);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Products at or below safety stock threshold
   const lowStockProducts = products.filter((p) => {
     const availableStock = p.availableStock !== undefined
@@ -92,12 +104,12 @@ export default function PanelManageDesigns({
 
   const handlePreviewProductRestockPdf = async () => {
     if (lowStockProducts.length === 0) {
-      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      showToast('All items in stock', 'info');
       return;
     }
     setIsLoadingPdf(true);
     try {
-      showToast('Generating supplier acquisition list preview...', 'info');
+      showToast('Loading preview...', 'info');
       const blob = await api.getBlob('/api/admin/products/shopping-list/pdf?inline=true');
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -105,7 +117,7 @@ export default function PanelManageDesigns({
       setIsPdfModalOpen(true);
     } catch (err: any) {
       console.error('PDF Preview failed:', err);
-      showToast(err.message || 'Failed to generate procurement PDF preview', 'error');
+      showToast('Failed to load preview', 'error');
     } finally {
       setIsLoadingPdf(false);
     }
@@ -113,40 +125,41 @@ export default function PanelManageDesigns({
 
   const handleDownloadProductRestockPdf = async () => {
     if (lowStockProducts.length === 0) {
-      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      showToast('All items in stock', 'info');
       return;
     }
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       await api.download('/api/admin/products/shopping-list/pdf', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.pdf`);
-      showToast('Product restock PDF downloaded successfully!', 'success');
+      showToast('Downloaded PDF', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Failed to download product restock PDF', 'error');
+      showToast('Failed to download PDF', 'error');
     }
   };
 
   const handleDownloadProductRestockCsv = async () => {
     if (lowStockProducts.length === 0) {
-      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      showToast('All items in stock', 'info');
       return;
     }
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       await api.download('/api/admin/products/shopping-list/csv', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.csv`);
-      showToast('Product restock CSV exported successfully!', 'success');
+      showToast('Exported CSV', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Failed to export product restock CSV', 'error');
+      showToast('Failed to export CSV', 'error');
     }
   };
 
   const handleCopyProductRestockForMessenger = () => {
     if (lowStockProducts.length === 0) {
-      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      showToast('All items in stock', 'info');
       return;
     }
-    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order the following product blanks for embroidery:\n`;
+    const phone = businessPhone || '0928 810 3928';
+    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following product blanks for embroidery:\n`;
     lowStockProducts.forEach((p) => {
       const avail = p.availableStock !== undefined
         ? p.availableStock
@@ -159,7 +172,7 @@ export default function PanelManageDesigns({
     text += `\nPlease confirm blank garment availability, price quote, and earliest delivery date. Thank you!`;
 
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`📋 Copied ${lowStockProducts.length} product blanks for Messenger/Viber!`, 'success');
+      showToast(`Copied ${lowStockProducts.length} items to clipboard`, 'success');
     }).catch(() => {
       showToast('Failed to copy to clipboard', 'error');
     });
@@ -262,7 +275,7 @@ export default function PanelManageDesigns({
       idx !== editingVariantIndex && v.name.toLowerCase() === variantName.trim().toLowerCase()
     );
     if (isDuplicate) {
-      showToast('Another variant already has this name', 'error');
+      showToast('Variant already exists', 'error');
       return;
     }
 
@@ -277,10 +290,10 @@ export default function PanelManageDesigns({
 
     if (editingVariantIndex !== null) {
       setVariants((prev) => prev.map((v, idx) => (idx === editingVariantIndex ? updatedVariant : v)));
-      showToast(`Updated variant "${updatedVariant.name}"`, 'success');
+      showToast(`Updated variant ${updatedVariant.name}`, 'success');
     } else {
       setVariants((prev) => [...prev, updatedVariant]);
-      showToast(`Added variant "${updatedVariant.name}"`, 'success');
+      showToast(`Added variant ${updatedVariant.name}`, 'success');
     }
 
     handleCancelVariantEdit();
@@ -330,7 +343,7 @@ export default function PanelManageDesigns({
     setVariants((prev) => prev.filter((_, idx) => idx !== index));
     setVariantToDeleteIndex(null);
 
-    showToast(`Variant "${targetVariant.name}" removed`, 'info');
+    showToast(`Removed variant ${targetVariant.name}`, 'info');
   };
 
   const handleUndoDeleteVariant = () => {
@@ -344,18 +357,18 @@ export default function PanelManageDesigns({
     });
     const restoredName = lastDeletedVariant.variant.name;
     setLastDeletedVariant(null);
-    showToast(`Restored variant "${restoredName}"`, 'success');
+    showToast(`Restored variant ${restoredName}`, 'success');
   };
 
   // 3. Add Material to Recipe
   const addRecipeItem = () => {
     if (!selectedMaterialId) {
-      showToast('Please select a material first', 'error');
+      showToast('Select a material', 'error');
       return;
     }
     const qty = parseFloat(materialQty);
     if (isNaN(qty) || qty <= 0) {
-      showToast('Please enter a valid material quantity', 'error');
+      showToast('Enter a valid quantity', 'error');
       return;
     }
 
@@ -364,7 +377,7 @@ export default function PanelManageDesigns({
 
     // Check duplication
     if (recipe.some((r) => r.inventoryId === selectedMaterialId)) {
-      showToast('Material already added to recipe list', 'error');
+      showToast('Material already added', 'error');
       return;
     }
 
@@ -392,8 +405,8 @@ export default function PanelManageDesigns({
       return;
     }
 
-    if (!name.trim()) return showToast('Design name is required', 'error');
-    if (!price.trim() || isNaN(parseFloat(price))) return showToast('Valid price is required', 'error');
+    if (!name.trim()) return showToast('Name is required', 'error');
+    if (!price.trim() || isNaN(parseFloat(price))) return showToast('Enter a valid price', 'error');
 
     const formattedVariants = variants.map((v) => ({
       name: v.name,
@@ -455,10 +468,7 @@ export default function PanelManageDesigns({
     }
 
     setIsOpen(false);
-    showToast(
-      isEdit ? 'Catalog design details updated' : 'New storefront design published successfully',
-      'success'
-    );
+    showToast(isEdit ? 'Product updated' : 'Product created', 'success');
 
     try {
       const method = isEdit ? 'PATCH' : 'POST';
@@ -488,7 +498,7 @@ export default function PanelManageDesigns({
       if (setProducts) {
         setProducts(prevProducts);
       }
-      showToast('Failed to save storefront design — reverted', 'error');
+      showToast('Failed to save product', 'error');
     }
   };
 
@@ -505,7 +515,7 @@ export default function PanelManageDesigns({
       setProducts((prev) => prev.filter((p) => (p.id || p._id) !== id));
     }
     setDeletingProduct(null);
-    showToast('Product deleted successfully', 'success');
+    showToast('Product deleted', 'success');
 
     try {
       await api.delete(`/api/admin/products/${id}`);
@@ -515,7 +525,7 @@ export default function PanelManageDesigns({
       if (setProducts) {
         setProducts(prevProducts);
       }
-      showToast('Failed to delete product — restored', 'error');
+      showToast('Failed to delete product', 'error');
     }
   };
 
@@ -531,9 +541,9 @@ export default function PanelManageDesigns({
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-danger">Stock Alert: Product Blanks Restock Required!</span>
+              <span className="text-sm font-bold text-danger">Stock alert: {lowStockProducts.length} items below threshold</span>
               <span className="text-xs text-text-dim mt-0.5">
-                {lowStockProducts.length} product blank{lowStockProducts.length === 1 ? '' : 's'} hit safety thresholds and need replenishment from suppliers.
+                {lowStockProducts.length} items need restock.
               </span>
             </div>
           </div>
@@ -547,7 +557,7 @@ export default function PanelManageDesigns({
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span>View Requisition List ({lowStockProducts.length})</span>
+              <span>Items to Restock ({lowStockProducts.length})</span>
             </button>
             <button
               type="button"
@@ -601,14 +611,14 @@ export default function PanelManageDesigns({
         <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center justify-between flex-wrap gap-2 mb-4 text-left animate-fade">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-success"></span>
-            <span className="text-xs font-bold text-success">Stock Healthy! All product blanks are above safety margins.</span>
+            <span className="text-xs font-bold text-success">All items in stock</span>
           </div>
           <button
             type="button"
             onClick={() => setIsRestockModalOpen(true)}
             className="text-xs text-text-dim hover:text-text-main underline cursor-pointer bg-transparent border-none"
           >
-            Check Requisition Status
+            Check Stock Status
           </button>
         </div>
       )}
@@ -1226,17 +1236,17 @@ export default function PanelManageDesigns({
       <GlassModal
         isOpen={isRestockModalOpen}
         onClose={() => setIsRestockModalOpen(false)}
-        title="Product Blanks Supplier Requisition"
+        title="Product Restock Form"
       >
         <div className="flex flex-col gap-4 text-left max-w-4xl w-full">
           {/* Header Summary & Filter Bar */}
           <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-white/10">
             <div>
               <div className="text-sm font-bold text-text-main">
-                Required Products for Restock ({lowStockProducts.length} Item{lowStockProducts.length === 1 ? '' : 's'})
+                Items to restock ({lowStockProducts.length} below threshold)
               </div>
               <div className="text-xs text-text-dim">
-                Blanks currently at or below their safety reorder thresholds. Quantities are calculated to restore safety buffers.
+                Products currently at or below minimum threshold.
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -1293,7 +1303,7 @@ export default function PanelManageDesigns({
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Filter requisition items..."
+              placeholder="Search items..."
               value={restockFilterQuery}
               onChange={(e) => setRestockFilterQuery(e.target.value)}
               className="bg-bg-surface border border-border-glass p-2 rounded-xl text-text-main text-xs outline-none w-full max-w-sm"
@@ -1304,9 +1314,9 @@ export default function PanelManageDesigns({
           {lowStockProducts.length === 0 ? (
             <div className="p-8 text-center bg-bg-surface/40 rounded-2xl border border-dashed border-border-glass flex flex-col items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-success"></span>
-              <span className="text-sm font-bold text-text-main">No Products Need Restocking</span>
+              <span className="text-sm font-bold text-text-main">All items in stock</span>
               <span className="text-xs text-text-dim">
-                All inventory blanks currently have available stock exceeding their minimum safety thresholds.
+                No products are currently below threshold.
               </span>
             </div>
           ) : (

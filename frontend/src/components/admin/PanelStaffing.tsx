@@ -87,7 +87,7 @@ export default function PanelStaffing({
   const openModal = (staff?: any) => {
     if (staff) {
       if (isFellowAdmin(staff)) {
-        showToast('Security Alert: You cannot modify credentials of another administrator', 'error');
+        showToast('Cannot edit another admin', 'error');
         return;
       }
       setEditingStaff(staff);
@@ -114,14 +114,14 @@ export default function PanelStaffing({
     e.preventDefault();
 
     if (editingStaff && isFellowAdmin(editingStaff)) {
-      showToast('Action forbidden: Fellow administrator accounts are protected', 'error');
+      showToast('Cannot edit another admin', 'error');
       return;
     }
 
     if (!username.trim()) return showToast('Username is required', 'error');
     if (!email.trim()) return showToast('Email is required', 'error');
     if (!editingStaff && !password.trim()) {
-      return showToast('Password is required on account establishment', 'error');
+      return showToast('Password is required', 'error');
     }
 
     const payload: any = {
@@ -164,10 +164,7 @@ export default function PanelStaffing({
     }
 
     setIsOpen(false);
-    showToast(
-      isEdit ? 'Personnel details updated' : 'New staff credentials established successfully',
-      'success'
-    );
+    showToast(isEdit ? 'Staff updated' : 'Staff added', 'success');
 
     try {
       const path = isEdit ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
@@ -188,7 +185,7 @@ export default function PanelStaffing({
       if (setUsers) {
         setUsers(prevUsers);
       }
-      showToast(err?.message || 'Failed to save staff credentials details — reverted', 'error');
+      showToast(err?.message || 'Failed to save staff', 'error');
     }
   };
 
@@ -197,7 +194,7 @@ export default function PanelStaffing({
     const id = disablingUser.id || disablingUser._id;
 
     if (isFellowAdmin(disablingUser)) {
-      showToast('Security Violation: You cannot disable fellow administrator accounts', 'error');
+      showToast('Cannot disable another admin', 'error');
       setDisablingUser(null);
       return;
     }
@@ -209,7 +206,7 @@ export default function PanelStaffing({
       setUsers((prev) => prev.filter((u) => (u.id || u._id) !== id));
     }
     setDisablingUser(null);
-    showToast(`Account "${disablingUser.username}" disabled successfully`, 'success');
+    showToast('Account disabled', 'success');
 
     try {
       await api.delete(`/api/admin/users/${id}`);
@@ -219,7 +216,7 @@ export default function PanelStaffing({
       if (setUsers) {
         setUsers(prevUsers);
       }
-      showToast(err?.message || 'Failed to disable user account — restored', 'error');
+      showToast(err?.message || 'Failed to disable account', 'error');
     }
   };
 

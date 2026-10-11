@@ -32,7 +32,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
     const next = prev + 1;
     setOptimisticCount(next);
     setInputValue(next.toString());
-    showToast(`Incremented stock (+1 spool of ${material.item})`, 'success');
+    showToast(`+1 ${material.item}`, 'success');
 
     try {
       const materialId = material.id || material._id;
@@ -48,20 +48,20 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
       setOptimisticCount(prev);
       setInputValue(prev.toString());
       console.error(err);
-      showToast('Failed to increment stockpile. Reverted.', 'error');
+      showToast('Failed to update stock', 'error');
     }
   };
 
   const handleDecrement = async () => {
     if (optimisticCount <= 0) {
-      showToast('Stock count cannot go below zero!', 'error');
+      showToast('Stock cannot be negative', 'error');
       return;
     }
     const prev = optimisticCount;
     const next = prev - 1;
     setOptimisticCount(next);
     setInputValue(next.toString());
-    showToast(`Decremented stock (-1 spool of ${material.item})`, 'success');
+    showToast(`-1 ${material.item}`, 'success');
 
     try {
       const materialId = material.id || material._id;
@@ -77,14 +77,14 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
       setOptimisticCount(prev);
       setInputValue(prev.toString());
       console.error(err);
-      showToast('Failed to decrement stockpile. Reverted.', 'error');
+      showToast('Failed to update stock', 'error');
     }
   };
 
   const handleAbsoluteSubmit = async () => {
     const newVal = parseInt(inputValue);
     if (isNaN(newVal) || newVal < 0) {
-      showToast('Please enter a valid stock level', 'error');
+      showToast('Enter a valid number', 'error');
       setInputValue(optimisticCount.toString());
       setIsEditing(false);
       return;
@@ -102,7 +102,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
     const diff = newVal - prev;
     const action = diff > 0 ? 'Add' : 'Deduct';
     const amount = Math.abs(diff);
-    showToast(`Stock updated to ${newVal} (${action === 'Add' ? '+' : '-'}${amount})`, 'success');
+    showToast(`Stock set to ${newVal}`, 'success');
 
     try {
       const materialId = material.id || material._id;
@@ -118,7 +118,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
       setOptimisticCount(prev);
       setInputValue(prev.toString());
       console.error(err);
-      showToast('Failed to alter stockpile. Reverted.', 'error');
+      showToast('Failed to update stock', 'error');
     }
   };
 
@@ -219,7 +219,7 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
   const handleAbsoluteSubmit = async () => {
     const newVal = parseInt(inputValue);
     if (isNaN(newVal) || newVal < 0) {
-      showToast('Please enter a valid warning limit', 'error');
+      showToast('Enter a valid threshold', 'error');
       setInputValue((material.minThreshold || 10).toString());
       setIsEditing(false);
       return;
@@ -239,12 +239,12 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
         amount: 0,
         minThreshold: newVal
       });
-      showToast(`Safety limit set to ${newVal} for ${material.item}`, 'success');
+      showToast(`Threshold set to ${newVal}`, 'success');
       await refreshData();
       await fetchAuditLogs();
     } catch (err) {
       console.error(err);
-      showToast('Failed to update safety warning limit', 'error');
+      showToast('Failed to update threshold', 'error');
       setInputValue((material.minThreshold || 10).toString());
     } finally {
       setIsEditing(false);
@@ -340,8 +340,8 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     setIsEditing(false);
     showToast(
       parsed != null
-        ? `Supplier cost set to ₱${parsed.toFixed(2)} for ${material.item}`
-        : `Supplier cost cleared for ${material.item}`,
+        ? `Cost set to ₱${parsed.toFixed(2)}`
+        : 'Cost cleared',
       'success'
     );
 
@@ -355,7 +355,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
           prev.map((m) => ((m.id || m._id) === materialId ? { ...m, supplierUnitCost: prevCost } : m))
         );
       }
-      showToast('Failed to update supplier cost — reverted', 'error');
+      showToast('Failed to update cost', 'error');
       setInputValue(prevCost != null ? String(prevCost) : '');
     }
   };
@@ -477,7 +477,7 @@ export default function PanelRawMaterials({
 
     // Check if already in recipe
     if (currentRecipe.some((r: any) => r.inventoryId === materialId)) {
-      showToast('This material is already linked to this product recipe', 'info');
+      showToast('Item already linked', 'info');
       setIsLinkingSubmitting(false);
       return;
     }
@@ -495,11 +495,11 @@ export default function PanelRawMaterials({
       await api.put(`/api/admin/products/${selectedTargetProductId}`, {
         recipe: updatedRecipe
       });
-      showToast(`Linked "${materialName}" to "${targetProduct.name}"!`, 'success');
+      showToast('Item linked to product', 'success');
       setLinkingMaterial(null);
       await refreshData();
     } catch (err: any) {
-      showToast(err.message || 'Failed to link material to product', 'error');
+      showToast(err.message || 'Failed to link item', 'error');
     } finally {
       setIsLinkingSubmitting(false);
     }
@@ -516,10 +516,10 @@ export default function PanelRawMaterials({
       await api.put(`/api/admin/products/${productId}`, {
         recipe: updatedRecipe
       });
-      showToast(`Unlinked material from "${targetProduct.name}"`, 'success');
+      showToast('Item unlinked', 'success');
       await refreshData();
     } catch (err: any) {
-      showToast(err.message || 'Failed to unlink material', 'error');
+      showToast(err.message || 'Failed to unlink item', 'error');
     }
   };
 
@@ -529,6 +529,7 @@ export default function PanelRawMaterials({
 
   // Settings
   const [auditLogToggle, setAuditLogToggle] = useState(true);
+  const [businessPhone, setBusinessPhone] = useState('0928 810 3928');
 
   // Modals state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -607,10 +608,11 @@ export default function PanelRawMaterials({
 
   const handleCopyLowStockRequisition = () => {
     if (lowStockItems.length === 0) {
-      showToast('All stockpile materials are healthy. No restocks required!', 'info');
+      showToast('All items are in stock.', 'info');
       return;
     }
-    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order the following raw materials:\n`;
+    const phone = businessPhone || '0928 810 3928';
+    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following raw materials:\n`;
     lowStockItems.forEach((item) => {
       const minVal = item.minThreshold || 10;
       const target = minVal * 2;
@@ -620,7 +622,7 @@ export default function PanelRawMaterials({
     text += `\nPlease confirm availability, current invoice pricing, and estimated delivery date. Thank you!`;
 
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`📋 Copied ${lowStockItems.length} low-stock items for Messenger/Viber!`, 'success');
+      showToast(`Copied ${lowStockItems.length} items to clipboard`, 'success');
     }).catch(() => {
       showToast('Failed to copy to clipboard', 'error');
     });
@@ -628,7 +630,7 @@ export default function PanelRawMaterials({
 
   const handleBatchStageLowStockPos = async () => {
     if (lowStockItems.length === 0) {
-      showToast('No low stock items to stage.', 'info');
+      showToast('No low stock items to order.', 'info');
       return;
     }
     setIsSubmittingPo(true);
@@ -647,12 +649,12 @@ export default function PanelRawMaterials({
         });
         stagedCount++;
       }
-      showToast(`🎉 Staged ${stagedCount} Purchase Orders for all low stock items!`, 'success');
+      showToast(`Created ${stagedCount} orders`, 'success');
       setIsDraftPoOpen(false);
       await fetchPurchaseOrders();
     } catch (err: any) {
       console.error(err);
-      showToast(err.message || 'Failed to batch stage POs', 'error');
+      showToast('Failed to create orders', 'error');
     } finally {
       setIsSubmittingPo(false);
     }
@@ -684,12 +686,12 @@ export default function PanelRawMaterials({
 
   const handlePreviewRestockList = async () => {
     if (lowStockItems.length === 0) {
-      showToast('All stockpile spools are healthy. No restocks required!', 'info');
+      showToast('All items are in stock.', 'info');
       return;
     }
     setIsLoadingPdf(true);
     try {
-      showToast('Generating restock procurement list preview...', 'info');
+      showToast('Loading preview...', 'info');
       const blob = await api.getBlob('/api/admin/inventory/shopping-list/pdf?inline=true');
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -697,7 +699,7 @@ export default function PanelRawMaterials({
       setIsPdfModalOpen(true);
     } catch (err: any) {
       console.error('PDF Preview failed:', err);
-      showToast(err.message || 'Failed to generate procurement PDF preview', 'error');
+      showToast('Failed to load preview', 'error');
     } finally {
       setIsLoadingPdf(false);
     }
@@ -706,26 +708,30 @@ export default function PanelRawMaterials({
   const handlePreviewPoPdf = async (poId: string) => {
     setIsLoadingPdf(true);
     try {
-      showToast('Generating official Purchase Order PDF...', 'info');
+      showToast('Loading order PDF...', 'info');
       const blob = await api.getBlob(`/api/admin/purchase-orders/${poId}/pdf`);
       const url = URL.createObjectURL(blob);
+      const targetPo = purchaseOrders.find((p) => (p.id || p._id) === poId);
+      const dateStr = targetPo?.createdAt ? new Date(targetPo.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       setPdfPreviewUrl(url);
-      setPdfPreviewTitle(`Purchase Order #${poId.slice(-6).toUpperCase()} (PDF)`);
+      setPdfPreviewTitle(`Purchase Order #PO-${dateStr} (PDF)`);
       setIsPdfModalOpen(true);
     } catch (err: any) {
       console.error('PO PDF Preview failed:', err);
-      showToast(err.message || 'Failed to preview PO PDF', 'error');
+      showToast('Failed to load order PDF', 'error');
     } finally {
       setIsLoadingPdf(false);
     }
   };
 
   const handleCopyPoForMessenger = (po: any) => {
-    const poNum = `PO-${po.id.slice(-6).toUpperCase()}`;
-    const text = `📦 PURCHASE ORDER — EDS TOWELS & CAPS\nPO Number: #${poNum}\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order the following embroidery materials:\n• ${po.quantity} ${po.inventory?.unit || 'Cones'} — ${po.inventory?.item || 'Embroidery Material'}\n${po.estimatedCost ? `Estimated Total: ₱${po.estimatedCost.toFixed(2)}\n` : ''}\nPlease confirm price invoice and expected delivery date. Thank you!`;
+    const dateStr = po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const poNum = `PO-${dateStr}`;
+    const phone = businessPhone || '0928 810 3928';
+    const text = `📦 PURCHASE ORDER — EDS TOWELS & CAPS\nPO Number: #${poNum}\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following embroidery materials:\n• ${po.quantity} ${po.inventory?.unit || 'Cones'} — ${po.inventory?.item || 'Embroidery Material'}\n${po.estimatedCost ? `Estimated Total: ₱${po.estimatedCost.toFixed(2)}\n` : ''}\nPlease confirm price invoice and expected delivery date. Thank you!`;
     
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`📋 Copied PO #${poNum} for Messenger/Viber!`, 'success');
+      showToast(`Copied order #${poNum} to clipboard`, 'success');
     }).catch(() => {
       showToast('Failed to copy to clipboard', 'error');
     });
@@ -734,10 +740,10 @@ export default function PanelRawMaterials({
   const handleEmailPo = async (poId: string) => {
     try {
       const res = await api.post<{ success: boolean; message: string }>(`/api/admin/purchase-orders/${poId}/email`, {});
-      showToast(res.message || 'Purchase Order dispatched to supplier email!', 'success');
+      showToast(res.message || 'Order sent to email', 'success');
       await fetchPurchaseOrders();
     } catch (err: any) {
-      showToast(err.message || 'Failed to email supplier', 'error');
+      showToast('Failed to send email', 'error');
     }
   };
 
@@ -750,24 +756,24 @@ export default function PanelRawMaterials({
         status: 'Received',
         deliveryReceipt: dr.trim() || undefined
       });
-      showToast(`🎉 Received +${po.quantity} ${po.inventory?.unit} of ${po.inventory?.item}! Inventory automatically replenished.`, 'success');
+      showToast(`Received ${po.quantity} ${po.inventory?.unit || 'units'} of ${po.inventory?.item}.`, 'success');
       await fetchPurchaseOrders();
       await refreshData();
       await fetchAuditLogs();
     } catch (err: any) {
-      showToast(err.message || 'Failed to mark PO as received', 'error');
+      showToast('Failed to update order', 'error');
     }
   };
 
   const handleCreateDraftPo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftPoMaterialId) {
-      showToast('Please select a material', 'error');
+      showToast('Select a material', 'error');
       return;
     }
     const qty = parseInt(draftPoQuantity);
     if (isNaN(qty) || qty <= 0) {
-      showToast('Please enter a valid quantity', 'error');
+      showToast('Enter a valid quantity', 'error');
       return;
     }
 
@@ -779,11 +785,11 @@ export default function PanelRawMaterials({
         estimatedCost: parseFloat(draftPoEstCost) || null,
         status: 'Approved'
       });
-      showToast('🎉 Purchase Order staged successfully!', 'success');
+      showToast('Order created', 'success');
       setIsDraftPoOpen(false);
       await fetchPurchaseOrders();
     } catch (err: any) {
-      showToast(err.message || 'Failed to draft PO', 'error');
+      showToast(err.message || 'Failed to create order', 'error');
     } finally {
       setIsSubmittingPo(false);
     }
@@ -805,18 +811,18 @@ export default function PanelRawMaterials({
   const handleRestockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRestockMaterialId) {
-      showToast('Please select a material to restock', 'error');
+      showToast('Select a material', 'error');
       return;
     }
     const qty = parseInt(restockAmount);
     if (isNaN(qty) || qty <= 0) {
-      showToast('Please enter a valid delivered quantity (> 0)', 'error');
+      showToast('Enter a valid quantity', 'error');
       return;
     }
 
     const targetMaterial = inventory.find((i) => (i.id || i._id) === selectedRestockMaterialId);
     if (!targetMaterial) {
-      showToast('Material not found', 'error');
+      showToast('Item not found', 'error');
       return;
     }
 
@@ -832,9 +838,7 @@ export default function PanelRawMaterials({
       );
     }
 
-    const supplierTag = restockSupplier ? ` from ${restockSupplier}` : '';
-    const drTag = restockDrNumber ? ` (DR#: ${restockDrNumber})` : '';
-    showToast(`Successfully received +${qty} ${targetMaterial.unit || 'units'} of ${targetMaterial.item}${supplierTag}${drTag}!`, 'success');
+    showToast(`Received ${qty} ${targetMaterial.unit || 'units'} of ${targetMaterial.item}`, 'success');
 
     setIsRestockModalOpen(false);
 
@@ -860,7 +864,7 @@ export default function PanelRawMaterials({
           )
         );
       }
-      showToast('Failed to record supplier shipment intake — reverted', 'error');
+      showToast('Failed to update stock', 'error');
     } finally {
       setIsSubmittingRestock(false);
     }
@@ -888,6 +892,9 @@ export default function PanelRawMaterials({
       .then((settings) => {
         if (settings) {
           setAuditLogToggle(!!settings.inventoryAuditLog);
+          if (settings.businessContact) {
+            setBusinessPhone(settings.businessContact);
+          }
         }
       })
       .catch((err) => console.warn('Could not load inventory settings:', err?.message || err));
@@ -944,7 +951,7 @@ export default function PanelRawMaterials({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const resolvedName = getComputedItemName();
-    if (!resolvedName) return showToast('Material item name is required', 'error');
+    if (!resolvedName) return showToast('Item name is required', 'error');
 
     const tempId = `temp_mat_${Date.now()}`;
     const newMaterial = {
@@ -962,7 +969,7 @@ export default function PanelRawMaterials({
       setInventory((prev) => [newMaterial, ...prev]);
     }
 
-    showToast(`Material "${resolvedName}" cataloged successfully`, 'success');
+    showToast(`Added ${resolvedName}`, 'success');
     setIsAddOpen(false);
     setMaterialCategory('Thread Spool');
     setSpoolColor('Black');
@@ -994,7 +1001,7 @@ export default function PanelRawMaterials({
       if (setInventory) {
         setInventory(prevInventory);
       }
-      showToast('Failed to create material — reverted', 'error');
+      showToast('Failed to add material', 'error');
     }
   };
 
@@ -1007,7 +1014,7 @@ export default function PanelRawMaterials({
       setInventory((prev) => prev.filter((m) => (m.id || m._id) !== id));
     }
     setDeletingMaterial(null);
-    showToast('Material deleted from inventory', 'success');
+    showToast('Item deleted', 'success');
 
     try {
       await api.delete(`/api/admin/inventory/${id}`);
@@ -1018,7 +1025,7 @@ export default function PanelRawMaterials({
       if (setInventory) {
         setInventory(prevInventory);
       }
-      showToast('Failed to delete material — restored', 'error');
+      showToast('Failed to delete item', 'error');
     }
   };
 
@@ -1036,29 +1043,29 @@ export default function PanelRawMaterials({
         inventoryAuditLog: auditLogToggle
       });
 
-      showToast('Global stockpile parameters updated', 'success');
+      showToast('Settings saved', 'success');
       setIsSettingsOpen(false);
       refreshData();
       fetchAuditLogs();
     } catch (err) {
       console.error(err);
-      showToast('Failed to apply settings', 'error');
+      showToast('Failed to save settings', 'error');
     }
   };
 
   const handleDownloadRestockList = async () => {
     if (lowStockItems.length === 0) {
-      showToast('All stockpile spools are healthy. No restocks required!', 'info');
+      showToast('All items in stock', 'info');
       return;
     }
 
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       await api.download('/api/admin/inventory/shopping-list/pdf', `STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
-      showToast('Restock purchase shopping list PDF downloaded successfully!', 'success');
+      showToast('Downloaded PDF', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Failed to download restock shopping list PDF', 'error');
+      showToast('Failed to download PDF', 'error');
     }
   };
 
@@ -1198,7 +1205,8 @@ export default function PanelRawMaterials({
               ) : (
                 <div className="flex flex-col gap-3">
                   {purchaseOrders.map((po) => {
-                    const poNum = `PO-${po.id.slice(-6).toUpperCase()}`;
+                    const dateStr = po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+                    const poNum = `PO-${dateStr}`;
                     const isReceived = po.status === 'Received';
                     const isOrdered = po.status === 'Ordered';
                     const isApproved = po.status === 'Approved';
@@ -1326,9 +1334,9 @@ export default function PanelRawMaterials({
                   </svg>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-danger">Stock Alert: Restock Recommended!</span>
+                  <span className="text-sm font-bold text-danger">Stock alert: {lowStockItems.length} items below threshold</span>
                   <span className="text-xs text-text-dim mt-0.5">
-                    {lowStockItems.length} materials are currently below their low stock thresholds.
+                    {lowStockItems.length} items need restock.
                   </span>
                 </div>
               </div>
@@ -1341,7 +1349,7 @@ export default function PanelRawMaterials({
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span>Intake Received Delivery</span>
+                  <span>Receive Shipment</span>
                 </button>
                 <button
                   type="button"
@@ -1354,7 +1362,7 @@ export default function PanelRawMaterials({
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
                     <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span>Preview Procurement PDF</span>
+                  <span>Preview PDF</span>
                 </button>
                 <button
                   onClick={handleDownloadRestockList}
@@ -1369,7 +1377,7 @@ export default function PanelRawMaterials({
             </div>
           ) : (
             <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
-              <span className="text-xs font-bold text-success">Stock Healthy! All inventory materials are above safety margins.</span>
+              <span className="text-xs font-bold text-success">All items in stock</span>
             </div>
           )}
 
@@ -2194,19 +2202,19 @@ export default function PanelRawMaterials({
         </GlassModal>
       )}
 
-      {/* --- Supplier Acquisition & Purchase Order Form Modal --- */}
+      {/* --- Supply Acquisition Form Modal --- */}
       {isDraftPoOpen && (
         <GlassModal
           isOpen={isDraftPoOpen}
           onClose={() => setIsDraftPoOpen(false)}
-          title="Supplier Acquisition & Purchase Order Form"
+          title={`Supply Acquisition Form — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
         >
           <div className="flex flex-col gap-4 text-left max-w-3xl w-full">
             {/* Header info & quick action bar */}
             <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-white/10">
               <div>
                 <p className="text-xs text-text-dim m-0">
-                  Create an official purchase order for suppliers, reference low-stock items, or copy ready-to-send messages for Messenger / Viber.
+                  Supply acquisition form for restock orders, low-stock reference, and Messenger inquiries.
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -2245,7 +2253,7 @@ export default function PanelRawMaterials({
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
                     <span className="text-xs font-bold text-amber-300">
-                      Low Stock Reference ({lowStockItems.length} items currently at or below minimum threshold):
+                      Low stock ({lowStockItems.length} items below threshold):
                     </span>
                   </div>
                   <button
@@ -2290,7 +2298,7 @@ export default function PanelRawMaterials({
                               setDraftPoQuantity(suggested.toString());
                               const est = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
                               setDraftPoEstCost(est.toString());
-                              showToast(`Loaded ${item.item} into acquisition form!`, 'info');
+                              showToast(`Loaded ${item.item} into form`, 'info');
                             }}
                             className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition ${
                               isSelected
@@ -2309,7 +2317,7 @@ export default function PanelRawMaterials({
             ) : (
               <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl flex items-center gap-2 text-xs text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>All stockpile materials are currently healthy above their safety thresholds.</span>
+                <span>All items in stock</span>
               </div>
             )}
 
@@ -2437,9 +2445,10 @@ export default function PanelRawMaterials({
                         const targetItem = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
                         const qty = parseInt(draftPoQuantity) || 0;
                         const cost = parseFloat(draftPoEstCost);
-                        const msg = `📦 PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
+                        const phone = businessPhone || '0928 810 3928';
+                        const msg = `📦 PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
                         navigator.clipboard.writeText(msg).then(() => {
-                          showToast('📋 Copied single item inquiry for Messenger/Viber!', 'success');
+                          showToast('Copied to clipboard', 'success');
                         });
                       }}
                       className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer bg-transparent border-none"
@@ -2466,7 +2475,7 @@ export default function PanelRawMaterials({
                   disabled={isSubmittingPo}
                   className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer transition shadow-sm"
                 >
-                  {isSubmittingPo ? 'Staging PO...' : 'Create & Stage Purchase Order'}
+                  {isSubmittingPo ? 'Saving...' : 'Save Acquisition Order'}
                 </button>
               </div>
             </form>

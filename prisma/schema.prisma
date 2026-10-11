@@ -228,7 +228,7 @@ model SystemSettings {
   businessName    String @default("STITCH-OPT DESIGNS")
   receiptTagline  String @default("Premium Embroidery Services")
   businessAddress String @default("123 Digital Thread Lane, Manila")
-  businessContact String @default("+63 (02) 888-THREAD")
+  businessContact String @default("0928 810 3928")
   businessEmail   String @default("contact@stitch-opt.com")
   businessWebsite String @default("www.stitch-opt.com")
   businessLogoUrl String?
@@ -275,7 +275,7 @@ model DeclinedRecommendation {
 model PurchaseOrder {
   id            String    @id @default(uuid())
   inventoryId   String
-  inventory     Inventory @relation(fields: [inventoryId], references: [id])
+  inventory     Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
   quantity      Int
   status        String    @default("Draft") // Draft, Approved, Ordered, Received
   estimatedCost Float?

@@ -127,7 +127,7 @@ export default function ProductModal({
       return false;
     }
     if (isOutOfStock) {
-      const err = `Sorry, "${product.name}" is currently out of stock.`;
+      const err = `${product.name} is out of stock`;
       setActionError(err);
       showToast(err, 'error');
       return false;
@@ -135,9 +135,9 @@ export default function ProductModal({
 
     const trimmedCustomText = customText.trim();
     if (isPersonalized && !trimmedCustomText) {
-      setMonogramError('Please enter the name or monogram text to embroider.');
-      setActionError('Personalization text is required before adding to basket.');
-      showToast('Please enter the name or monogram text to embroider.', 'error');
+      setMonogramError('Please enter text to embroider.');
+      setActionError('Personalization text is required.');
+      showToast('Please enter text to embroider.', 'error');
       return false;
     }
 
@@ -150,7 +150,7 @@ export default function ProductModal({
     );
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + quantity > effectiveStock) {
-      const err = `Sorry, only ${effectiveStock} units available for ${selectedVariant?.name ? `variant "${selectedVariant.name}"` : `"${product.name}"`}.`;
+      const err = `Only ${effectiveStock} in stock`;
       setActionError(err);
       showToast(err, 'error');
       return false;

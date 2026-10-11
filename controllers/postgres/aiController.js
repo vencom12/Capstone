@@ -23,7 +23,7 @@ const getAISettings = async () => {
             aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.70,
             businessName: settings.businessName || 'Eds Towels & Caps Embroidery',
-            businessContact: settings.businessContact || '+63 (02) 888-THREAD'
+            businessContact: settings.businessContact || '0928 810 3928'
         };
     } catch (e) {
         console.error('Failed to fetch dynamic AI settings, using defaults:', e);
@@ -33,7 +33,7 @@ const getAISettings = async () => {
             aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: 0.70,
             businessName: 'Eds Towels & Caps Embroidery',
-            businessContact: '+63 (02) 888-THREAD'
+            businessContact: '0928 810 3928'
         };
     }
 };

@@ -36,7 +36,7 @@ export default function PanelSettings({
   const [businessName, setBusinessName] = useState('STITCH-OPT DESIGNS');
   const [receiptTagline, setReceiptTagline] = useState('Premium Embroidery Services');
   const [businessAddress, setBusinessAddress] = useState('123 Digital Thread Lane, Manila');
-  const [businessContact, setBusinessContact] = useState('+63 (02) 888-THREAD');
+  const [businessContact, setBusinessContact] = useState('0928 810 3928');
   const [businessEmail, setBusinessEmail] = useState('contact@stitch-opt.com');
   const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
@@ -85,7 +85,7 @@ export default function PanelSettings({
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
-      showToast('Failed to load system settings from backend', 'error');
+      showToast('Failed to load settings', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -104,10 +104,10 @@ export default function PanelSettings({
         aiProviderUrl: aiProviderUrl.trim(),
         minConfidenceScore: parseFloat((minConfidenceScore / 100).toFixed(2))
       });
-      showToast('AI settings saved successfully!', 'success');
+      showToast('AI settings saved', 'success');
     } catch (e: any) {
       console.error(e);
-      showToast(e.message || 'Failed to save AI configuration', 'error');
+      showToast(e.message || 'Failed to save settings', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -119,7 +119,7 @@ export default function PanelSettings({
     setAiProviderUrl('https://api.groq.com/openai/v1/chat/completions');
     setMinConfidenceScore(75);
     setPingResult(null);
-    showToast('AI settings reset to defaults. Remember to click Save.', 'info');
+    showToast('AI settings reset. Click Save.', 'info');
   };
 
   const handleSaveBizSettings = async () => {
@@ -134,10 +134,10 @@ export default function PanelSettings({
         businessWebsite: businessWebsite.trim(),
         businessLogoUrl: businessLogoUrl || null
       });
-      showToast('Store profile updated successfully!', 'success');
+      showToast('Store profile saved', 'success');
     } catch (e: any) {
       console.error(e);
-      showToast(e.message || 'Failed to save store profile', 'error');
+      showToast(e.message || 'Failed to save profile', 'error');
     } finally {
       setIsSavingBiz(false);
     }
@@ -150,15 +150,10 @@ export default function PanelSettings({
         deliveryEnabled: enabled
       });
       setDeliveryEnabled(enabled);
-      showToast(
-        enabled 
-          ? 'Courier delivery enabled. Customers can now choose delivery or store pickup.' 
-          : 'Store pickup only is now active. Courier delivery is disabled.',
-        'success'
-      );
+      showToast(enabled ? 'Delivery enabled' : 'Pickup only enabled', 'success');
     } catch (e: any) {
       console.error(e);
-      showToast(e.message || 'Failed to update delivery settings', 'error');
+      showToast(e.message || 'Failed to update delivery', 'error');
     } finally {
       setIsUpdatingDelivery(false);
     }
@@ -179,7 +174,7 @@ export default function PanelSettings({
       });
       if (res && res.businessLogoUrl) {
         setBusinessLogoUrl(res.businessLogoUrl);
-        showToast('Store logo uploaded successfully!', 'success');
+        showToast('Logo uploaded', 'success');
       }
     } catch (error: any) {
       console.error(error);
@@ -205,11 +200,11 @@ export default function PanelSettings({
       });
       if (res && res.gcashQrCodeUrl) {
         setGcashQrCodeUrl(res.gcashQrCodeUrl);
-        showToast('GCash QR uploaded successfully!', 'success');
+        showToast('QR code uploaded', 'success');
       }
     } catch (error: any) {
       console.error(error);
-      showToast(error.message || 'Failed to upload GCash QR', 'error');
+      showToast(error.message || 'Failed to upload QR code', 'error');
     } finally {
       setIsUploadingQr(false);
       if (e.target) e.target.value = '';
@@ -243,14 +238,14 @@ export default function PanelSettings({
           reply: res.reply,
           latency
         });
-        showToast('AI connection test passed!', 'success');
+        showToast('AI test passed', 'success');
       } else {
         setPingResult({
           success: false,
           message: res?.message || 'Connection test failed.',
           latency
         });
-        showToast(res?.message || 'Connection test failed', 'error');
+        showToast(res?.message || 'AI test failed', 'error');
       }
     } catch (e: any) {
       const endTime = performance.now();
@@ -261,7 +256,7 @@ export default function PanelSettings({
         message: e.message || 'Network request failed or was rejected by backend.',
         latency
       });
-      showToast(e.message || 'Unable to reach AI service', 'error');
+      showToast('Cannot connect to AI', 'error');
     } finally {
       setIsTestingPing(false);
     }
@@ -434,7 +429,7 @@ export default function PanelSettings({
                       value={businessContact}
                       onChange={(e) => setBusinessContact(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. +63 (02) 888-THREAD"
+                      placeholder="e.g. 0928 810 3928"
                     />
                   </div>
                 </div>
@@ -585,11 +580,11 @@ export default function PanelSettings({
                     setBusinessName('STITCH-OPT DESIGNS');
                     setReceiptTagline('Premium Embroidery Services');
                     setBusinessAddress('123 Digital Thread Lane, Manila');
-                    setBusinessContact('+63 (02) 888-THREAD');
+                    setBusinessContact('0928 810 3928');
                     setBusinessEmail('contact@stitch-opt.com');
                     setBusinessWebsite('www.stitch-opt.com');
                     setBusinessLogoUrl('');
-                    showToast('Store profile reset to defaults. Remember to click Save.', 'info');
+                    showToast('Profile reset. Click Save.', 'info');
                   }}
                   disabled={isSavingBiz}
                   className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"

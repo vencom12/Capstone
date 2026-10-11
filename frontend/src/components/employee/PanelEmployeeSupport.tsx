@@ -94,7 +94,7 @@ export default function PanelEmployeeSupport() {
   const [maintenanceTickets, setMaintenanceTickets] = useState<MaintenanceTicket[]>([]);
   const [shopSettings, setShopSettings] = useState<ShopSettings>({
     businessName: 'Stitch-Opt Designs',
-    businessContact: '+63 (02) 888-THREAD',
+    businessContact: '0928 810 3928',
     businessEmail: 'contact@stitch-opt.com',
     businessAddress: '123 Digital Thread Lane'
   });

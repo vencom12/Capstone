@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
@@ -289,14 +289,14 @@ export default function AiAttendant() {
     const isOutOfStock = product.isOutOfStock || availableStock <= 0;
 
     if (isOutOfStock) {
-      showToast(`Sorry, "${product.name}" is currently out of stock.`, 'error');
+      showToast(`${product.name} is out of stock`, 'error');
       return;
     }
 
     const existing = basketItems.find(i => i.productId === productId);
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + 1 > availableStock) {
-      showToast(`Sorry, only ${availableStock} units of "${product.name}" available.`, 'error');
+      showToast(`Only ${availableStock} in stock`, 'error');
       return;
     }
 

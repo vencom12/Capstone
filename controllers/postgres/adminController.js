@@ -856,13 +856,20 @@ exports.getAnalytics = async (req, res) => {
 exports.deleteInventoryItem = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.inventory.delete({ where: { id } });
+        await prisma.$transaction(async (tx) => {
+            // Delete linked purchase orders and logs first to avoid FK constraint error
+            await tx.purchaseOrder.deleteMany({ where: { inventoryId: id } });
+            await tx.inventoryLog.deleteMany({ where: { inventoryId: id } });
+            await tx.inventory.delete({ where: { id } });
+        });
 
-        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', await prisma.inventory.findMany());
-        res.json({ message: 'Inventory item deleted' });
+        const refreshed = await prisma.inventory.findMany();
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, refreshed);
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', refreshed);
+        res.json({ message: 'Item deleted' });
     } catch (err) {
         console.error("Error deleting inventory item:", err);
-        res.status(500).json({ message: 'Error deleting inventory item' });
+        res.status(500).json({ message: 'Failed to delete item', error: err.message });
     }
 };
 

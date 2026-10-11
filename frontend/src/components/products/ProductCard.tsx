@@ -31,14 +31,14 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
       return;
     }
     if (isOutOfStock) {
-      showToast(`Sorry, "${product.name}" is currently out of stock.`, 'error');
+      showToast(`${product.name} is out of stock`, 'error');
       return;
     }
 
     const existing = items.find((i) => i.productId === productId);
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + 1 > availableStock) {
-      showToast(`Sorry, you cannot add more. Only ${availableStock} units of "${product.name}" can be made with current stock.`, 'error');
+      showToast(`Only ${availableStock} in stock`, 'error');
       return;
     }
 

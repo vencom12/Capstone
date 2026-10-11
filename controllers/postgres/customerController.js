@@ -897,7 +897,7 @@ exports.downloadReceipt = async (req, res) => {
         const bizName = settings?.businessName || 'STITCH-OPT DESIGNS';
         const bizTagline = settings?.receiptTagline || 'Premium Embroidery Services';
         const bizAddress = settings?.businessAddress || '123 Digital Thread Lane, Manila';
-        const bizContact = settings?.businessContact || '+63 (02) 888-THREAD';
+        const bizContact = settings?.businessContact || '0928 810 3928';
         const bizWebsite = settings?.businessWebsite || 'www.stitch-opt.com';
 
         // Create PDF

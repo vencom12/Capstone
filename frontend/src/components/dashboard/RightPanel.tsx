@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -30,7 +30,7 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
         ? product.availableStock 
         : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
       if (newQty > availableStock) {
-        showToast(`Sorry, you cannot add more. Only ${availableStock} units of "${product.name}" can be made with current stock.`, 'error');
+        showToast(`Only ${availableStock} in stock`, 'error');
         return;
       }
     }

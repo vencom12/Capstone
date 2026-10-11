@@ -754,7 +754,8 @@ exports.emailPurchaseOrder = async (req, res) => {
         if (!po) return res.status(404).json({ message: 'Purchase Order not found' });
 
         const targetEmail = supplierEmail || 'supplier@textilehub.ph';
-        const poNumber = `PO-${po.id.slice(-6).toUpperCase()}`;
+        const poDate = new Date(po.createdAt).toISOString().split('T')[0];
+        const poNumber = `PO-${poDate}`;
 
         console.log(`[Supplier PO Dispatch] Sending PO ${poNumber} to ${targetEmail}`);
 
@@ -788,7 +789,8 @@ exports.downloadPurchaseOrderPdf = async (req, res) => {
 
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
-        const poNumber = `PO-${po.id.slice(-6).toUpperCase()}`;
+        const poDate = new Date(po.createdAt).toISOString().split('T')[0];
+        const poNumber = `PO-${poDate}`;
 
         const doc = new PDFDocument({ size: [320, 480], margin: 20 });
         const isInline = req.query.download !== 'true';
@@ -827,7 +829,7 @@ exports.downloadPurchaseOrderPdf = async (req, res) => {
         doc.font('Helvetica-Bold').fontSize(8).text('DELIVERY & FULFILLMENT:');
         doc.font('Helvetica').fontSize(8).text('Hub: Ground Floor, Pacific Mall Lucena City');
         doc.text('Attn: Production Head / Artisan');
-        doc.text(`Contact: ${settings?.businessContact || '0917-888-THREAD'}`);
+        doc.text(`Contact: ${settings?.businessContact || '0928 810 3928'}`);
         doc.moveDown(0.6);
         doc.font('Helvetica-Oblique').fontSize(7).text('Please ensure spools are matched by uniform batch/dye lot code.');
 
