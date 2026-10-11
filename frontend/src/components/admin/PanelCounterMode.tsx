@@ -232,12 +232,6 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     e.preventDefault();
     setIntakeError(null);
 
-    if (!monogramText.trim() && !activeSelectedItem.isByog) {
-      setIntakeError('Please type the name or text to embroider.');
-      showToast('Please type the name or text to embroider.', 'error');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const isByog = activeSelectedItem.isByog;
@@ -255,7 +249,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         clientName: customerName.trim() || (cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer'),
         clientPhone: isPhone ? customerContact.trim() : undefined,
         clientEmail: isEmail ? customerContact.trim() : undefined,
-        design: `${itemName} — "${cleanText || 'Plain Monogram'}"`,
+        design: cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`,
         items: [
           {
             productId: activeSelectedItem.isByog ? undefined : activeSelectedItem.id,
@@ -708,7 +702,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <div className="mt-3.5 pt-3 border-t border-border-glass">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                    2. Name / Word to Embroider
+                    2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional)</span>
                   </span>
                   {monogramText.trim() && (
                     <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold">
@@ -718,7 +712,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
                 <input
                   type="text"
-                  placeholder="TYPE NAME FROM PAPER SLIP (e.g. SOPHIA)"
+                  placeholder="OPTIONAL: e.g. SOPHIA (leave blank for plain item)"
                   value={monogramText}
                   onChange={(e) => {
                     setMonogramText(e.target.value.toUpperCase());
