@@ -74,15 +74,29 @@ export default function GlobalAuthListener() {
   };
 
   useEffect(() => {
+    // Only process Google auth if explicitly initiated by user clicking "Continue with Google"
+    const hasPendingGoogleLogin = typeof window !== 'undefined' && sessionStorage.getItem('stitch-google-auth-pending') === 'true';
+
+    if (!hasPendingGoogleLogin) {
+      // Do NOT auto-login on page reload or plain visits
+      return;
+    }
+
     // 1. Direct Redirect Handler
     getRedirectResult(auth)
       .then((result) => {
         if (result && result.user) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('stitch-google-auth-pending');
+          }
           console.log('[Google Auth] Redirect result received:', result.user.email);
           processFirebaseUser(result.user);
         }
       })
       .catch((error) => {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('stitch-google-auth-pending');
+        }
         if (error.code && error.code !== 'auth/null-user') {
           console.error('[Google Auth] Redirect Auth Error:', error);
           if (error.code === 'auth/unauthorized-domain') {
@@ -94,9 +108,13 @@ export default function GlobalAuthListener() {
       });
 
     // 2. Auth State Observer Safety Net
-    // Catches session when redirected even if getRedirectResult is null or already consumed
+    // Only catches session if stitch-google-auth-pending is active
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !useAuthStore.getState().isAuthenticated) {
+      const stillPending = typeof window !== 'undefined' && sessionStorage.getItem('stitch-google-auth-pending') === 'true';
+      if (user && stillPending && !useAuthStore.getState().isAuthenticated) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('stitch-google-auth-pending');
+        }
         console.log('[Google Auth] Observer detected active Google session:', user.email);
         processFirebaseUser(user);
       }

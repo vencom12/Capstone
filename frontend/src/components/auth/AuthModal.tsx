@@ -95,8 +95,14 @@ export default function AuthModal() {
     setIsGoogleSubmitting(true);
 
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('stitch-google-auth-pending', 'true');
+      }
       await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('stitch-google-auth-pending');
+      }
       setIsGoogleSubmitting(false);
       console.error('Google Sign-In Redirect Error:', err);
       if (err.code === 'auth/unauthorized-domain') {

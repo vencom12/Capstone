@@ -761,7 +761,10 @@ export default function AdminPage() {
               </div>
 
               <button
-                onClick={logout}
+                onClick={async () => {
+                  await logout();
+                  router.replace('/');
+                }}
                 className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
                 title="Log out of session"
               >
