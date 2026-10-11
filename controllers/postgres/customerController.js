@@ -516,9 +516,9 @@ exports.getCapacity = async (req, res) => {
 
     const machineCount = Math.max(1, activeMachines);
 
-    // Sum actual estimated stitch times recorded on queued orders, fallback 5 mins per typical order
-    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 5), 0);
-    const estimatedMinutes = activeOrders === 0 ? 5 : Math.ceil(totalQueueMinutes / machineCount);
+    // Sum actual estimated stitch times recorded on queued orders, fallback 6 mins per typical order (incl. 1m buffer)
+    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 6), 0);
+    const estimatedMinutes = activeOrders === 0 ? 6 : Math.ceil(totalQueueMinutes / machineCount);
 
     res.json({
       activeOrders,
@@ -616,7 +616,7 @@ exports.trackOrder = async (req, res) => {
       });
     }
 
-    const estMins = order.estimatedTime || 5;
+    const estMins = order.estimatedTime || 6;
     let estimatedMinutesLeft = estMins;
     if (stage === 'stitching') {
       const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
@@ -746,7 +746,7 @@ exports.getLiveQueue = async (req, res) => {
       };
 
       if (isWorking) {
-        const estMins = order.estimatedTime || 5;
+        const estMins = order.estimatedTime || 6;
         const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
         const remainingMinutes = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
         nowStitching.push({
@@ -762,7 +762,7 @@ exports.getLiveQueue = async (req, res) => {
       } else {
         upNext.push({
           ...baseInfo,
-          estimatedMinutes: order.estimatedTime || (isExpress ? 5 : 10)
+          estimatedMinutes: order.estimatedTime || (isExpress ? 6 : 12)
         });
       }
     });

@@ -4,8 +4,10 @@ const { ACTIONS, ENTITIES } = require('./apiConstants');
 
 /**
  * Estimates production time in minutes for a given order based on empirical shop data:
- * - Setup & hooping + 1st letter takes around 2.0 minutes (120 seconds).
- * - Each proceeding letter consumes around 30 seconds (0.5 minutes).
+ * - Setup & hooping + 1st letter: 2.0 minutes (120 seconds).
+ * - Anti-rush comfort buffer: +1.0 minute safety buffer so artisan never feels rushed.
+ * - Total base for 1st letter with buffer: 3.0 minutes.
+ * - Each proceeding letter: 30 seconds (0.5 minutes).
  * @param {Object} order The order object to estimate
  * @returns {number} Estimated time in minutes
  */
@@ -27,10 +29,11 @@ function estimateProductionTime(order) {
         if (totalLetters > 0) letters = totalLetters;
     }
 
-    // 2. Base formula: 1.5 mins setup/hooping + (letters * 0.5 mins / 30 seconds)
-    // 1 letter: 1.5 + 0.5 = 2.0 mins (exactly 2 minutes including setup)
+    // 2. Base formula:
+    // 1.5 mins setup/hooping + 1.0 min anti-rush buffer + (letters * 0.5 mins / 30 seconds)
+    // 1 letter: 2.5 + 0.5 = 3.0 mins (includes +1m peace-of-mind buffer)
     // Each additional letter: +0.5 mins (30 seconds)
-    let baseTime = 1.5 + (letters * 0.5);
+    let baseTime = 2.5 + (letters * 0.5);
 
     // 3. Minor garment framing adjustments
     const design = (order.design || '').toLowerCase();
@@ -48,7 +51,7 @@ function estimateProductionTime(order) {
         quantity = order.items.quantity || 1;
     }
 
-    return Math.max(2, Math.ceil(baseTime * Math.max(1, quantity)));
+    return Math.max(3, Math.ceil(baseTime * Math.max(1, quantity)));
 }
 
 /**

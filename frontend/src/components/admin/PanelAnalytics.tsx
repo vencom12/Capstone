@@ -271,9 +271,10 @@ export default function PanelAnalytics({
   const [simLetters, setSimLetters] = useState<number>(6);
   const predictedSimMinutes = useMemo(() => {
     // Empirical Shop Model:
-    // 2.0 mins for setup + 1st letter (1.5 min hooping prep + 0.5 min 1st letter)
-    // 0.5 mins (30 seconds) for each proceeding letter
-    const basePrep = 1.5;
+    // Setup & 1st letter: 2.0 mins (1.5m hooping + 0.5m 1st letter)
+    // Anti-rush comfort buffer: +1.0 min added to base prep
+    // Proceeding letters: 0.5 mins (30 seconds) per letter
+    const basePrep = 2.5; // 1.5m hooping + 1.0m comfort buffer
     const catOffset = { fan: 0.0, towel: 0.5, cap: 0.5, byog: 0.5 }[simCategory];
     const letterTime = simLetters * 0.5; // 30s per letter
     return (basePrep + catOffset + letterTime).toFixed(1);
@@ -898,16 +899,16 @@ export default function PanelAnalytics({
               {/* Formula Callout */}
               <div className="bg-black/40 border border-purple-500/30 rounded-xl p-3.5 mb-4 font-mono text-xs text-purple-200">
                 <div className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-1 font-sans">
-                  Machine Stitching Time Calculation:
+                  Machine Stitching Time Calculation (Includes +1m Anti-Rush Comfort Buffer):
                 </div>
                 <div className="text-sm font-black text-white py-1 font-sans">
-                  Total Time = Setup &amp; 1st Letter (2.0 mins) + 30s (0.5 mins) per Proceeding Letter
+                  Total Time = 3.0 mins (Setup &amp; 1st Letter + 1m Buffer) + 30s (0.5 mins) per Proceeding Letter
                 </div>
                 <div className="text-[11px] text-text-dim mt-2 grid grid-cols-2 gap-1.5 pt-2 border-t border-white/10 font-sans">
-                  <span>1 Letter (with setup): <strong>~2.0 mins</strong></span>
-                  <span>4 Letters (e.g. name): <strong>~3.5 mins</strong></span>
-                  <span>6 Letters: <strong>~4.5 mins</strong></span>
-                  <span>10 Letters: <strong>~6.5 mins</strong></span>
+                  <span>1 Letter (with buffer): <strong>~3.0 mins</strong></span>
+                  <span>4 Letters (e.g. name): <strong>~4.5 mins</strong></span>
+                  <span>6 Letters: <strong>~5.5 mins</strong></span>
+                  <span>10 Letters: <strong>~7.5 mins</strong></span>
                 </div>
               </div>
 
