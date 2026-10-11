@@ -576,6 +576,88 @@ export default function PanelRawMaterials({
   const [draftPoEstCost, setDraftPoEstCost] = useState('100');
   const [isSubmittingPo, setIsSubmittingPo] = useState(false);
 
+  // Materials at or below threshold
+  const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
+
+  const openDraftPoModal = (materialId?: string) => {
+    const targetId =
+      materialId ||
+      (lowStockItems.length > 0
+        ? lowStockItems[0].id || lowStockItems[0]._id
+        : inventory[0]?.id || inventory[0]?._id || '');
+
+    setDraftPoMaterialId(targetId);
+
+    const targetItem = inventory.find((i) => (i.id || i._id) === targetId);
+    if (targetItem) {
+      const minVal = targetItem.minThreshold || 10;
+      const target = minVal * 2;
+      const suggested = Math.max(1, target - targetItem.count);
+      setDraftPoQuantity(suggested.toString());
+      const est = targetItem.supplierUnitCost
+        ? targetItem.supplierUnitCost * suggested
+        : suggested * 5;
+      setDraftPoEstCost(est.toString());
+    } else {
+      setDraftPoQuantity('20');
+      setDraftPoEstCost('100');
+    }
+    setIsDraftPoOpen(true);
+  };
+
+  const handleCopyLowStockRequisition = () => {
+    if (lowStockItems.length === 0) {
+      showToast('All stockpile materials are healthy. No restocks required!', 'info');
+      return;
+    }
+    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order the following raw materials:\n`;
+    lowStockItems.forEach((item) => {
+      const minVal = item.minThreshold || 10;
+      const target = minVal * 2;
+      const suggested = Math.max(1, target - item.count);
+      text += `• ${suggested} ${item.unit || 'units'} — ${item.item} (Current Stock: ${item.count}, Min: ${minVal})\n`;
+    });
+    text += `\nPlease confirm availability, current invoice pricing, and estimated delivery date. Thank you!`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`📋 Copied ${lowStockItems.length} low-stock items for Messenger/Viber!`, 'success');
+    }).catch(() => {
+      showToast('Failed to copy to clipboard', 'error');
+    });
+  };
+
+  const handleBatchStageLowStockPos = async () => {
+    if (lowStockItems.length === 0) {
+      showToast('No low stock items to stage.', 'info');
+      return;
+    }
+    setIsSubmittingPo(true);
+    try {
+      let stagedCount = 0;
+      for (const item of lowStockItems) {
+        const minVal = item.minThreshold || 10;
+        const target = minVal * 2;
+        const suggested = Math.max(1, target - item.count);
+        const estCost = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
+        await api.post('/api/admin/purchase-orders', {
+          inventoryId: item.id || item._id,
+          quantity: suggested,
+          estimatedCost: estCost,
+          status: 'Approved'
+        });
+        stagedCount++;
+      }
+      showToast(`🎉 Staged ${stagedCount} Purchase Orders for all low stock items!`, 'success');
+      setIsDraftPoOpen(false);
+      await fetchPurchaseOrders();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to batch stage POs', 'error');
+    } finally {
+      setIsSubmittingPo(false);
+    }
+  };
+
   // PDF Inline Preview Modal State
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -964,8 +1046,6 @@ export default function PanelRawMaterials({
     }
   };
 
-  const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
-
   const handleDownloadRestockList = async () => {
     if (lowStockItems.length === 0) {
       showToast('All stockpile spools are healthy. No restocks required!', 'info');
@@ -1077,15 +1157,11 @@ export default function PanelRawMaterials({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (inventory.length > 0) setDraftPoMaterialId(inventory[0].id || inventory[0]._id);
-                      setDraftPoQuantity('20');
-                      setDraftPoEstCost('100');
-                      setIsDraftPoOpen(true);
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                    onClick={() => openDraftPoModal()}
+                    className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                    title="Open acquisition form to order supplies, check low stocks, or stage purchase orders"
                   >
-                    <span>+</span> Draft New PO
+                    <span>+</span> Create Acquisition Form
                   </button>
                   <button
                     type="button"
@@ -1109,17 +1185,14 @@ export default function PanelRawMaterials({
                   </svg>
                   <span className="text-sm font-bold text-text-main">No Purchase Orders Created</span>
                   <span className="text-xs text-text-dim max-w-sm">
-                    When materials reach critical threshold, the AI auto-drafts a PO here. You can also manually draft a PO to send to your supplier.
+                    Create an acquisition form to check low stocks, copy orders to Messenger, or stage purchase orders for your supplier.
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (inventory.length > 0) setDraftPoMaterialId(inventory[0].id || inventory[0]._id);
-                      setIsDraftPoOpen(true);
-                    }}
+                    onClick={() => openDraftPoModal()}
                     className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer"
                   >
-                    + Draft First PO
+                    + Create Acquisition Form
                   </button>
                 </div>
               ) : (
@@ -2121,77 +2194,283 @@ export default function PanelRawMaterials({
         </GlassModal>
       )}
 
-      {/* --- Draft PO Modal --- */}
+      {/* --- Supplier Acquisition & Purchase Order Form Modal --- */}
       {isDraftPoOpen && (
         <GlassModal
           isOpen={isDraftPoOpen}
           onClose={() => setIsDraftPoOpen(false)}
-          title="Draft Supplier Purchase Order"
+          title="Supplier Acquisition & Purchase Order Form"
         >
-          <form onSubmit={handleCreateDraftPo} className="flex flex-col gap-4 text-left">
-            <div>
-              <label className="block text-xs font-semibold text-text-dim mb-1">
-                Material Item to Order <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={draftPoMaterialId}
-                onChange={(e) => setDraftPoMaterialId(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none"
-              >
-                {inventory.map((inv) => (
-                  <option key={inv.id || inv._id} value={inv.id || inv._id} className="bg-bg-surface text-text-main">
-                    {inv.item} (Current Stock: {inv.count} {inv.unit})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-4 text-left max-w-3xl w-full">
+            {/* Header info & quick action bar */}
+            <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-white/10">
               <div>
-                <label className="block text-xs font-semibold text-text-dim mb-1">
-                  Quantity to Order <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={draftPoQuantity}
-                  onChange={(e) => setDraftPoQuantity(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold"
-                />
+                <p className="text-xs text-text-dim m-0">
+                  Create an official purchase order for suppliers, reference low-stock items, or copy ready-to-send messages for Messenger / Viber.
+                </p>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-text-dim mb-1">
-                  Estimated Total Cost (₱)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="5"
-                  value={draftPoEstCost}
-                  onChange={(e) => setDraftPoEstCost(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold"
-                />
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handlePreviewRestockList}
+                  disabled={isLoadingPdf || lowStockItems.length === 0}
+                  className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                  title="Preview printable restock procurement PDF slip"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Preview PDF Slip</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLowStockRequisition}
+                  disabled={lowStockItems.length === 0}
+                  className="px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold hover:bg-blue-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                  title="Copy full requisition list formatted for Messenger / Viber"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Copy for Messenger</span>
+                </button>
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end mt-2">
-              <button
-                type="button"
-                onClick={() => setIsDraftPoOpen(false)}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmittingPo}
-                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer"
-              >
-                {isSubmittingPo ? 'Staging PO...' : 'Create & Stage Purchase Order'}
-              </button>
-            </div>
-          </form>
+            {/* Low Stock Reference Panel */}
+            {lowStockItems.length > 0 ? (
+              <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3.5 flex flex-col gap-2.5">
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-xs font-bold text-amber-300">
+                      Low Stock Reference ({lowStockItems.length} items currently at or below minimum threshold):
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBatchStageLowStockPos}
+                    disabled={isSubmittingPo}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold border border-amber-500/30 transition cursor-pointer flex items-center gap-1"
+                    title="Stage purchase orders for all low stock items automatically"
+                  >
+                    <span>⚡</span> Batch Stage All ({lowStockItems.length})
+                  </button>
+                </div>
+
+                <div className="max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-bg-surface/60 divide-y divide-white/5">
+                  {lowStockItems.map((item) => {
+                    const minVal = item.minThreshold || 10;
+                    const target = minVal * 2;
+                    const suggested = Math.max(1, target - item.count);
+                    const isSelected = (item.id || item._id) === draftPoMaterialId;
+
+                    return (
+                      <div
+                        key={item.id || item._id}
+                        className={`p-2.5 flex items-center justify-between gap-3 text-xs transition ${
+                          isSelected ? 'bg-primary/15 border-l-2 border-primary' : 'hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold text-text-main">{item.item}</span>
+                          <span className="text-[11px] text-text-dim">
+                            Current Stock: <b className="text-danger font-mono">{item.count}</b> / {minVal} {item.unit || 'units'} &nbsp;|&nbsp; Deficit: <span className="text-amber-400 font-mono">+{suggested}</span> needed
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold text-[11px]">
+                            +{suggested} {item.unit || 'units'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftPoMaterialId(item.id || item._id);
+                              setDraftPoQuantity(suggested.toString());
+                              const est = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
+                              setDraftPoEstCost(est.toString());
+                              showToast(`Loaded ${item.item} into acquisition form!`, 'info');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition ${
+                              isSelected
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'bg-white/10 hover:bg-white/20 text-text-main'
+                            }`}
+                          >
+                            {isSelected ? '✓ Selected' : 'Use in Form'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl flex items-center gap-2 text-xs text-emerald-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>All stockpile materials are currently healthy above their safety thresholds.</span>
+              </div>
+            )}
+
+            {/* The PO Form */}
+            <form onSubmit={handleCreateDraftPo} className="flex flex-col gap-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-text-dim mb-1">
+                  Material Item to Order <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={draftPoMaterialId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setDraftPoMaterialId(newId);
+                    const found = inventory.find(i => (i.id || i._id) === newId);
+                    if (found) {
+                      const minVal = found.minThreshold || 10;
+                      const target = minVal * 2;
+                      const suggested = Math.max(1, target - found.count);
+                      setDraftPoQuantity(suggested.toString());
+                      const est = found.supplierUnitCost ? found.supplierUnitCost * suggested : suggested * 5;
+                      setDraftPoEstCost(est.toString());
+                    }
+                  }}
+                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none cursor-pointer"
+                >
+                  {inventory.map((inv) => {
+                    const isLow = inv.count <= (inv.minThreshold || 10);
+                    return (
+                      <option key={inv.id || inv._id} value={inv.id || inv._id} className="bg-bg-surface text-text-main">
+                        {inv.item} — Stock: {inv.count} {inv.unit} {isLow ? '⚠️ [LOW STOCK]' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-semibold text-text-dim">
+                      Quantity to Order ({inventory.find(i => (i.id || i._id) === draftPoMaterialId)?.unit || 'Units'}) <span className="text-red-400">*</span>
+                    </label>
+                    {(() => {
+                      const cur = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
+                      if (cur) {
+                        const minVal = cur.minThreshold || 10;
+                        const suggested = Math.max(1, minVal * 2 - cur.count);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftPoQuantity(suggested.toString());
+                              const est = cur.supplierUnitCost ? cur.supplierUnitCost * suggested : suggested * 5;
+                              setDraftPoEstCost(est.toString());
+                            }}
+                            className="text-[10px] text-primary hover:underline cursor-pointer bg-transparent border-none"
+                          >
+                            Reset to Suggested (+{suggested})
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                  <div className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      min="1"
+                      value={draftPoQuantity}
+                      onChange={(e) => setDraftPoQuantity(e.target.value)}
+                      className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold font-mono"
+                    />
+                    <div className="flex gap-1 shrink-0">
+                      {['+10', '+25', '+50'].map((pill) => (
+                        <button
+                          key={pill}
+                          type="button"
+                          onClick={() => {
+                            const currentVal = parseInt(draftPoQuantity) || 0;
+                            const added = parseInt(pill.replace('+', ''));
+                            setDraftPoQuantity((currentVal + added).toString());
+                          }}
+                          className="bg-white/5 border border-border-glass hover:bg-white/10 text-text-main text-[11px] px-2 py-2 rounded-lg font-mono cursor-pointer"
+                        >
+                          {pill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-dim mb-1">
+                    Estimated Total Cost (₱)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={draftPoEstCost}
+                    onChange={(e) => setDraftPoEstCost(e.target.value)}
+                    placeholder="e.g. 250"
+                    className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Stock Projection Card */}
+              {(() => {
+                const target = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
+                const current = target ? target.count : 0;
+                const added = parseInt(draftPoQuantity) || 0;
+                const finalCount = current + added;
+                const unit = target?.unit || 'units';
+
+                return (
+                  <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs text-text-dim">
+                    <span>
+                      Stockpile Projection: Current <b className="text-white font-mono">{current}</b> {unit} &nbsp;➔&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetItem = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
+                        const qty = parseInt(draftPoQuantity) || 0;
+                        const cost = parseFloat(draftPoEstCost);
+                        const msg = `📦 PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
+                        navigator.clipboard.writeText(msg).then(() => {
+                          showToast('📋 Copied single item inquiry for Messenger/Viber!', 'success');
+                        });
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>Copy Inquiry</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsDraftPoOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPo}
+                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer transition shadow-sm"
+                >
+                  {isSubmittingPo ? 'Staging PO...' : 'Create & Stage Purchase Order'}
+                </button>
+              </div>
+            </form>
+          </div>
         </GlassModal>
       )}
     </section>

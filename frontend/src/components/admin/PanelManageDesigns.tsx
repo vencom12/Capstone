@@ -141,6 +141,30 @@ export default function PanelManageDesigns({
     }
   };
 
+  const handleCopyProductRestockForMessenger = () => {
+    if (lowStockProducts.length === 0) {
+      showToast('All product blanks are healthy above safety thresholds. No restocks required!', 'info');
+      return;
+    }
+    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: 0917-888-THREAD\n\nGood day! We would like to order the following product blanks for embroidery:\n`;
+    lowStockProducts.forEach((p) => {
+      const avail = p.availableStock !== undefined
+        ? p.availableStock
+        : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
+      const minVal = p.minThreshold !== undefined ? p.minThreshold : 5;
+      const target = minVal * 2;
+      const toBuy = Math.max(1, target - avail);
+      text += `• ${toBuy} pcs — ${p.name} (Tag: ${p.tag || 'General'}, Current Avail: ${avail}, Min: ${minVal})\n`;
+    });
+    text += `\nPlease confirm blank garment availability, price quote, and earliest delivery date. Thank you!`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`📋 Copied ${lowStockProducts.length} product blanks for Messenger/Viber!`, 'success');
+    }).catch(() => {
+      showToast('Failed to copy to clipboard', 'error');
+    });
+  };
+
   // 1. Filtering Designs
   const filteredProducts = products.filter((p) => {
     const query = searchQuery.toLowerCase();
@@ -548,6 +572,17 @@ export default function PanelManageDesigns({
                 <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span>Download PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyProductRestockForMessenger}
+              className="bg-blue-500/20 border border-blue-500/30 text-blue-300 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Copy supplier restock order message to clipboard for Messenger / Viber"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Copy Messenger</span>
             </button>
             <button
               type="button"
@@ -1227,6 +1262,18 @@ export default function PanelManageDesigns({
                   <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 <span>Download PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyProductRestockForMessenger}
+                disabled={lowStockProducts.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold hover:bg-blue-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                title="Copy ready-to-send restock order message for Facebook Messenger / Viber"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Copy for Messenger</span>
               </button>
               <button
                 type="button"
