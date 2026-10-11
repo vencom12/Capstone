@@ -919,6 +919,9 @@ export default function PanelRawMaterials({
     const matchesQuery = !searchQuery || i.item?.toLowerCase().includes(query) || i.unit?.toLowerCase().includes(query);
     if (!matchesQuery) return false;
     if (stockTierFilter === 'all') return true;
+    if ((stockTierFilter as string) === 'low' || (stockTierFilter as string) === 'critical') {
+      return i.count <= (i.minThreshold || 10);
+    }
     const level = computeStockLevel(i.count, i.minThreshold || 10);
     return level.tier === stockTierFilter;
   });
@@ -1072,47 +1075,40 @@ export default function PanelRawMaterials({
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
       {/* Compact Top Action Toolbar */}
-      <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+      <div className="flex justify-between items-center flex-wrap gap-3 mb-4">
         <input
           type="text"
           placeholder="Search materials..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+          className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[220px]"
         />
         {isAdmin && (
-          <>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => openRestockModal()}
-              className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold px-3.5 py-2.5 rounded-xl text-[0.85rem] cursor-pointer hover:bg-emerald-500/25 transition-all text-center"
-              title="Intake arriving shipment / delivery from supplier"
-            >
-              Receive Shipment
-            </button>
-            <button
+              type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-main hover:bg-white/5 cursor-pointer"
-              title="Inventory Settings"
+              className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/5 cursor-pointer transition"
+              title="Inventory Threshold Settings"
             >
-              <svg className="w-4 h-4 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             <button
+              type="button"
               onClick={() => setIsAddOpen(true)}
-              className="bg-primary text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm hover:shadow-md"
+              className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm transition flex items-center gap-1.5"
             >
-              + Add Material
+              <span>+ Add Material</span>
             </button>
-          </>
+          </div>
         )}
       </div>
 
-      {/* Main split dashboard panels */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start pr-2">
-        {/* Left side: Materials inventory card with alert and table */}
-        <div className="xl:col-span-2 glass-card">
+      {/* Main materials dashboard panel */}
+      <div className="w-full glass-card">
           {/* Sub-view Navigation Bar */}
           <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-2">
             <button
@@ -1324,24 +1320,26 @@ export default function PanelRawMaterials({
           ) : (
             <>
 
-          {/* Smart Purchase Requisition Alert Banner */}
+          {/* Restock Alert Banner */}
           {lowStockItems.length > 0 ? (
-            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
+            <div className="bg-danger/10 border border-danger/20 p-3.5 rounded-xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-danger/15 flex items-center justify-center text-danger shrink-0">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <div className="w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center text-danger shrink-0 font-bold text-sm">
+                  ⚠️
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-danger">Stock alert: {lowStockItems.length} items below threshold</span>
+                  <span className="text-sm font-bold text-danger">
+                    {lowStockItems.length} {lowStockItems.length === 1 ? 'item' : 'items'} running low on stock
+                  </span>
                   <span className="text-xs text-text-dim mt-0.5">
-                    {lowStockItems.length} items need restock.
+                    {lowStockItems.map((i) => i.item).slice(0, 3).join(', ')}
+                    {lowStockItems.length > 3 ? '...' : ''}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
+                  type="button"
                   onClick={() => openRestockModal(lowStockItems[0])}
                   className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
                   title="Directly intake arriving boxes for critical stock"
@@ -1349,61 +1347,48 @@ export default function PanelRawMaterials({
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <span>Receive Shipment</span>
+                  <span>+ Restock Now</span>
                 </button>
                 <button
                   type="button"
                   onClick={handlePreviewRestockList}
                   disabled={isLoadingPdf}
-                  className="bg-primary/20 border border-primary/30 text-primary font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-primary/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="View formatted PDF procurement shopping list directly on screen without downloading"
+                  className="bg-white/5 border border-border-glass text-text-dim hover:text-text-main font-semibold px-3 py-1.5 rounded-xl text-xs hover:bg-white/10 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="View formatted PDF procurement shopping list"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect x="6" y="14" width="12" height="8" />
                   </svg>
-                  <span>Preview PDF</span>
-                </button>
-                <button
-                  onClick={handleDownloadRestockList}
-                  className="bg-danger/20 border border-danger/30 text-danger font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-danger/30 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Download PDF</span>
+                  <span>Shopping List PDF</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
-              <span className="text-xs font-bold text-success">All items in stock</span>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
+              <span className="text-xs font-semibold text-emerald-400">✓ All shop materials are well stocked</span>
             </div>
           )}
 
-          {/* Stock Level Filter Chips */}
-          <div className="flex items-center gap-2 flex-wrap mb-4 pb-3 border-b border-white/5">
-            <span className="text-xs text-text-dim font-medium mr-1">Stock Level:</span>
+          {/* Simple 2-pill Stock Filter */}
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
             {[
-              { id: 'all', label: 'All Materials', count: inventory.length },
-              { id: 'critical', label: 'Critical', count: inventoryMetrics.critical },
-              { id: 'low', label: 'Low Stock', count: inventoryMetrics.low },
-              { id: 'moderate', label: 'Moderate', count: inventoryMetrics.moderate },
-              { id: 'high', label: 'High Stock', count: inventoryMetrics.high },
+              { id: 'all', label: 'All Items', count: inventory.length },
+              { id: 'low', label: '⚠️ Needs Restock', count: lowStockItems.length },
             ].map((pill) => (
               <button
                 key={pill.id}
                 type="button"
                 onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
-                className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${
                   stockTierFilter === pill.id
                     ? 'bg-primary text-white border-primary/40 shadow-sm'
                     : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                 }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                 <span>{pill.label}</span>
-                <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
+                <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-white/10 font-bold font-mono">
                   {pill.count}
                 </span>
               </button>
@@ -1412,7 +1397,7 @@ export default function PanelRawMaterials({
 
           {isSyncing && inventory.length === 0 ? (
             <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
-              <TableSkeleton rows={5} cols={5} />
+              <TableSkeleton rows={5} cols={4} />
             </div>
           ) : (
             <div className="glass-table-container max-[1024px]:hidden">
@@ -1420,106 +1405,42 @@ export default function PanelRawMaterials({
                 <thead>
                   <tr>
                     <th className="glass-th text-left">Material Name</th>
-                    <th className="glass-th text-left">Linked Products / Variants</th>
-                    <th className="glass-th text-left">Current Count</th>
+                    <th className="glass-th text-left">Current Stock</th>
                     <th className="glass-th text-left">Supplier Cost / Unit</th>
-                    <th className="glass-th text-left">Stock Level</th>
                     <th className="glass-th text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInventory.length === 0 ? (
                     <tr className="glass-tr">
-                      <td colSpan={6} className="glass-td text-center text-text-dim">
+                      <td colSpan={4} className="glass-td text-center text-text-dim">
                         No materials match the selected filters.
                       </td>
                     </tr>
                   ) : (
                     paginatedInventory.map((i) => {
                     const id = i.id || i._id;
-                    const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
-                    const linkedProducts = getLinkedProductsForMaterial(id, i.item);
+                    const isLow = i.count <= (i.minThreshold || 10);
                     return (
                       <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
                         <td className="glass-td font-bold text-sm text-text-main text-left">
                           {i.item}
                         </td>
                         <td className="glass-td text-left">
-                          {linkedProducts.length === 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[0.7rem] text-text-dim italic">Unlinked</span>
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => openLinkProductModal(i)}
-                                  className="text-[0.68rem] text-primary hover:text-primary-hover font-bold hover:underline cursor-pointer"
-                                  title={`Link ${i.item} to a store product`}
-                                >
-                                  + Link Product
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-1 max-w-[220px]">
-                              {linkedProducts.slice(0, 3).map((link, lIdx) => (
-                                <span
-                                  key={lIdx}
-                                  className="text-[0.68rem] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-text-main truncate inline-flex items-center justify-between gap-1 group"
-                                  title={`${link.productName}${link.variantName ? ` (${link.variantName})` : ''}`}
-                                >
-                                  <span className="truncate">
-                                    <strong className="text-primary">{link.productName}</strong>
-                                    {link.variantName && <span className="text-text-dim"> - {link.variantName}</span>}
-                                  </span>
-                                  {isAdmin && link.type === 'recipe' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleUnlinkMaterialFromProduct(link.productId, id);
-                                      }}
-                                      className="text-text-dim hover:text-red-400 font-bold ml-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer shrink-0"
-                                      title={`Unlink from ${link.productName}`}
-                                    >
-                                      ×
-                                    </button>
-                                  )}
-                                </span>
-                              ))}
-                              {linkedProducts.length > 3 && (
-                                <span className="text-[0.65rem] text-text-dim font-bold">
-                                  +{linkedProducts.length - 3} more products
-                                </span>
-                              )}
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => openLinkProductModal(i)}
-                                  className="text-[0.65rem] text-primary hover:text-primary-hover font-bold self-start mt-0.5 hover:underline cursor-pointer"
-                                >
-                                  + Link Product
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="glass-td text-left">
-                          {/* Read-only Current Count display with stock progress gauge */}
-                          <div className="flex flex-col gap-1.5 w-fit">
-                            <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none" title="Current Count (Read-only)">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg select-none">
                               <span>{i.count}</span>
                               <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
                             </div>
-                            {/* Micro gauge bar */}
-                            <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden" title={`${stockLevel.label} (${i.count} / ${i.minThreshold || 10})`}>
-                              <div 
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{ 
-                                   width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
-                                  backgroundColor: stockLevel.dotColor
-                                }}
-                              />
-                            </div>
+                            {isLow ? (
+                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                                ⚠️ Low Stock
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                In Stock
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="glass-td text-left">
@@ -1530,15 +1451,6 @@ export default function PanelRawMaterials({
                             setInventory={setInventory}
                           />
                         </td>
-                        <td className="glass-td text-left">
-                          <span
-                            className={`inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider backdrop-blur-md ${stockLevel.badgeClass}`}
-                            title={stockLevel.description}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
-                            {stockLevel.label}
-                          </span>
-                        </td>
                         <td className="glass-td text-right">
                           <div className="flex gap-2 justify-end items-center">
                             <button
@@ -1547,9 +1459,9 @@ export default function PanelRawMaterials({
                               className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                               title={`Receive supplier delivery for ${i.item}`}
                             >
-                              Restock
+                              + Add Stock
                             </button>
-                            {isAdmin ? (
+                            {isAdmin && (
                               <button
                                 type="button"
                                 onClick={() => setDeletingMaterial(i)}
@@ -1558,8 +1470,6 @@ export default function PanelRawMaterials({
                               >
                                 Delete
                               </button>
-                            ) : (
-                              <span className="text-xs text-text-dim/60 italic font-mono px-2">Tracked</span>
                             )}
                           </div>
                         </td>
@@ -1654,42 +1564,6 @@ export default function PanelRawMaterials({
           />
             </>
           )}
-        </div>
-
-        {/* Right side: Stock audit logs trail */}
-        <div className="glass-card w-full">
-          <h3 className="text-xl font-bold m-0 mb-4 text-text-main">Audit Trail Feed</h3>
-          <div className="flex flex-col gap-3 max-h-[580px] overflow-y-auto pr-1">
-            {isLoadingLogs ? (
-              <p className="text-xs text-text-dim italic text-center py-4">Syncing audit logs trail...</p>
-            ) : auditLogs.length === 0 ? (
-              <p className="text-xs text-text-dim italic text-center py-4">No audit transactions recorded.</p>
-            ) : (
-              auditLogs.map((log, idx) => (
-                <div
-                  key={log.id || log._id || idx}
-                  className="modal-box flex flex-col gap-1 text-left"
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="bg-primary/20 text-primary border border-primary/30 text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                      {log.action}
-                    </span>
-                    <span className="text-[0.65rem] text-text-dim font-mono">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-main m-0 leading-relaxed font-semibold mt-1">
-                    {log.details || `${log.action}ed stock for ${log.inventory?.item}`}
-                  </p>
-                  <div className="flex justify-between items-center mt-1 text-[0.6rem] text-text-dim font-mono">
-                    <span>Operator: {log.user || log.userId || 'Staff'}</span>
-                    <span>Date: {new Date(log.timestamp).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Modal: Add Material */}
