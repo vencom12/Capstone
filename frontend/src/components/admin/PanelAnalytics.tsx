@@ -817,7 +817,7 @@ export default function PanelAnalytics({
                 ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-text-dim">
-                Towels ₱{estimatedMaterialCosts.toFixed(0)} • Rent ₱{operatingOverhead.toFixed(0)}
+                Supplies ₱{estimatedMaterialCosts.toFixed(0)} • Rent ₱{operatingOverhead.toFixed(0)}
               </div>
             </div>
 
