@@ -273,7 +273,7 @@ exports.submitOrder = async (req, res) => {
                 ]
             };
 
-            // 4. Create Order with descriptive design summary
+            // 4. Create Order with descriptive design summary & empirical AI turnaround estimation
             const designSummary = Array.isArray(items) && items.length > 0
                 ? items.map(i => {
                     const variantInfo = i.selectedVariant ? ` [${i.selectedVariant}]` : '';
@@ -281,6 +281,13 @@ exports.submitOrder = async (req, res) => {
                     return `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}${variantInfo}${textInfo}`;
                 }).join('; ')
                 : "Cart Order";
+
+            const { estimateProductionTime } = require('../../utils/aiScheduler');
+            const calculatedEstTime = Math.ceil(estimateProductionTime({
+                design: designSummary,
+                items,
+                personalization: orderPersonalization
+            }));
 
             const order = await tx.order.create({
                 data: {
@@ -303,6 +310,7 @@ exports.submitOrder = async (req, res) => {
                     calligraphyMessage: calligraphyMessage || null,
                     personalization: orderPersonalization,
                     isRush: isRush || false,
+                    estimatedTime: calculatedEstTime,
                     dueDate: dueDate ? new Date(dueDate) : null
                 }
             });
@@ -508,9 +516,9 @@ exports.getCapacity = async (req, res) => {
 
     const machineCount = Math.max(1, activeMachines);
 
-    // Sum actual estimated stitch times recorded on queued orders, fallback 15 mins per order
-    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 15), 0);
-    const estimatedMinutes = activeOrders === 0 ? 10 : Math.ceil(totalQueueMinutes / machineCount);
+    // Sum actual estimated stitch times recorded on queued orders, fallback 5 mins per typical order
+    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 5), 0);
+    const estimatedMinutes = activeOrders === 0 ? 5 : Math.ceil(totalQueueMinutes / machineCount);
 
     res.json({
       activeOrders,
@@ -608,7 +616,7 @@ exports.trackOrder = async (req, res) => {
       });
     }
 
-    const estMins = order.estimatedTime || 15;
+    const estMins = order.estimatedTime || 5;
     let estimatedMinutesLeft = estMins;
     if (stage === 'stitching') {
       const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
@@ -738,7 +746,7 @@ exports.getLiveQueue = async (req, res) => {
       };
 
       if (isWorking) {
-        const estMins = order.estimatedTime || 15;
+        const estMins = order.estimatedTime || 5;
         const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
         const remainingMinutes = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
         nowStitching.push({
@@ -754,7 +762,7 @@ exports.getLiveQueue = async (req, res) => {
       } else {
         upNext.push({
           ...baseInfo,
-          estimatedMinutes: order.estimatedTime || (isExpress ? 15 : 30)
+          estimatedMinutes: order.estimatedTime || (isExpress ? 5 : 10)
         });
       }
     });

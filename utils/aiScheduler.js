@@ -3,36 +3,44 @@ const socketUtil = require('./socketUtil');
 const { ACTIONS, ENTITIES } = require('./apiConstants');
 
 /**
- * Estimates production time in minutes for a given order based on design, garment type, and personalization.
+ * Estimates production time in minutes for a given order based on empirical shop data:
+ * - Setup & hooping + 1st letter takes around 2.0 minutes (120 seconds).
+ * - Each proceeding letter consumes around 30 seconds (0.5 minutes).
  * @param {Object} order The order object to estimate
  * @returns {number} Estimated time in minutes
  */
 function estimateProductionTime(order) {
-    let baseTime = 10; // Base 10 minutes for any order setup
-
-    // 1. Garment complexity adjustments
-    const design = (order.design || '').toLowerCase();
-    if (design.includes('hoodie') || design.includes('jacket')) {
-        baseTime += 15; // Thick garments require slower stitch speeds
-    } else if (design.includes('cap') || design.includes('hat')) {
-        baseTime += 8;  // Caps require round-hoop setup
-    } else if (design.includes('t-shirt') || design.includes('tee')) {
-        baseTime += 5;
-    }
-
-    // 2. Personalization text length complexity
+    // 1. Extract total personalization character count
+    let letters = 1;
     if (order.personalization && typeof order.personalization === 'object') {
-        const text = order.personalization.text || '';
-        baseTime += Math.ceil(text.length * 0.5); // 30 seconds per character
-
-        // Thread color changes add overhead (changing spools)
-        const color = order.personalization.color || '';
-        if (color.toLowerCase().includes('gold') || color.toLowerCase().includes('silver') || color.toLowerCase().includes('metallic')) {
-            baseTime += 5; // Metallic threads are fragile and require slower speeds
-        }
+        const text = (order.personalization.text || '').replace(/\s+/g, '');
+        if (text.length > 0) letters = text.length;
+    } else if (typeof order.monogramText === 'string') {
+        const text = order.monogramText.replace(/\s+/g, '');
+        if (text.length > 0) letters = text.length;
+    } else if (order.items && Array.isArray(order.items)) {
+        let totalLetters = 0;
+        order.items.forEach(item => {
+            const itemText = item.personalization?.text || '';
+            totalLetters += itemText.replace(/\s+/g, '').length;
+        });
+        if (totalLetters > 0) letters = totalLetters;
     }
 
-    // 3. Quantity factor
+    // 2. Base formula: 1.5 mins setup/hooping + (letters * 0.5 mins / 30 seconds)
+    // 1 letter: 1.5 + 0.5 = 2.0 mins (exactly 2 minutes including setup)
+    // Each additional letter: +0.5 mins (30 seconds)
+    let baseTime = 1.5 + (letters * 0.5);
+
+    // 3. Minor garment framing adjustments
+    const design = (order.design || '').toLowerCase();
+    if (design.includes('cap') || design.includes('hat')) {
+        baseTime += 0.5; // Cap round-clamp hooping (+30s)
+    } else if (design.includes('hoodie') || design.includes('jacket')) {
+        baseTime += 1.0; // Thick garment alignment (+60s)
+    }
+
+    // 4. Quantity factor
     let quantity = 1;
     if (order.items && Array.isArray(order.items)) {
         quantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -40,8 +48,7 @@ function estimateProductionTime(order) {
         quantity = order.items.quantity || 1;
     }
 
-    // Total time scale by quantity, with a slight batch discount
-    return baseTime * quantity * 0.9;
+    return Math.max(2, Math.ceil(baseTime * Math.max(1, quantity)));
 }
 
 /**
