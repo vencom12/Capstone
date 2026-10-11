@@ -156,14 +156,28 @@ const executeAction = async (functionName, args, req) => {
         }
     } 
     else if (functionName === "deleteInventoryItem") {
-        const deleted = await prisma.inventory.delete({
-            where: { item: args.itemName }
+        const target = await prisma.inventory.findFirst({
+            where: {
+                OR: [
+                    { item: args.itemName },
+                    { id: args.itemName }
+                ]
+            }
         });
-        actionResult = deleted ? `Successfully deleted stockpile material "${args.itemName}".` : `Failed to delete material.`;
-        if (deleted) {
-            const allInv = await prisma.inventory.findMany();
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.INVENTORY, allInv);
-            logAiChange(username, 'Delete Stock Material', `Deleted raw material "${args.itemName}"`);
+        if (!target) {
+            actionResult = `Material "${args.itemName}" does not exist in inventory.`;
+        } else {
+            await prisma.$transaction(async (tx) => {
+                await tx.purchaseOrder.deleteMany({ where: { inventoryId: target.id } });
+                await tx.inventoryLog.deleteMany({ where: { inventoryId: target.id } });
+                await tx.inventory.delete({ where: { id: target.id } });
+            });
+            const allInv = await prisma.inventory.findMany({ orderBy: { item: 'asc' } });
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.INVENTORY, { id: target.id, item: target.item });
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, allInv);
+            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', allInv);
+            logAiChange(username, 'Delete Stock Material', `Deleted raw material "${target.item}"`);
+            actionResult = `Successfully deleted stockpile material "${target.item}".`;
         }
     } 
     else if (functionName === "createProduct") {

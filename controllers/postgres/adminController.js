@@ -856,17 +856,35 @@ exports.getAnalytics = async (req, res) => {
 exports.deleteInventoryItem = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: 'Item ID is required' });
+        }
+
+        // Locate target item by id or item name
+        let target = await prisma.inventory.findUnique({ where: { id } });
+        if (!target) {
+            target = await prisma.inventory.findFirst({ where: { item: id } });
+        }
+
+        if (!target) {
+            const refreshed = await prisma.inventory.findMany({ orderBy: { item: 'asc' } });
+            return res.json({ message: 'Item deleted', inventory: refreshed });
+        }
+
+        const targetId = target.id;
+
         await prisma.$transaction(async (tx) => {
             // Delete linked purchase orders and logs first to avoid FK constraint error
-            await tx.purchaseOrder.deleteMany({ where: { inventoryId: id } });
-            await tx.inventoryLog.deleteMany({ where: { inventoryId: id } });
-            await tx.inventory.delete({ where: { id } });
+            await tx.purchaseOrder.deleteMany({ where: { inventoryId: targetId } });
+            await tx.inventoryLog.deleteMany({ where: { inventoryId: targetId } });
+            await tx.inventory.delete({ where: { id: targetId } });
         });
 
-        const refreshed = await prisma.inventory.findMany();
+        const refreshed = await prisma.inventory.findMany({ orderBy: { item: 'asc' } });
+        socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.INVENTORY, { id: targetId, item: target.item });
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, refreshed);
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', refreshed);
-        res.json({ message: 'Item deleted' });
+        res.json({ message: 'Item deleted', id: targetId });
     } catch (err) {
         console.error("Error deleting inventory item:", err);
         res.status(500).json({ message: 'Failed to delete item', error: err.message });
