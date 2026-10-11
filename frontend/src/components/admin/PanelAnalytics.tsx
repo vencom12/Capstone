@@ -36,9 +36,9 @@ export default function PanelAnalytics({
   const [activeView, setActiveView] = useState<AnalyticsView>('all');
   const [showDrawerReconciler, setShowDrawerReconciler] = useState(false);
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
-  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500);
+  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Daily Pacific Mall stall rent & electricity
 
-  // 1. Inventory cost mapping
+  // 1. Inventory cost map
   const inventoryCostMap = useMemo(() => {
     const map: Record<string, number | null> = {};
     (inventory || []).forEach((inv) => {
@@ -112,7 +112,7 @@ export default function PanelAnalytics({
     );
   }, [orders]);
 
-  // 3. Financial calculations
+  // 3. Simple Financial Totals
   const totalRevenue = useMemo(() => {
     return filteredOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.amount) || 0), 0);
   }, [filteredOrders]);
@@ -161,6 +161,7 @@ export default function PanelAnalytics({
     return Math.round((netProfit / totalRevenue) * 100);
   }, [netProfit, totalRevenue]);
 
+  // Break-even
   const breakEvenProgress = useMemo(() => {
     if (operatingOverhead === 0) return 100;
     return Math.min(200, Math.round((grossProfit / operatingOverhead) * 100));
@@ -170,6 +171,7 @@ export default function PanelAnalytics({
     return grossProfit - operatingOverhead;
   }, [grossProfit, operatingOverhead]);
 
+  // Payment Breakdown (Cash vs GCash)
   const paymentBreakdown = useMemo(() => {
     let cashTotal = 0;
     let cashCount = 0;
@@ -194,25 +196,22 @@ export default function PanelAnalytics({
     return { cashTotal, cashCount, gcashTotal, gcashCount };
   }, [filteredOrders]);
 
+  // Inventory value (money stored in goods)
   const inventoryAssetStats = useMemo(() => {
     let totalLockedValue = 0;
     let totalPieces = 0;
-    let lowStockCount = 0;
 
     (inventory || []).forEach((inv) => {
       const count = Number(inv.count) || 0;
-      const threshold = Number(inv.minThreshold) || 10;
       const unitCost = inv.supplierUnitCost != null ? Number(inv.supplierUnitCost) : 45;
       totalLockedValue += count * unitCost;
       totalPieces += count;
-      if (count <= threshold) {
-        lowStockCount++;
-      }
     });
 
-    return { totalLockedValue, totalPieces, lowStockCount };
+    return { totalLockedValue, totalPieces };
   }, [inventory]);
 
+  // Money needed to reorder low items
   const restockOutflowForecast = useMemo(() => {
     let budgetNeeded = 0;
     let lowCount = 0;
@@ -232,14 +231,15 @@ export default function PanelAnalytics({
     return { budgetNeeded, lowCount };
   }, [inventory]);
 
+  // Sales & profit per item type
   const categoryPerformance = useMemo(() => {
     const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
       'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
       'Bath Towels': { category: 'Bath Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
       'Chinese Fans': { category: 'Chinese Fans', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Caps & Headwear': { category: 'Caps & Headwear', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Client Garments (BYOG)': { category: 'Client Garments (BYOG)', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Apparel & Shirts': { category: 'Apparel & Shirts', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Caps & Hats': { category: 'Caps & Hats', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Customer Brought Items': { category: 'Customer Brought Items', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Shirts & Clothing': { category: 'Shirts & Clothing', units: 0, revenue: 0, cost: 0, profit: 0 },
     };
 
     filteredOrders.forEach((o) => {
@@ -251,11 +251,11 @@ export default function PanelAnalytics({
         const isByog = Boolean(item.isByog || o.isByog);
 
         let key = 'Hand Towels';
-        if (isByog) key = 'Client Garments (BYOG)';
+        if (isByog) key = 'Customer Brought Items';
         else if (name.includes('bath towel')) key = 'Bath Towels';
         else if (name.includes('fan')) key = 'Chinese Fans';
-        else if (name.includes('cap') || name.includes('hat')) key = 'Caps & Headwear';
-        else if (name.includes('shirt') || name.includes('hoodie')) key = 'Apparel & Shirts';
+        else if (name.includes('cap') || name.includes('hat')) key = 'Caps & Hats';
+        else if (name.includes('shirt') || name.includes('hoodie')) key = 'Shirts & Clothing';
 
         const cost = getRealOrEstimatedCost(item.name || '', total / qty, isByog, qty);
         groups[key].units += qty;
@@ -268,6 +268,7 @@ export default function PanelAnalytics({
     return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.profit - a.profit);
   }, [filteredOrders, inventoryCostMap]);
 
+  // Timeline chart
   const chartData = useMemo(() => {
     const dailyMap: Record<string, { date: string; revenue: number; profit: number }> = {};
     filteredOrders.forEach((o) => {
@@ -297,6 +298,7 @@ export default function PanelAnalytics({
     return entries;
   }, [filteredOrders, totalRevenue, grossProfit, inventoryCostMap]);
 
+  // 7-day prediction
   const forwardForecast = useMemo(() => {
     const days14: number[] = [];
     const now = new Date();
@@ -350,6 +352,7 @@ export default function PanelAnalytics({
     };
   }, [orders]);
 
+  // Thread colors in line
   const threadBatches = useMemo(() => {
     const map: Record<string, any[]> = {};
     activeQueueOrders.forEach((ord) => {
@@ -371,6 +374,7 @@ export default function PanelAnalytics({
       .sort((a, b) => b.count - a.count);
   }, [activeQueueOrders]);
 
+  // Simple stitching time estimator
   const [simCategory, setSimCategory] = useState<'fan' | 'cap' | 'towel' | 'byog'>('towel');
   const [simLetters, setSimLetters] = useState<number>(6);
   const predictedSimMinutes = useMemo(() => {
@@ -380,7 +384,7 @@ export default function PanelAnalytics({
     return (basePrep + catOffset + letterTime).toFixed(1);
   }, [simCategory, simLetters]);
 
-  // Drawer reconciler
+  // Drawer cash check
   const [directCountedCash, setDirectCountedCash] = useState<string>('');
   const [denom, setDenom] = useState({ b1000: 0, b500: 0, b200: 0, b100: 0, b50: 0, b20: 0, coins: 0 });
   const [useDenom, setUseDenom] = useState(false);
@@ -415,7 +419,7 @@ export default function PanelAnalytics({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Daily Summary - Eds Towels & Caps</title>
+        <title>Daily Report - Eds Towels & Caps</title>
         <style>
           body { font-family: monospace; padding: 15px; font-size: 12px; color: #000; }
           .center { text-align: center; }
@@ -427,22 +431,22 @@ export default function PanelAnalytics({
       <body>
         <div class="center bold" style="font-size: 14px;">EDS TOWELS & CAPS</div>
         <div class="center">Pacific Mall Lucena</div>
-        <div class="center">Daily Financial Report</div>
+        <div class="center">Daily Sales & Cash Report</div>
         <div class="center">${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
         <div class="divider"></div>
         <div class="row"><span>Total Orders:</span><span class="bold">${filteredOrders.length}</span></div>
-        <div class="row"><span>Cash:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
-        <div class="row"><span>GCash:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>Cash in Drawer:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>GCash Received:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
         <div class="divider"></div>
-        <div class="row bold"><span>REVENUE:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
-        <div class="row"><span>Materials:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
-        <div class="row"><span>Stall Overhead:</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
-        <div class="row bold"><span>NET PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
+        <div class="row bold"><span>TOTAL SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
+        <div class="row"><span>Item Costs:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
+        <div class="row"><span>Stall Rent & Power:</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
+        <div class="row bold"><span>REAL PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
         <div class="divider"></div>
-        <div class="center bold">DRAWER CHECK</div>
-        <div class="row"><span>Counted:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
-        <div class="row"><span>Expected:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
-        <div class="row bold"><span>Variance:</span><span>${variance === 0 ? '₱0.00 (Balanced)' : variance > 0 ? `+₱${variance.toFixed(2)}` : `-₱${Math.abs(variance).toFixed(2)}`}</span></div>
+        <div class="center bold">DRAWER CASH CHECK</div>
+        <div class="row"><span>Counted Cash:</span><span class="bold">₱${countedCash.toFixed(2)}</span></div>
+        <div class="row"><span>Expected Cash:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row bold"><span>Difference:</span><span>${variance === 0 ? 'Exact match' : variance > 0 ? `+₱${variance.toFixed(2)} (Over)` : `-₱${Math.abs(variance).toFixed(2)} (Short)`}</span></div>
       </body>
       </html>
     `;
@@ -457,7 +461,7 @@ export default function PanelAnalytics({
 
   return (
     <div className="flex flex-col h-full text-left font-sans max-w-6xl mx-auto pb-16">
-      {/* Top Filter & Action Toolbar (Header removed per user request) */}
+      {/* Top Toolbar (Simple Words) */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5 pb-3 border-b border-border-glass">
         {/* Left: Time Filter & Views */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -474,7 +478,7 @@ export default function PanelAnalytics({
                     : 'text-text-dim hover:text-text-main'
                 }`}
               >
-                {tr === 'today' ? 'Today' : tr === 'week' ? 'Week' : tr === 'month' ? 'Month' : 'All'}
+                {tr === 'today' ? 'Today' : tr === 'week' ? 'This Week' : tr === 'month' ? 'This Month' : 'All Time'}
               </button>
             ))}
           </div>
@@ -501,7 +505,7 @@ export default function PanelAnalytics({
                   : 'text-text-dim hover:text-text-main'
               }`}
             >
-              Financials
+              Money &amp; Profit
             </button>
             <button
               type="button"
@@ -512,7 +516,7 @@ export default function PanelAnalytics({
                   : 'text-text-dim hover:text-text-main'
               }`}
             >
-              Production
+              Stitching Queue
             </button>
           </div>
 
@@ -521,7 +525,7 @@ export default function PanelAnalytics({
             onClick={() => setShowOverheadSettings(!showOverheadSettings)}
             className="text-xs text-text-dim hover:text-text-main px-2.5 py-1 rounded-md border border-border-glass bg-bg-surface transition"
           >
-            Overhead: ₱{dailyStallOverhead}/day
+            Stall Rent: ₱{dailyStallOverhead}/day
           </button>
         </div>
 
@@ -536,7 +540,7 @@ export default function PanelAnalytics({
                 : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
             }`}
           >
-            <span>Cash Drawer Check</span>
+            <span>Count Drawer Cash</span>
             <span className="text-[10px]">{showDrawerReconciler ? '▲' : '▼'}</span>
           </button>
 
@@ -550,19 +554,19 @@ export default function PanelAnalytics({
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
               <rect x="6" y="14" width="12" height="8" />
             </svg>
-            <span>Print Slip</span>
+            <span>Print Report</span>
           </button>
         </div>
       </div>
 
-      {/* Overhead Settings Popdown */}
+      {/* Stall Rent Setting Popdown */}
       {showOverheadSettings && (
         <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-4 flex items-center justify-between text-xs">
           <div className="text-text-dim">
-            Daily fixed stall rent &amp; electricity allowance (used for break-even and net profit):
+            Daily stall rent &amp; electricity cost (used to calculate your real take-home profit):
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-text-dim">₱</span>
+            <span className="text-text-dim font-bold">₱</span>
             <input
               type="number"
               min="0"
@@ -575,27 +579,27 @@ export default function PanelAnalytics({
               type="button"
               onClick={() => {
                 setShowOverheadSettings(false);
-                showToast('Overhead updated', 'success');
+                showToast('Stall cost saved', 'success');
               }}
               className="px-2.5 py-1 bg-white/10 hover:bg-white/15 text-white rounded font-medium text-xs"
             >
-              Done
+              Save
             </button>
           </div>
         </div>
       )}
 
-      {/* Cash Drawer Reconciler */}
+      {/* Cash Drawer Check Popdown */}
       {showDrawerReconciler && (
         <div className="bg-bg-surface border border-border-glass rounded-xl p-4 mb-5 text-xs">
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-border-glass">
-            <span className="font-bold text-text-main">End-of-Day Cash Drawer Check</span>
+            <span className="font-bold text-text-main">Count Cash in Drawer (Closing Check)</span>
             <button
               type="button"
               onClick={() => setUseDenom(!useDenom)}
               className="text-text-dim hover:text-text-main underline"
             >
-              {useDenom ? 'Quick Total Mode' : 'Denomination Mode'}
+              {useDenom ? 'Type Total Cash' : 'Count Bills One by One'}
             </button>
           </div>
 
@@ -608,26 +612,26 @@ export default function PanelAnalytics({
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-text-dim">Counted Cash:</span>
+                <span className="text-text-dim">Your Counted Cash:</span>
                 <span className="font-mono font-bold text-text-main">
                   ₱{countedCash.toFixed(2)}
                 </span>
               </div>
               <div className="h-px bg-white/5 my-0.5"></div>
               <div className="flex justify-between items-center">
-                <span className="text-text-dim">Variance:</span>
+                <span className="text-text-dim">Status:</span>
                 {isCountEntered ? (
                   <span className={`font-mono font-bold ${
                     variance === 0 ? 'text-emerald-400' : variance > 0 ? 'text-blue-400' : 'text-rose-400'
                   }`}>
                     {variance === 0
-                      ? '₱0.00 (Balanced)'
+                      ? 'Exact match (Balanced)'
                       : variance > 0
                       ? `+₱${variance.toFixed(2)} (Over)`
                       : `-₱${Math.abs(variance).toFixed(2)} (Short)`}
                   </span>
                 ) : (
-                  <span className="text-text-dim italic">Enter count</span>
+                  <span className="text-text-dim italic">Type counted cash</span>
                 )}
               </div>
             </div>
@@ -680,7 +684,7 @@ export default function PanelAnalytics({
                       type="number"
                       min="0"
                       step="1"
-                      placeholder="Counted cash in box"
+                      placeholder="Type counted money in drawer"
                       value={directCountedCash}
                       onChange={(e) => setDirectCountedCash(e.target.value)}
                       className="w-full bg-black/20 border border-border-glass pl-7 pr-3 py-2 rounded-lg text-text-main font-mono text-xs outline-none"
@@ -696,14 +700,14 @@ export default function PanelAnalytics({
                     disabled={!isCountEntered}
                     className="py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-30 text-white font-medium text-xs whitespace-nowrap"
                   >
-                    Lock Check
+                    Save Check
                   </button>
                 </div>
               )}
 
               {lockedTime && (
                 <div className="text-[11px] text-text-dim">
-                  Checked at {lockedTime} ({variance === 0 ? 'Exact' : variance > 0 ? `+₱${variance.toFixed(2)}` : `-₱${Math.abs(variance).toFixed(2)}`})
+                  Saved at {lockedTime} ({variance === 0 ? 'Exact match' : variance > 0 ? `+₱${variance.toFixed(2)} over` : `-₱${Math.abs(variance).toFixed(2)} short`})
                 </div>
               )}
             </div>
@@ -711,14 +715,13 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* Financial Overview (Clean, Human Design) */}
+      {/* 4 Main Numbers (Plain English) */}
       {(activeView === 'all' || activeView === 'finance') && (
         <div className="space-y-4 mb-6">
-          {/* Main 4 Metric Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Revenue */}
+            {/* 1. Total Sales */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Gross Revenue</div>
+              <div className="text-xs text-text-dim font-medium">Total Sales</div>
               <div className="text-2xl font-bold font-mono text-text-main my-1">
                 ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
@@ -727,32 +730,32 @@ export default function PanelAnalytics({
               </div>
             </div>
 
-            {/* Expenses */}
+            {/* 2. Total Costs */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Total Expenses</div>
+              <div className="text-xs text-text-dim font-medium">Total Costs</div>
               <div className="text-2xl font-bold font-mono text-text-main my-1">
                 ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-text-dim">
-                Blanks ₱{estimatedMaterialCosts.toFixed(0)} • Stall ₱{operatingOverhead.toFixed(0)}
+                Towels ₱{estimatedMaterialCosts.toFixed(0)} • Rent ₱{operatingOverhead.toFixed(0)}
               </div>
             </div>
 
-            {/* Net Profit */}
+            {/* 3. Real Profit */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim font-medium">Net Profit</span>
+                <span className="text-xs text-text-dim font-medium">Real Profit</span>
                 <span className="text-xs font-mono font-medium text-emerald-400">{netMargin}% margin</span>
               </div>
               <div className="text-2xl font-bold font-mono text-emerald-400 my-1">
                 ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-text-dim">
-                After materials &amp; stall overhead
+                Money left to take home
               </div>
             </div>
 
-            {/* Cash on Hand */}
+            {/* 4. Cash on Hand */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="text-xs text-text-dim font-medium">Cash on Hand</div>
               <div className="space-y-0.5 my-1">
@@ -766,44 +769,44 @@ export default function PanelAnalytics({
                 </div>
               </div>
               <div className="text-[11px] text-text-dim">
-                Total ₱{(paymentBreakdown.cashTotal + paymentBreakdown.gcashTotal).toFixed(2)}
+                Total cash: ₱{(paymentBreakdown.cashTotal + paymentBreakdown.gcashTotal).toFixed(2)}
               </div>
             </div>
           </div>
 
-          {/* Secondary 3 Cards: Stock Value, Restock Need, Break-Even */}
+          {/* Secondary 3 Cards (Money in Stored Items, Reorder Budget, Rent Covered) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Inventory Asset Value */}
+            {/* Money in Stored Items */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Stock Asset Value</div>
+              <div className="text-xs text-text-dim font-medium">Items in Stock (Value)</div>
               <div className="text-lg font-bold font-mono text-text-main my-1">
                 ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-text-dim">
-                {inventoryAssetStats.totalPieces} items in stock
+                {inventoryAssetStats.totalPieces} unsold towels &amp; spools on shelves
               </div>
             </div>
 
-            {/* Restock Budget */}
+            {/* Money Needed to Reorder */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim font-medium">Upcoming Restock</span>
+                <span className="text-xs text-text-dim font-medium">Money Needed to Reorder</span>
                 {restockOutflowForecast.lowCount > 0 && (
-                  <span className="text-[11px] text-amber-400">{restockOutflowForecast.lowCount} low items</span>
+                  <span className="text-[11px] text-amber-400">{restockOutflowForecast.lowCount} items running low</span>
                 )}
               </div>
               <div className="text-lg font-bold font-mono text-text-main my-1">
                 ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-text-dim">
-                Estimated budget for low items
+                Estimated cash to buy low supplies
               </div>
             </div>
 
-            {/* Break-Even Status */}
+            {/* Rent & Power Covered (Break-Even) */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-text-dim font-medium">Stall Break-Even</span>
+                <span className="text-text-dim font-medium">Rent &amp; Power Covered</span>
                 <span className="font-mono text-text-dim">{breakEvenProgress}%</span>
               </div>
               <div className="w-full bg-white/5 rounded-full h-1.5 my-2 overflow-hidden border border-white/5">
@@ -813,9 +816,9 @@ export default function PanelAnalytics({
                 />
               </div>
               <div className="text-xs text-text-dim flex justify-between">
-                <span>Gross: ₱{grossProfit.toFixed(0)}</span>
+                <span>Earned: ₱{grossProfit.toFixed(0)}</span>
                 <span className={breakEvenSurplus >= 0 ? 'text-emerald-400' : 'text-text-dim'}>
-                  {breakEvenSurplus >= 0 ? `+₱${breakEvenSurplus.toFixed(0)} surplus` : `₱${Math.abs(breakEvenSurplus).toFixed(0)} to break even`}
+                  {breakEvenSurplus >= 0 ? `Broke even! +₱${breakEvenSurplus.toFixed(0)} in profit` : `Need ₱${Math.abs(breakEvenSurplus).toFixed(0)} more to cover rent`}
                 </span>
               </div>
             </div>
@@ -823,20 +826,20 @@ export default function PanelAnalytics({
 
           {/* Table & Chart Row */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Category Breakdown Table */}
+            {/* Sales & Profit per Item Type */}
             <div className="lg:col-span-7 bg-bg-surface border border-border-glass rounded-xl p-4">
-              <div className="text-xs font-bold text-text-main mb-3">Profit by Category</div>
+              <div className="text-xs font-bold text-text-main mb-3">Sales &amp; Profit by Item</div>
 
               {categoryPerformance.length === 0 ? (
-                <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this period.</div>
+                <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this time.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-white/5 text-[11px] text-text-dim">
-                        <th className="pb-2 font-medium">Category</th>
-                        <th className="pb-2 font-medium text-center">Units</th>
-                        <th className="pb-2 font-medium text-right">Revenue</th>
+                        <th className="pb-2 font-medium">Item</th>
+                        <th className="pb-2 font-medium text-center">Sold</th>
+                        <th className="pb-2 font-medium text-right">Sales</th>
                         <th className="pb-2 font-medium text-right">Cost</th>
                         <th className="pb-2 font-medium text-right">Profit</th>
                       </tr>
@@ -845,7 +848,7 @@ export default function PanelAnalytics({
                       {categoryPerformance.map((row) => (
                         <tr key={row.category} className="hover:bg-white/[0.02]">
                           <td className="py-2 text-text-main font-medium">{row.category}</td>
-                          <td className="py-2 text-center text-text-dim font-mono">{row.units}</td>
+                          <td className="py-2 text-center text-text-dim font-mono">{row.units} pcs</td>
                           <td className="py-2 text-right font-mono text-text-main">₱{row.revenue.toFixed(2)}</td>
                           <td className="py-2 text-right font-mono text-text-dim">₱{row.cost.toFixed(2)}</td>
                           <td className="py-2 text-right font-mono font-medium text-emerald-400">₱{row.profit.toFixed(2)}</td>
@@ -857,11 +860,11 @@ export default function PanelAnalytics({
               )}
             </div>
 
-            {/* Revenue Trend Chart */}
+            {/* Profit Trend Chart */}
             <div className="lg:col-span-5 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-text-main">Profit Trend</span>
-                <span className="text-[11px] text-emerald-400 font-mono">Net Profit</span>
+                <span className="text-xs font-bold text-text-main">Profit History</span>
+                <span className="text-[11px] text-emerald-400 font-mono">Profit (₱)</span>
               </div>
 
               <div className="h-44 w-full mt-auto">
@@ -883,7 +886,7 @@ export default function PanelAnalytics({
                             <div className="bg-bg-surface border border-border-glass p-2 rounded text-xs font-mono">
                               <div className="text-text-dim">{label}</div>
                               <div className="text-emerald-400 font-bold">
-                                ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
+                                Profit: ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
                               </div>
                             </div>
                           );
@@ -907,19 +910,19 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* Production Tools & Forecast */}
+      {/* Stitching Queue & Expected Sales */}
       {(activeView === 'all' || activeView === 'production') && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Machine Stitching Time Estimator */}
+            {/* How Long Will Stitching Take? */}
             <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-text-main">Production Time Estimator</span>
-                  <span className="text-[11px] font-mono text-text-dim">3m base + 30s/letter</span>
+                  <span className="text-xs font-bold text-text-main">How Long Will Stitching Take?</span>
+                  <span className="text-[11px] font-mono text-text-dim">3 mins setup + 30s/letter</span>
                 </div>
                 <div className="text-xs text-text-dim mb-3">
-                  Calculates machine time based on hooping prep, garment type, and letter count.
+                  Check how many minutes an item takes based on letters and garment thickness.
                 </div>
               </div>
 
@@ -935,13 +938,13 @@ export default function PanelAnalytics({
                       <option value="fan">Chinese Fan</option>
                       <option value="cap">Cap / Hat</option>
                       <option value="towel">Bath Towel</option>
-                      <option value="byog">Client Garment (BYOG)</option>
+                      <option value="byog">Customer Garment</option>
                     </select>
                   </div>
 
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="text-[11px] text-text-dim">Letters</label>
+                      <label className="text-[11px] text-text-dim">Number of Letters</label>
                       <span className="text-[11px] font-mono text-text-main">{simLetters}</span>
                     </div>
                     <input
@@ -956,25 +959,25 @@ export default function PanelAnalytics({
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                  <span className="text-text-dim">Estimated Stitching Duration:</span>
-                  <span className="font-mono font-bold text-text-main">~{predictedSimMinutes} mins</span>
+                  <span className="text-text-dim">Estimated Stitching Time:</span>
+                  <span className="font-mono font-bold text-text-main">Takes about ~{predictedSimMinutes} minutes</span>
                 </div>
               </div>
             </div>
 
-            {/* Thread Batching Advisor */}
+            {/* Thread Colors Waiting in Line */}
             <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-text-main">Thread Color Batching</span>
-                <span className="text-[11px] text-text-dim font-mono">{threadBatches.length} active colors</span>
+                <span className="text-xs font-bold text-text-main">Thread Colors Waiting in Line</span>
+                <span className="text-[11px] text-text-dim font-mono">{threadBatches.length} colors in queue</span>
               </div>
               <div className="text-xs text-text-dim mb-3">
-                Groups queue items by spool color to save needle re-threading time.
+                Stitch matching thread colors together to save time changing needles.
               </div>
 
               {threadBatches.length === 0 ? (
                 <div className="py-6 text-center text-xs text-text-dim my-auto">
-                  No orders currently waiting in queue.
+                  No orders waiting in queue right now.
                 </div>
               ) : (
                 <div className="space-y-2 overflow-y-auto max-h-[170px] pr-1">
@@ -986,14 +989,14 @@ export default function PanelAnalytics({
                       </div>
                       <div className="flex items-center gap-2">
                         {b.savedMins > 0 && (
-                          <span className="text-[11px] text-emerald-400 font-mono">Saves ~{b.savedMins}m</span>
+                          <span className="text-[11px] text-emerald-400 font-mono">Saves ~{b.savedMins} mins</span>
                         )}
                         <button
                           type="button"
-                          onClick={() => showToast(`Prioritized ${b.color} batch`, 'info')}
+                          onClick={() => showToast(`Moved ${b.color} orders next`, 'info')}
                           className="text-text-dim hover:text-text-main underline text-[11px]"
                         >
-                          Prioritize
+                          Stitch Next
                         </button>
                       </div>
                     </div>
@@ -1003,15 +1006,15 @@ export default function PanelAnalytics({
             </div>
           </div>
 
-          {/* 7-Day Forward Forecast */}
+          {/* Expected Sales for Next 7 Days */}
           <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <div>
-                <div className="text-xs font-bold text-text-main">7-Day Demand Forecast</div>
-                <div className="text-xs text-text-dim">Projected sales trend based on recent order velocity.</div>
+                <div className="text-xs font-bold text-text-main">Expected Sales for Next 7 Days</div>
+                <div className="text-xs text-text-dim">Estimate of upcoming sales based on recent daily orders.</div>
               </div>
               <div className="text-xs text-text-dim font-mono">
-                Projected 7-day revenue: <strong className="text-text-main">₱{forwardForecast.totalProjected7d.toLocaleString()}</strong>
+                Estimated for next 7 days: <strong className="text-text-main">₱{forwardForecast.totalProjected7d.toLocaleString()}</strong>
               </div>
             </div>
 
@@ -1028,7 +1031,7 @@ export default function PanelAnalytics({
                       borderRadius: '0.5rem',
                       fontSize: '11px',
                     }}
-                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Projected']}
+                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Expected Sales']}
                   />
                   <Line
                     type="monotone"
