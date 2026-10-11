@@ -1279,7 +1279,8 @@ exports.createWalkInOrder = async (req, res) => {
             personalization: {
                 fulfillmentType: 'pickup',
                 courier: 'Store Pick-up',
-                trackingNumber: `WI-${orderId}`,
+                trackingNumber: `#${orderId.replace('WI-', 'A-')}`,
+                claimCode: `#${orderId.replace('WI-', 'A-')}`,
                 customerPhone: clientPhone || null,
                 customerEmail: clientEmail || null,
                 text: personalizationText || '',

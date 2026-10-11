@@ -51,6 +51,37 @@ export default function PanelOverview({
   const [editTrackingNumber, setEditTrackingNumber] = useState('');
   const [editNote, setEditNote] = useState('');
   const [waybillOrder, setWaybillOrder] = useState<any>(null);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+
+  useEffect(() => {
+    api.get<{ deliveryEnabled?: boolean }>('/api/customer/settings')
+      .then(res => {
+        if (res) setDeliveryEnabled(Boolean(res.deliveryEnabled));
+      })
+      .catch(() => {});
+  }, []);
+
+  const isOrderPickup = (o: any) => {
+    if (!deliveryEnabled) return true;
+    if (!o) return false;
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    return (
+      pers.fulfillmentType === 'pickup' ||
+      (typeof o.orderId === 'string' && o.orderId.startsWith('WI-')) ||
+      (typeof o.address === 'string' && o.address.toLowerCase().includes('pick-up')) ||
+      (typeof pers.courier === 'string' && pers.courier.toLowerCase().includes('pick-up'))
+    );
+  };
+
+  const getOrderClaimCode = (o: any) => {
+    if (!o) return '#A-000';
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    if (pers.claimCode) return pers.claimCode;
+    const id = o.orderId || '';
+    if (id.startsWith('WI-')) return `#${id.replace('WI-', 'A-')}`;
+    const suffix = id.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+    return `#A-${suffix.toUpperCase()}`;
+  };
 
   // High-Volume Logistics State (Batch Thermal Labels & Courier Manifest)
   const [batchPrintOrders, setBatchPrintOrders] = useState<any[]>([]);
@@ -163,15 +194,26 @@ export default function PanelOverview({
   const openEditModal = (order: any) => {
     setEditingOrder(order);
     setEditStatus(order.status || 'In Queue');
-    const existingTracking = (order.personalization && typeof order.personalization === 'object' && order.personalization.trackingNumber)
-      ? order.personalization.trackingNumber
-      : '';
-    setEditTrackingNumber(existingTracking || '');
+    const isPickup = isOrderPickup(order);
+    if (isPickup) {
+      setEditTrackingNumber(getOrderClaimCode(order));
+    } else {
+      const existingTracking = (order.personalization && typeof order.personalization === 'object' && order.personalization.trackingNumber)
+        ? order.personalization.trackingNumber
+        : '';
+      setEditTrackingNumber(existingTracking || '');
+    }
     setEditNote('');
   };
 
   const generateTrackingCode = () => {
     if (!editingOrder) return;
+    if (isOrderPickup(editingOrder)) {
+      const code = getOrderClaimCode(editingOrder);
+      setEditTrackingNumber(code);
+      showToast(`Counter claim code: ${code}`, 'info');
+      return;
+    }
     const cleanId = (editingOrder.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
     const code = `JNT-PH-78${cleanId}`;
     setEditTrackingNumber(code);
@@ -347,14 +389,17 @@ export default function PanelOverview({
     if (setOrders) {
       setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: targetStatus, notes: targetNote || o.notes } : o));
     }
-    showToast('Order and logistics milestone updated!', 'success');
+    showToast('Order operational status updated!', 'success');
     setEditingOrder(null);
 
     // 2. Dispatch to server in background
     try {
-      const hub = editStatus.includes('Transit') || editStatus.includes('Delivery')
-        ? 'J&T Express South Luzon Sort Hub'
-        : 'Eds Towels Pacific Mall Lucena Hub';
+      const isPickup = isOrderPickup(editingOrder);
+      const hub = isPickup
+        ? 'Eds Towels Pacific Mall Lucena Hub'
+        : (editStatus.includes('Transit') || editStatus.includes('Delivery')
+            ? 'J&T Express South Luzon Sort Hub'
+            : 'Eds Towels Pacific Mall Lucena Hub');
 
       await api.post('/api/admin/orders/batch-status', {
         ids: [orderId],
@@ -362,7 +407,7 @@ export default function PanelOverview({
         trackingNumber: editTrackingNumber.trim() || undefined,
         note: targetNote || undefined,
         hub,
-        courier: 'J&T Express'
+        courier: isPickup ? 'Store Pick-up' : 'J&T Express'
       });
       refreshData().catch(() => {});
     } catch (err) {
@@ -467,9 +512,9 @@ export default function PanelOverview({
                 options={[
                   { value: '', label: 'Select Status to Apply...' },
                   { value: 'Preparing Order', label: 'Preparing Order' },
-                  { value: 'In Transit', label: 'In Transit' },
+                  ...(deliveryEnabled ? [{ value: 'In Transit', label: 'In Transit' }] : []),
                   { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
-                  { value: 'Order Delivered', label: 'Order Delivered' }
+                  { value: 'Order Delivered', label: deliveryEnabled ? 'Order Delivered' : 'Claimed / Completed' }
                 ]}
               />
             </div>
@@ -493,21 +538,23 @@ export default function PanelOverview({
                   <span>Batch Print Labels ({selectedIds.length})</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsManifestOpen(true)}
-                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                  title="Generate a 1-page courier pickup handover sheet for rider signature"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  <span>Handover Manifest</span>
-                </button>
+                {deliveryEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setIsManifestOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    title="Generate a 1-page courier pickup handover sheet for rider signature"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    <span>Handover Manifest</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -904,103 +951,158 @@ export default function PanelOverview({
       <GlassModal
         isOpen={!!editingOrder}
         onClose={() => setEditingOrder(null)}
-        title="Update Operational & Logistics Status"
+        title={isOrderPickup(editingOrder) ? "Update Operational Status" : "Update Operational & Logistics Status"}
       >
-        {editingOrder && (
-          <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
-            <div className="modal-box bg-white/5 p-3 rounded-xl border border-white/10 flex justify-between items-center">
-              <div>
-                <span className="modal-label text-text-dim text-xs">Active Order ID</span>
-                <p className="font-mono font-bold text-white text-sm m-0 mt-0.5">{editingOrder.orderId}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setWaybillOrder(editingOrder)}
-                className="bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Print Waybill</span>
-              </button>
-            </div>
+        {editingOrder && (() => {
+          const isPickup = isOrderPickup(editingOrder);
+          const claimCode = getOrderClaimCode(editingOrder);
 
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-text-main">Production & Delivery Status</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  'In Queue',
-                  'Preparing Order',
-                  'In Transit',
-                  'Ready For Pick Up',
-                  'Out for Delivery',
-                  'Order Delivered'
-                ].map((status) => {
-                  const isActive = editStatus === status;
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setEditStatus(status)}
-                      className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border text-center
-                        ${isActive
-                          ? 'bg-primary text-white border-transparent shadow-sm'
-                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                        }
-                      `}
-                    >
-                      {status}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* J&T Tracking Number Input */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#e11d48]"></span>
-                  J&T Express Tracking Number
-                </label>
+          return (
+            <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
+              <div className="modal-box bg-white/5 p-3 rounded-xl border border-white/10 flex justify-between items-center">
+                <div>
+                  <span className="modal-label text-text-dim text-xs">Active Order ID</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="font-mono font-bold text-white text-sm m-0">{editingOrder.orderId}</p>
+                    {isPickup && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">
+                        {claimCode}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={generateTrackingCode}
-                  className="text-[0.7rem] text-primary hover:underline font-bold cursor-pointer bg-transparent border-none p-0"
+                  onClick={() => setWaybillOrder(editingOrder)}
+                  className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border ${
+                    isPickup
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
+                      : 'bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary'
+                  }`}
                 >
-                  Generate J&T Code
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{isPickup ? 'Print Claim Slip' : 'Print Waybill'}</span>
                 </button>
               </div>
-              <input
-                type="text"
-                value={editTrackingNumber}
-                onChange={(e) => setEditTrackingNumber(e.target.value)}
-                placeholder="e.g. JNT-PH-78..."
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
-              />
-            </div>
 
-            {/* Logistics Milestone Note */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-main">Milestone Log Note (Visible to Customer)</label>
-              <input
-                type="text"
-                value={editNote}
-                onChange={(e) => setEditNote(e.target.value)}
-                placeholder="e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier"
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
-              />
-            </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-text-main">
+                  {isPickup ? 'Production & Claim Status' : 'Production & Delivery Status'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(isPickup
+                    ? [
+                        'In Queue',
+                        'Preparing Order',
+                        'Ready For Pick Up',
+                        'Order Delivered'
+                      ]
+                    : [
+                        'In Queue',
+                        'Preparing Order',
+                        'In Transit',
+                        'Ready For Pick Up',
+                        'Out for Delivery',
+                        'Order Delivered'
+                      ]
+                  ).map((status) => {
+                    const isActive = editStatus === status;
+                    const displayLabel = (isPickup && status === 'Order Delivered')
+                      ? 'Claimed / Completed'
+                      : status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setEditStatus(status)}
+                        className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border text-center
+                          ${isActive
+                            ? 'bg-primary text-white border-transparent shadow-sm'
+                            : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                          }
+                        `}
+                      >
+                        {displayLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              className="bg-primary text-white font-bold py-3 rounded-xl mt-1 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
-            >
-              Save Operational Status & Tracking
-            </button>
-          </form>
-        )}
+              {/* In-Store Counter Claim Code OR J&T Tracking Number */}
+              {isPickup ? (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Anti-Fraud Counter Claim Code
+                    </label>
+                    <span className="text-[0.7rem] text-emerald-400 font-mono font-bold">{claimCode}</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={editTrackingNumber || claimCode}
+                    onChange={(e) => setEditTrackingNumber(e.target.value)}
+                    placeholder="e.g. #A-9632"
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
+                  />
+                  <span className="text-[0.68rem] text-text-dim">
+                    Customer presents this claim code at Pacific Mall Lucena counter to collect items.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#e11d48]"></span>
+                      J&T Express Tracking Number
+                    </label>
+                    <button
+                      type="button"
+                      onClick={generateTrackingCode}
+                      className="text-[0.7rem] text-primary hover:underline font-bold cursor-pointer bg-transparent border-none p-0"
+                    >
+                      Generate J&T Code
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={editTrackingNumber}
+                    onChange={(e) => setEditTrackingNumber(e.target.value)}
+                    placeholder="e.g. JNT-PH-78..."
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
+              )}
+
+              {/* Milestone Note */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-text-main">Milestone Log Note (Visible to Customer)</label>
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder={
+                    isPickup
+                      ? 'e.g. Stitched and placed on Shelf A ready for counter pick-up'
+                      : 'e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier'
+                  }
+                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="bg-primary text-white font-bold py-3 rounded-xl mt-1 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
+              >
+                Save Operational Status
+              </button>
+            </form>
+          );
+        })()}
       </GlassModal>
 
       {/* Single Parcel Waybill Thermal Sticker Modal */}
