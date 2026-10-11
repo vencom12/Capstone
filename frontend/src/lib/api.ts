@@ -97,15 +97,30 @@ export async function apiFetch<T = unknown>(
         signal: controller.signal,
       });
     } catch (fetchErr: any) {
-      // If transient connection drop (e.g. server restarting), retry once after 800ms
+      // If transient connection drop (e.g. server restarting), retry with backoff
       if (fetchErr.name !== 'AbortError' && (!options.method || options.method === 'GET')) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        response = await fetch(fullUrl, {
-          ...options,
-          headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
-          credentials: 'include',
-          signal: controller.signal,
-        });
+        try {
+          await new Promise(resolve => setTimeout(resolve, 600));
+          response = await fetch(fullUrl, {
+            ...options,
+            headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
+            credentials: 'include',
+            signal: controller.signal,
+          });
+        } catch {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            response = await fetch(fullUrl, {
+              ...options,
+              headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
+              credentials: 'include',
+              signal: controller.signal,
+            });
+          } catch (retryErr) {
+            clearTimeout(timeout);
+            throw retryErr;
+          }
+        }
       } else {
         clearTimeout(timeout);
         throw fetchErr;
