@@ -23,7 +23,7 @@ interface PanelAnalyticsProps {
 }
 
 type TimeRange = 'today' | 'week' | 'month' | 'all';
-type AnalyticsView = 'all' | 'finance' | 'production';
+type DetailCategory = 'money' | 'supplies' | 'machine' | 'all';
 
 export default function PanelAnalytics({
   orders = [],
@@ -33,7 +33,7 @@ export default function PanelAnalytics({
   isSyncing = false,
 }: PanelAnalyticsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
-  const [activeView, setActiveView] = useState<AnalyticsView>('all');
+  const [activeCategory, setActiveCategory] = useState<DetailCategory>('money');
   const [showDrawerReconciler, setShowDrawerReconciler] = useState(false);
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
   const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Daily Pacific Mall stall rent & electricity
@@ -461,11 +461,10 @@ export default function PanelAnalytics({
 
   return (
     <div className="flex flex-col h-full text-left font-sans max-w-6xl mx-auto pb-16">
-      {/* Top Toolbar (Simple Words) */}
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-5 pb-3 border-b border-border-glass">
-        {/* Left: Time Filter & Views */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Time Filter */}
+      {/* Top Toolbar: Time Filter & Quick Utilities */}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4 pb-3 border-b border-border-glass">
+        {/* Left: Time Period Filter */}
+        <div className="flex items-center gap-2">
           <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs">
             {(['today', 'week', 'month', 'all'] as TimeRange[]).map((tr) => (
               <button
@@ -481,43 +480,6 @@ export default function PanelAnalytics({
                 {tr === 'today' ? 'Today' : tr === 'week' ? 'This Week' : tr === 'month' ? 'This Month' : 'All Time'}
               </button>
             ))}
-          </div>
-
-          {/* View Filter */}
-          <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setActiveView('all')}
-              className={`px-3 py-1 rounded-md font-semibold transition ${
-                activeView === 'all'
-                  ? 'bg-white/10 text-text-main shadow-xs'
-                  : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('finance')}
-              className={`px-3 py-1 rounded-md font-semibold transition ${
-                activeView === 'finance'
-                  ? 'bg-white/10 text-text-main shadow-xs'
-                  : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              Money &amp; Profit
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('production')}
-              className={`px-3 py-1 rounded-md font-semibold transition ${
-                activeView === 'production'
-                  ? 'bg-white/10 text-text-main shadow-xs'
-                  : 'text-text-dim hover:text-text-main'
-              }`}
-            >
-              Stitching Queue
-            </button>
           </div>
 
           <button
@@ -715,22 +677,140 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* 4 Main Numbers (Plain English) */}
-      {(activeView === 'all' || activeView === 'finance') && (
-        <div className="space-y-4 mb-6">
+      {/* EXECUTIVE SUMMARY (The 3 Main Category Cards) */}
+      <div className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Category 1: Money & Real Profit */}
+          <div
+            onClick={() => setActiveCategory('money')}
+            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
+              activeCategory === 'money'
+                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
+                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-main">1. Money &amp; Earnings</span>
+                <span className="text-xs font-mono font-medium text-emerald-400">{netMargin}% margin</span>
+              </div>
+              <div className="text-2xl font-black font-mono text-emerald-400 my-2">
+                ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                Real take-home profit (Sales ₱{totalRevenue.toFixed(0)} − Costs ₱{totalExpenses.toFixed(0)})
+              </div>
+            </div>
+            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-text-dim font-medium">{filteredOrders.length} orders handled</span>
+              <span className={`font-bold transition ${activeCategory === 'money' ? 'text-white' : 'text-primary'}`}>
+                {activeCategory === 'money' ? 'Viewing Details ▼' : 'View Details →'}
+              </span>
+            </div>
+          </div>
+
+          {/* Category 2: Supplies & Stocks */}
+          <div
+            onClick={() => setActiveCategory('supplies')}
+            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
+              activeCategory === 'supplies'
+                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
+                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-main">2. Shop Supplies &amp; Stocks</span>
+                {restockOutflowForecast.lowCount > 0 ? (
+                  <span className="text-xs font-mono text-amber-400">{restockOutflowForecast.lowCount} low items</span>
+                ) : (
+                  <span className="text-xs text-text-dim">Stock stable</span>
+                )}
+              </div>
+              <div className="text-2xl font-black font-mono text-text-main my-2">
+                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                Money stored in {inventoryAssetStats.totalPieces} unsold towels &amp; thread spools
+              </div>
+            </div>
+            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-text-dim font-medium">Reorder needed: ₱{restockOutflowForecast.budgetNeeded.toFixed(0)}</span>
+              <span className={`font-bold transition ${activeCategory === 'supplies' ? 'text-white' : 'text-primary'}`}>
+                {activeCategory === 'supplies' ? 'Viewing Details ▼' : 'View Details →'}
+              </span>
+            </div>
+          </div>
+
+          {/* Category 3: Machine & Next 7 Days */}
+          <div
+            onClick={() => setActiveCategory('machine')}
+            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
+              activeCategory === 'machine'
+                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
+                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-main">3. Machine &amp; Next 7 Days</span>
+                <span className="text-xs font-mono text-text-dim">{threadBatches.length} colors in line</span>
+              </div>
+              <div className="text-2xl font-black font-mono text-text-main my-2">
+                ₱{forwardForecast.totalProjected7d.toLocaleString()}
+              </div>
+              <div className="text-xs text-text-dim">
+                Expected sales for the upcoming week based on daily orders
+              </div>
+            </div>
+            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-text-dim font-medium">Stitching time quoter &amp; batching</span>
+              <span className={`font-bold transition ${activeCategory === 'machine' ? 'text-white' : 'text-primary'}`}>
+                {activeCategory === 'machine' ? 'Viewing Details ▼' : 'View Details →'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Navigation Pills / Show All Switch */}
+        <div className="flex items-center justify-between mt-3 text-xs text-text-dim">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px]">Currently showing:</span>
+            <span className="font-bold text-text-main capitalize">
+              {activeCategory === 'money'
+                ? 'Money & Earnings Details'
+                : activeCategory === 'supplies'
+                ? 'Supplies & Stocks Details'
+                : activeCategory === 'machine'
+                ? 'Machine & Next 7 Days Details'
+                : 'All Details'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveCategory(activeCategory === 'all' ? 'money' : 'all')}
+            className="hover:text-text-main underline cursor-pointer"
+          >
+            {activeCategory === 'all' ? 'Focus on One Category' : 'Show All Details Below'}
+          </button>
+        </div>
+      </div>
+
+      {/* CATEGORY 1 DETAILS: MONEY & EARNINGS */}
+      {(activeCategory === 'money' || activeCategory === 'all') && (
+        <div className="space-y-4 mb-6 animate-[fadeIn_0.2s_ease-out]">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* 1. Total Sales */}
+            {/* Total Sales */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="text-xs text-text-dim font-medium">Total Sales</div>
               <div className="text-2xl font-bold font-mono text-text-main my-1">
                 ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-xs text-text-dim">
-                {filteredOrders.length} orders
-              </div>
+              <div className="text-xs text-text-dim">{filteredOrders.length} orders paid</div>
             </div>
 
-            {/* 2. Total Costs */}
+            {/* Total Costs */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="text-xs text-text-dim font-medium">Total Costs</div>
               <div className="text-2xl font-bold font-mono text-text-main my-1">
@@ -741,21 +821,7 @@ export default function PanelAnalytics({
               </div>
             </div>
 
-            {/* 3. Real Profit */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim font-medium">Real Profit</span>
-                <span className="text-xs font-mono font-medium text-emerald-400">{netMargin}% margin</span>
-              </div>
-              <div className="text-2xl font-bold font-mono text-emerald-400 my-1">
-                ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Money left to take home
-              </div>
-            </div>
-
-            {/* 4. Cash on Hand */}
+            {/* Cash on Hand */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="text-xs text-text-dim font-medium">Cash on Hand</div>
               <div className="space-y-0.5 my-1">
@@ -772,39 +838,9 @@ export default function PanelAnalytics({
                 Total cash: ₱{(paymentBreakdown.cashTotal + paymentBreakdown.gcashTotal).toFixed(2)}
               </div>
             </div>
-          </div>
 
-          {/* Secondary 3 Cards (Money in Stored Items, Reorder Budget, Rent Covered) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Money in Stored Items */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Items in Stock (Value)</div>
-              <div className="text-lg font-bold font-mono text-text-main my-1">
-                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                {inventoryAssetStats.totalPieces} unsold towels &amp; spools on shelves
-              </div>
-            </div>
-
-            {/* Money Needed to Reorder */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim font-medium">Money Needed to Reorder</span>
-                {restockOutflowForecast.lowCount > 0 && (
-                  <span className="text-[11px] text-amber-400">{restockOutflowForecast.lowCount} items running low</span>
-                )}
-              </div>
-              <div className="text-lg font-bold font-mono text-text-main my-1">
-                ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Estimated cash to buy low supplies
-              </div>
-            </div>
-
-            {/* Rent & Power Covered (Break-Even) */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-3.5 flex flex-col justify-between">
+            {/* Rent & Power Covered */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-dim font-medium">Rent &amp; Power Covered</span>
                 <span className="font-mono text-text-dim">{breakEvenProgress}%</span>
@@ -818,106 +854,137 @@ export default function PanelAnalytics({
               <div className="text-xs text-text-dim flex justify-between">
                 <span>Earned: ₱{grossProfit.toFixed(0)}</span>
                 <span className={breakEvenSurplus >= 0 ? 'text-emerald-400' : 'text-text-dim'}>
-                  {breakEvenSurplus >= 0 ? `Broke even! +₱${breakEvenSurplus.toFixed(0)} in profit` : `Need ₱${Math.abs(breakEvenSurplus).toFixed(0)} more to cover rent`}
+                  {breakEvenSurplus >= 0 ? `Broke even! +₱${breakEvenSurplus.toFixed(0)} in profit` : `Need ₱${Math.abs(breakEvenSurplus).toFixed(0)} more`}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Table & Chart Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Sales & Profit per Item Type */}
-            <div className="lg:col-span-7 bg-bg-surface border border-border-glass rounded-xl p-4">
-              <div className="text-xs font-bold text-text-main mb-3">Sales &amp; Profit by Item</div>
-
-              {categoryPerformance.length === 0 ? (
-                <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this time.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-white/5 text-[11px] text-text-dim">
-                        <th className="pb-2 font-medium">Item</th>
-                        <th className="pb-2 font-medium text-center">Sold</th>
-                        <th className="pb-2 font-medium text-right">Sales</th>
-                        <th className="pb-2 font-medium text-right">Cost</th>
-                        <th className="pb-2 font-medium text-right">Profit</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {categoryPerformance.map((row) => (
-                        <tr key={row.category} className="hover:bg-white/[0.02]">
-                          <td className="py-2 text-text-main font-medium">{row.category}</td>
-                          <td className="py-2 text-center text-text-dim font-mono">{row.units} pcs</td>
-                          <td className="py-2 text-right font-mono text-text-main">₱{row.revenue.toFixed(2)}</td>
-                          <td className="py-2 text-right font-mono text-text-dim">₱{row.cost.toFixed(2)}</td>
-                          <td className="py-2 text-right font-mono font-medium text-emerald-400">₱{row.profit.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          {/* Profit History Chart */}
+          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs font-bold text-text-main">Daily Profit History</span>
+              <span className="text-[11px] text-emerald-400 font-mono">Real Profit (₱)</span>
             </div>
 
-            {/* Profit Trend Chart */}
-            <div className="lg:col-span-5 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-text-main">Profit History</span>
-                <span className="text-[11px] text-emerald-400 font-mono">Profit (₱)</span>
-              </div>
-
-              <div className="h-44 w-full mt-auto">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                    <XAxis dataKey="date" stroke="#666666" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#666666" fontSize={10} tickLine={false} />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-bg-surface border border-border-glass p-2 rounded text-xs font-mono">
-                              <div className="text-text-dim">{label}</div>
-                              <div className="text-emerald-400 font-bold">
-                                Profit: ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
-                              </div>
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="date" stroke="#666666" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#666666" fontSize={10} tickLine={false} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-bg-surface border border-border-glass p-2 rounded text-xs font-mono">
+                            <div className="text-text-dim">{label}</div>
+                            <div className="text-emerald-400 font-bold">
+                              Profit: ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
                             </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#profitGrad)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="profit"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#profitGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stitching Queue & Expected Sales */}
-      {(activeView === 'all' || activeView === 'production') && (
-        <div className="space-y-4">
+      {/* CATEGORY 2 DETAILS: SUPPLIES & STOCKS */}
+      {(activeCategory === 'supplies' || activeCategory === 'all') && (
+        <div className="space-y-4 mb-6 animate-[fadeIn_0.2s_ease-out]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Money in Stored Items */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="text-xs text-text-dim font-medium">Items in Stock (Value)</div>
+              <div className="text-2xl font-bold font-mono text-text-main my-1">
+                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                {inventoryAssetStats.totalPieces} unsold towels, fans, and thread spools on shelves
+              </div>
+            </div>
+
+            {/* Money Needed to Reorder */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-dim font-medium">Money Needed to Reorder</span>
+                {restockOutflowForecast.lowCount > 0 && (
+                  <span className="text-[11px] text-amber-400 font-semibold">{restockOutflowForecast.lowCount} items running low</span>
+                )}
+              </div>
+              <div className="text-2xl font-bold font-mono text-text-main my-1">
+                ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-text-dim">
+                Estimated cash to buy supplies below threshold
+              </div>
+            </div>
+          </div>
+
+          {/* Sales & Profit per Item Type Table */}
+          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
+            <div className="text-xs font-bold text-text-main mb-3">Sales &amp; Profit by Item</div>
+
+            {categoryPerformance.length === 0 ? (
+              <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this period.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-[11px] text-text-dim">
+                      <th className="pb-2 font-medium">Item</th>
+                      <th className="pb-2 font-medium text-center">Sold</th>
+                      <th className="pb-2 font-medium text-right">Sales</th>
+                      <th className="pb-2 font-medium text-right">Cost</th>
+                      <th className="pb-2 font-medium text-right">Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {categoryPerformance.map((row) => (
+                      <tr key={row.category} className="hover:bg-white/[0.02]">
+                        <td className="py-2 text-text-main font-medium">{row.category}</td>
+                        <td className="py-2 text-center text-text-dim font-mono">{row.units} pcs</td>
+                        <td className="py-2 text-right font-mono text-text-main">₱{row.revenue.toFixed(2)}</td>
+                        <td className="py-2 text-right font-mono text-text-dim">₱{row.cost.toFixed(2)}</td>
+                        <td className="py-2 text-right font-mono font-medium text-emerald-400">₱{row.profit.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CATEGORY 3 DETAILS: MACHINE & NEXT 7 DAYS */}
+      {(activeCategory === 'machine' || activeCategory === 'all') && (
+        <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* How Long Will Stitching Take? */}
             <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-text-main">How Long Will Stitching Take?</span>
                   <span className="text-[11px] font-mono text-text-dim">3 mins setup + 30s/letter</span>
                 </div>
@@ -967,7 +1034,7 @@ export default function PanelAnalytics({
 
             {/* Thread Colors Waiting in Line */}
             <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-bold text-text-main">Thread Colors Waiting in Line</span>
                 <span className="text-[11px] text-text-dim font-mono">{threadBatches.length} colors in queue</span>
               </div>
