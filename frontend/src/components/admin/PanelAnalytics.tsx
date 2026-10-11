@@ -397,20 +397,27 @@ export default function PanelAnalytics({
             <button
               type="button"
               onClick={() => setActiveView('finance')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 activeView === 'finance' ? 'bg-emerald-600 text-white shadow-sm' : 'text-text-dim hover:text-text-main'
               }`}
             >
-              💵 Finance &amp; Cash (Phase 3)
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+              <span>Finance &amp; Cash (Phase 3)</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveView('ai')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 activeView === 'ai' ? 'bg-purple-600 text-white shadow-sm' : 'text-text-dim hover:text-text-main'
               }`}
             >
-              🧠 AI Workflow (Phase 4)
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              <span>AI Workflow (Phase 4)</span>
             </button>
           </div>
 
@@ -468,8 +475,12 @@ export default function PanelAnalytics({
               : 'bg-white/5 border-border-glass hover:bg-white/10 text-text-main'
           }`}
         >
-          <span>💵 30-Sec Cash Drawer Reconciler</span>
-          <span className="text-[10px]">{showDrawerReconciler ? '▲ Hide' : '▼ Show'}</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+          <span>30-Sec Cash Drawer Reconciler</span>
+          <span className="text-[10px] ml-1">{showDrawerReconciler ? '▲ Hide' : '▼ Show'}</span>
         </button>
       </div>
 
@@ -479,8 +490,13 @@ export default function PanelAnalytics({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-border-glass">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-extrabold text-emerald-400">
-                  💵 End-of-Day Cash Drawer Verification (Register Cash Box)
+                <span className="text-sm font-extrabold text-emerald-400 flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M6 12h.01M18 12h.01" />
+                  </svg>
+                  <span>End-of-Day Cash Drawer Verification (Register Cash Box)</span>
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300">
                   Phase 3 Standard
@@ -600,9 +616,13 @@ export default function PanelAnalytics({
                       showToast(`✓ Cash drawer verified and recorded at ${time}!`, 'success');
                     }}
                     disabled={!isCountEntered}
-                    className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-extrabold transition cursor-pointer shadow-md whitespace-nowrap"
+                    className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-extrabold transition cursor-pointer shadow-md whitespace-nowrap flex items-center gap-1.5"
                   >
-                    <span>🔒 Verify &amp; Lock Drawer</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <span>Verify &amp; Lock Drawer</span>
                   </button>
                 </div>
               )}
@@ -693,16 +713,24 @@ export default function PanelAnalytics({
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim flex items-center gap-1">
-                    <span>💵 Cash Tin:</span>
+                  <span className="text-text-dim flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <circle cx="12" cy="12" r="2" />
+                    </svg>
+                    <span>Cash Register:</span>
                   </span>
                   <span className="font-mono font-bold text-emerald-400">
                     ₱{paymentBreakdown.cashTotal.toFixed(2)} ({paymentBreakdown.cashCount})
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim flex items-center gap-1">
-                    <span>📱 GCash QR:</span>
+                  <span className="text-text-dim flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#007df2]">
+                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                      <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg>
+                    <span>GCash QR:</span>
                   </span>
                   <span className="font-mono font-bold text-[#007df2]">
                     ₱{paymentBreakdown.gcashTotal.toFixed(2)} ({paymentBreakdown.gcashCount})
@@ -832,8 +860,11 @@ export default function PanelAnalytics({
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-border-glass">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-extrabold text-purple-400 m-0">
-                  🧠 AI Production Intelligence &amp; Adaptive Workflow Learning
+                <h2 className="text-sm font-extrabold text-purple-400 m-0 flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  <span>AI Production Intelligence &amp; Adaptive Workflow Learning</span>
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300">
                   Phase 4 Capstone Standard
@@ -850,7 +881,11 @@ export default function PanelAnalytics({
             <div className="lg:col-span-6 bg-bg-surface border border-purple-500/30 rounded-2xl p-5 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-glass">
                 <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <span>📐</span> Explainable ML Turnaround Formula
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span>Explainable ML Turnaround Formula</span>
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold font-mono">
                   Accuracy: ±1.6m
@@ -919,7 +954,11 @@ export default function PanelAnalytics({
             <div className="lg:col-span-6 bg-bg-surface border border-amber-500/30 rounded-2xl p-5 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-border-glass">
                 <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>🧵</span> Thread Spool Batching Advisor
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span>Thread Spool Batching Advisor</span>
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold">
                   {threadBatches.length} Color Clusters
@@ -928,7 +967,11 @@ export default function PanelAnalytics({
 
               {threadBatches.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-center text-text-dim my-auto">
-                  <span className="text-2xl mb-1">✓</span>
+                  <div className="w-8 h-8 rounded-full bg-white/5 border border-border-glass flex items-center justify-center mb-2 text-emerald-400">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
                   <span className="text-xs font-bold text-text-main">No active orders in machine queue</span>
                   <span className="text-[11px] mt-0.5">When orders enter queue, the AI clusters them to save needle re-threadings.</span>
                 </div>
@@ -948,7 +991,12 @@ export default function PanelAnalytics({
                       <div className="flex items-center justify-between text-[11px] text-text-dim">
                         <span>
                           {b.savedMins > 0 ? (
-                            <strong className="text-emerald-400">⚡ Saves ~{b.savedMins}m needle re-threadings</strong>
+                            <strong className="text-emerald-400 flex items-center gap-1">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                              </svg>
+                              <span>Saves ~{b.savedMins}m needle re-threadings</span>
+                            </strong>
                           ) : (
                             <span>Single spool run</span>
                           )}
@@ -973,7 +1021,10 @@ export default function PanelAnalytics({
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm font-extrabold text-text-main m-0 flex items-center gap-1.5">
-                  <span>📈</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                    <polyline points="16 7 22 7 22 13" />
+                  </svg>
                   <span>Model Adaptive Learning Curve (Historical Error Reduction)</span>
                 </h3>
                 <p className="text-xs text-text-dim m-0 mt-0.5">
