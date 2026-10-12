@@ -261,7 +261,7 @@ export default function AuthModal() {
 
   if (view === 'forgot') {
     return (
-      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]">
         <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
           <div className="text-center">
             <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Reset Password</h2>
@@ -293,7 +293,7 @@ export default function AuthModal() {
 
   if (view === 'googleSetup' && googleSetup) {
     return (
-      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]">
         <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
           <div className="text-center">
             <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Create a Password</h2>
@@ -332,7 +332,7 @@ export default function AuthModal() {
   }
 
   return (
-    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]">
+    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]">
       <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
         
         {/* Header & Subtitle */}

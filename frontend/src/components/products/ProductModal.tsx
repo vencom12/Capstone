@@ -132,12 +132,6 @@ export default function ProductModal({
     setActionError(null);
     setMonogramError(null);
 
-    if (!isAuthenticated) {
-      setActionError('Please sign in to add items to your basket.');
-      showToast('Please sign in to add items to your basket', 'info');
-      setAuthOpen(true, 'login');
-      return false;
-    }
     if (isOutOfStock) {
       const err = `${product.name} is out of stock`;
       setActionError(err);
@@ -198,11 +192,20 @@ export default function ProductModal({
   };
 
   const handleBuyNow = () => {
-    if (handleAdd()) {
-      onClose();
-      if (onBuyNow) {
-        onBuyNow();
-      }
+    if (!handleAdd()) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setActionError('Please sign in to proceed with checkout and place your order.');
+      showToast('Please sign in to proceed with checkout', 'info');
+      setAuthOpen(true, 'login');
+      return;
+    }
+
+    onClose();
+    if (onBuyNow) {
+      onBuyNow();
     }
   };
 
@@ -537,7 +540,20 @@ export default function ProductModal({
                 {isOutOfStock ? 'Variant Out of Stock' : 'Buy Now'}
               </GlassButton>
             </div>
-            <InlineError message={actionError} className="text-center" />
+            {actionError && (
+              <div className="flex flex-col items-center gap-1 mt-1">
+                <InlineError error={actionError} className="w-full text-center" />
+                {!isAuthenticated && (
+                  <button
+                    type="button"
+                    onClick={() => setAuthOpen(true, 'login')}
+                    className="text-xs font-bold text-primary hover:underline bg-transparent border-none cursor-pointer py-1"
+                  >
+                    Click here to Sign In or Create an Account →
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

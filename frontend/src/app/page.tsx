@@ -127,7 +127,16 @@ export default function StorefrontPage() {
         fixed top-0 right-0 h-full z-[2000] transition-transform duration-300
         ${isBasketOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
-        <RightPanel onCheckout={() => setIsCheckoutOpen(true)} onCloseMobile={() => setBasketOpen(false)} />
+        <RightPanel 
+          onCheckout={() => {
+            if (!isAuthenticated) {
+              useUIStore.getState().setAuthOpen(true, 'login');
+              return;
+            }
+            setIsCheckoutOpen(true);
+          }} 
+          onCloseMobile={() => setBasketOpen(false)} 
+        />
       </div>
 
       {/* Drawer Overlay */}

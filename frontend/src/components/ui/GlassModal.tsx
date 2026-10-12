@@ -11,6 +11,7 @@ interface GlassModalProps {
   className?: string;
   maxWidth?: string;
   noPadding?: boolean;
+  zIndex?: string;
 }
 
 export default function GlassModal({
@@ -21,6 +22,7 @@ export default function GlassModal({
   className = '',
   maxWidth = 'max-w-[550px]',
   noPadding = false,
+  zIndex = 'z-[99999]',
 }: GlassModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -53,7 +55,7 @@ export default function GlassModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] overflow-y-auto p-2 sm:p-6 flex min-h-full items-center justify-center bg-black/60 backdrop-blur-md touch-scroll"
+      className={`fixed inset-0 ${zIndex} overflow-y-auto p-2 sm:p-6 flex min-h-full items-center justify-center bg-black/60 backdrop-blur-md touch-scroll`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
