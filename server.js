@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -519,9 +520,36 @@ server.listen(PORT, async () => {
 });
 
 // Graceful Shutdown to prevent Supabase connection leaks on nodemon restarts or process termination
+// Firebase Auth Helper Reverse Proxy (Transparent pass-through for OAuth redirects & helpers)
+app.use('/__/auth', (req, res) => {
+    const targetUrl = new URL(req.originalUrl, 'https://ryven-4cbd5.firebaseapp.com');
+    const options = {
+        hostname: 'ryven-4cbd5.firebaseapp.com',
+        port: 443,
+        path: targetUrl.pathname + targetUrl.search,
+        method: req.method,
+        headers: {
+            ...req.headers,
+            host: 'ryven-4cbd5.firebaseapp.com',
+        }
+    };
+
+    const proxyReq = https.request(options, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+        console.error('[Firebase Proxy Error]:', err.message);
+        res.status(502).send('Firebase Auth Proxy Error');
+    });
+
+    req.pipe(proxyReq);
+});
+
 // Fallback for Next.js Clean URLs (SPA Router Fallback)
 app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.includes('.')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/__') || req.path.includes('.')) {
         return next();
     }
     const cleanPath = req.path.replace(/\/$/, "");

@@ -1312,14 +1312,18 @@ exports.getGlobalAuditLogs = async (req, res) => {
         )];
         let targetUserMap = {};
         if (targetUserIds.length > 0) {
-            const targetUsers = await prisma.user.findMany({
-                where: { id: { in: targetUserIds } },
-                select: { id: true, username: true, email: true, role: true }
-            });
-            targetUserMap = targetUsers.reduce((acc, u) => {
-                acc[u.id] = u;
-                return acc;
-            }, {});
+            try {
+                const targetUsers = await prisma.user.findMany({
+                    where: { id: { in: targetUserIds } },
+                    select: { id: true, username: true, email: true, role: true }
+                });
+                targetUserMap = targetUsers.reduce((acc, u) => {
+                    acc[u.id] = u;
+                    return acc;
+                }, {});
+            } catch (err) {
+                console.warn('Could not enrich target users in audit logs:', err.message);
+            }
         }
 
         const targetProductIds = [...new Set(
@@ -1327,14 +1331,18 @@ exports.getGlobalAuditLogs = async (req, res) => {
         )];
         let targetProductMap = {};
         if (targetProductIds.length > 0) {
-            const targetProducts = await prisma.product.findMany({
-                where: { id: { in: targetProductIds } },
-                select: { id: true, name: true }
-            });
-            targetProductMap = targetProducts.reduce((acc, p) => {
-                acc[p.id] = p.name;
-                return acc;
-            }, {});
+            try {
+                const targetProducts = await prisma.product.findMany({
+                    where: { id: { in: targetProductIds } },
+                    select: { id: true, name: true }
+                });
+                targetProductMap = targetProducts.reduce((acc, p) => {
+                    acc[p.id] = p.name;
+                    return acc;
+                }, {});
+            } catch (err) {
+                console.warn('Could not enrich target products in audit logs:', err.message);
+            }
         }
 
         const targetInventoryIds = [...new Set(
@@ -1342,14 +1350,18 @@ exports.getGlobalAuditLogs = async (req, res) => {
         )];
         let targetInventoryMap = {};
         if (targetInventoryIds.length > 0) {
-            const targetInventory = await prisma.rawMaterial.findMany({
-                where: { id: { in: targetInventoryIds } },
-                select: { id: true, item: true }
-            });
-            targetInventoryMap = targetInventory.reduce((acc, i) => {
-                acc[i.id] = i.item;
-                return acc;
-            }, {});
+            try {
+                const targetInventory = await prisma.inventory.findMany({
+                    where: { id: { in: targetInventoryIds } },
+                    select: { id: true, item: true }
+                });
+                targetInventoryMap = targetInventory.reduce((acc, i) => {
+                    acc[i.id] = i.item;
+                    return acc;
+                }, {});
+            } catch (invErr) {
+                console.warn('Could not enrich target inventory in audit logs:', invErr.message);
+            }
         }
 
         const targetOrderIds = [...new Set(
@@ -1357,14 +1369,18 @@ exports.getGlobalAuditLogs = async (req, res) => {
         )];
         let targetOrderMap = {};
         if (targetOrderIds.length > 0) {
-            const targetOrders = await prisma.order.findMany({
-                where: { id: { in: targetOrderIds } },
-                select: { id: true, orderId: true, client: true }
-            });
-            targetOrderMap = targetOrders.reduce((acc, o) => {
-                acc[o.id] = o.orderId ? `#${o.orderId}` : o.client;
-                return acc;
-            }, {});
+            try {
+                const targetOrders = await prisma.order.findMany({
+                    where: { id: { in: targetOrderIds } },
+                    select: { id: true, orderId: true, client: true }
+                });
+                targetOrderMap = targetOrders.reduce((acc, o) => {
+                    acc[o.id] = o.orderId ? `#${o.orderId}` : o.client;
+                    return acc;
+                }, {});
+            } catch (err) {
+                console.warn('Could not enrich target orders in audit logs:', err.message);
+            }
         }
 
         const enrichedLogs = logs.map(l => {
