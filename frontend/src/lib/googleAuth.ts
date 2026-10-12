@@ -8,14 +8,10 @@
  *
  * Flow:
  *   1. startGoogleSignIn()     -> marks "pending" and navigates the whole tab to Google
- *   2. Google -> /__/auth/handler (same-origin proxy) -> back to the app
- *   3. completeGoogleSignIn()  -> reads the result once, exchanges it for our
- *                                 backend session cookie via POST /api/auth/google
- *
- * Dependencies (keep these working and this module keeps working):
- *   - lib/firebase.ts                 authDomain = window.location.host
- *   - middleware/firebaseAuthProxy.js /__/auth proxy (prod), next.config.ts (dev)
- *   - POST /api/auth/google           controllers/postgres/authController.googleAuth
+ *   2. Google -> /__/auth/handler -> back to the app
+ *   3. completeGoogleSignIn()  -> module-level singleton that safely catches the redirect result,
+ *                                 survives React StrictMode double-mounts, and exchanges
+ *                                 tokens with backend via POST /api/auth/google
  */
 import {
   getRedirectResult,
@@ -39,7 +35,7 @@ function setPending(on: boolean) {
     if (on) sessionStorage.setItem(PENDING_KEY, 'true');
     else sessionStorage.removeItem(PENDING_KEY);
   } catch {
-    /* storage unavailable (private mode) - redirect result path still works */
+    /* storage unavailable (private mode) */
   }
 }
 
@@ -58,7 +54,7 @@ function describeFirebaseError(err: any): string {
   return err?.message || 'Google sign-in failed.';
 }
 
-/** Step 1: send the whole tab to Google. Resolves only if navigation fails. */
+/** Step 1: send the whole tab to Google. */
 export async function startGoogleSignIn(): Promise<{ ok: false; message: string } | void> {
   setPending(true);
   try {
@@ -93,49 +89,101 @@ async function exchangeWithBackend(user: FirebaseUser): Promise<GoogleSignInOutc
   return { status: 'error', message: res.message || 'Google sign-in failed on server.' };
 }
 
-/**
- * Step 3: call once on app mount. Invokes `onOutcome` at most once, and only
- * when the user actually came back from a Google sign-in started by this app.
- * Returns an unsubscribe function.
- */
-export function completeGoogleSignIn(onOutcome: (outcome: GoogleSignInOutcome) => void): () => void {
-  let settled = false;
-  let active = true;
+// ---------------------------------------------------------------------------
+// Module-level Singleton State
+// Survives React 18/19 StrictMode double-mounting in dev without dropping results
+// ---------------------------------------------------------------------------
+let hasStartedRedirectCheck = false;
+let isExchanging = false;
+let finalOutcome: GoogleSignInOutcome | null = null;
+const listeners = new Set<(outcome: GoogleSignInOutcome) => void>();
 
-  const finish = async (user: FirebaseUser) => {
-    if (settled || !active) return;
-    settled = true;
-    setPending(false);
+function notifyListeners(outcome: GoogleSignInOutcome) {
+  finalOutcome = outcome;
+  listeners.forEach((listener) => {
     try {
-      const outcome = await exchangeWithBackend(user);
-      if (active) onOutcome(outcome);
-    } catch (err: any) {
-      if (active) onOutcome({ status: 'error', message: err?.message || 'Failed to complete Google sign-in.' });
+      listener(outcome);
+    } catch (e) {
+      console.error('[GoogleAuth] Listener execution error:', e);
     }
-  };
+  });
+}
 
-  // Primary: the redirect result (only non-null right after returning from Google).
+async function processUser(user: FirebaseUser) {
+  if (finalOutcome || isExchanging) return;
+  isExchanging = true;
+  setPending(false);
+
+  try {
+    console.log('[GoogleAuth] Exchanging Firebase user with backend:', user.email);
+    const outcome = await exchangeWithBackend(user);
+    notifyListeners(outcome);
+  } catch (err: any) {
+    console.error('[GoogleAuth] Exchange error:', err);
+    notifyListeners({
+      status: 'error',
+      message: err?.message || 'Failed to complete Google sign-in.',
+    });
+  } finally {
+    isExchanging = false;
+  }
+}
+
+function initSingletonAuthWatcher() {
+  if (hasStartedRedirectCheck || typeof window === 'undefined') return;
+  hasStartedRedirectCheck = true;
+
+  console.log('[GoogleAuth] Initializing module auth watcher...');
+
+  // 1. Primary: Consume the redirect result (strictly once per page lifecycle)
   getRedirectResult(auth)
     .then((result) => {
-      if (result?.user) finish(result.user);
+      if (result?.user) {
+        console.log('[GoogleAuth] Redirect result found:', result.user.email);
+        processUser(result.user);
+      } else {
+        console.log('[GoogleAuth] No redirect result on current origin.');
+      }
     })
     .catch((err) => {
       setPending(false);
-      if (err?.code && err.code !== 'auth/null-user' && active && !settled) {
-        settled = true;
-        console.error('[GoogleAuth] Redirect result error:', err);
-        onOutcome({ status: 'error', message: describeFirebaseError(err) });
+      if (err?.code && err.code !== 'auth/null-user') {
+        console.error('[GoogleAuth] getRedirectResult failed:', err);
+        notifyListeners({
+          status: 'error',
+          message: describeFirebaseError(err),
+        });
       }
     });
 
-  // Safety net: some browsers surface the user via the observer instead.
-  // Gated on the pending flag so a plain page reload never auto-logs anyone in.
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    if (user && isPending() && !useAuthStore.getState().isAuthenticated) finish(user);
+  // 2. Safety Net: Observer detection (for cases where user is already persisted in indexedDB)
+  onAuthStateChanged(auth, (user) => {
+    if (user && !useAuthStore.getState().isAuthenticated && !finalOutcome && !isExchanging) {
+      const pending = isPending();
+      console.log('[GoogleAuth] Observer detected Firebase user:', user.email, 'pending:', pending);
+      // Process if we initiated a redirect or if auth redirect query parameters exist
+      if (pending || (typeof window !== 'undefined' && (window.location.search.includes('apiKey=') || window.location.hash.includes('access_token')))) {
+        processUser(user);
+      }
+    }
   });
+}
 
+/**
+ * Step 3: Call in RootLayout / GlobalAuthListener on app mount.
+ * Guaranteed to deliver the outcome even if React unmounts/remounts during StrictMode.
+ */
+export function completeGoogleSignIn(onOutcome: (outcome: GoogleSignInOutcome) => void): () => void {
+  initSingletonAuthWatcher();
+
+  // If already resolved, immediately dispatch to this listener
+  if (finalOutcome) {
+    onOutcome(finalOutcome);
+    return () => {};
+  }
+
+  listeners.add(onOutcome);
   return () => {
-    active = false;
-    unsubscribe();
+    listeners.delete(onOutcome);
   };
 }
