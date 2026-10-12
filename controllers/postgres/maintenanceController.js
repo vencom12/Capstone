@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../../utils/prisma');
 const { randomUUID } = require('crypto');
 
 // Get all Maintenance Incident Tickets, Real Machines & Dynamic Shop Profile

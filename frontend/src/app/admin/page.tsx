@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -147,15 +147,26 @@ export default function AdminPage() {
      }
   };
 
-  // Fetch complete admin state
-  const fetchAdminData = async () => {
+  // Fetch complete admin state with request deduplication & in-flight locking
+  const isFetchingAdminRef = useRef(false);
+  const queuedFetchRef = useRef(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchAdminData = useCallback(async (silent = false) => {
     if (isLoggingOutRef.current) return;
     const authState = useAuthStore.getState();
     if (!authState.isAuthenticated || authState.user?.role !== 'admin' || authState.isLoggingOut) {
       return;
     }
 
-    setIsSyncing(true);
+    if (isFetchingAdminRef.current) {
+      queuedFetchRef.current = true;
+      return;
+    }
+
+    isFetchingAdminRef.current = true;
+    if (!silent) setIsSyncing(true);
+
     try {
       const data = await api.get<any>('/api/admin/dashboard-state');
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
@@ -168,23 +179,19 @@ export default function AdminPage() {
       }
       setLoadError(null);
 
-      // Fetch machines separately since admin dashboard-state doesn't include them
-      const machineData: any = await api.get('/api/machines');
-      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
-
-      if (machineData) {
+      // Fetch machines non-blockingly
+      api.get('/api/machines').then((machineData: any) => {
+        if (!machineData || isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
         if (machineData.data) {
           setMachines(machineData.data);
         } else if (Array.isArray(machineData)) {
           setMachines(machineData);
         }
-      }
+      }).catch(() => {});
     } catch (err: any) {
-      // If logging out or already unauthenticated, cleanly abort without noise
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) {
         return;
       }
-      // AbortError or background tab timeouts should not pop up a fatal dev modal
       if (err?.name === 'AbortError' || err?.message?.includes('timed out') || err?.message?.includes('aborted')) {
         console.warn('[Admin] Sync request aborted or timed out during background pause');
         return;
@@ -192,18 +199,36 @@ export default function AdminPage() {
       const message = err instanceof Error ? err.message : 'Unknown error';
       const lower = message.toLowerCase();
       if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
-        // Unauthenticated session expired: safely route to login without throwing unhandled dev error
         logout();
         router.replace('/?auth=login');
         return;
       }
-      console.error('Failed to sync admin operations data:', err);
-      setLoadError(message);
-      showToast(`Failed to load dashboard: ${message}`, 'error');
+      console.warn('[Admin State Sync Notice]:', message);
+      // Only set fatal banner/toast if orders list is completely empty, preventing momentary connection spikes from popping up error banners
+      setOrders(currentOrders => {
+        if (currentOrders.length === 0) {
+          setLoadError(message);
+          showToast(`Failed to load dashboard: ${message}`, 'error');
+        }
+        return currentOrders;
+      });
     } finally {
       setIsSyncing(false);
+      isFetchingAdminRef.current = false;
+      if (queuedFetchRef.current) {
+        queuedFetchRef.current = false;
+        fetchAdminData(true);
+      }
     }
-  };
+  }, [logout, router]);
+
+  // Debounce socket sync bursts into a single coordinated fetch
+  const scheduleFetchAdminData = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      fetchAdminData(true);
+    }, 250);
+  }, [fetchAdminData]);
 
   // Hydration Check (Session-only tab state: resets securely on browser exit)
   useEffect(() => {
@@ -230,7 +255,7 @@ export default function AdminPage() {
     if (isAuthenticated && checkAccess('admin')) {
       fetchAdminData();
     }
-  }, [isAuthenticated, checkAccess, isHydrated]);
+  }, [isAuthenticated, checkAccess, isHydrated, fetchAdminData]);
 
   useEffect(() => {
     if (isHydrated) {
@@ -275,25 +300,20 @@ export default function AdminPage() {
 
       socket.on('dataChanged', (data: any) => {
         if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
-        console.log('[Socket Admin] Live telemetry updated:', data.entity, data.action);
 
         // Dynamic Toasts & Optimistic UI Synced Locks
         if (data.entity === 'ORDER') {
           if (data.action === 'CREATE') {
             showToast('New Customer Stitched Ticket Received!', 'success');
-          } else if (data.action === 'UPDATE') {
-            showToast(`Order status updated successfully`, 'info');
           }
-          fetchAdminData();
+          scheduleFetchAdminData();
         } else if (data.entity === 'PRODUCT') {
           if (data.action === 'CREATE') {
             showToast('New Custom storefront catalog published!', 'success');
           }
-          fetchAdminData();
-        } else if (['INVENTORY', 'INVENTORY_LOG'].includes(data.entity)) {
-          fetchAdminData();
-        } else if (data.entity === 'MACHINE') {
-          fetchAdminData();
+          scheduleFetchAdminData();
+        } else if (['INVENTORY', 'INVENTORY_LOG', 'MACHINE'].includes(data.entity)) {
+          scheduleFetchAdminData();
         }
       });
     };

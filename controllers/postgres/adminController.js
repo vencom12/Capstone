@@ -9,7 +9,8 @@ exports.getDashboardState = async (req, res) => {
         const limit = 100;
         const skip = (page - 1) * limit;
 
-        const [orders, inventory, products, totalUsers, totalOrders, adminUsers, trafficData, totalVisits30D] = await Promise.all([
+        // Core operational tables
+        const [orders, inventory, products, totalUsers, totalOrders, adminUsers] = await Promise.all([
             prisma.order.findMany({
                 include: { transaction: true, receipt: true },
                 orderBy: { createdAt: 'desc' },
@@ -35,85 +36,8 @@ exports.getDashboardState = async (req, res) => {
                     }
                 },
                 orderBy: [{ role: 'asc' }, { createdAt: 'desc' }]
-            }),
-            prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 }),
-            prisma.siteTraffic.count({
-                where: {
-                    timestamp: {
-                        gte: new Date(new Date().setDate(new Date().getDate() - 30))
-                    }
-                }
             })
         ]);
-
-        // Revenue Calculation (All non-cancelled orders)
-        const revenueAggregate = await prisma.order.aggregate({
-            _sum: { totalAmount: true },
-            _count: { id: true },
-            where: {
-                NOT: { status: 'Order Canceled' }
-            }
-        });
-
-        // Paid Revenue (For separate tracking if needed)
-        const paidAggregate = await prisma.order.aggregate({
-            _sum: { totalAmount: true },
-            where: { paymentStatus: 'paid' }
-        });
-
-        // Real Order Trends (Last 6 months)
-        const allPaidOrders = await prisma.order.findMany({
-            where: { paymentStatus: 'paid' },
-            select: { totalAmount: true, createdAt: true }
-        });
-
-        const monthlyRevenue = {};
-        allPaidOrders.forEach(o => {
-            const d = new Date(o.createdAt);
-            const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
-            monthlyRevenue[key] = (monthlyRevenue[key] || 0) + (o.totalAmount || 0);
-        });
-
-        const orderTrends = Object.entries(monthlyRevenue).map(([key, revenue]) => {
-            const [month, year] = key.split('/');
-            return { _id: { month: parseInt(month), year: parseInt(year) }, revenue };
-        }).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month)).slice(-6);
-
-        // Status Distribution
-        const statusCounts = await prisma.order.groupBy({
-            by: ['status'],
-            _count: { id: true }
-        });
-        const statusDistribution = statusCounts.map(s => ({ _id: s.status, count: s._count.id }));
-
-        // Simple Design Stats (Top 5 items in orders)
-        // Since items is JSON, we'll process it in JS for now to match Mongo logic perfectly
-        // In a full SQL design, we'd have an OrderItem table.
-        const allOrders = await prisma.order.findMany({ select: { items: true } });
-        const itemCounts = {};
-        allOrders.forEach(order => {
-            const items = order.items || [];
-            items.forEach(item => {
-                itemCounts[item.name] = (itemCounts[item.name] || 0) + (item.quantity || 1);
-            });
-        });
-        const designStats = Object.entries(itemCounts)
-            .map(([name, count]) => ({ _id: name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
-
-        // Top Liked Designs (Most Favorited)
-        const productsWithFavs = await prisma.product.findMany({
-            include: {
-                _count: {
-                    select: { favoritedBy: true }
-                }
-            }
-        });
-        const topLiked = productsWithFavs
-            .map(p => ({ _id: p.name, count: p._count.favoritedBy }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
 
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const enrichedProducts = await enrichProductsWithStock(products);
@@ -131,6 +55,79 @@ exports.getDashboardState = async (req, res) => {
             };
         });
 
+        // Analytics metrics with graceful fallback so connection spikes never fail the dashboard
+        let analytics = {
+            userCount: totalUsers,
+            revenue: 0,
+            activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
+            lowStock: inventory.filter(i => i.count <= (i.minThreshold || 10)).length,
+            totalOrders,
+            totalVisits: 0,
+            avgOrderValue: 0,
+            orderTrends: [],
+            statusDistribution: [],
+            topOrdered: [],
+            topLiked: [],
+            traffic: []
+        };
+
+        try {
+            const [revenueAggregate, statusCounts, trafficData, totalVisits30D] = await Promise.all([
+                prisma.order.aggregate({
+                    _sum: { totalAmount: true },
+                    _count: { id: true },
+                    where: { NOT: { status: 'Order Canceled' } }
+                }),
+                prisma.order.groupBy({
+                    by: ['status'],
+                    _count: { id: true }
+                }),
+                prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 }).catch(() => []),
+                prisma.siteTraffic.count({
+                    where: { timestamp: { gte: new Date(new Date().setDate(new Date().getDate() - 30)) } }
+                }).catch(() => 0)
+            ]);
+
+            const totalRev = revenueAggregate?._sum?.totalAmount || 0;
+            const revCount = revenueAggregate?._count?.id || 0;
+
+            // Design Stats from active orders
+            const itemCounts = {};
+            orders.forEach(order => {
+                let items = [];
+                if (Array.isArray(order.items)) {
+                    items = order.items;
+                } else if (typeof order.items === 'string') {
+                    try { items = JSON.parse(order.items); } catch { items = []; }
+                }
+                if (Array.isArray(items)) {
+                    items.forEach(item => {
+                        if (item && item.name) {
+                            itemCounts[item.name] = (itemCounts[item.name] || 0) + (Number(item.quantity) || 1);
+                        }
+                    });
+                }
+            });
+
+            const designStats = Object.entries(itemCounts)
+                .map(([name, count]) => ({ _id: name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+            analytics = {
+                ...analytics,
+                revenue: totalRev,
+                totalOrders: revCount || totalOrders,
+                totalVisits: totalVisits30D || 0,
+                avgOrderValue: revCount > 0 ? (totalRev / revCount) : 0,
+                statusDistribution: (statusCounts || []).map(s => ({ _id: s.status, count: s._count.id })),
+                topOrdered: designStats,
+                traffic: trafficData || []
+            };
+        } catch (analyticsErr) {
+            console.warn('[Admin Dashboard Analytics Notice]:', analyticsErr.message);
+        }
+
         res.json({
             orders,
             inventory,
@@ -141,22 +138,7 @@ exports.getDashboardState = async (req, res) => {
                 totalPages: Math.ceil(totalOrders / limit),
                 totalOrders
             },
-            analytics: {
-                userCount: totalUsers,
-                revenue: revenueAggregate._sum.totalAmount || 0,
-                activeOrders: orders.filter(o => o.status !== 'Completed' && o.status !== 'Order Canceled').length,
-                lowStock: inventory.filter(i => i.count <= (i.minThreshold || 10)).length,
-                totalOrders: revenueAggregate._count.id || 0,
-                totalVisits: totalVisits30D || 0,
-                avgOrderValue: (revenueAggregate._count.id > 0)
-                    ? (revenueAggregate._sum.totalAmount / revenueAggregate._count.id)
-                    : 0,
-                orderTrends,
-                statusDistribution,
-                topOrdered: designStats,
-                topLiked: topLiked,
-                traffic: trafficData
-            }
+            analytics
         });
     } catch (err) {
         console.error('getDashboardState error:', err);
