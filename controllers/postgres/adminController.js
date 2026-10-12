@@ -871,10 +871,23 @@ exports.updateOrdersStatus = async (req, res) => {
             }
         }
 
-        // Broadcast immediate order change to staff
+        // Broadcast immediate order change to all clients, staff, and customer user rooms
         const io = req.app.get('io');
-        io.to('staff').emit('ordersUpdated');
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status });
+        if (io) {
+            io.emit('ordersUpdated', { ids, status });
+            io.to('staff').emit('ordersUpdated', { ids, status });
+            results.forEach(updatedOrder => {
+                if (updatedOrder && updatedOrder.userId) {
+                    io.to(`user:${updatedOrder.userId}`).emit('ordersUpdated', {
+                        orderId: updatedOrder.orderId,
+                        id: updatedOrder.id,
+                        status: updatedOrder.status,
+                        order: updatedOrder
+                    });
+                }
+            });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { ids, status, results });
+        }
 
         // Respond immediately to the client (<25ms) so the UI is unblocked
         if (errors.length > 0) {
@@ -1631,6 +1644,10 @@ exports.createWalkInOrder = async (req, res) => {
 
         // Trigger queue recalculation & socket updates
         const io = req.app.get('io');
+        if (io) {
+            io.emit('ordersUpdated', { orderId: createdOrder.orderId, status: createdOrder.status });
+            socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, createdOrder);
+        }
         setImmediate(() => {
             recalculateQueuePriorities(io).catch(err => {
                 console.error('[Walk-In AI Queue Error]:', err);

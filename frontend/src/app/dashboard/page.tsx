@@ -237,13 +237,75 @@ export default function DashboardPage() {
     // 3. Initial Data Fetch
     fetchDashboardState();
 
-    // 4. Real-time Polling (15s interval - silent in background)
+    // 4. Fallback Polling (3s interval - silent in background)
     const interval = setInterval(() => {
       fetchDashboardState(true);
-    }, 15000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isHydrated, isAuthenticated, checkAccess, router, fetchDashboardState]);
+
+  // Real-time Socket.IO Listener & Instant Tab Focus Sync
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isHydrated || !isAuthenticated) return;
+    let activeSocket: any = null;
+    let isCancelled = false;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    const connectSocket = () => {
+      if (isCancelled) return;
+      const io = (window as any).io;
+      if (!io) return;
+
+      const socket = io(API_BASE, {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
+      activeSocket = socket;
+
+      const handleLiveUpdate = () => {
+        fetchDashboardState(true);
+      };
+
+      socket.on('dataChanged', (data: any) => {
+        if (!data || !data.entity || ['ORDER', 'PRODUCT', 'INVENTORY', 'WALLET', 'TRANSACTION'].includes(data.entity)) {
+          handleLiveUpdate();
+        }
+      });
+
+      socket.on('ordersUpdated', handleLiveUpdate);
+      socket.on('order:cancelled', handleLiveUpdate);
+    };
+
+    // Load Socket.IO client script if not already on window
+    if ((window as any).io) {
+      connectSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = connectSocket;
+      document.head.appendChild(script);
+    }
+
+    // Window Focus & Tab Switch Listener: instant 0ms refresh when switching back to this tab
+    const handleTabActive = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardState(true);
+      }
+    };
+    window.addEventListener('focus', handleTabActive);
+    document.addEventListener('visibilitychange', handleTabActive);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('focus', handleTabActive);
+      document.removeEventListener('visibilitychange', handleTabActive);
+      if (activeSocket) {
+        activeSocket.close();
+      }
+    };
+  }, [isHydrated, isAuthenticated, fetchDashboardState]);
 
 
 
@@ -1006,7 +1068,7 @@ export default function DashboardPage() {
       />
       {/* Order Details Modal */}
       <OrderDetailsModal
-        order={selectedOrder}
+        order={selectedOrder ? orders.find((o) => (o.orderId && o.orderId === selectedOrder.orderId) || (o.id && o.id === selectedOrder.id)) || selectedOrder : null}
         isOpen={isOrderDetailsOpen}
         onClose={() => setIsOrderDetailsOpen(false)}
         initialTab={orderDetailsTab}
@@ -1021,7 +1083,7 @@ export default function DashboardPage() {
       <InvoiceModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
-        order={selectedInvoiceOrder}
+        order={selectedInvoiceOrder ? orders.find((o) => (o.orderId && o.orderId === selectedInvoiceOrder.orderId) || (o.id && o.id === selectedInvoiceOrder.id)) || selectedInvoiceOrder : null}
         transaction={selectedInvoiceTx}
         user={user}
       />

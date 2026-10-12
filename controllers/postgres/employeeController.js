@@ -71,8 +71,16 @@ exports.updateOrderStatus = async (req, res) => {
 
         // Broadcast both products and raw materials changes along with order update
         const io = req.app.get('io');
-        io.to(`user:${updatedOrder.userId}`).to('staff').emit('ordersUpdated');
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        if (io) {
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
+            io.to(`user:${updatedOrder.userId}`).to('staff').emit('ordersUpdated', {
+                orderId: updatedOrder.orderId,
+                status: updatedOrder.status,
+                id: updatedOrder.id,
+                order: updatedOrder
+            });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
         const productsList = await prisma.product.findMany();
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');

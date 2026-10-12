@@ -84,10 +84,63 @@ function OrderTrackerContent() {
     };
 
     fetchOrder();
-    const interval = setInterval(fetchOrder, 4000);
+    const interval = setInterval(fetchOrder, 3000);
+
+    // Real-time Socket.IO Listener for instant status change
+    let activeSocket: any = null;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    const connectSocket = () => {
+      if (!isMounted) return;
+      const io = (window as any).io;
+      if (!io) return;
+
+      const socket = io(API_BASE, {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
+      activeSocket = socket;
+
+      const handleLiveOrderUpdate = () => {
+        fetchOrder();
+      };
+
+      socket.on('dataChanged', (data: any) => {
+        if (!data || !data.entity || data.entity === 'ORDER') {
+          handleLiveOrderUpdate();
+        }
+      });
+      socket.on('ordersUpdated', handleLiveOrderUpdate);
+      socket.on('order:cancelled', handleLiveOrderUpdate);
+    };
+
+    if ((window as any).io) {
+      connectSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = connectSocket;
+      document.head.appendChild(script);
+    }
+
+    // Instant refresh when user switches tabs or window receives focus
+    const handleTabActive = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrder();
+      }
+    };
+    window.addEventListener('focus', handleTabActive);
+    document.addEventListener('visibilitychange', handleTabActive);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      window.removeEventListener('focus', handleTabActive);
+      document.removeEventListener('visibilitychange', handleTabActive);
+      if (activeSocket) {
+        activeSocket.close();
+      }
     };
   }, [rawId]);
 
