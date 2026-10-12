@@ -61,7 +61,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
-        <GlobalAuthListener />
+        <Suspense fallback={null}>
+          <GlobalAuthListener />
+        </Suspense>
         {children}
         <Suspense fallback={null}>
           <AuthModal />

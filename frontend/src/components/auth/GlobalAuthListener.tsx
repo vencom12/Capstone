@@ -11,8 +11,10 @@ import { showToast } from '@/components/ui/Toast';
 export default function GlobalAuthListener() {
   const router = useRouter();
   const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(false);
 
   const processFirebaseUser = async (user: FirebaseUser) => {
+    if (!isMountedRef.current) return;
     if (!user.email) {
       showToast('No email associated with this Google account.', 'error');
       return;
@@ -37,6 +39,8 @@ export default function GlobalAuthListener() {
         uid: user.uid,
       });
 
+      if (!isMountedRef.current) return;
+
       if (res.success && res.needsPassword && res.setupToken) {
         useUIStore.getState().setGoogleSetupData({
           token: res.setupToken,
@@ -52,14 +56,18 @@ export default function GlobalAuthListener() {
           sessionStorage.setItem('stitch-session-active', 'true');
         }
         showToast(`Welcome back, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
-        if (res.user?.role === 'admin') {
-          router.replace('/admin');
-        } else if (res.user?.role === 'employee') {
-          router.replace('/employee');
-        } else {
-          router.replace('/');
-          router.refresh();
-        }
+        
+        // Defer routing transition to next tick to ensure component is fully committed
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          if (res.user?.role === 'admin') {
+            router.replace('/admin');
+          } else if (res.user?.role === 'employee') {
+            router.replace('/employee');
+          } else {
+            router.refresh();
+          }
+        }, 50);
       } else {
         console.error('[Google Auth] Backend login error:', res.message);
         showToast(res.message || 'Google sign-in failed on server.', 'error');
@@ -73,12 +81,12 @@ export default function GlobalAuthListener() {
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     // 1. Direct Redirect Handler:
-    // getRedirectResult is ONLY non-null immediately after returning from a redirect!
-    // Running this unconditionally ensures logins are never lost if the browser stripped sessionStorage.
     getRedirectResult(auth)
       .then((result) => {
-        if (result && result.user) {
+        if (result && result.user && isMountedRef.current) {
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('stitch-google-auth-pending');
           }
@@ -102,9 +110,8 @@ export default function GlobalAuthListener() {
       });
 
     // 2. Auth State Observer:
-    // Seamlessly handles logins whether completed via Popup or Redirect
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !useAuthStore.getState().isAuthenticated) {
+      if (user && isMountedRef.current && !useAuthStore.getState().isAuthenticated) {
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('stitch-google-auth-pending');
         }
@@ -113,7 +120,10 @@ export default function GlobalAuthListener() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
