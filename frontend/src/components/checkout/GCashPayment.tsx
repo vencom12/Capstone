@@ -18,6 +18,8 @@ interface GCashPaymentProps {
   setManualRef?: (val: string) => void;
   onManualRefChange?: (val: string) => void;
   onSubmitManualRef: () => void;
+  onBypassPayment?: () => void;
+  isBypassing?: boolean;
 }
 
 export default function GCashPayment({
@@ -34,7 +36,9 @@ export default function GCashPayment({
   manualRef,
   setManualRef,
   onManualRefChange,
-  onSubmitManualRef
+  onSubmitManualRef,
+  onBypassPayment,
+  isBypassing = false,
 }: GCashPaymentProps) {
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
@@ -119,6 +123,48 @@ export default function GCashPayment({
           </div>
         )}
       </div>
+
+      {/* Developer / Testing Payment Bypass Card */}
+      {onBypassPayment && (
+        <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-500 text-black w-5 h-5 rounded-md flex items-center justify-center font-black text-xs">
+                ⚡
+              </span>
+              <span className="text-xs font-bold text-amber-300">
+                Testing Mode: GCash Payment Bypass
+              </span>
+            </div>
+            <span className="text-[0.65rem] bg-amber-500/20 text-amber-300 font-mono px-2 py-0.5 rounded-full border border-amber-500/30 font-bold uppercase tracking-wider">
+              1-Click Bypass
+            </span>
+          </div>
+          <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
+            Need to test checkout? Click below to skip real money transfer and receipt uploading. Instantly generates a verified test reference and places this order directly into the active queue.
+          </p>
+          <button
+            type="button"
+            onClick={onBypassPayment}
+            disabled={isBypassing || analyzing}
+            className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-2 hover:shadow-amber-500/20 active:scale-[0.99]"
+          >
+            {isBypassing ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <span>Bypassing GCash & Placing Order...</span>
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                <span>⚡ Bypass GCash Payment (Instant Auto-Verify)</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Upload Zone */}
       <div className="flex flex-col gap-2">

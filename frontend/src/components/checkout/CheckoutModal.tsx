@@ -40,6 +40,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [isBypassing, setIsBypassing] = useState(false);
 
   const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
@@ -382,6 +383,71 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     }
   };
 
+  const handleBypassGCash = async () => {
+    if (items.length === 0) {
+      showToast('Your cart is empty.', 'error');
+      return;
+    }
+
+    const isPickup = !deliveryEnabled || fulfillmentType === 'pickup';
+    let currentAddress = '';
+    
+    if (isPickup) {
+      const phone = claimantPhone.trim() || user?.phoneNumber || '09123456789';
+      const name = claimantName.trim() || user?.username || 'Test Customer';
+      currentAddress = `Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301 (Claimant: ${name}, Phone: ${phone})`;
+    } else {
+      currentAddress = deliveryAddress.trim() || user?.address || 'Pacific Mall Lucena, Quezon 4301';
+    }
+
+    setIsBypassing(true);
+    const testRef = `TEST-GCASH-${Date.now().toString().slice(-8)}`;
+
+    try {
+      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
+      await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
+        items,
+        totalAmount: finalTotal,
+        address: currentAddress,
+        notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
+        paymentMethod: 'gcash',
+        isTestBypass: true,
+        referenceNumber: testRef,
+        receiptUrl: 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg',
+        personalization: {
+          fulfillmentType: isPickup ? 'pickup' : 'delivery',
+          courier: isPickup ? 'Store Pick-up' : 'J&T Express',
+          referenceNumber: testRef,
+          claimantName: isPickup ? (claimantName.trim() || user?.username || 'Test Customer') : undefined,
+          claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber || '09123456789') : undefined,
+          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          text: firstPersonalizedItem?.personalization?.text,
+          color: firstPersonalizedItem?.personalization?.threadColor,
+          font: firstPersonalizedItem?.personalization?.font,
+        }
+      });
+
+      setPaymentVerified(true);
+      setAiVerificationResult(`⚡ Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
+      showToast('⚡ Test Mode: GCash Payment Bypassed & Order Placed!', 'success');
+
+      try {
+        await refreshUser();
+        await fetchDashboardState();
+        handleClearProcessedItems();
+      } catch (cleanErr) {
+        console.error('[Bypass Cleanup Notice]:', cleanErr);
+      }
+
+      handleModalClose(true);
+    } catch (err: any) {
+      console.error('[Bypass Order Error]:', err);
+      showToast(err.message || 'Failed to bypass payment.', 'error');
+    } finally {
+      setIsBypassing(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!paymentVerified) {
       showToast('Please upload your receipt or enter your GCash reference number.', 'error');
@@ -653,6 +719,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                setManualRef={setManualRef}
                onManualRefChange={setManualRef}
                onSubmitManualRef={handleSubmitManualRef}
+               onBypassPayment={handleBypassGCash}
+               isBypassing={isBypassing}
              />
 
              {paymentVerified && (
