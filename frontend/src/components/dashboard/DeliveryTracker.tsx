@@ -127,14 +127,36 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
       }`}>
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold shadow-sm ${
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm ${
             isDelivered
               ? 'bg-success text-white'
               : isOutForDelivery
                 ? 'bg-secondary text-white animate-pulse'
                 : 'bg-white/10 text-text-main'
           }`}>
-            {isDelivered ? '✓' : isOutForDelivery ? '🚚' : isInTransit ? '📦' : '🧵'}
+            {isDelivered ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : isOutForDelivery ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="1" y="3" width="15" height="13" />
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                <circle cx="5.5" cy="18.5" r="2.5" />
+                <circle cx="18.5" cy="18.5" r="2.5" />
+              </svg>
+            ) : isInTransit ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="21 8 21 21 3 21 3 8" />
+                <rect x="1" y="3" width="22" height="5" />
+                <line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 14 14" />
+              </svg>
+            )}
           </div>
           <div>
             <h4 className="text-sm font-extrabold m-0 leading-tight">
@@ -176,7 +198,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           title="View and print 4x6 inch pouch dispatch label"
         >
-          <span>{isPickup ? '📄 Claim Slip' : '🏷️ Parcel Label'}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <span>{isPickup ? 'Claim Slip' : 'Parcel Label'}</span>
         </button>
       </div>
 
@@ -186,7 +212,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           {isPickup ? (
             <>
               <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
-                <span>🏪</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                </svg>
                 <span>STORE PICK-UP</span>
               </div>
               <div>
@@ -198,7 +226,12 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
             <>
               {/* Courier Delivery Indicator */}
               <div className="flex items-center gap-1.5 bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
-                <span>🚚</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="1" y="3" width="15" height="13" />
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
                 <span>PARCEL DELIVERY</span>
               </div>
               <div>

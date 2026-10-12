@@ -74,7 +74,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) {
-      showToast('Please enter your feedback comments', 'error');
+      showToast('Please enter your inquiry details', 'error');
       return;
     }
 
@@ -82,21 +82,21 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
     try {
       await api.post('/api/customer/feedback', {
         category,
-        rating,
+        rating: 5,
         message: message.trim(),
         orderId: orderId.trim() || undefined,
         customerName: customerName.trim() || undefined,
         customerEmail: customerEmail.trim() || undefined
       });
 
-      showToast('Thank you! Your feedback has been sent directly to our staff.', 'success');
+      showToast('Inquiry sent! Our Pacific Mall workshop staff will review your message.', 'success');
       setMessage('');
       if (!defaultOrderId) setOrderId('');
       setActiveTab('faqs');
       onClose();
     } catch (err: any) {
-      console.warn('Feedback submit error:', err);
-      showToast(err.message || 'Failed to submit feedback', 'error');
+      console.warn('Inquiry submit error:', err);
+      showToast(err.message || 'Failed to submit inquiry', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -106,8 +106,8 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
-      title={activeTab === 'faqs' ? 'Help & Customer FAQs' : 'Customer Feedback & Reviews'}
-      maxWidth="max-w-[580px]"
+      title={activeTab === 'faqs' ? 'Help & Customer FAQs' : 'Workshop Support & Inquiries'}
+      maxWidth="max-w-[620px]"
     >
       <div className="flex flex-col gap-4 text-left">
         {/* Navigation Tabs */}
@@ -115,32 +115,31 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
           <button
             type="button"
             onClick={() => setActiveTab('faqs')}
-            className={`pb-2 px-3 text-xs font-bold transition-all cursor-pointer bg-transparent border-none ${
+            className={`pb-2.5 px-3 text-xs font-bold transition-all cursor-pointer bg-transparent border-none ${
               activeTab === 'faqs'
                 ? '!border-b-2 !border-primary text-primary'
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            ❓ FAQs & Store Info
+            FAQs & Store Info
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('feedback')}
-            className={`pb-2 px-3 text-xs font-bold transition-all cursor-pointer bg-transparent border-none flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 text-xs font-bold transition-all cursor-pointer bg-transparent border-none flex items-center gap-1.5 ${
               activeTab === 'feedback'
                 ? '!border-b-2 !border-primary text-primary'
                 : 'text-text-dim hover:text-text-main'
             }`}
           >
-            <span>💬 Send Feedback & Review</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span>Contact Workshop & Inquire</span>
           </button>
         </div>
 
         {activeTab === 'faqs' ? (
           <>
             {/* Store Info Quick Card */}
-            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-border-glass flex flex-col gap-2">
+            <div className="p-4 rounded-2xl bg-white/[0.04] border border-border-glass flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-sm text-text-main">Eds Towels & Caps</span>
                 <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30">
@@ -170,8 +169,8 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               </div>
             </div>
 
-            {/* FAQ Accordion List */}
-            <div className="flex flex-col gap-2 max-h-[350px] overflow-y-auto pr-1">
+            {/* FAQ Accordion List - Single natural scroll container via GlassModal */}
+            <div className="flex flex-col gap-2.5 pb-4">
               <span className="text-[0.7rem] font-bold uppercase tracking-wider text-text-dim/80 px-1">
                 Frequently Asked Questions
               </span>
@@ -180,21 +179,34 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 return (
                   <div 
                     key={idx}
-                    className="border border-border-glass rounded-xl overflow-hidden bg-bg-surface/50 transition-all"
+                    className="border border-border-glass rounded-xl overflow-hidden bg-bg-surface/50 transition-colors shadow-sm"
                   >
                     <button
                       type="button"
                       onClick={() => toggleFaq(idx)}
-                      className="w-full p-3 flex justify-between items-center text-left bg-transparent border-none cursor-pointer text-text-main hover:bg-white/[0.02] transition-colors"
+                      className="w-full p-4 flex justify-between items-center text-left bg-transparent border-none cursor-pointer text-text-main hover:bg-white/[0.03] transition-colors"
                     >
-                      <span className="font-bold text-xs sm:text-sm pr-2">{faq.q}</span>
-                      <span className={`text-xs text-primary transition-transform duration-200 shrink-0 font-bold ${isOpen ? 'rotate-180' : ''}`}>
-                        ▼
-                      </span>
+                      <span className="font-bold text-xs sm:text-sm pr-3 leading-snug">{faq.q}</span>
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`text-primary transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
                     </button>
                     {isOpen && (
-                      <div className="p-3 pt-0 text-xs text-text-dim leading-relaxed border-t border-white/5 animate-fade">
-                        {faq.a}
+                      <div 
+                        className="px-4 pt-3 text-xs sm:text-[0.84rem] text-text-dim/95 border-t border-white/5 select-text"
+                        style={{ paddingBottom: '1.75rem', lineHeight: '1.65' }}
+                      >
+                        <p className="m-0 p-0 block leading-relaxed">{faq.a}</p>
                       </div>
                     )}
                   </div>
@@ -209,8 +221,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 onClick={() => setActiveTab('feedback')}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-xs text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
               >
-                <span>💬</span>
-                Leave Feedback / Inquire
+                <span>Have a Question? Contact Staff</span>
               </button>
               <button
                 type="button"
@@ -222,49 +233,26 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
             </div>
           </>
         ) : (
-          /* Feedback Submission Form */
+          /* Workshop Inquiry & Support Form */
           <form onSubmit={handleSubmitFeedback} className="flex flex-col gap-3.5 animate-fade">
             <p className="text-xs text-text-dim m-0 leading-relaxed">
-              Your feedback is shared directly with our embroidery operators and workshop staff to help us continually improve your orders.
+              Send a direct inquiry to our Pacific Mall workshop operators regarding custom text embroidery, rush turnaround, store pick-up, or active orders.
             </p>
-
-            {/* Rating Stars Picker */}
-            <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text-main">Overall Experience & Quality Rating</span>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    className="text-2xl p-1 bg-transparent border-0 cursor-pointer hover:scale-110 transition-transform"
-                    title={`${star} star(s)`}
-                  >
-                    <span className={star <= rating ? 'text-amber-400 drop-shadow-sm' : 'text-white/20'}>
-                      ★
-                    </span>
-                  </button>
-                ))}
-                <span className="text-xs font-mono font-bold text-primary ml-2">
-                  {rating === 5 ? '5.0 — Excellent' : rating === 4 ? '4.0 — Good' : rating === 3 ? '3.0 — Average' : `${rating}.0 — Needs Attention`}
-                </span>
-              </div>
-            </div>
 
             {/* Category & Order ID */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-text-dim">Feedback Category</label>
+                <label className="text-xs font-bold text-text-dim">Inquiry Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none cursor-pointer"
                 >
-                  <option value="Order Quality">Order Quality & Finishing</option>
-                  <option value="Embroidery Stitching">Embroidery Stitching & Thread</option>
-                  <option value="Turnaround & Delivery">Turnaround & Delivery Speed</option>
-                  <option value="Customer Support">Staff & Storefront Support</option>
-                  <option value="General">General Feedback / Inquiries</option>
+                  <option value="Custom Embroidery Inquiry">Custom Embroidery & Personalization</option>
+                  <option value="Rush Production">Rush Production & Turnaround</option>
+                  <option value="Store Pick-up & Delivery">Pacific Mall Pick-up / J&T Delivery</option>
+                  <option value="Order Issue">Order Modification or Issue</option>
+                  <option value="General Inquiry">General Workshop Inquiry</option>
                 </select>
               </div>
 
@@ -280,12 +268,13 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               </div>
             </div>
 
-            {/* Name & Email (optional for guests, prefilled for logged in) */}
+            {/* Name & Email */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-text-dim">Your Name</label>
+                <label className="text-xs font-bold text-text-dim">Your Name *</label>
                 <input
                   type="text"
+                  required
                   placeholder="e.g. Maria Santos"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -294,10 +283,11 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-text-dim">Email or Phone (Optional)</label>
+                <label className="text-xs font-bold text-text-dim">Contact Email or Mobile *</label>
                 <input
                   type="text"
-                  placeholder="e.g. maria@gmail.com"
+                  required
+                  placeholder="e.g. maria@gmail.com or 0917 123 4567"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none"
@@ -307,11 +297,11 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
 
             {/* Message Comment */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-text-dim">Comments & Suggestions *</label>
+              <label className="text-xs font-bold text-text-dim">Message Details *</label>
               <textarea
                 required
-                rows={3}
-                placeholder="Share your experience with the personalized stitching, fabric quality, packaging, or customer service..."
+                rows={4}
+                placeholder="Describe your custom embroidery requirements, questions, or order instructions in detail..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-xs outline-none focus:border-primary leading-relaxed"
@@ -325,14 +315,14 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 onClick={() => setActiveTab('faqs')}
                 className="py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs font-semibold cursor-pointer"
               >
-                ← Back to FAQs
+                Back to FAQs
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
               >
-                {isSubmitting ? 'Sending to Staff...' : 'Submit Feedback to Workshop →'}
+                {isSubmitting ? 'Sending Message...' : 'Send Inquiry to Workshop'}
               </button>
             </div>
           </form>

@@ -364,7 +364,10 @@ export default function PanelEmployeeSupport() {
               : 'text-text-dim hover:text-text-main'
           }`}
         >
-          <span>💬 Customer Feedback & Reviews</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span>Customer Feedback & Reviews</span>
           {feedbackMetrics.pendingCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[0.62rem] bg-danger text-white font-extrabold animate-pulse">
               {feedbackMetrics.pendingCount}
@@ -380,7 +383,11 @@ export default function PanelEmployeeSupport() {
               : 'text-text-dim hover:text-text-main'
           }`}
         >
-          <span>⚙️ Machine Incidents & Breakdowns</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>Machine Incidents & Breakdowns</span>
           {maintenanceTickets.filter(t => t.status === 'Open').length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[0.62rem] bg-warning text-black font-extrabold">
               {maintenanceTickets.filter(t => t.status === 'Open').length} open
@@ -396,7 +403,11 @@ export default function PanelEmployeeSupport() {
               : 'text-text-dim hover:text-text-main'
           }`}
         >
-          <span>📋 Shop Standards & Management Contacts</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+          </svg>
+          <span>Shop Standards & Management Contacts</span>
         </button>
       </div>
 

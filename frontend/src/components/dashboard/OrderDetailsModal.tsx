@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
+import OrderReviewModal from '@/components/dashboard/OrderReviewModal';
 import type { Order } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -25,7 +26,8 @@ export default function OrderDetailsModal({
   onOrderCancelled
 }: OrderDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
@@ -209,7 +211,10 @@ export default function OrderDetailsModal({
         {/* Informational warning if preparing or beyond */}
         {isPreparingOrBeyond && !isCanceled && (
           <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
-            <span>🔒</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
             <span>
               <strong>Cancellation locked:</strong> Order is in <em>{order.status}</em> status. Embroidery production is already underway and cannot be cancelled.
             </span>
@@ -242,34 +247,64 @@ export default function OrderDetailsModal({
                   : 'bg-white/5 border border-white/10 text-text-muted/40 opacity-40 grayscale cursor-not-allowed'
               }`}
             >
-              <span>✕</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
               <span>{isCancelling ? 'Cancelling...' : 'Cancel Order'}</span>
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => setIsFeedbackModalOpen(true)}
-            className="flex-1 min-w-[110px] bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <span>★</span>
-            <span>Leave Review</span>
-          </button>
-          {order.status === 'Completed' && (
-            <button 
+          {order.status === 'Completed' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsReviewModalOpen(true)}
+                className="flex-1 min-w-[130px] bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span className="text-amber-400">★</span>
+                <span>Rate Quality & Review</span>
+              </button>
+              <button 
+                type="button"
+                className="flex-1 min-w-[90px] bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
+              >
+                Reorder
+              </button>
+            </>
+          ) : (
+            <button
               type="button"
-              className="flex-1 min-w-[90px] bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
+              onClick={() => setIsHelpModalOpen(true)}
+              className="flex-1 min-w-[130px] bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
-              Reorder
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>Workshop Support</span>
             </button>
           )}
         </div>
       </div>
 
       <CustomerHelpModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
         defaultOrderId={order.orderId}
+      />
+
+      <OrderReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        order={{
+          orderId: order.orderId,
+          design: order.items?.[0]?.name,
+          items: order.items,
+          status: order.status,
+          totalAmount: order.totalAmount
+        }}
       />
     </GlassModal>
   );

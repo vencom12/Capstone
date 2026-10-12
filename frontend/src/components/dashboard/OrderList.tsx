@@ -38,7 +38,9 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb} alt={title} className="w-full h-full object-cover" />
           ) : (
-            <span aria-hidden>🧵</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary opacity-60">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
           )}
         </div>
 

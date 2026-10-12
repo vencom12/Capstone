@@ -242,6 +242,15 @@ export default function ProductModal({
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[650px]:text-lg">
               {product.name}
             </h2>
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex items-center text-amber-400 text-xs">
+                <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+              </div>
+              <span className="text-xs font-bold text-text-main">5.0</span>
+              <span className="text-[0.72rem] text-text-dim">
+                • Verified Machine Stitching Quality
+              </span>
+            </div>
           </div>
 
           <div className="flex justify-between items-center">

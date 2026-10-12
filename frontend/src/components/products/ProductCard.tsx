@@ -118,6 +118,12 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           <h3 className="font-semibold text-sm md:text-base line-clamp-1">{product.name}</h3>
           <span className="text-primary font-bold text-sm md:text-lg">₱{product.price.toFixed(2)}</span>
         </div>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="flex items-center text-amber-400 text-[11px] tracking-tight">
+            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+          </div>
+          <span className="text-[10px] font-bold text-text-dim">5.0 (Verified)</span>
+        </div>
         <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-2 line-clamp-2">
           {product.description || 'Professional embroidery design.'}
         </p>
