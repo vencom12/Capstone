@@ -15,6 +15,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   rememberMe: boolean;
+  isLoggingOut: boolean;
 
   login: (email: string, password: string, rememberMe?: boolean, role?: 'customer' | 'employee' | 'admin') => Promise<AuthResponse>;
   register: (username: string, email: string, password: string, phoneNumber?: string, address?: string) => Promise<AuthResponse>;
@@ -41,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       rememberMe: false,
+      isLoggingOut: false,
       
       login: async (email, password, rememberMe = false, role) => {
         set({ isLoading: true });
@@ -219,7 +221,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         // Immediate synchronous state reset to prevent exposing UI shell
-        set({ user: null, isAuthenticated: false, rememberMe: false });
+        set({ user: null, isAuthenticated: false, rememberMe: false, isLoggingOut: true });
 
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('stitch-session-active');
@@ -247,6 +249,8 @@ export const useAuthStore = create<AuthState>()(
           await api.post('/api/auth/logout', {});
         } catch {
           // Ignore network errors during logout
+        } finally {
+          set({ isLoggingOut: false });
         }
       },
 

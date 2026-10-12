@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -33,6 +33,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { isAuthenticated, checkAccess, user, logout } = useAuthStore();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
+  const isLoggingOutRef = useRef(false);
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isHydrated, setIsHydrated] = useState(false);
@@ -84,6 +85,7 @@ export default function AdminPage() {
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
   const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1) => {
+    if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
     setIsLoadingArchived(true);
     try {
       const params = new URLSearchParams();
@@ -93,13 +95,20 @@ export default function AdminPage() {
       params.append('limit', '50');
 
       const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (res && res.orders) {
         setArchivedOrders(res.orders);
         setArchivedTotal(res.total || 0);
         setArchivedTotalPages(res.totalPages || 1);
         setArchivedPage(res.page || page);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      const lower = message.toLowerCase();
+      if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
+        return;
+      }
       console.error('Failed to load archived orders:', err);
       showToast('Failed to load archived orders', 'error');
     } finally {
@@ -117,12 +126,12 @@ export default function AdminPage() {
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
 
   useEffect(() => {
-    if (isHydrated && isAuthenticated && activeTab === 'settings') {
+    if (isHydrated && isAuthenticated && activeTab === 'settings' && !isLoggingOutRef.current) {
        api.get<any>('/api/admin/settings').then(res => {
           if (res && res.giftPackagingPrice !== undefined) {
              setGiftPrice(res.giftPackagingPrice);
           }
-       }).catch(console.error);
+       }).catch(() => {});
     }
   }, [isHydrated, isAuthenticated, activeTab]);
 
@@ -140,9 +149,17 @@ export default function AdminPage() {
 
   // Fetch complete admin state
   const fetchAdminData = async () => {
+    if (isLoggingOutRef.current) return;
+    const authState = useAuthStore.getState();
+    if (!authState.isAuthenticated || authState.user?.role !== 'admin' || authState.isLoggingOut) {
+      return;
+    }
+
     setIsSyncing(true);
     try {
       const data = await api.get<any>('/api/admin/dashboard-state');
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
+
       if (data) {
         setOrders(data.orders || []);
         setInventory(data.inventory || data.rawMaterials || []);
@@ -153,6 +170,8 @@ export default function AdminPage() {
 
       // Fetch machines separately since admin dashboard-state doesn't include them
       const machineData: any = await api.get('/api/machines');
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
+
       if (machineData) {
         if (machineData.data) {
           setMachines(machineData.data);
@@ -161,19 +180,24 @@ export default function AdminPage() {
         }
       }
     } catch (err: any) {
+      // If logging out or already unauthenticated, cleanly abort without noise
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) {
+        return;
+      }
       // AbortError or background tab timeouts should not pop up a fatal dev modal
       if (err?.name === 'AbortError' || err?.message?.includes('timed out') || err?.message?.includes('aborted')) {
         console.warn('[Admin] Sync request aborted or timed out during background pause');
         return;
       }
       const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Failed to sync admin operations data:', err);
       const lower = message.toLowerCase();
       if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
+        // Unauthenticated session expired: safely route to login without throwing unhandled dev error
         logout();
         router.replace('/?auth=login');
         return;
       }
+      console.error('Failed to sync admin operations data:', err);
       setLoadError(message);
       showToast(`Failed to load dashboard: ${message}`, 'error');
     } finally {
@@ -250,6 +274,7 @@ export default function AdminPage() {
       activeSocket = socket;
 
       socket.on('dataChanged', (data: any) => {
+        if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
         console.log('[Socket Admin] Live telemetry updated:', data.entity, data.action);
 
         // Dynamic Toasts & Optimistic UI Synced Locks
@@ -762,8 +787,9 @@ export default function AdminPage() {
 
               <button
                 onClick={async () => {
-                  await logout();
+                  isLoggingOutRef.current = true;
                   router.replace('/');
+                  await logout();
                 }}
                 className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
                 title="Log out of session"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
@@ -25,6 +25,7 @@ export default function EmployeePage() {
   const router = useRouter();
   const { user, isAuthenticated, checkAccess } = useAuthStore();
   const { fetchProducts } = useProductStore();
+  const isLoggingOutRef = useRef(false);
 
   const [activeTab, setActiveTab] = useState('workbench');
   const [isHydrated, setIsHydrated] = useState(false);
@@ -57,6 +58,7 @@ export default function EmployeePage() {
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
   const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1) => {
+    if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
     setIsLoadingArchived(true);
     try {
       const params = new URLSearchParams();
@@ -66,13 +68,20 @@ export default function EmployeePage() {
       params.append('limit', '50');
 
       const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (res && res.orders) {
         setArchivedOrders(res.orders);
         setArchivedTotal(res.total || 0);
         setArchivedTotalPages(res.totalPages || 1);
         setArchivedPage(res.page || page);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      const lower = message.toLowerCase();
+      if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
+        return;
+      }
       console.error('Failed to load archived orders:', err);
       showToast('Failed to load archived orders', 'error');
     } finally {
@@ -92,9 +101,16 @@ export default function EmployeePage() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
   const fetchEmployeeData = async () => {
+    if (isLoggingOutRef.current) return;
+    const authState = useAuthStore.getState();
+    if (!authState.isAuthenticated || authState.user?.role !== 'employee' || authState.isLoggingOut) {
+      return;
+    }
+
     setIsSyncing(true);
     try {
       const data = await api.get<any>('/api/employee/dashboard-state');
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (data) {
         setOrders(data.orders || []);
         setInventory(data.inventory || data.rawMaterials || []);
@@ -102,14 +118,17 @@ export default function EmployeePage() {
         setMachines(data.machines || []);
       }
     } catch (err) {
+      if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) {
+        return;
+      }
       const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Failed to fetch employee state:', err);
       const lower = message.toLowerCase();
       if (lower.includes('token') || lower.includes('authorization') || lower.includes('401') || lower.includes('unauthorized')) {
         useAuthStore.getState().logout();
         router.replace('/?auth=login');
         return;
       }
+      console.error('Failed to fetch employee state:', err);
     } finally {
       setIsSyncing(false);
     }
@@ -252,6 +271,7 @@ export default function EmployeePage() {
       activeSocket = socket;
 
       socket.on('dataChanged', (data: any) => {
+        if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
         console.log('[Socket] Data sync received:', data.entity, data.action);
         if (['PRODUCT', 'INVENTORY', 'ORDER', 'MACHINE'].includes(data.entity)) {
           fetchEmployeeData();

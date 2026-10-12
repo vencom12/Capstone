@@ -245,15 +245,25 @@ export default function ProductModal({
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[650px]:text-lg">
               {product.name}
             </h2>
-            <div className="flex items-center gap-2 mt-1.5">
-              <div className="flex items-center text-amber-400 text-xs">
-                <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+            {(product as any).rating ? (
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className="flex items-center text-amber-400 text-xs">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span key={i} className={i < Math.round((product as any).rating) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-text-main">{(product as any).rating.toFixed(1)}</span>
+                <span className="text-[0.72rem] text-text-dim">
+                  • Verified Customer Reviews
+                </span>
               </div>
-              <span className="text-xs font-bold text-text-main">5.0</span>
-              <span className="text-[0.72rem] text-text-dim">
-                • Verified Machine Stitching Quality
-              </span>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-xs text-text-dim font-medium">
+                  Precision Machine Embroidery · Quality Inspected
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center">
