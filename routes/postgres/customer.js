@@ -73,6 +73,9 @@ const forecastingController = require('../../controllers/postgres/forecastingCon
 router.post('/products/:id/track-view', forecastingController.trackProductView);
 
 const feedbackController = require('../../controllers/postgres/feedbackController');
+// Public verified product reviews & aggregate rating breakdown
+router.get('/products/:id/reviews', feedbackController.getProductReviews);
+
 // Customer feedback submission (supports authenticated or guest submission)
 router.post('/feedback', (req, res, next) => {
     const token = req.cookies.customer_token || req.cookies.token;

@@ -118,20 +118,22 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           <h3 className="font-semibold text-sm md:text-base line-clamp-1">{product.name}</h3>
           <span className="text-primary font-bold text-sm md:text-lg">₱{product.price.toFixed(2)}</span>
         </div>
-        {(product as any).rating ? (
+        {product.rating && (product.reviewCount || 0) > 0 ? (
           <div className="flex items-center gap-1.5 mb-1.5">
             <div className="flex items-center text-amber-400 text-[11px] tracking-tight">
               {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} className={i < Math.round((product as any).rating) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
+                <span key={i} className={i < Math.round(product.rating!) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
               ))}
             </div>
-            <span className="text-[10px] font-bold text-text-dim">{(product as any).rating.toFixed(1)}</span>
+            <span className="text-[10px] font-bold text-text-main font-mono">{product.rating.toFixed(1)}</span>
+            <span className="text-[10px] text-text-dim font-medium">({product.reviewCount})</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="text-[10px] text-primary/80 font-semibold bg-primary/10 px-1.5 py-0.5 rounded">
               Machine Embroidery
             </span>
+            <span className="text-[10px] text-text-dim/70 font-medium">· New Release</span>
           </div>
         )}
         <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-2 line-clamp-2">

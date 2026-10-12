@@ -499,6 +499,29 @@ async function enrichProductsWithStock(products, tx = prisma) {
     const inventory = await tx.inventory.findMany();
     const reservedThreads = await getReservedThreadCounts(tx);
 
+    // Dynamic verified product ratings aggregation (Amazon/Shopee Standard)
+    let ratingMap = {};
+    try {
+        const ratingRows = await tx.$queryRawUnsafe(`
+            SELECT "productId", AVG(rating)::numeric(10,1) as avg_rating, COUNT(*)::int as count
+            FROM "Feedback"
+            WHERE "productId" IS NOT NULL
+            GROUP BY "productId"
+        `);
+        if (Array.isArray(ratingRows)) {
+            for (const r of ratingRows) {
+                if (r.productId) {
+                    ratingMap[r.productId] = {
+                        rating: parseFloat(r.avg_rating),
+                        reviewCount: parseInt(r.count, 10)
+                    };
+                }
+            }
+        }
+    } catch (e) {
+        // Non-blocking fallback
+    }
+
     // 2. Fetch active production orders; "Awaiting Payment" only locks stock within the 24h grace window
     const ONE_DAY_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeOrders = await tx.order.findMany({
@@ -623,9 +646,12 @@ async function enrichProductsWithStock(products, tx = prisma) {
 
         const dynamicReserved = reservedGarments[product.id] || 0;
         const finalAvailable = Math.max(0, Math.min(totalVariantAvailable, maxCanProduce));
+        const ratingInfo = ratingMap[product.id] || { rating: null, reviewCount: 0 };
 
         return {
             ...product,
+            rating: ratingInfo.rating,
+            reviewCount: ratingInfo.reviewCount,
             count: totalVariantPhysical,
             dynamicReserved,
             availableStock: finalAvailable,

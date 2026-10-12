@@ -83,11 +83,24 @@ export default function OrderReviewModal({
         .filter(Boolean)
         .join('\n\n');
 
+      let orderProductId: string | undefined = (order as any).productId;
+      if (!orderProductId && Array.isArray(order.items) && order.items.length > 0) {
+        orderProductId = order.items[0].productId || order.items[0].id;
+      } else if (!orderProductId && typeof order.items === 'string') {
+        try {
+          const parsed = JSON.parse(order.items);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            orderProductId = parsed[0].productId || parsed[0].id;
+          }
+        } catch (_) {}
+      }
+
       await api.post('/api/customer/feedback', {
         category: 'Verified Order Review',
         rating,
         message: compiledMessage || 'Rated 5 stars for verified order.',
         orderId: order.orderId,
+        productId: orderProductId || undefined,
         customerName: user?.username || 'Verified Customer',
         customerEmail: user?.email || undefined,
       });

@@ -1,11 +1,13 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { randomUUID } = require('crypto');
+const socketUtil = require('../../utils/socketUtil');
+const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 
-// Submit Customer Feedback (Guest or Authenticated)
+// Submit Customer Feedback / Product Review (Guest or Authenticated)
 exports.submitFeedback = async (req, res) => {
     try {
-        const { category, rating, message, customerName, customerEmail, orderId } = req.body;
+        const { category, rating, message, customerName, customerEmail, orderId, productId } = req.body;
 
         if (!message || !message.trim()) {
             return res.status(400).json({ message: 'Feedback message is required' });
@@ -28,14 +30,27 @@ exports.submitFeedback = async (req, res) => {
 
         if (!finalName) finalName = 'Valued Customer';
 
+        // Auto-resolve productId from order items if only orderId was provided
+        let resolvedProductId = productId?.trim() || null;
+        if (orderId && !resolvedProductId) {
+            try {
+                const order = await prisma.order.findUnique({ where: { orderId: orderId.trim() } });
+                if (order && Array.isArray(order.items) && order.items.length > 0) {
+                    resolvedProductId = order.items[0].productId || order.items[0].id || null;
+                }
+            } catch (e) {
+                // non-blocking lookup failure
+            }
+        }
+
         await prisma.$executeRaw`
             INSERT INTO "Feedback" (
                 "id", "category", "rating", "message", "status",
-                "customerName", "customerEmail", "orderId", "userId",
+                "customerName", "customerEmail", "orderId", "userId", "productId",
                 "createdAt", "updatedAt"
             ) VALUES (
                 ${id}, ${cleanCategory}, ${cleanRating}, ${cleanMessage}, 'Pending',
-                ${finalName}, ${finalEmail}, ${orderId?.trim() || null}, ${userId},
+                ${finalName}, ${finalEmail}, ${orderId?.trim() || null}, ${userId}, ${resolvedProductId},
                 NOW(), NOW()
             )
         `;
@@ -44,14 +59,75 @@ exports.submitFeedback = async (req, res) => {
             SELECT * FROM "Feedback" WHERE "id" = ${id}
         `;
 
+        // Broadcast telemetry so product reviews and staff feed update in real-time
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                socketUtil.emitDataChanged(io, ACTIONS.CREATE, 'FEEDBACK', created);
+            }
+        } catch (e) {}
+
         res.status(201).json({
             success: true,
-            message: 'Thank you! Your feedback has been received and shared with our production & support staff.',
+            message: 'Thank you! Your verified review has been received.',
             feedback: created
         });
     } catch (err) {
         console.error('Error submitting feedback:', err);
         res.status(500).json({ message: 'Failed to submit feedback. Please try again later.' });
+    }
+};
+
+// Get Public Reviews & Aggregate Rating Breakdown for a Product (Amazon / Shopee Gold Standard)
+exports.getProductReviews = async (req, res) => {
+    try {
+        const { id: productId } = req.params;
+
+        if (!productId) {
+            return res.status(400).json({ message: 'Product ID is required' });
+        }
+
+        // Fetch all verified feedback matching this productId
+        const reviews = await prisma.$queryRawUnsafe(`
+            SELECT 
+                f.id,
+                f.rating,
+                f.message,
+                f."customerName",
+                f."orderId",
+                f."createdAt",
+                CASE 
+                    WHEN f."orderId" IS NOT NULL THEN true 
+                    ELSE false 
+                END as "isVerifiedPurchase"
+            FROM "Feedback" f
+            WHERE f."productId" = $1
+            ORDER BY f."createdAt" DESC
+        `, productId);
+
+        const totalReviews = reviews.length;
+        const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        let sumRating = 0;
+
+        for (const r of reviews) {
+            const rInt = Math.max(1, Math.min(5, Math.round(r.rating || 5)));
+            distribution[rInt] = (distribution[rInt] || 0) + 1;
+            sumRating += (r.rating || 5);
+        }
+
+        const averageRating = totalReviews > 0 ? parseFloat((sumRating / totalReviews).toFixed(1)) : null;
+
+        res.json({
+            success: true,
+            productId,
+            averageRating,
+            totalReviews,
+            distribution,
+            reviews
+        });
+    } catch (err) {
+        console.error('Error fetching product reviews:', err);
+        res.status(500).json({ message: 'Failed to load product reviews' });
     }
 };
 

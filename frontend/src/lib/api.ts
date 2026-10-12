@@ -153,6 +153,12 @@ export async function apiFetch<T = unknown>(
 
       // Security Auto-Eject: On 401 Unauthorized (invalid, missing, or expired token)
       if (response.status === 401 && !url.includes('/api/auth/login')) {
+        const isLoggingOut = typeof window !== 'undefined' && Boolean((window as any).__stitch_auth_store?.getState?.().isLoggingOut);
+        if (isLoggingOut) {
+          // Deliberate logout teardown guard: suppress throwing error to prevent Next.js dev overlay crash
+          return {} as T;
+        }
+
         if (typeof window !== 'undefined') {
           try {
             sessionStorage.removeItem('stitch-session-active');
@@ -162,7 +168,7 @@ export async function apiFetch<T = unknown>(
             localStorage.removeItem('stitch-auth');
 
             const authStore = (window as any).__stitch_auth_store;
-            if (authStore?.getState) {
+            if (authStore?.getState && !authStore.getState().isLoggingOut) {
               authStore.getState().logout?.();
             }
           } catch {}

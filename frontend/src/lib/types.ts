@@ -61,7 +61,30 @@ export interface Product {
   minThreshold?: number;
   availableStock?: number;
   isOutOfStock?: boolean;
+  rating?: number | null;
+  reviewCount?: number;
   createdAt: string;
+}
+
+export interface ProductReview {
+  id: string;
+  rating: number;
+  message: string;
+  customerName: string;
+  orderId?: string | null;
+  isVerifiedPurchase: boolean;
+  createdAt: string;
+}
+
+export interface ProductReviewsResponse {
+  success: boolean;
+  productId: string;
+  averageRating: number | null;
+  totalReviews: number;
+  distribution: {
+    [key: number]: number;
+  };
+  reviews: ProductReview[];
 }
 
 export interface RecipeItem {

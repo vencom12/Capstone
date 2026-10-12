@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Product, ProductVariant } from '@/lib/types';
+import type { Product, ProductVariant, ProductReviewsResponse } from '@/lib/types';
+import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -34,6 +35,40 @@ export default function ProductModal({
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [capacityData, setCapacityData] = useState<{ activeOrders: number; estimatedMinutes: number } | null>(null);
+
+  // Dynamic verified customer reviews state (Amazon/Shopee Standard)
+  const [activeModalTab, setActiveModalTab] = useState<'configure' | 'reviews'>('configure');
+  const [reviewsData, setReviewsData] = useState<ProductReviewsResponse | null>(null);
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(false);
+  const [selectedStarFilter, setSelectedStarFilter] = useState<'all' | number>('all');
+
+  useEffect(() => {
+    if (!isOpen || !product?.id) {
+      setReviewsData(null);
+      setActiveModalTab('configure');
+      setSelectedStarFilter('all');
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingReviews(true);
+    api.get<ProductReviewsResponse>(`/api/customer/products/${product.id}/reviews`)
+      .then((data) => {
+        if (isMounted && data) {
+          setReviewsData(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load product reviews:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingReviews(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, product?.id]);
 
   // Custom Embroidery Lettering / Personalization state (Exclusive Cursive Script Font)
   const [isPersonalized, setIsPersonalized] = useState<boolean>(false);
@@ -245,18 +280,25 @@ export default function ProductModal({
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[650px]:text-lg">
               {product.name}
             </h2>
-            {(product as any).rating ? (
-              <div className="flex items-center gap-2 mt-1.5">
+            {((reviewsData?.averageRating ?? (product as any).rating)) ? (
+              <button
+                type="button"
+                onClick={() => setActiveModalTab('reviews')}
+                className="flex items-center gap-2 mt-1.5 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/20 cursor-pointer transition-colors text-left"
+                title="View verified buyer reviews"
+              >
                 <div className="flex items-center text-amber-400 text-xs">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className={i < Math.round((product as any).rating) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
+                    <span key={i} className={i < Math.round((reviewsData?.averageRating ?? (product as any).rating) || 0) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
                   ))}
                 </div>
-                <span className="text-xs font-bold text-text-main">{(product as any).rating.toFixed(1)}</span>
-                <span className="text-[0.72rem] text-text-dim">
-                  • Verified Customer Reviews
+                <span className="text-xs font-bold text-amber-300">
+                  {((reviewsData?.averageRating ?? (product as any).rating) || 0).toFixed(1)}
                 </span>
-              </div>
+                <span className="text-[0.72rem] text-text-dim hover:text-text-main underline decoration-dotted">
+                  ({reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0} Verified Reviews)
+                </span>
+              </button>
             ) : (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs text-text-dim font-medium">
@@ -265,6 +307,38 @@ export default function ProductModal({
               </div>
             )}
           </div>
+
+          {/* Navigation Tabs: Customization vs Reviews */}
+          <div className="flex border-b border-border-glass gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveModalTab('configure')}
+              className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+                activeModalTab === 'configure'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-dim hover:text-text-main'
+              }`}
+            >
+              Customization & Order
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModalTab('reviews')}
+              className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeModalTab === 'reviews'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-dim hover:text-text-main'
+              }`}
+            >
+              <span>Ratings & Reviews</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-text-main font-mono">
+                {reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0}
+              </span>
+            </button>
+          </div>
+
+          {activeModalTab === 'configure' ? (
+            <>
 
           <div className="flex justify-between items-center">
             <div className="text-2xl font-extrabold text-primary font-mono max-[650px]:text-xl">
@@ -565,6 +639,261 @@ export default function ProductModal({
               </div>
             )}
           </div>
+        </>
+      ) : (
+        /* ============================================================ */
+        /* VERIFIED REVIEWS & RATINGS TAB (Amazon/Shopee Gold Standard) */
+        /* ============================================================ */
+        <div className="flex flex-col gap-4">
+          {isLoadingReviews ? (
+            <div className="p-8 flex flex-col items-center justify-center gap-2 text-center text-text-dim text-xs">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span>Loading verified customer ratings...</span>
+            </div>
+          ) : (
+            <>
+              {/* Rating Breakdown Header Card */}
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col sm:flex-row gap-4 items-center sm:items-start justify-between">
+                <div className="flex flex-col items-center sm:items-start gap-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold text-text-main font-mono">
+                      {reviewsData?.averageRating ? reviewsData.averageRating.toFixed(1) : '—'}
+                    </span>
+                    <span className="text-xs text-text-dim font-bold">/ 5.0</span>
+                  </div>
+                  <div className="flex items-center text-amber-400 text-sm">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className={
+                          i < Math.round(reviewsData?.averageRating || 0)
+                            ? 'text-amber-400'
+                            : 'text-text-dim/30'
+                        }
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-[0.72rem] text-text-dim">
+                    {reviewsData?.totalReviews
+                      ? `Based on ${reviewsData.totalReviews} verified purchase${reviewsData.totalReviews > 1 ? 's' : ''}`
+                      : 'No reviews yet'}
+                  </span>
+                </div>
+
+                {/* Amazon/Shopee Star Histogram */}
+                <div className="flex-1 w-full max-w-[240px] flex flex-col gap-1">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const count = reviewsData?.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0;
+                    const total = reviewsData?.totalReviews || 0;
+                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const isSelected = selectedStarFilter === star;
+
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedStarFilter(isSelected ? 'all' : star)}
+                        className={`w-full flex items-center gap-2 text-[0.7rem] py-0.5 px-1 rounded transition-colors cursor-pointer border ${
+                          isSelected
+                            ? 'bg-primary/15 border-primary/40 text-text-main'
+                            : 'bg-transparent border-transparent hover:bg-white/5 text-text-dim'
+                        }`}
+                        title={`Filter by ${star} star reviews`}
+                      >
+                        <span className="w-6 font-bold flex items-center gap-0.5 shrink-0">
+                          <span>{star}</span>
+                          <span className="text-amber-400 text-[10px]">★</span>
+                        </span>
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full bg-amber-400 rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="w-12 text-right font-mono text-[0.65rem] shrink-0 text-text-dim">
+                          {count} ({pct}%)
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Verified Authenticity Guarantee Banner */}
+              <div className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-[0.72rem] text-emerald-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span>
+                  <strong>100% Authentic Feedback:</strong> Ratings can only be submitted by verified customers who completed an order of this embroidery item.
+                </span>
+              </div>
+
+              {/* Star Filter Pills */}
+              {reviewsData && reviewsData.totalReviews > 0 && (
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider mr-1">
+                    Filter:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStarFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
+                      selectedStarFilter === 'all'
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                    }`}
+                  >
+                    All ({reviewsData.totalReviews})
+                  </button>
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const count = reviewsData.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0;
+                    if (count === 0 && selectedStarFilter !== star) return null;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
+                        className={`px-2 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
+                          selectedStarFilter === star
+                            ? 'bg-primary text-white border-primary shadow-sm'
+                            : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                        }`}
+                      >
+                        {star} ★ ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Reviews List Feed */}
+              <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">
+                {(() => {
+                  const list = (reviewsData?.reviews || []).filter((r) =>
+                    selectedStarFilter === 'all' ? true : r.rating === selectedStarFilter
+                  );
+
+                  if (list.length === 0) {
+                    return (
+                      <div className="p-8 rounded-xl bg-white/[0.02] border border-border-glass text-center flex flex-col items-center gap-2">
+                        <span className="text-text-dim text-xs">
+                          {selectedStarFilter === 'all'
+                            ? 'No customer reviews recorded yet for this design.'
+                            : `No ${selectedStarFilter}-star reviews found.`}
+                        </span>
+                        <span className="text-[0.7rem] text-text-dim/70">
+                          Order this stitch today and be the first to share your verified review!
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return list.map((review) => {
+                    const initial = (review.customerName || 'V').trim().charAt(0).toUpperCase();
+                    const highlightMatch = review.message?.match(/^\[Highlights:\s*(.+?)\]\s*/i);
+                    const highlights = highlightMatch
+                      ? highlightMatch[1].split(',').map((s) => s.trim())
+                      : [];
+                    const cleanMessage = highlightMatch
+                      ? review.message.replace(/^\[Highlights:\s*(.+?)\]\s*/i, '').trim()
+                      : review.message;
+
+                    return (
+                      <div
+                        key={review.id}
+                        className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold text-xs flex items-center justify-center">
+                              {initial}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-text-main">
+                                {review.customerName || 'Verified Customer'}
+                              </span>
+                              <span className="text-[0.65rem] text-text-dim">
+                                {review.createdAt
+                                  ? new Date(review.createdAt).toLocaleDateString(undefined, {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
+                                  : 'Verified Purchase'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[0.65rem] font-bold">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            <span>Verified</span>
+                          </div>
+                        </div>
+
+                        {/* Stars & Order Tag */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-amber-400 text-xs">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <span
+                                key={i}
+                                className={i < review.rating ? 'text-amber-400' : 'text-text-dim/30'}
+                              >
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                          {review.orderId && (
+                            <span className="text-[0.65rem] font-mono text-text-dim">
+                              Order #{review.orderId}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Quality Highlight Tags */}
+                        {highlights.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {highlights.map((h, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-[0.65rem] font-medium"
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Review Content */}
+                        {cleanMessage && (
+                          <p className="text-xs text-text-main/90 leading-relaxed m-0">
+                            {cleanMessage}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Return to Order Button */}
+              <div className="pt-2 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => setActiveModalTab('configure')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
+                >
+                  Return to Customization & Order →
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
         </div>
       </div>
     </GlassModal>
