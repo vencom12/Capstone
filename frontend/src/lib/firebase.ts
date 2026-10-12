@@ -1,9 +1,34 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
+/**
+ * authDomain MUST be the same origin the app is served from.
+ *
+ * Full-window Google sign-in (signInWithRedirect) reads its result through a
+ * hidden iframe hosted on authDomain. If authDomain is a different site
+ * (e.g. ryven-4cbd5.firebaseapp.com), Chrome/Safari/Firefox partition that
+ * iframe's storage and the login result silently comes back null.
+ *
+ * The app's own origin proxies /__/auth/* to Firebase:
+ *   - Production / Express (port 5001): middleware/firebaseAuthProxy.js
+ *   - Next dev server (port 3000):      rewrites in next.config.ts
+ *
+ * Every origin used here must also be listed in Google Cloud Console >
+ * Credentials > OAuth 2.0 Client > Authorized redirect URIs as
+ *   <origin>/__/auth/handler
+ */
+const FALLBACK_AUTH_DOMAIN = 'ryven-4cbd5.firebaseapp.com';
+
+function resolveAuthDomain(): string {
+  if (typeof window !== 'undefined' && window.location?.host) {
+    return window.location.host;
+  }
+  return FALLBACK_AUTH_DOMAIN;
+}
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAa-8VSKaCtHpW3LTjfBlUm_9jBlIyTjrs",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "ryven-4cbd5.firebaseapp.com",
+  authDomain: resolveAuthDomain(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "ryven-4cbd5",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "ryven-4cbd5.firebasestorage.app",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "576470911091",

@@ -8,8 +8,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
-import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithRedirect } from 'firebase/auth';
+import { startGoogleSignIn } from '@/lib/googleAuth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -89,29 +88,17 @@ export default function AuthModal() {
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up via Full Window (Redirect)
+  // Google Sign-In (full window). All Firebase logic lives in lib/googleAuth.ts.
   const handleGoogleSignIn = async () => {
     if (isSubmitting || isGoogleSubmitting) return;
     setIsGoogleSubmitting(true);
     setFormError(null);
 
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('stitch-google-auth-pending', 'true');
-      }
-      await signInWithRedirect(auth, googleProvider);
-    } catch (err: any) {
+    const failure = await startGoogleSignIn();
+    if (failure) {
       setIsGoogleSubmitting(false);
-      console.error('Google Sign-In Redirect Error:', err);
-      if (err.code === 'auth/unauthorized-domain') {
-        const domain = typeof window !== 'undefined' ? window.location.hostname : 'your domain';
-        const msg = `Domain "${domain}" is not authorized. Add it in Firebase Console > Authentication > Settings > Authorized domains.`;
-        setFormError(msg);
-        showToast(msg, 'error');
-      } else {
-        setFormError(err.message || 'Failed to redirect to Google.');
-        showToast(err.message || 'Failed to redirect to Google.', 'error');
-      }
+      setFormError(failure.message);
+      showToast(failure.message, 'error');
     }
   };
 
