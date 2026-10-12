@@ -774,17 +774,46 @@ exports.googleAuth = async (req, res) => {
         });
 
         if (!user) {
-            // First-time Google user: do NOT create the account yet. Require the user to
-            // choose a password so they can also sign in with email + password later.
-            const suggestedUsername = (displayName
+            // First-time Google user: Seamlessly create customer account immediately.
+            // Generates a clean unique username and cryptographically strong password hash.
+            const baseUsername = (displayName
                 ? displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '')
                 : cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')) || 'User';
-            const setupToken = jwt.sign(
-                { purpose: 'google-setup', email: cleanEmail, displayName: displayName || '', phoneNumber: phoneNumber || '', uid: uid || '' },
-                process.env.JWT_SECRET,
-                { expiresIn: '15m' }
-            );
-            return res.json({ success: true, needsPassword: true, setupToken, email: cleanEmail, suggestedUsername });
+
+            let finalUsername = baseUsername;
+            let counter = 1;
+            while (await prisma.user.findFirst({ where: { username: { equals: finalUsername, mode: 'insensitive' } } })) {
+                finalUsername = `${baseUsername}_${Math.floor(100 + Math.random() * 900)}`;
+                counter++;
+                if (counter > 10) break;
+            }
+
+            const randomPassword = crypto.randomBytes(24).toString('hex');
+            const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+            try {
+                user = await prisma.user.create({
+                    data: {
+                        username: finalUsername,
+                        email: cleanEmail,
+                        password: hashedPassword,
+                        role: 'customer',
+                        walletBalance: 0,
+                        phoneNumber: phoneNumber || null,
+                        isPhoneVerified: !!phoneNumber,
+                        isEmailVerified: true,
+                        isActive: true,
+                        lastLoginAt: new Date(),
+                        lastActiveAt: new Date()
+                    }
+                });
+            } catch (createErr) {
+                // If a concurrent request created the account during a race condition, fetch it
+                user = await prisma.user.findFirst({
+                    where: { email: { equals: cleanEmail, mode: 'insensitive' } }
+                });
+                if (!user) throw createErr;
+            }
         }
 
         // Account exists: Check if account is deactivated

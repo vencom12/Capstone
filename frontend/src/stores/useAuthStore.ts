@@ -7,6 +7,9 @@ import { useBasketStore } from './useBasketStore';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 
+let _pendingGoogleAuthPromise: Promise<any> | null = null;
+let _pendingGoogleAuthEmail: string | null = null;
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -155,23 +158,34 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loginWithGoogle: async (googleUserData) => {
-        set({ isLoading: true });
-        try {
-          const data = await api.post<any>('/api/auth/google', googleUserData);
-          if (data.needsPassword) {
-            // First-time Google user: no account yet, caller must collect a password
-            set({ isLoading: false });
-            return { success: true, needsPassword: true, setupToken: data.setupToken, suggestedUsername: data.suggestedUsername, email: data.email };
-          }
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('stitch-session-active', 'true');
-          }
-          set({ user: data.user, isAuthenticated: true, isLoading: false, rememberMe: true });
-          return { success: true, user: data.user };
-        } catch (err) {
-          set({ isLoading: false });
-          return { success: false, message: err instanceof Error ? err.message : 'Google Sign-In failed' };
+        if (_pendingGoogleAuthPromise && _pendingGoogleAuthEmail === googleUserData.email) {
+          return _pendingGoogleAuthPromise;
         }
+
+        set({ isLoading: true });
+        _pendingGoogleAuthEmail = googleUserData.email;
+        _pendingGoogleAuthPromise = (async () => {
+          try {
+            const data = await api.post<any>('/api/auth/google', googleUserData);
+            if (data.needsPassword) {
+              set({ isLoading: false });
+              return { success: true, needsPassword: true, setupToken: data.setupToken, suggestedUsername: data.suggestedUsername, email: data.email };
+            }
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('stitch-session-active', 'true');
+            }
+            set({ user: data.user, isAuthenticated: true, isLoading: false, rememberMe: true });
+            return { success: true, user: data.user };
+          } catch (err) {
+            set({ isLoading: false });
+            return { success: false, message: err instanceof Error ? err.message : 'Google Sign-In failed' };
+          } finally {
+            _pendingGoogleAuthPromise = null;
+            _pendingGoogleAuthEmail = null;
+          }
+        })();
+
+        return _pendingGoogleAuthPromise;
       },
 
       completeGoogleSignup: async (setupToken, password, username) => {
