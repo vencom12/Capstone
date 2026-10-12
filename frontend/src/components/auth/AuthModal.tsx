@@ -73,6 +73,13 @@ export default function AuthModal() {
     }
   }, [isAuthOpen]);
 
+  // Auto-close modal whenever user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && isAuthOpen) {
+      handleClose();
+    }
+  }, [isAuthenticated, isAuthOpen]);
+
   const handleClose = () => {
     setIsFormSubmitting(false);
     setIsGoogleSubmitting(false);
@@ -88,7 +95,7 @@ export default function AuthModal() {
     }
   };
 
-  // Google Sign-In (full window). All Firebase logic lives in lib/googleAuth.ts.
+  // Google Sign-In. All Firebase logic lives in lib/googleAuth.ts.
   const handleGoogleSignIn = async () => {
     if (isSubmitting || isGoogleSubmitting) return;
     setIsGoogleSubmitting(true);
@@ -99,6 +106,10 @@ export default function AuthModal() {
       setIsGoogleSubmitting(false);
       setFormError(failure.message);
       showToast(failure.message, 'error');
+    } else {
+      if (useAuthStore.getState().isAuthenticated) {
+        handleClose();
+      }
     }
   };
 
