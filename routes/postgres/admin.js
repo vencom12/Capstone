@@ -34,6 +34,7 @@ router.get('/analytics', adminAuth(), adminController.getAnalytics);
 // Product Catalog & Pricing Management (Admin Only)
 router.post('/products', adminAuth(), upload.single('image'), auditLogger('Product', 'CREATE_PRODUCT'), adminController.createProduct);
 router.patch('/products/:id', adminAuth(), upload.single('image'), auditLogger('Product', 'UPDATE_PRODUCT'), adminController.updateProduct);
+router.put('/products/:id', adminAuth(), upload.single('image'), auditLogger('Product', 'UPDATE_PRODUCT'), adminController.updateProduct);
 router.delete('/products/:id', adminAuth(), auditLogger('Product', 'DELETE_PRODUCT'), adminController.deleteProduct);
 
 // Material Pool Deletion, Creation & Global Thresholds (Admin Only)

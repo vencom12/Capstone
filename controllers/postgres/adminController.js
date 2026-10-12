@@ -382,6 +382,27 @@ exports.createProduct = async (req, res) => {
         const recipe = req.body.recipe ? (typeof req.body.recipe === 'string' ? JSON.parse(req.body.recipe) : req.body.recipe) : [];
         const variants = req.body.variants ? (typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants) : [];
 
+        // Dynamic Variant Stock:
+        // If 0 variants, stock is strictly 0.
+        // If variants exist, calculate count as sum of variant stocks (or linked raw materials).
+        let initialCount = 0;
+        if (Array.isArray(variants)) {
+            if (variants.length === 0) {
+                initialCount = 0;
+            } else {
+                const inventory = await prisma.inventory.findMany();
+                initialCount = variants.reduce((sum, v) => {
+                    if (v && v.materialId) {
+                        const mat = inventory.find(i => i.id === v.materialId);
+                        return sum + (mat ? (mat.count || 0) : 0);
+                    }
+                    return sum;
+                }, 0);
+            }
+        } else if (count !== undefined) {
+            initialCount = parseInt(count, 10) || 0;
+        }
+
         const { generateEmbedding } = require('../../utils/embeddingClient');
         const embedding = await generateEmbedding(`${name} ${formattedTag} ${description || ''}`);
 
@@ -394,7 +415,7 @@ exports.createProduct = async (req, res) => {
                 imageUrl,
                 recipe,
                 variants,
-                count: count !== undefined ? parseInt(count) : 0,
+                count: initialCount,
                 minThreshold: minThreshold !== undefined ? parseInt(minThreshold) : 5
             }
         });
@@ -435,11 +456,25 @@ exports.updateProduct = async (req, res) => {
         }
 
         if (req.body.variants !== undefined) {
-            updateData.variants = typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants;
-        }
+            const parsedVariants = typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants;
+            updateData.variants = parsedVariants;
 
-        // Safeguard: Prevent manual stock reductions below active order commitments
-        if (count !== undefined) {
+            if (Array.isArray(parsedVariants)) {
+                if (parsedVariants.length === 0) {
+                    updateData.count = 0;
+                    updateData.reservedCount = 0;
+                } else {
+                    const inventory = await prisma.inventory.findMany();
+                    updateData.count = parsedVariants.reduce((sum, v) => {
+                        if (v && v.materialId) {
+                            const mat = inventory.find(i => i.id === v.materialId);
+                            return sum + (mat ? (mat.count || 0) : 0);
+                        }
+                        return sum;
+                    }, 0);
+                }
+            }
+        } else if (count !== undefined) {
             const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
             if (existing) {
                 const targetCount = parseInt(count);

@@ -72,9 +72,17 @@ export default function ProductModal({
       setMonogramError(null);
       setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-        setSelectedVariant(product.variants[0]);
-        setSelectedColor(product.variants[0].color || '');
-        setSelectedSize(product.variants[0].size || '');
+        // Automatically select the first IN-STOCK variant; if all are out of stock, select none
+        const firstInStock = product.variants.find((v) => (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0);
+        if (firstInStock) {
+          setSelectedVariant(firstInStock);
+          setSelectedColor(firstInStock.color || '');
+          setSelectedSize(firstInStock.size || '');
+        } else {
+          setSelectedVariant(null);
+          setSelectedColor('');
+          setSelectedSize('');
+        }
       } else {
         setSelectedVariant(null);
         setSelectedColor('');
@@ -102,17 +110,21 @@ export default function ProductModal({
   const productId = product.id || product._id || '';
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
 
-  // Unified pooled stock: supplies are acquired in assorted mixed colors, so all variants share the product stock pool
-  const overallStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-  const effectiveStock = overallStock;
-  const isOutOfStock = effectiveStock <= 0;
-
-  // Check if product actually has defined sizes across variants
+  // Check if product actually has defined variants
   const hasVariants = Boolean(product.variants && Array.isArray(product.variants) && product.variants.length > 0);
   const availableSizes = hasVariants 
     ? [...new Set(product.variants!.map((v: any) => v.size).filter(Boolean))] 
     : [];
   const hasSizes = availableSizes.length > 0;
+
+  // Variant-driven stock:
+  // If product has 0 variants, it has strictly 0 stock and cannot be purchased.
+  // If product has variants, stock is determined by the selected variant's availableStock!
+  const selectedVariantStock = selectedVariant
+    ? (selectedVariant.availableStock !== undefined ? selectedVariant.availableStock : (selectedVariant.stock ?? 0))
+    : 0;
+  const effectiveStock = hasVariants ? selectedVariantStock : 0;
+  const isOutOfStock = !hasVariants || effectiveStock <= 0;
 
 
 
@@ -267,37 +279,58 @@ export default function ProductModal({
           </div>
 
           {/* Variants & Swatches (Only shown if product has variants) */}
-          {hasVariants && (
+          {hasVariants ? (
             <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
               <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                Color / Variant: <span className="text-primary font-bold normal-case ml-1">{selectedVariant?.name}</span>
+                Color / Variant:{' '}
+                {selectedVariant ? (
+                  <span className="text-primary font-bold normal-case ml-1">{selectedVariant.name}</span>
+                ) : (
+                  <span className="text-rose-400 font-bold normal-case ml-1">None available (All Options Out of Stock)</span>
+                )}
               </label>
               <div className="flex flex-wrap gap-2">
                 {product.variants!.map((variant, idx) => {
                   const isSelected = selectedVariant?.name === variant.name;
+                  const vStock = variant.availableStock !== undefined ? variant.availableStock : (variant.stock ?? 0);
+                  const isVarOutOfStock = vStock <= 0;
                   return (
                     <button
                       key={idx}
                       type="button"
+                      disabled={isVarOutOfStock}
+                      title={isVarOutOfStock ? `${variant.name} (Out of Stock)` : `${variant.name} (${vStock} available)`}
                       suppressHydrationWarning
                       onClick={() => {
+                        if (isVarOutOfStock) return;
                         setSelectedVariant(variant);
                         if (variant.color) setSelectedColor(variant.color);
                         if (variant.size) setSelectedSize(variant.size);
                       }}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-primary/20 border-primary text-primary shadow-sm scale-105'
-                          : 'bg-bg-surface border-border-glass text-text-main hover:border-primary/40'
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all select-none ${
+                        isVarOutOfStock
+                          ? 'opacity-35 grayscale bg-white/[0.02] border-white/10 text-text-dim cursor-not-allowed pointer-events-none line-through shadow-none'
+                          : isSelected
+                            ? 'bg-primary/20 border-primary text-primary shadow-sm scale-105 cursor-pointer'
+                            : 'bg-bg-surface border-border-glass text-text-main hover:border-primary/40 cursor-pointer'
                       }`}
                     >
                       {variant.color && (
                         <span
-                          className="w-3.5 h-3.5 rounded-full border border-white/20 inline-block shadow-sm shrink-0"
+                          className={`w-3.5 h-3.5 rounded-full border border-white/20 inline-block shadow-sm shrink-0 ${isVarOutOfStock ? 'opacity-40' : ''}`}
                           style={{ backgroundColor: variant.color }}
                         />
                       )}
                       <span>{variant.name}</span>
+                      {isVarOutOfStock ? (
+                        <span className="text-[10px] text-rose-400 font-semibold no-underline">
+                          (Out of stock)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-text-dim font-mono">
+                          ({vStock} left)
+                        </span>
+                      )}
                       {variant.priceOverride && (
                         <span className="text-[10px] text-primary/80 font-mono">
                           ₱{variant.priceOverride}
@@ -307,6 +340,11 @@ export default function ProductModal({
                   );
                 })}
               </div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+              <span>⚠️</span>
+              <span>This product currently has no variants configured and is out of stock.</span>
             </div>
           )}
 

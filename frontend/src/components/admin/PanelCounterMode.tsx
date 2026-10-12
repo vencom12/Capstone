@@ -657,18 +657,24 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div className="flex flex-wrap gap-1.5">
                     {activeSelectedItem.variants.map((v: ProductVariant, vIdx: number) => {
                       const isVarSelected = selectedVariant?.name === v.name;
+                      const vStock = (v as any).availableStock !== undefined ? (v as any).availableStock : (v.stock ?? 0);
+                      const isVarOutOfStock = vStock <= 0;
                       return (
                         <button
                           key={vIdx}
                           type="button"
+                          disabled={isVarOutOfStock}
                           onClick={() => {
+                            if (isVarOutOfStock) return;
                             setSelectedVariant(v);
                             if (v.priceOverride) setUnitPrice(v.priceOverride);
                           }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                            isVarSelected
-                              ? 'bg-primary text-white border-primary shadow-sm'
-                              : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
+                            isVarOutOfStock
+                              ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
+                              : isVarSelected
+                                ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
+                                : 'bg-white/5 border-border-glass text-text-dim hover:text-white cursor-pointer'
                           }`}
                         >
                           {v.color && (
@@ -678,6 +684,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             />
                           )}
                           <span>{v.name}</span>
+                          <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-rose-400 font-bold' : 'opacity-75'}`}>
+                            ({isVarOutOfStock ? '0' : vStock})
+                          </span>
                         </button>
                       );
                     })}

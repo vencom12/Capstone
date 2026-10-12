@@ -37,9 +37,11 @@ export interface ProductVariant {
   size?: string;
   imageUrl?: string;
   priceOverride?: number;
-  stock?: number; // Optional legacy field (stock is unified at product level for assorted supplies)
-  materialId?: string; // Linked blank/raw material in Inventory
+  stock?: number; // Physical variant stock (or linked material stock)
+  materialId?: string; // Linked blank/raw material in Materials tab (Inventory)
   materialName?: string; // Name of linked raw material
+  availableStock?: number; // Calculated dynamic available stock
+  isOutOfStock?: boolean;
 }
 
 export interface Product {

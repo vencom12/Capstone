@@ -4,6 +4,7 @@ import React from 'react';
 
 interface InlineErrorProps {
   error?: string | null;
+  message?: string | null;
   className?: string;
   id?: string;
 }
@@ -12,8 +13,9 @@ interface InlineErrorProps {
  * InlineError: Displays a sleek, contextual error badge directly beneath
  * an action button or an input field.
  */
-export default function InlineError({ error, className = '', id }: InlineErrorProps) {
-  if (!error) return null;
+export default function InlineError({ error, message, className = '', id }: InlineErrorProps) {
+  const text = error || message;
+  if (!text) return null;
 
   return (
     <div

@@ -390,13 +390,35 @@ async function reconcileReservedCounts(tx = prisma) {
         }
     }
 
-    const allProducts = await tx.product.findMany({ select: { id: true, reservedCount: true } });
+    const inventory = await tx.inventory.findMany();
+    const allProducts = await tx.product.findMany({ select: { id: true, reservedCount: true, variants: true, count: true } });
     for (const product of allProducts) {
-        const expectedReserved = reservedGarments[product.id] || 0;
-        if (product.reservedCount !== expectedReserved) {
+        let variantsList = product.variants;
+        if (typeof variantsList === 'string') {
+            try { variantsList = JSON.parse(variantsList); } catch(e) { variantsList = []; }
+        }
+
+        // Product count is strictly the sum of materials linked to its variants
+        let expectedCount = 0;
+        if (Array.isArray(variantsList) && variantsList.length > 0) {
+            expectedCount = variantsList.reduce((sum, v) => {
+                if (v && v.materialId) {
+                    const mat = inventory.find(i => i.id === v.materialId);
+                    return sum + (mat ? (mat.count || 0) : 0);
+                }
+                return sum;
+            }, 0);
+        }
+
+        let expectedReserved = expectedCount === 0 ? 0 : Math.min(reservedGarments[product.id] || 0, expectedCount);
+
+        if (product.reservedCount !== expectedReserved || product.count !== expectedCount) {
             await tx.product.update({
                 where: { id: product.id },
-                data: { reservedCount: expectedReserved }
+                data: { 
+                    reservedCount: expectedReserved,
+                    count: expectedCount
+                }
             });
         }
     }
@@ -438,7 +460,10 @@ async function getReservedThreadCounts(tx = prisma) {
 }
 
 /**
- * Enrichment function to calculate availableStock and isOutOfStock for products.
+ * Enrichment function to calculate availableStock and isOutOfStock for products based on:
+ * 1. Variants holding the stock (sum of variants = product stock).
+ * 2. Variant linking to raw blank materials in the Materials tab (Inventory).
+ * 3. Products with 0 variants strictly having 0 stock.
  * 
  * @param {Array} products - Array of product objects
  * @param {object} [tx] - Optional transaction context or prisma instance
@@ -458,6 +483,15 @@ async function enrichProductsWithStock(products, tx = prisma) {
     });
 
     const reservedGarments = {};
+    const reservedByVariant = {}; // key: `${productId}_${variantName.toLowerCase()}`
+    const reservedByMaterial = {}; // key: materialId
+
+    // Map all products to look up variant material links
+    const productMap = {};
+    for (const p of products) {
+        productMap[p.id] = p;
+    }
+
     for (const order of activeOrders) {
         const items = Array.isArray(order.items) ? order.items : [];
         for (const item of items) {
@@ -465,14 +499,82 @@ async function enrichProductsWithStock(products, tx = prisma) {
             if (!productId) continue;
             const quantity = item.quantity || 1;
             reservedGarments[productId] = (reservedGarments[productId] || 0) + quantity;
+
+            const variantName = item.selectedVariant || (item.personalization && item.personalization.variant) || item.variant || item.sku;
+            if (variantName) {
+                const vKey = `${productId}_${String(variantName).trim().toLowerCase()}`;
+                reservedByVariant[vKey] = (reservedByVariant[vKey] || 0) + quantity;
+
+                // If variant links to a raw material, track reservations for that material
+                const prod = productMap[productId];
+                if (prod && prod.variants) {
+                    let vList = prod.variants;
+                    if (typeof vList === 'string') {
+                        try { vList = JSON.parse(vList); } catch(e) { vList = []; }
+                    }
+                    if (Array.isArray(vList)) {
+                        const matchedV = vList.find(v => v && v.name && v.name.trim().toLowerCase() === String(variantName).trim().toLowerCase());
+                        if (matchedV && matchedV.materialId) {
+                            reservedByMaterial[matchedV.materialId] = (reservedByMaterial[matchedV.materialId] || 0) + quantity;
+                        }
+                    }
+                }
+            }
         }
     }
 
     return products.map(product => {
-        const dynamicReserved = reservedGarments[product.id] || 0;
-        const blanksAvailable = (product.count || 0) - dynamicReserved;
-        let availableStock = blanksAvailable;
+        let variantsList = product.variants;
+        if (typeof variantsList === 'string') {
+            try { variantsList = JSON.parse(variantsList); } catch(e) { variantsList = []; }
+        }
 
+        // RULE: Products with 0 variants strictly have 0 stock
+        if (!Array.isArray(variantsList) || variantsList.length === 0) {
+            return {
+                ...product,
+                count: 0,
+                dynamicReserved: 0,
+                availableStock: 0,
+                isOutOfStock: true,
+                variants: []
+            };
+        }
+
+        let totalVariantPhysical = 0;
+        let totalVariantAvailable = 0;
+
+        const enrichedVariants = variantsList.map(v => {
+            if (!v) return v;
+            let rawPhysical = 0;
+            let available = 0;
+
+            if (v.materialId) {
+                // Dynamically linked to Materials tab
+                const invItem = inventory.find(i => i.id === v.materialId);
+                const matCount = invItem ? (invItem.count || 0) : 0;
+                const matReserved = reservedByMaterial[v.materialId] || 0;
+                rawPhysical = matCount;
+                available = Math.max(0, matCount - matReserved);
+            } else {
+                // If variant has no material link, it strictly has 0 stock
+                rawPhysical = 0;
+                available = 0;
+            }
+
+            totalVariantPhysical += rawPhysical;
+            totalVariantAvailable += available;
+
+            return {
+                ...v,
+                stock: rawPhysical,
+                availableStock: available,
+                isOutOfStock: available <= 0
+            };
+        });
+
+        // Bottle-neck check from thread recipe (if any)
+        let maxCanProduce = totalVariantAvailable;
         if (product.recipe && Array.isArray(product.recipe) && product.recipe.length > 0) {
             for (const component of product.recipe) {
                 const invItem = inventory.find(i => i.id === component.inventoryId);
@@ -482,16 +584,20 @@ async function enrichProductsWithStock(products, tx = prisma) {
 
                 const quantityRequired = component.quantity || 1;
                 const maxFromComponent = Math.floor(availableCount / quantityRequired);
-                availableStock = Math.min(availableStock, maxFromComponent);
+                maxCanProduce = Math.min(maxCanProduce, maxFromComponent);
             }
         }
 
-        const finalAvailable = Math.max(0, availableStock);
+        const dynamicReserved = reservedGarments[product.id] || 0;
+        const finalAvailable = Math.max(0, Math.min(totalVariantAvailable, maxCanProduce));
+
         return {
             ...product,
+            count: totalVariantPhysical,
             dynamicReserved,
             availableStock: finalAvailable,
-            isOutOfStock: finalAvailable <= 0
+            isOutOfStock: finalAvailable <= 0,
+            variants: enrichedVariants
         };
     });
 }

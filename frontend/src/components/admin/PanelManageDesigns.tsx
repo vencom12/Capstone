@@ -280,10 +280,13 @@ export default function PanelManageDesigns({
     }
 
     const selectedMat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
+    const resolvedStock = selectedMat ? (selectedMat.count || 0) : 0;
+
     const updatedVariant: AdminVariantItem = {
       name: variantName.trim(),
       color: variantColor,
       priceOverride: variantPrice.trim() ? variantPrice.trim() : undefined,
+      stock: resolvedStock,
       materialId: variantMaterialId || undefined,
       materialName: selectedMat ? selectedMat.item : undefined
     };
@@ -408,13 +411,33 @@ export default function PanelManageDesigns({
     if (!name.trim()) return showToast('Name is required', 'error');
     if (!price.trim() || isNaN(parseFloat(price))) return showToast('Enter a valid price', 'error');
 
-    const formattedVariants = variants.map((v) => ({
-      name: v.name,
-      color: v.color,
-      priceOverride: v.priceOverride ? parseFloat(v.priceOverride as any) : undefined,
-      materialId: v.materialId || undefined,
-      materialName: v.materialName || undefined
-    }));
+    // Derive total stock from variants:
+    // Only variants linked to a material in Materials tab provide stock!
+    const totalVariantStock = variants.length === 0
+      ? 0
+      : variants.reduce((sum, v) => {
+          if (v.materialId) {
+            const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
+            return sum + (mat ? (mat.count || 0) : 0);
+          }
+          return sum; // unlinked variants contribute 0
+        }, 0);
+
+    const formattedVariants = variants.map((v) => {
+      let resolvedStock = 0;
+      if (v.materialId) {
+        const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
+        resolvedStock = mat ? (mat.count || 0) : 0;
+      }
+      return {
+        name: v.name,
+        color: v.color,
+        priceOverride: v.priceOverride ? parseFloat(v.priceOverride as any) : undefined,
+        stock: resolvedStock,
+        materialId: v.materialId || undefined,
+        materialName: v.materialName || undefined
+      };
+    });
 
     // Auto-capitalize first letter of name and tag
     const capitalizedName = name.trim().charAt(0).toUpperCase() + name.trim().slice(1);
@@ -427,7 +450,7 @@ export default function PanelManageDesigns({
     formData.append('description', description.trim());
     formData.append('recipe', JSON.stringify(recipe));
     formData.append('variants', JSON.stringify(formattedVariants));
-    formData.append('count', count.trim());
+    formData.append('count', totalVariantStock.toString());
     formData.append('minThreshold', minThreshold.trim());
 
     if (imageFile) {
@@ -435,7 +458,7 @@ export default function PanelManageDesigns({
     }
 
     const numericPrice = parseFloat(price.trim());
-    const numericCount = count ? parseInt(count.trim(), 10) : (editingDesign?.count ?? 0);
+    const numericCount = totalVariantStock;
     const numericMin = minThreshold ? parseInt(minThreshold.trim(), 10) : (editingDesign?.minThreshold ?? 5);
 
     const optimisticProduct = {
@@ -447,6 +470,7 @@ export default function PanelManageDesigns({
       recipe,
       variants: formattedVariants,
       count: numericCount,
+      availableStock: numericCount,
       minThreshold: numericMin,
       ...(imageFile ? { imageUrl: URL.createObjectURL(imageFile) } : {})
     };
@@ -732,21 +756,36 @@ export default function PanelManageDesigns({
                     )}
 
                     {/* Variants / Color Swatches */}
-                    {p.variants && p.variants.length > 0 && (
+                    {p.variants && p.variants.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {p.variants.map((v: any, vi: number) => (
-                          <div
-                            key={vi}
-                            title={`${v.name}${v.stock !== undefined ? ` (Stock: ${v.stock} pcs)` : ''}${v.materialName ? ` • Mat: ${v.materialName}` : ''}${v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : ''}`}
-                            className="flex items-center gap-1 bg-white/5 border border-border-glass/50 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold text-text-dim"
-                          >
-                            <span
-                              className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 inline-block"
-                              style={{ backgroundColor: v.color || '#6366f1' }}
-                            />
-                            <span>{v.name}</span>
-                          </div>
-                        ))}
+                        {p.variants.map((v: any, vi: number) => {
+                          const vStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+                          const isVOutOfStock = vStock <= 0;
+                          return (
+                            <div
+                              key={vi}
+                              title={`${v.name} • Stock: ${vStock} pcs${v.materialName ? ` (Material: ${v.materialName})` : ''}${v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : ''}`}
+                              className={`flex items-center gap-1.5 border px-2 py-0.5 rounded-full text-[0.68rem] font-semibold ${
+                                isVOutOfStock 
+                                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' 
+                                  : 'bg-white/5 border-border-glass/50 text-text-dim'
+                              }`}
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 inline-block"
+                                style={{ backgroundColor: v.color || '#6366f1' }}
+                              />
+                              <span>{v.name}</span>
+                              <span className={`font-mono text-[10px] ${isVOutOfStock ? 'text-rose-400 font-bold' : 'text-text-main/80'}`}>
+                                {isVOutOfStock ? '0' : vStock}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-[0.68rem] text-rose-400/90 font-medium italic flex items-center gap-1">
+                        <span>⚠️ No variants (0 Stock)</span>
                       </div>
                     )}
                     
@@ -891,17 +930,25 @@ export default function PanelManageDesigns({
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
               <div className="flex justify-between items-center mb-1">
-                <label className="modal-label m-0">Stocks (Total Available)</label>
+                <label className="modal-label m-0">Total Product Stock</label>
+                <span className="text-[0.68rem] text-primary font-bold">Auto-calculated</span>
               </div>
-              <input
-                type="number"
-                required
-                disabled={!isAdmin}
-                placeholder="e.g. 50"
-                value={count}
-                onChange={(e) => setCount(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
-              />
+              <div className="bg-bg-surface border border-border-glass p-3 rounded-xl flex items-center justify-between">
+                <span className="font-mono font-bold text-sm text-text-main">
+                  {variants.length === 0 ? 0 : variants.reduce((sum, v) => {
+                    if (v.materialId) {
+                      const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
+                      return sum + (mat?.count ?? 0);
+                    }
+                    return sum + (typeof v.stock === 'number' ? v.stock : parseInt(v.stock?.toString() || '0', 10) || 0);
+                  }, 0)} pcs
+                </span>
+                <span className="text-[0.7rem] text-text-dim">
+                  {variants.length === 0
+                    ? '0 variants (Out of Stock)'
+                    : `${variants.length} variant${variants.length === 1 ? '' : 's'}`}
+                </span>
+              </div>
             </div>
             <div className="modal-section">
               <label className="modal-label">Low Stock Threshold</label>
@@ -921,19 +968,19 @@ export default function PanelManageDesigns({
           <div className="modal-section border border-border-glass p-3.5 rounded-xl bg-white/5">
             <label className="modal-label text-primary font-bold flex justify-between items-center mb-1">
               <span className="flex items-center gap-2">
-                <span>Color / Style Variants (Assorted Supplies)</span>
+                <span>Color / Style Variants</span>
                 {isAdmin && editingVariantIndex !== null && (
                   <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/40">
                     Editing Variant #{editingVariantIndex + 1}
                   </span>
                 )}
               </span>
-              <span className="text-[0.7rem] text-text-dim font-normal">Pooled Stock</span>
+              <span className="text-[0.7rem] text-primary font-bold">Variant-Driven Stock</span>
             </label>
             {isAdmin && (
               <>
                 <p className="text-xs text-text-dim mb-2.5">
-                  Supplies are acquired from suppliers in assorted mixed colors. Configure color swatches and options below — all variants automatically share this product's unified stock pool (<b>{count || 0} pcs</b>).
+                  Configure variants below. Each variant can either hold its own physical stock or dynamically link to a blank raw material in the Materials tab. Total product stock is the sum of all variants. Products with 0 variants have 0 stock.
                 </p>
 
                 {/* Real-time Color Auto-Detection Toast/Banner */}
@@ -983,7 +1030,7 @@ export default function PanelManageDesigns({
                   {/* Row 2: Price Override */}
                   <div>
                     <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
-                      Price Override (₱ Optional — leave blank if same price)
+                      Price Override (₱ Optional — leave blank to use product base price)
                     </label>
                     <input
                       type="number"
@@ -997,21 +1044,48 @@ export default function PanelManageDesigns({
 
                   {/* Row 3: Linked Blank Material Dropdown */}
                   <div>
-                    <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
-                      Linked Blank Material in Raw Inventory (Optional)
-                    </label>
-                    <select
-                      value={variantMaterialId}
-                      onChange={(e) => setVariantMaterialId(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all"
-                    >
-                      <option value="">— None (No direct blank material link) —</option>
-                      {inventory.map((item) => (
-                        <option key={item.id || item._id} value={item.id || item._id}>
-                          {item.item} ({item.count || 0} {item.unit || 'units'} available in stock)
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[0.7rem] text-text-dim font-bold block">
+                        Linked Blank Material in Materials Tab <span className="text-primary">*</span>
+                      </label>
+                      <span className="text-[0.65rem] text-primary font-bold">Supplies Variant Stock</span>
+                    </div>
+                    {inventory.length === 0 ? (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+                        ⚠️ No materials registered in the <b>Materials tab</b>. Variants can only have stock when linked to a material. Add materials in the Materials tab first.
+                      </div>
+                    ) : (
+                      <select
+                        value={variantMaterialId}
+                        onChange={(e) => setVariantMaterialId(e.target.value)}
+                        className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all font-medium"
+                      >
+                        <option value="">— No Material Linked (0 Stock) —</option>
+                        {inventory.map((item) => (
+                          <option key={item.id || item._id} value={item.id || item._id}>
+                            {item.item} ({item.count || 0} {item.unit || 'units'} available in stock)
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* Real-time Material Linking Status Banner */}
+                    <div className="mt-1.5 text-[0.72rem]">
+                      {variantMaterialId ? (() => {
+                        const mat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
+                        const matCount = mat ? (mat.count || 0) : 0;
+                        return (
+                          <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1" : "text-amber-400 font-semibold flex items-center gap-1"}>
+                            <span>{matCount > 0 ? "✓" : "⚠️"}</span>
+                            <span>Linked to <b>{mat?.item || 'Material'}</b>: <b>{matCount} pcs</b> in stock</span>
+                          </span>
+                        );
+                      })() : (
+                        <span className="text-text-dim/70 italic">
+                          ℹ️ No material selected. This variant will have <b>0 stock</b> until linked to an inventory item.
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
@@ -1087,11 +1161,21 @@ export default function PanelManageDesigns({
                           style={{ backgroundColor: v.color || '#6366f1' }}
                         />
                         <span className="font-bold">{v.name}</span>
-                        {v.materialName && (
-                          <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[0.65rem] font-semibold" title={`Linked to Inventory Item: ${v.materialName}`}>
-                            {v.materialName}
-                          </span>
-                        )}
+                        {(() => {
+                          const mat = v.materialId ? inventory.find((i) => (i.id || i._id) === v.materialId) : null;
+                          const count = mat ? (mat.count || 0) : 0;
+                          return (
+                            <span className={`font-mono text-[0.7rem] px-1.5 py-0.5 rounded font-bold ${
+                              count > 0 ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}>
+                              {v.materialId ? (
+                                `🔗 ${count} pcs (${v.materialName || mat?.item || 'Material'})`
+                              ) : (
+                                '0 pcs (No material link)'
+                              )}
+                            </span>
+                          );
+                        })()}
                         {v.priceOverride && (
                           <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
                             ₱{parseFloat(v.priceOverride as any).toFixed(2)}
