@@ -6,7 +6,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface StorefrontHeaderProps {
   onMenuToggle?: () => void;
@@ -14,6 +14,7 @@ interface StorefrontHeaderProps {
 
 export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, getCategories } = useProductStore();
   const basketCount = useBasketStore((s) => s.getCount());
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -21,6 +22,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [mounted, setMounted] = useState(false);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const categories = getCategories();
+
+  const handleBasketClick = () => {
+    if (pathname === '/') {
+      useUIStore.getState().toggleBasket();
+    } else {
+      router.push('/dashboard?tab=basket');
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -110,7 +119,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
             <button
               suppressHydrationWarning
-              onClick={() => router.push('/dashboard?tab=basket')}
+              onClick={handleBasketClick}
               className="w-9 h-9 rounded-xl bg-transparent border-none text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center relative shrink-0"
               title="View My Basket"
               aria-label="View My Basket"
@@ -231,7 +240,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
           <button
             suppressHydrationWarning
-            onClick={() => router.push('/dashboard?tab=basket')}
+            onClick={handleBasketClick}
             className="w-10 h-10 rounded-xl text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center"
             title="View My Basket"
             aria-label="View My Basket"
