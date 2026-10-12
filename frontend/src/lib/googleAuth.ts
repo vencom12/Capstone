@@ -49,12 +49,16 @@ function setPending(on: boolean) {
   }
 }
 
-function isPending(): boolean {
+export function isGoogleAuthPending(): boolean {
   try {
     return sessionStorage.getItem(PENDING_KEY) === 'true';
   } catch {
     return false;
   }
+}
+
+function isPending(): boolean {
+  return isGoogleAuthPending();
 }
 
 function describeFirebaseError(err: any): string {

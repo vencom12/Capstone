@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
-import { startGoogleSignIn } from '@/lib/googleAuth';
+import { startGoogleSignIn, isGoogleAuthPending } from '@/lib/googleAuth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -45,6 +45,9 @@ export default function AuthModal() {
 
   // Listen to deep links (?auth=login or ?auth=register)
   useEffect(() => {
+    // Suppress opening modal if returning from Google redirect
+    if (isGoogleAuthPending()) return;
+
     if (authParam === 'login' || authParam === 'register') {
       if (isAuthenticated) {
         handleClose();
@@ -101,15 +104,18 @@ export default function AuthModal() {
     setIsGoogleSubmitting(true);
     setFormError(null);
 
+    // Clear query param before navigating so the returning page loads clean without ?auth=login
+    if (authParam) {
+      router.replace('/');
+    }
+
     const failure = await startGoogleSignIn();
     if (failure) {
       setIsGoogleSubmitting(false);
       setFormError(failure.message);
       showToast(failure.message, 'error');
     } else {
-      if (useAuthStore.getState().isAuthenticated) {
-        handleClose();
-      }
+      handleClose();
     }
   };
 
