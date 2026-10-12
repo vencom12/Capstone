@@ -394,6 +394,33 @@ export default function PanelOverview({
     }
   };
 
+  const handleCancelOrderAdmin = async () => {
+    if (!editingOrder) return;
+    const orderId = editingOrder.id || editingOrder._id;
+    const confirmed = window.confirm(`Are you sure you want to cancel order #${editingOrder.orderId || orderId}?\n\nThis will mark it as 'Order Canceled' and immediately release any reserved blanks/materials.`);
+    if (!confirmed) return;
+
+    const prevOrders = [...orders];
+    if (setOrders) {
+      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: 'Order Canceled' } : o));
+    }
+    showToast('Order cancelled and reserved stock released.', 'success');
+    setEditingOrder(null);
+
+    try {
+      await api.post('/api/admin/orders/batch-status', {
+        ids: [orderId],
+        status: 'Order Canceled',
+        note: 'Cancelled by Admin/Staff'
+      });
+      refreshData().catch(() => {});
+    } catch (err) {
+      if (setOrders) setOrders(prevOrders);
+      console.error(err);
+      showToast('Failed to cancel order. Reverted.', 'error');
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedIds.length === activeOrders.length) {
       setSelectedIds([]);
@@ -417,7 +444,7 @@ export default function PanelOverview({
           <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
-              <span className="text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-mono font-bold bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full">
                 ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
               </span>
             </div>
@@ -1010,12 +1037,22 @@ export default function PanelOverview({
                 />
               </div>
 
-              <button
-                type="submit"
-                className="bg-primary text-white font-bold py-3 rounded-xl mt-1 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
-              >
-                Save Operational Status
-              </button>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={handleCancelOrderAdmin}
+                  className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold py-3 px-4 rounded-xl transition-all cursor-pointer text-xs font-sans flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <span>✕</span>
+                  <span>Cancel Order</span>
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center text-sm font-sans"
+                >
+                  Save Operational Status
+                </button>
+              </div>
             </form>
           );
         })()}

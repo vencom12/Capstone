@@ -27,7 +27,9 @@ router.get('/dashboard-state', adminAuth(), adminController.getDashboardState);
 router.get('/users', adminAuth(), adminController.getAllUsers);
 router.post('/users', adminAuth(), auditLogger('User', 'CREATE_USER'), adminController.createUser);
 router.put('/users/:id', adminAuth(), auditLogger('User', 'UPDATE_USER'), adminController.updateUser);
-router.delete('/users/:id', adminAuth(), auditLogger('User', 'DELETE_USER'), adminController.deleteUser);
+router.patch('/users/:id/status', adminAuth(), auditLogger('User', 'TOGGLE_USER_STATUS'), adminController.toggleUserStatus);
+router.post('/users/:id/reset-password', adminAuth(), auditLogger('User', 'ADMIN_PASSWORD_RESET'), adminController.sendUserPasswordReset);
+router.delete('/users/:id', adminAuth(), auditLogger('User', 'DISABLE_USER'), adminController.deleteUser);
 router.get('/audit-logs', adminAuth(), adminController.getGlobalAuditLogs);
 router.get('/analytics', adminAuth(), adminController.getAnalytics);
 
@@ -67,9 +69,6 @@ router.get('/orders/history', staffAuth(), adminController.getOrderHistory);
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
 router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
 router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.downloadShoppingListPdf);
-router.get('/products/shopping-list', staffAuth(), adminController.getProductShoppingList);
-router.get('/products/shopping-list/pdf', staffAuth(), adminController.downloadProductShoppingListPdf);
-router.get('/products/shopping-list/csv', staffAuth(), adminController.downloadProductShoppingListCsv);
 // Stock count adjustment (+ / -) -> Staff permitted
 router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), adminController.updateInventoryItem);
 

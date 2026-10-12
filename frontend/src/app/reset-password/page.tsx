@@ -57,8 +57,22 @@ function ResetPasswordContent() {
   return (
     <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 shadow-lg">
       <div className="text-center mb-5">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl bg-primary/20 border border-primary/30">
-          {status === 'success' ? '✅' : status === 'error' ? '❌' : '🔑'}
+        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-primary/20 border border-primary/30 text-primary">
+          {status === 'success' ? (
+            <svg className="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : status === 'error' ? (
+            <svg className="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          ) : (
+            <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 2l-2 2m-1.5 1.5L14 9a5 5 0 1 0 3 3l6-6-2-2-3.5 3.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
         </div>
         <h1 className="text-xl font-extrabold text-text-main m-0 tracking-tight">
           {status === 'success' ? 'Password Updated' : status === 'error' ? 'Reset Link Problem' : 'Choose a New Password'}

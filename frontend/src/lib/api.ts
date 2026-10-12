@@ -212,8 +212,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  delete: <T = unknown>(url: string) =>
-    apiFetch<T>(url, { method: 'DELETE' }),
+  delete: <T = unknown>(url: string, body?: unknown) =>
+    apiFetch<T>(url, {
+      method: 'DELETE',
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+    }),
 
   download: async (url: string, filename: string) => {
     const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;

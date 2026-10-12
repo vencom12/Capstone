@@ -25,10 +25,11 @@ import BasketView from '@/components/dashboard/BasketView';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { getOrderStage } from '@/lib/orderStatus';
 import Pagination from '@/components/ui/Pagination';
+import GlassModal from '@/components/ui/GlassModal';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated, checkAccess, refreshUser } = useAuthStore();
+  const { user, isAuthenticated, checkAccess, refreshUser, logout } = useAuthStore();
   const basketCount = useBasketStore((s) => s.getCount());
 
   const { products, fetchDashboardState, orders, favorites, transactions, selectedCategory, setSelectedCategory, getCategories, isSyncing } = useProductStore();
@@ -53,6 +54,9 @@ export default function DashboardPage() {
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [selectedInvoiceTx, setSelectedInvoiceTx] = useState<any | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
@@ -61,6 +65,30 @@ export default function DashboardPage() {
       }).catch(() => {});
     });
   }, []);
+
+  const handleDeleteAccount = async () => {
+    if (!user || deleteConfirmName.trim().toLowerCase() !== (user.username || '').trim().toLowerCase()) {
+      showToast('Please type your exact account name to confirm deletion.', 'error');
+      return;
+    }
+    setIsDeletingAccount(true);
+    try {
+      const { api } = await import('@/lib/api');
+      await api.delete('/api/customer/account', {
+        confirmationUsername: deleteConfirmName.trim()
+      });
+      showToast('Your account has been deleted.', 'success');
+      setIsDeleteAccountModalOpen(false);
+      setDeleteConfirmName('');
+      logout();
+      router.push('/');
+    } catch (err: any) {
+      console.error('Delete account error:', err);
+      showToast(err?.response?.data?.message || err?.message || 'Failed to delete account.', 'error');
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   // 1-Click Reorder Action
   const handleReorder = (order: Order) => {
@@ -778,6 +806,30 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Account Management Panel */}
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+                <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
+                  <h3 className="text-base font-bold text-text-main m-0">Account Management</h3>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between bg-bg-surface p-4 rounded-xl border border-border-glass flex-wrap gap-4">
+                    <div>
+                      <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Delete Account</h4>
+                      <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">Permanently close your account and remove personal data</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setDeleteConfirmName('');
+                        setIsDeleteAccountModalOpen(true);
+                      }}
+                      className="bg-danger/10 border border-danger/25 text-danger px-4 py-2.5 rounded-xl text-[0.85rem] font-bold hover:bg-danger hover:text-white cursor-pointer transition-all active:scale-95"
+                    >
+                      Delete Account
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         );
@@ -980,6 +1032,72 @@ export default function DashboardPage() {
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
       />
+
+      {/* Delete Account Confirmation Modal */}
+      <GlassModal
+        isOpen={isDeleteAccountModalOpen}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            setIsDeleteAccountModalOpen(false);
+            setDeleteConfirmName('');
+          }
+        }}
+        title="Delete Your Account"
+      >
+        <div className="flex flex-col gap-4 text-left">
+          <p className="text-sm text-text-main m-0 leading-relaxed">
+            Are you sure you want to delete your account? This action is <b className="text-danger font-bold">permanent and irreversible</b>.
+          </p>
+
+          <div className="p-3.5 rounded-xl bg-white/5 border border-border-glass text-xs text-text-dim flex flex-col gap-1.5 leading-relaxed">
+            <div className="flex items-center gap-2 text-text-main font-semibold">
+              <span>⚠️</span>
+              <span>Important information before deleting:</span>
+            </div>
+            <ul className="m-0 pl-4 list-disc space-y-1">
+              <li>Your personal profile (name, email, phone, addresses) will be permanently erased.</li>
+              <li>You will be logged out immediately and cannot access this account again.</li>
+              <li>Past completed orders remain preserved as anonymous records for business receipts and accounting.</li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-1">
+            <label className="text-xs font-semibold text-text-main">
+              To confirm, please type your account name <span className="font-mono text-primary font-bold">"{user?.username}"</span>:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={user?.username || 'Enter your account name'}
+              className="w-full bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none focus:border-danger transition-all font-mono"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end mt-2 pt-3 border-t border-border-glass/40">
+            <button
+              type="button"
+              disabled={isDeletingAccount}
+              onClick={() => {
+                setIsDeleteAccountModalOpen(false);
+                setDeleteConfirmName('');
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeletingAccount || deleteConfirmName.trim().toLowerCase() !== (user?.username || '').trim().toLowerCase()}
+              onClick={handleDeleteAccount}
+              className="px-5 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:bg-danger-light cursor-pointer border-none shadow-[0_4px_12px_rgba(239,68,68,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Account'}
+            </button>
+          </div>
+        </div>
+      </GlassModal>
     </div>
   );
 }

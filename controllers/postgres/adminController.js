@@ -6,7 +6,7 @@ const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 exports.getDashboardState = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = 20;
+        const limit = 100;
         const skip = (page - 1) * limit;
 
         const [orders, inventory, products, totalUsers, totalOrders, adminUsers, trafficData, totalVisits30D] = await Promise.all([
@@ -20,7 +20,22 @@ exports.getDashboardState = async (req, res) => {
             prisma.product.findMany({ orderBy: { createdAt: 'desc' } }),
             prisma.user.count(),
             prisma.order.count(),
-            prisma.user.findMany({ orderBy: [{ role: 'asc' }, { createdAt: 'desc' }] }),
+            prisma.user.findMany({
+                include: {
+                    orders: {
+                        select: {
+                            id: true,
+                            orderId: true,
+                            totalAmount: true,
+                            status: true,
+                            paymentStatus: true,
+                            createdAt: true
+                        },
+                        orderBy: { createdAt: 'desc' }
+                    }
+                },
+                orderBy: [{ role: 'asc' }, { createdAt: 'desc' }]
+            }),
             prisma.siteTraffic.findMany({ orderBy: { timestamp: 'desc' }, take: 30 }),
             prisma.siteTraffic.count({
                 where: {
@@ -103,11 +118,24 @@ exports.getDashboardState = async (req, res) => {
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const enrichedProducts = await enrichProductsWithStock(products);
 
+        const enrichedUsers = (adminUsers || []).map(u => {
+            const userOrders = u.orders || [];
+            const validOrders = userOrders.filter(o => o.status !== 'Order Canceled');
+            const totalOrders = userOrders.length;
+            const totalSpent = validOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+            return {
+                ...u,
+                totalOrders,
+                totalSpent,
+                recentOrders: userOrders.slice(0, 5)
+            };
+        });
+
         res.json({
             orders,
             inventory,
             products: enrichedProducts,
-            users: adminUsers || [],
+            users: enrichedUsers,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalOrders / limit),
@@ -303,7 +331,13 @@ exports.updateUser = async (req, res) => {
             if (existingEmail) {
                 return res.status(400).json({ message: `An account with the email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}").` });
             }
-            updateData.email = normalizedEmail;
+            if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+                updateData.email = normalizedEmail;
+                updateData.isEmailVerified = false;
+                updateData.tokenVersion = { increment: 1 };
+            } else {
+                updateData.email = normalizedEmail;
+            }
         }
 
         if (role) updateData.role = role;
@@ -331,9 +365,53 @@ exports.updateUser = async (req, res) => {
     }
 };
 
+exports.toggleUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive, reason } = req.body;
+
+        if (id === req.user.id && isActive === false) {
+            return res.status(400).json({ message: 'Cannot deactivate your own administrator account' });
+        }
+
+        const targetUser = await prisma.user.findUnique({
+            where: { id }
+        });
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+        const nextActive = typeof isActive === 'boolean' ? isActive : !targetUser.isActive;
+
+        if (!nextActive) {
+            // Unassign machines if assigned to this user
+            await prisma.machine.updateMany({
+                where: { assignedUserId: targetUser.id },
+                data: { assignedUserId: null }
+            });
+        }
+
+        const updated = await prisma.user.update({
+            where: { id },
+            data: {
+                isActive: nextActive,
+                disabledAt: nextActive ? null : new Date(),
+                disabledReason: nextActive ? null : (reason || 'Disabled by Administrator'),
+                tokenVersion: { increment: 1 } // Instantly revokes current JWT sessions
+            }
+        });
+
+        res.json({
+            message: `Account "${updated.username}" ${nextActive ? 're-enabled' : 'disabled'} successfully.`,
+            user: updated
+        });
+    } catch (err) {
+        console.error('toggleUserStatus error:', err);
+        res.status(500).json({ message: err.message || 'Server error updating user status' });
+    }
+};
+
 exports.deleteUser = async (req, res) => {
     try {
-        if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot delete self' });
+        if (req.params.id === req.user.id) return res.status(400).json({ message: 'Cannot deactivate your own administrator account' });
 
         const targetUser = await prisma.user.findUnique({
             where: { id: req.params.id }
@@ -346,19 +424,65 @@ exports.deleteUser = async (req, res) => {
             data: { assignedUserId: null }
         });
 
-        // Clean up linked dependencies
-        await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id } });
-        await prisma.feedback.deleteMany({ where: { userId: targetUser.id } });
-        await prisma.order.deleteMany({ where: { userId: targetUser.id } });
-        await prisma.transaction.deleteMany({ where: { userId: targetUser.id } });
-        await prisma.receipt.deleteMany({ where: { userId: targetUser.id } });
-        await prisma.globalAuditLog.deleteMany({ where: { userId: targetUser.id } });
+        // Safe Soft Deactivation: Preserve all past orders, receipts, and transactions for accounting integrity
+        const updated = await prisma.user.update({
+            where: { id: req.params.id },
+            data: {
+                isActive: false,
+                disabledAt: new Date(),
+                disabledReason: req.body?.reason || 'Deactivated by Administrator',
+                tokenVersion: { increment: 1 }
+            }
+        });
 
-        await prisma.user.delete({ where: { id: req.params.id } });
-        res.json({ message: 'User deleted successfully' });
+        res.json({ 
+            message: `Account "${targetUser.username}" disabled successfully (data & orders preserved).`, 
+            user: updated 
+        });
     } catch (err) {
         console.error('deleteUser error:', err);
-        res.status(500).json({ message: err.message || 'Server error deleting user' });
+        res.status(500).json({ message: err.message || 'Server error deactivating user' });
+    }
+};
+
+exports.sendUserPasswordReset = async (req, res) => {
+    try {
+        const targetUser = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (!targetUser) return res.status(404).json({ message: 'User not found' });
+        if (!targetUser.email) return res.status(400).json({ message: 'User does not have an email address on file.' });
+
+        const { generateVerificationToken, sendPasswordResetEmail } = require('../../utils/emailService');
+        await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id, token: { startsWith: 'rst_' } } });
+        const resetToken = 'rst_' + generateVerificationToken();
+        await prisma.emailVerification.create({
+            data: {
+                userId: targetUser.id,
+                email: targetUser.email,
+                token: resetToken,
+                expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+            }
+        });
+        const emailResult = await sendPasswordResetEmail(targetUser.email, targetUser.username, resetToken);
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+        if (emailResult?.provider) {
+            res.json({ 
+                success: true,
+                message: `Password reset email dispatched to ${targetUser.email} via ${emailResult.provider}!`,
+                resetUrl
+            });
+        } else {
+            res.json({ 
+                success: true,
+                simulated: true,
+                message: `Reset link generated for ${targetUser.email} (Email service in local simulation mode). Set GMAIL_APP_PASSWORD in .env for real delivery.`,
+                resetUrl
+            });
+        }
+    } catch (err) {
+        console.error('sendUserPasswordReset error:', err);
+        res.status(500).json({ message: err.message || 'Failed to dispatch password reset email' });
     }
 };
 
@@ -940,10 +1064,14 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
+        const updateData = { ...req.body };
+        // Mandatory compliance: Inventory audit trails cannot be disabled
+        updateData.inventoryAuditLog = true;
+
         const settings = await prisma.systemSettings.upsert({
             where: { id: 'global' },
-            update: req.body,
-            create: { id: 'global', ...req.body }
+            update: updateData,
+            create: { id: 'global', ...updateData, inventoryAuditLog: true }
         });
         res.json(settings);
     } catch (err) {
@@ -1088,165 +1216,6 @@ exports.downloadShoppingListPdf = async (req, res) => {
     }
 };
 
-exports.getProductShoppingList = async (req, res) => {
-    try {
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
-        const enrichedProducts = await enrichProductsWithStock(products);
-
-        const lowStockProducts = enrichedProducts.filter(p => {
-            const minVal = p.minThreshold || 5;
-            return p.availableStock <= minVal;
-        }).map(p => {
-            const minVal = p.minThreshold || 5;
-            const target = minVal * 2;
-            const suggestedOrder = Math.max(1, target - p.availableStock);
-            return {
-                id: p.id,
-                name: p.name,
-                tag: p.tag || 'General',
-                price: p.price,
-                imageUrl: p.imageUrl,
-                count: p.count,
-                reservedCount: p.dynamicReserved || p.reservedCount || 0,
-                availableStock: p.availableStock,
-                minThreshold: minVal,
-                suggestedOrder,
-                isOutOfStock: p.availableStock <= 0
-            };
-        });
-
-        res.json({
-            totalLowStock: lowStockProducts.length,
-            items: lowStockProducts
-        });
-    } catch (err) {
-        console.error('getProductShoppingList error:', err);
-        res.status(500).json({ message: 'Error retrieving product restock list' });
-    }
-};
-
-exports.downloadProductShoppingListPdf = async (req, res) => {
-    try {
-        const PDFDocument = require('pdfkit');
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-
-        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
-        const enrichedProducts = await enrichProductsWithStock(products);
-
-        const lowStockProducts = enrichedProducts.filter((p) => {
-            const minVal = p.minThreshold || 5;
-            return p.availableStock <= minVal;
-        });
-
-        if (lowStockProducts.length === 0) {
-            return res.status(400).send('All product blanks are healthy above safety thresholds. No restocks required!');
-        }
-
-        const itemsCount = lowStockProducts.length;
-        const pageHeight = Math.max(280, 170 + itemsCount * 48 + 50);
-        const doc = new PDFDocument({ size: [320, pageHeight], margin: 15 });
-
-        const dateStr = new Date().toISOString().split('T')[0];
-        const isInline = req.query.inline === 'true' || req.query.preview === 'true' || req.query.view === 'inline';
-        const disposition = isInline ? 'inline' : 'attachment';
-
-        res.setHeader('Content-disposition', `${disposition}; filename=PRODUCT_SUPPLIER_RESTOCK_${dateStr}.pdf`);
-        res.setHeader('Content-type', 'application/pdf');
-
-        doc.pipe(res);
-
-        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
-
-        doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });
-        doc.font('Helvetica-Bold').fontSize(9).text('SUPPLIER REQUISITION SHEET', { align: 'center' });
-        doc.moveDown(0.2);
-        doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-        doc.text(`Location: Pacific Mall Lucena | Operator: ${req.user?.username || 'Administrator'}`, { align: 'center' });
-
-        doc.moveDown(0.4);
-        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
-        doc.moveDown(0.3);
-
-        doc.font('Helvetica-Bold').fontSize(9).text('PRODUCT BLANKS RESTOCK LIST', { align: 'center' });
-        doc.moveDown(0.3);
-        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
-        doc.moveDown(0.4);
-
-        doc.font('Courier-Bold').fontSize(8);
-        const headerLine = 'PRODUCT BLANK'.padEnd(18) + 'AVAIL'.padStart(7) + 'TO BUY'.padStart(9);
-        doc.text(headerLine, { align: 'center' });
-        doc.font('Courier').fontSize(8);
-        doc.moveDown(0.4);
-
-        lowStockProducts.forEach((item) => {
-            const minVal = item.minThreshold || 5;
-            const target = minVal * 2;
-            const suggestedOrder = Math.max(1, target - item.availableStock);
-
-            const name = item.name.substring(0, 17).padEnd(18);
-            const current = `${item.availableStock}`.padStart(7);
-            const order = `+${suggestedOrder} pcs`.padStart(9);
-
-            doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
-
-            doc.font('Courier-Oblique').fontSize(7);
-            const subtext = `  (Tag: ${item.tag || 'General'} | On-Hand: ${item.count} | Min: ${minVal})`.padEnd(38);
-            doc.text(subtext, { align: 'center' });
-            doc.fontSize(8);
-            doc.moveDown(0.35);
-        });
-
-        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
-        doc.moveDown(0.4);
-
-        doc.font('Helvetica-Oblique').fontSize(6.5);
-        doc.text('* Suggested quantities restore stock to 2x safety threshold level.', { align: 'left', indent: 10 });
-        doc.text('* Present this list to blank garment suppliers for procurement.', { align: 'left', indent: 10 });
-        doc.end();
-
-    } catch (err) {
-        console.error('downloadProductShoppingListPdf error:', err);
-        res.status(500).send('Error generating product restock PDF');
-    }
-};
-
-exports.downloadProductShoppingListCsv = async (req, res) => {
-    try {
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-
-        const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
-        const enrichedProducts = await enrichProductsWithStock(products);
-
-        const lowStockProducts = enrichedProducts.filter((p) => {
-            const minVal = p.minThreshold || 5;
-            return p.availableStock <= minVal;
-        });
-
-        const dateStr = new Date().toISOString().split('T')[0];
-        res.setHeader('Content-disposition', `attachment; filename=PRODUCT_SUPPLIER_RESTOCK_${dateStr}.csv`);
-        res.setHeader('Content-type', 'text/csv; charset=utf-8');
-
-        let csv = 'Product Name,Category,On-Hand Stock,Reserved for Orders,Available Stock,Safety Threshold,Recommended Purchase (Pcs),Stock Status\n';
-        lowStockProducts.forEach((p) => {
-            const minVal = p.minThreshold || 5;
-            const target = minVal * 2;
-            const suggestedOrder = Math.max(1, target - p.availableStock);
-            const status = p.availableStock <= 0 ? 'OUT OF STOCK (CRITICAL)' : 'LOW STOCK';
-            const cleanName = `"${p.name.replace(/"/g, '""')}"`;
-            const cleanTag = `"${(p.tag || 'General').replace(/"/g, '""')}"`;
-
-            csv += `${cleanName},${cleanTag},${p.count},${p.dynamicReserved || 0},${p.availableStock},${minVal},${suggestedOrder},${status}\n`;
-        });
-
-        res.send(csv);
-    } catch (err) {
-        console.error('downloadProductShoppingListCsv error:', err);
-        res.status(500).send('Error generating product restock CSV');
-    }
-};
-
 exports.uploadBusinessLogo = async (req, res) => {
     try {
         if (!req.file) {
@@ -1323,7 +1292,7 @@ exports.getGlobalAuditLogs = async (req, res) => {
             })
         ]);
 
-        // Enrich with user names
+        // Enrich with user names (actors)
         const userIds = [...new Set(logs.map(l => l.userId).filter(Boolean))];
         let userMap = {};
         if (userIds.length > 0) {
@@ -1337,10 +1306,92 @@ exports.getGlobalAuditLogs = async (req, res) => {
             }, {});
         }
 
-        const enrichedLogs = logs.map(l => ({
-            ...l,
-            user: l.userId ? (userMap[l.userId] || { username: 'Unknown User', role: l.userRole }) : null
-        }));
+        // Enrich with target user names and target entities
+        const targetUserIds = [...new Set(
+            logs.filter(l => l.entity === 'User' && l.entityId).map(l => l.entityId)
+        )];
+        let targetUserMap = {};
+        if (targetUserIds.length > 0) {
+            const targetUsers = await prisma.user.findMany({
+                where: { id: { in: targetUserIds } },
+                select: { id: true, username: true, email: true, role: true }
+            });
+            targetUserMap = targetUsers.reduce((acc, u) => {
+                acc[u.id] = u;
+                return acc;
+            }, {});
+        }
+
+        const targetProductIds = [...new Set(
+            logs.filter(l => l.entity === 'Product' && l.entityId).map(l => l.entityId)
+        )];
+        let targetProductMap = {};
+        if (targetProductIds.length > 0) {
+            const targetProducts = await prisma.product.findMany({
+                where: { id: { in: targetProductIds } },
+                select: { id: true, name: true }
+            });
+            targetProductMap = targetProducts.reduce((acc, p) => {
+                acc[p.id] = p.name;
+                return acc;
+            }, {});
+        }
+
+        const targetInventoryIds = [...new Set(
+            logs.filter(l => l.entity === 'Inventory' && l.entityId).map(l => l.entityId)
+        )];
+        let targetInventoryMap = {};
+        if (targetInventoryIds.length > 0) {
+            const targetInventory = await prisma.rawMaterial.findMany({
+                where: { id: { in: targetInventoryIds } },
+                select: { id: true, item: true }
+            });
+            targetInventoryMap = targetInventory.reduce((acc, i) => {
+                acc[i.id] = i.item;
+                return acc;
+            }, {});
+        }
+
+        const targetOrderIds = [...new Set(
+            logs.filter(l => l.entity === 'Order' && l.entityId).map(l => l.entityId)
+        )];
+        let targetOrderMap = {};
+        if (targetOrderIds.length > 0) {
+            const targetOrders = await prisma.order.findMany({
+                where: { id: { in: targetOrderIds } },
+                select: { id: true, orderId: true, client: true }
+            });
+            targetOrderMap = targetOrders.reduce((acc, o) => {
+                acc[o.id] = o.orderId ? `#${o.orderId}` : o.client;
+                return acc;
+            }, {});
+        }
+
+        const enrichedLogs = logs.map(l => {
+            let targetUser = null;
+            let targetName = null;
+            let targetDetail = null;
+
+            if (l.entity === 'User') {
+                targetUser = l.entityId ? (targetUserMap[l.entityId] || null) : null;
+                targetName = targetUser?.username || l.diff?.username || l.diff?.user?.username || null;
+                targetDetail = targetUser?.email || l.diff?.email || l.diff?.user?.email || null;
+            } else if (l.entity === 'Product') {
+                targetName = l.entityId ? (targetProductMap[l.entityId] || l.diff?.name) : l.diff?.name;
+            } else if (l.entity === 'Inventory') {
+                targetName = l.entityId ? (targetInventoryMap[l.entityId] || l.diff?.item) : l.diff?.item;
+            } else if (l.entity === 'Order') {
+                targetName = l.entityId ? (targetOrderMap[l.entityId] || (l.diff?.orderId ? `#${l.diff.orderId}` : null)) : null;
+            }
+
+            return {
+                ...l,
+                user: l.userId ? (userMap[l.userId] || { username: 'Unknown User', role: l.userRole }) : null,
+                targetUser,
+                targetName,
+                targetDetail
+            };
+        });
 
         res.json({
             logs: enrichedLogs,

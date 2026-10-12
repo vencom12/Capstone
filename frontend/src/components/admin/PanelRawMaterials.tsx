@@ -528,7 +528,6 @@ export default function PanelRawMaterials({
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   // Settings
-  const [auditLogToggle, setAuditLogToggle] = useState(true);
   const [businessPhone, setBusinessPhone] = useState('0928 810 3928');
 
   // Modals state
@@ -580,6 +579,16 @@ export default function PanelRawMaterials({
   // Materials at or below threshold
   const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
 
+  // Wholesale Restock Calculation: brings stock up to 2x threshold rounded up to clean commercial pack size
+  const calculateSuggestedRestockQty = (item: any): number => {
+    if (!item) return 20;
+    const minVal = item.minThreshold || 10;
+    const target = minVal * 2;
+    const rawDeficit = Math.max(1, target - (item.count || 0));
+    const step = minVal >= 20 ? 10 : (minVal >= 10 ? 5 : 1);
+    return Math.ceil(rawDeficit / step) * step;
+  };
+
   const openDraftPoModal = (materialId?: string) => {
     const targetId =
       materialId ||
@@ -591,9 +600,7 @@ export default function PanelRawMaterials({
 
     const targetItem = inventory.find((i) => (i.id || i._id) === targetId);
     if (targetItem) {
-      const minVal = targetItem.minThreshold || 10;
-      const target = minVal * 2;
-      const suggested = Math.max(1, target - targetItem.count);
+      const suggested = calculateSuggestedRestockQty(targetItem);
       setDraftPoQuantity(suggested.toString());
       const est = targetItem.supplierUnitCost
         ? targetItem.supplierUnitCost * suggested
@@ -612,12 +619,10 @@ export default function PanelRawMaterials({
       return;
     }
     const phone = businessPhone || '0928 810 3928';
-    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following raw materials:\n`;
+    let text = `SUPPLIER RESTOCK ORDER — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following raw materials:\n`;
     lowStockItems.forEach((item) => {
-      const minVal = item.minThreshold || 10;
-      const target = minVal * 2;
-      const suggested = Math.max(1, target - item.count);
-      text += `• ${suggested} ${item.unit || 'units'} — ${item.item} (Current Stock: ${item.count}, Min: ${minVal})\n`;
+      const suggested = calculateSuggestedRestockQty(item);
+      text += `• ${suggested} ${item.unit || 'units'} — ${item.item}\n`;
     });
     text += `\nPlease confirm availability, current invoice pricing, and estimated delivery date. Thank you!`;
 
@@ -637,9 +642,7 @@ export default function PanelRawMaterials({
     try {
       let stagedCount = 0;
       for (const item of lowStockItems) {
-        const minVal = item.minThreshold || 10;
-        const target = minVal * 2;
-        const suggested = Math.max(1, target - item.count);
+        const suggested = calculateSuggestedRestockQty(item);
         const estCost = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
         await api.post('/api/admin/purchase-orders', {
           inventoryId: item.id || item._id,
@@ -719,7 +722,7 @@ export default function PanelRawMaterials({
 
       ctx.fillStyle = '#0F172A';
       ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
-      ctx.fillText('SUPPLIER RESTOCK ORDER / SHOPPING LIST', width / 2, 85);
+      ctx.fillText('SUPPLIER RESTOCK ORDER', width / 2, 85);
 
       const dateStr = new Date().toLocaleDateString('en-US', {
         weekday: 'short',
@@ -743,7 +746,7 @@ export default function PanelRawMaterials({
       ctx.lineTo(width - 25, 118);
       ctx.stroke();
 
-      // Table Header
+      // Table Header (Clean 2 columns)
       ctx.fillStyle = '#F8FAFC';
       ctx.fillRect(25, 128, width - 50, 30);
       ctx.strokeStyle = '#E2E8F0';
@@ -752,13 +755,10 @@ export default function PanelRawMaterials({
       ctx.fillStyle = '#475569';
       ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('MATERIAL / ITEM', 38, 147);
-
-      ctx.textAlign = 'center';
-      ctx.fillText('CURRENT', 330, 147);
+      ctx.fillText('ITEM / DESCRIPTION', 38, 147);
 
       ctx.textAlign = 'right';
-      ctx.fillText('ORDER QTY', width - 38, 147);
+      ctx.fillText('QUANTITY', width - 38, 147);
 
       // Items list
       let currentY = 176;
@@ -769,29 +769,21 @@ export default function PanelRawMaterials({
           ctx.fillRect(25, currentY - 14, width - 50, itemRowHeight);
         }
 
-        const minVal = item.minThreshold || 10;
-        const target = minVal * 2;
-        const suggestedQty = Math.max(1, target - item.count);
+        const suggestedQty = calculateSuggestedRestockQty(item);
         const unit = item.unit || 'units';
 
         // Material name
         ctx.textAlign = 'left';
         ctx.fillStyle = '#0F172A';
-        ctx.font = '600 12px system-ui, -apple-system, sans-serif';
-        const truncatedName = item.item.length > 34 ? `${item.item.slice(0, 32)}...` : item.item;
+        ctx.font = '600 13px system-ui, -apple-system, sans-serif';
+        const truncatedName = item.item.length > 42 ? `${item.item.slice(0, 40)}...` : item.item;
         ctx.fillText(truncatedName, 38, currentY + 5);
 
-        // Current stock
-        ctx.textAlign = 'center';
-        ctx.fillStyle = item.count <= minVal ? '#EF4444' : '#64748B';
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText(`${item.count} ${unit}`, 330, currentY + 5);
-
-        // Order qty
+        // Order quantity (clean number + unit, no plus sign)
         ctx.textAlign = 'right';
-        ctx.fillStyle = '#059669';
-        ctx.font = 'bold 13px monospace';
-        ctx.fillText(`+${suggestedQty} ${unit}`, width - 38, currentY + 5);
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+        ctx.fillText(`${suggestedQty} ${unit}`, width - 38, currentY + 5);
 
         // Row separator
         ctx.strokeStyle = '#F1F5F9';
@@ -865,7 +857,7 @@ export default function PanelRawMaterials({
         await navigator.clipboard.write([
           new (window as any).ClipboardItem({ 'image/png': shoppingListImageBlob })
         ]);
-        showToast('✓ Image copied! Paste directly in Messenger or Viber (Ctrl+V)', 'success');
+        showToast('Image copied to clipboard. Paste directly into Messenger or Viber.', 'success');
         return;
       }
     } catch (err: any) {
@@ -946,7 +938,7 @@ export default function PanelRawMaterials({
     const dateStr = po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const poNum = `PO-${dateStr}`;
     const phone = businessPhone || '0928 810 3928';
-    const text = `📦 PURCHASE ORDER — EDS TOWELS & CAPS\nPO Number: #${poNum}\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following embroidery materials:\n• ${po.quantity} ${po.inventory?.unit || 'Cones'} — ${po.inventory?.item || 'Embroidery Material'}\n${po.estimatedCost ? `Estimated Total: ₱${po.estimatedCost.toFixed(2)}\n` : ''}\nPlease confirm price invoice and expected delivery date. Thank you!`;
+    const text = `PURCHASE ORDER — EDS TOWELS & CAPS\nPO Number: #${poNum}\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following embroidery materials:\n• ${po.quantity} ${po.inventory?.unit || 'Cones'} — ${po.inventory?.item || 'Embroidery Material'}\n${po.estimatedCost ? `Estimated Total: ₱${po.estimatedCost.toFixed(2)}\n` : ''}\nPlease confirm price invoice and expected delivery date. Thank you!`;
     
     navigator.clipboard.writeText(text).then(() => {
       showToast(`Copied order #${poNum} to clipboard`, 'success');
@@ -1109,7 +1101,6 @@ export default function PanelRawMaterials({
     api.get<any>('/api/admin/settings')
       .then((settings) => {
         if (settings) {
-          setAuditLogToggle(!!settings.inventoryAuditLog);
           if (settings.businessContact) {
             setBusinessPhone(settings.businessContact);
           }
@@ -1259,12 +1250,7 @@ export default function PanelRawMaterials({
         minThreshold: parseInt(globalThreshold) || 10
       });
 
-      // Update Audit Toggle setting
-      await api.patch('/api/admin/settings', {
-        inventoryAuditLog: auditLogToggle
-      });
-
-      showToast('Settings saved', 'success');
+      showToast('Inventory parameters updated', 'success');
       setIsSettingsOpen(false);
       refreshData();
       fetchAuditLogs();
@@ -1542,8 +1528,10 @@ export default function PanelRawMaterials({
           {lowStockItems.length > 0 ? (
             <div className="bg-danger/10 border border-danger/20 p-3.5 rounded-xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center text-danger shrink-0 font-bold text-sm">
-                  ⚠️
+                <div className="w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center text-danger shrink-0">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-danger">
@@ -1579,13 +1567,13 @@ export default function PanelRawMaterials({
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
-                  <span>{isGeneratingImage ? 'Creating Image...' : '📷 Copy Order Image'}</span>
+                  <span>{isGeneratingImage ? 'Creating Image...' : 'Copy Order Image'}</span>
                 </button>
               </div>
             </div>
           ) : (
             <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
-              <span className="text-xs font-semibold text-emerald-400">✓ All shop materials are well stocked</span>
+              <span className="text-xs font-semibold text-emerald-400">All shop materials are well stocked</span>
             </div>
           )}
 
@@ -1593,7 +1581,7 @@ export default function PanelRawMaterials({
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
             {[
               { id: 'all', label: 'All Items', count: inventory.length },
-              { id: 'low', label: '⚠️ Needs Restock', count: lowStockItems.length },
+              { id: 'low', label: 'Needs Restock', count: lowStockItems.length },
             ].map((pill) => (
               <button
                 key={pill.id}
@@ -1651,11 +1639,11 @@ export default function PanelRawMaterials({
                               <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
                             </div>
                             {isLow ? (
-                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-rose-500/15 border border-rose-500/30 text-rose-400">
-                                ⚠️ Low Stock
+                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-danger/10 border border-danger/20 text-danger">
+                                Low Stock
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                              <span className="inline-flex items-center gap-1 text-[0.68rem] px-2.5 py-0.5 rounded-full font-bold bg-success/10 border border-success/20 text-success">
                                 In Stock
                               </span>
                             )}
@@ -1674,7 +1662,7 @@ export default function PanelRawMaterials({
                             <button
                               type="button"
                               onClick={() => openRestockModal(i)}
-                              className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                              className="bg-success/10 border border-success/20 text-success hover:bg-success/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                               title={`Receive supplier delivery for ${i.item}`}
                             >
                               + Add Stock
@@ -2076,17 +2064,21 @@ export default function PanelRawMaterials({
             />
           </div>
 
-          <div className="modal-box flex items-center justify-between mt-2">
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between mt-2">
             <div className="flex flex-col text-left">
-              <span className="modal-label text-text-main">Audit trail logs registry</span>
-              <span className="text-[0.65rem] text-text-dim mt-0.5">Records material stock adjustments in DB logs</span>
+              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Audit Trail Registry (Mandatory)</span>
+              </span>
+              <span className="text-[0.68rem] text-text-dim mt-0.5">
+                Physical adjustments and arrivals are permanently recorded in DB logs for accounting and fraud prevention.
+              </span>
             </div>
-            <input
-              type="checkbox"
-              checked={auditLogToggle}
-              onChange={(e) => setAuditLogToggle(e.target.checked)}
-              className="w-5 h-5 cursor-pointer rounded border-border-glass bg-transparent"
-            />
+            <span className="text-emerald-400 text-[0.65rem] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 shrink-0 ml-2">
+              ALWAYS ON
+            </span>
           </div>
 
           <button
@@ -2237,7 +2229,7 @@ export default function PanelRawMaterials({
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-emerald-400">Stockpile Projection:</span>
                   <span className="text-[0.75rem] text-text-dim">
-                    Current: <b className="text-white font-mono">{current}</b> {unit} &nbsp;➔&nbsp; After Intake: <b className="text-emerald-400 font-mono text-sm">+{added} = {finalCount}</b> {unit}
+                    Current: <b className="text-white font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Intake: <b className="text-emerald-400 font-mono text-sm">+{added} = {finalCount}</b> {unit}
                   </span>
                 </div>
                 <svg className="w-5 h-5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2294,7 +2286,7 @@ export default function PanelRawMaterials({
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                   </svg>
-                  <span>📋 Copy Image</span>
+                  <span>Copy Image</span>
                 </button>
                 <button
                   type="button"
@@ -2315,7 +2307,10 @@ export default function PanelRawMaterials({
                   className="px-3 py-2 rounded-xl bg-white/5 border border-border-glass hover:bg-white/10 text-text-dim hover:text-text-main text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
                   title="Copy formatted text message as backup"
                 >
-                  <span>💬 Copy Text</span>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Copy Text</span>
                 </button>
               </div>
             </div>
@@ -2330,7 +2325,7 @@ export default function PanelRawMaterials({
             </div>
             
             <div className="text-[11px] text-text-dim text-center">
-              💡 Tip: Click <b>Copy Image</b>, open <b>Messenger</b> or <b>Viber</b>, and press <b>Ctrl + V</b> (or Paste) to send!
+              Tip: Click <b>Copy Image</b>, open <b>Messenger</b> or <b>Viber</b>, and press <b>Ctrl + V</b> (or Paste) to send!
             </div>
           </div>
         </GlassModal>
@@ -2425,7 +2420,7 @@ export default function PanelRawMaterials({
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
-                  <span>📷 Copy Order Image</span>
+                  <span>Copy Order Image</span>
                 </button>
                 <button
                   type="button"
@@ -2459,15 +2454,14 @@ export default function PanelRawMaterials({
                     className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold border border-amber-500/30 transition cursor-pointer flex items-center gap-1"
                     title="Stage purchase orders for all low stock items automatically"
                   >
-                    <span>⚡</span> Batch Stage All ({lowStockItems.length})
+                    <span>Batch Stage All ({lowStockItems.length})</span>
                   </button>
                 </div>
 
                 <div className="max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-bg-surface/60 divide-y divide-white/5">
                   {lowStockItems.map((item) => {
                     const minVal = item.minThreshold || 10;
-                    const target = minVal * 2;
-                    const suggested = Math.max(1, target - item.count);
+                    const suggested = calculateSuggestedRestockQty(item);
                     const isSelected = (item.id || item._id) === draftPoMaterialId;
 
                     return (
@@ -2480,12 +2474,12 @@ export default function PanelRawMaterials({
                         <div className="flex flex-col">
                           <span className="font-bold text-text-main">{item.item}</span>
                           <span className="text-[11px] text-text-dim">
-                            Current Stock: <b className="text-danger font-mono">{item.count}</b> / {minVal} {item.unit || 'units'} &nbsp;|&nbsp; Deficit: <span className="text-amber-400 font-mono">+{suggested}</span> needed
+                            Current Stock: <b className="text-danger font-mono">{item.count}</b> / {minVal} {item.unit || 'units'} &nbsp;|&nbsp; Suggested Order: <span className="text-amber-400 font-mono">{suggested}</span>
                           </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold text-[11px]">
-                            +{suggested} {item.unit || 'units'}
+                            {suggested} {item.unit || 'units'}
                           </span>
                           <button
                             type="button"
@@ -2502,7 +2496,7 @@ export default function PanelRawMaterials({
                                 : 'bg-white/10 hover:bg-white/20 text-text-main'
                             }`}
                           >
-                            {isSelected ? '✓ Selected' : 'Use in Form'}
+                            {isSelected ? 'Selected' : 'Use in Form'}
                           </button>
                         </div>
                       </div>
@@ -2530,9 +2524,7 @@ export default function PanelRawMaterials({
                     setDraftPoMaterialId(newId);
                     const found = inventory.find(i => (i.id || i._id) === newId);
                     if (found) {
-                      const minVal = found.minThreshold || 10;
-                      const target = minVal * 2;
-                      const suggested = Math.max(1, target - found.count);
+                      const suggested = calculateSuggestedRestockQty(found);
                       setDraftPoQuantity(suggested.toString());
                       const est = found.supplierUnitCost ? found.supplierUnitCost * suggested : suggested * 5;
                       setDraftPoEstCost(est.toString());
@@ -2544,7 +2536,7 @@ export default function PanelRawMaterials({
                     const isLow = inv.count <= (inv.minThreshold || 10);
                     return (
                       <option key={inv.id || inv._id} value={inv.id || inv._id} className="bg-bg-surface text-text-main">
-                        {inv.item} — Stock: {inv.count} {inv.unit} {isLow ? '⚠️ [LOW STOCK]' : ''}
+                        {inv.item} — Stock: {inv.count} {inv.unit} {isLow ? '[LOW STOCK]' : ''}
                       </option>
                     );
                   })}
@@ -2560,8 +2552,7 @@ export default function PanelRawMaterials({
                     {(() => {
                       const cur = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
                       if (cur) {
-                        const minVal = cur.minThreshold || 10;
-                        const suggested = Math.max(1, minVal * 2 - cur.count);
+                        const suggested = calculateSuggestedRestockQty(cur);
                         return (
                           <button
                             type="button"
@@ -2572,7 +2563,7 @@ export default function PanelRawMaterials({
                             }}
                             className="text-[10px] text-primary hover:underline cursor-pointer bg-transparent border-none"
                           >
-                            Reset to Suggested (+{suggested})
+                            Reset to Suggested ({suggested})
                           </button>
                         );
                       }
@@ -2633,7 +2624,7 @@ export default function PanelRawMaterials({
                 return (
                   <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs text-text-dim">
                     <span>
-                      Stockpile Projection: Current <b className="text-white font-mono">{current}</b> {unit} &nbsp;➔&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
+                      Stockpile Projection: Current <b className="text-white font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
                     </span>
                     <button
                       type="button"
@@ -2642,7 +2633,7 @@ export default function PanelRawMaterials({
                         const qty = parseInt(draftPoQuantity) || 0;
                         const cost = parseFloat(draftPoEstCost);
                         const phone = businessPhone || '0928 810 3928';
-                        const msg = `📦 PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
+                        const msg = `PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
                         navigator.clipboard.writeText(msg).then(() => {
                           showToast('Copied to clipboard', 'success');
                         });

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
-import { getRedirectResult, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { showToast } from '@/components/ui/Toast';
@@ -26,7 +26,6 @@ export default function GlobalAuthListener() {
 
     isProcessingRef.current = true;
     console.log('[Google Auth] Processing user login:', user.email);
-    showToast('Completing Google Sign-In...', 'info');
 
     try {
       const { loginWithGoogle } = useAuthStore.getState();
@@ -52,7 +51,7 @@ export default function GlobalAuthListener() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('stitch-session-active', 'true');
         }
-        showToast(`Welcome, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
+        showToast(`Welcome back, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
         if (res.user?.role === 'admin') {
           router.replace('/admin');
         } else if (res.user?.role === 'employee') {
@@ -74,15 +73,9 @@ export default function GlobalAuthListener() {
   };
 
   useEffect(() => {
-    // Only process Google auth if explicitly initiated by user clicking "Continue with Google"
-    const hasPendingGoogleLogin = typeof window !== 'undefined' && sessionStorage.getItem('stitch-google-auth-pending') === 'true';
-
-    if (!hasPendingGoogleLogin) {
-      // Do NOT auto-login on page reload or plain visits
-      return;
-    }
-
-    // 1. Direct Redirect Handler
+    // 1. Direct Redirect Handler:
+    // getRedirectResult is ONLY non-null immediately after returning from a redirect!
+    // Running this unconditionally ensures logins are never lost if the browser stripped sessionStorage.
     getRedirectResult(auth)
       .then((result) => {
         if (result && result.user) {
@@ -100,22 +93,22 @@ export default function GlobalAuthListener() {
         if (error.code && error.code !== 'auth/null-user') {
           console.error('[Google Auth] Redirect Auth Error:', error);
           if (error.code === 'auth/unauthorized-domain') {
-            showToast('Domain is not authorized in Firebase Console.', 'error');
+            const domain = typeof window !== 'undefined' ? window.location.hostname : 'your domain';
+            showToast(`Domain "${domain}" is not authorized. Add it in Firebase Console > Authentication > Settings > Authorized domains.`, 'error');
           } else {
             showToast(error.message || 'Error completing Google sign-in.', 'error');
           }
         }
       });
 
-    // 2. Auth State Observer Safety Net
-    // Only catches session if stitch-google-auth-pending is active
+    // 2. Auth State Observer:
+    // Seamlessly handles logins whether completed via Popup or Redirect
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      const stillPending = typeof window !== 'undefined' && sessionStorage.getItem('stitch-google-auth-pending') === 'true';
-      if (user && stillPending && !useAuthStore.getState().isAuthenticated) {
+      if (user && !useAuthStore.getState().isAuthenticated) {
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('stitch-google-auth-pending');
         }
-        console.log('[Google Auth] Observer detected active Google session:', user.email);
+        console.log('[Google Auth] Observer detected Google session:', user.email);
         processFirebaseUser(user);
       }
     });

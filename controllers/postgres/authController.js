@@ -22,19 +22,26 @@ exports.register = async (req, res) => {
         // Optional phone and address fallback for frictionless signup
         const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
         const cleanAddress = address ? address.trim() : '';
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const cleanUsername = (username || '').trim();
 
-        // Check if user exists
+        // Check if user exists (case-insensitive)
         const existingUser = await prisma.user.findFirst({
             where: {
                 OR: [
-                    { email },
-                    { username }
+                    { email: { equals: cleanEmail, mode: 'insensitive' } },
+                    { username: { equals: cleanUsername, mode: 'insensitive' } }
                 ]
             }
         });
 
         if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
+            const isEmailMatch = existingUser.email?.toLowerCase() === cleanEmail;
+            return res.status(400).json({ 
+                message: isEmailMatch 
+                    ? 'An account with this email already exists. Please log in or sign in with Google.' 
+                    : 'This username is already taken. Please choose another username.' 
+            });
         }
 
         // Hash password (Prisma doesn't have pre-save hooks like Mongoose)
@@ -42,12 +49,14 @@ exports.register = async (req, res) => {
 
         const user = await prisma.user.create({
             data: {
-                username,
-                email,
+                username: cleanUsername,
+                email: cleanEmail,
                 password: hashedPassword,
                 role: 'customer',
                 phoneNumber: cleanPhone,
-                address: cleanAddress
+                address: cleanAddress,
+                lastLoginAt: new Date(),
+                lastActiveAt: new Date()
             }
         });
 
@@ -103,11 +112,12 @@ exports.login = async (req, res) => {
             return res.json({ user: mockUser });
         }
         
+        const cleanEmail = (email || '').trim();
         const user = await prisma.user.findFirst({
             where: {
                 OR: [
-                    { email: email },
-                    { username: email }
+                    { email: { equals: cleanEmail, mode: 'insensitive' } },
+                    { username: { equals: cleanEmail, mode: 'insensitive' } }
                 ]
             }
         });
@@ -116,6 +126,12 @@ exports.login = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        if (user.isActive === false) {
+            return res.status(403).json({ 
+                message: 'Your account has been deactivated. Please contact support or store management.' 
+            });
+        }
 
         if (portal) {
             if (portal === 'admin' && user.role !== 'admin') {
@@ -143,6 +159,12 @@ exports.login = async (req, res) => {
         
         res.cookie(`${user.role}_token`, token, cookieOptions);
         res.cookie('token', token, cookieOptions); 
+
+        // Track last login & active timestamps for CRM and security auditing
+        prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date(), lastActiveAt: new Date() }
+        }).catch((e) => console.warn('Failed to update lastLoginAt:', e?.message));
 
         res.json({ 
             user: { 
@@ -742,13 +764,12 @@ exports.googleAuth = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Google account email is required.' });
         }
 
-        // Search for user by email or username
+        const cleanEmail = email.trim().toLowerCase();
+
+        // Search for user strictly by verified email (case-insensitive)
         let user = await prisma.user.findFirst({
             where: {
-                OR: [
-                    { email: email },
-                    { username: email.split('@')[0] }
-                ]
+                email: { equals: cleanEmail, mode: 'insensitive' }
             }
         });
 
@@ -757,25 +778,37 @@ exports.googleAuth = async (req, res) => {
             // choose a password so they can also sign in with email + password later.
             const suggestedUsername = (displayName
                 ? displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '')
-                : email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')) || 'User';
+                : cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')) || 'User';
             const setupToken = jwt.sign(
-                { purpose: 'google-setup', email, displayName: displayName || '', phoneNumber: phoneNumber || '', uid: uid || '' },
+                { purpose: 'google-setup', email: cleanEmail, displayName: displayName || '', phoneNumber: phoneNumber || '', uid: uid || '' },
                 process.env.JWT_SECRET,
                 { expiresIn: '15m' }
             );
-            return res.json({ success: true, needsPassword: true, setupToken, email, suggestedUsername });
-        } else {
-            // Update email verification and phone number if Google provided one and account has none
-            const updateData = { isEmailVerified: true };
-            if (phoneNumber && !user.phoneNumber) {
-                updateData.phoneNumber = phoneNumber;
-                updateData.isPhoneVerified = true;
-            }
-            user = await prisma.user.update({
-                where: { id: user.id },
-                data: updateData
+            return res.json({ success: true, needsPassword: true, setupToken, email: cleanEmail, suggestedUsername });
+        }
+
+        // Account exists: Check if account is deactivated
+        if (user.isActive === false) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Your account has been deactivated. Please contact support or store management.' 
             });
         }
+
+        // Update email verification, login timestamps, and phone number if Google provided one and account has none
+        const updateData = { 
+            isEmailVerified: true,
+            lastLoginAt: new Date(),
+            lastActiveAt: new Date()
+        };
+        if (phoneNumber && !user.phoneNumber) {
+            updateData.phoneNumber = phoneNumber;
+            updateData.isPhoneVerified = true;
+        }
+        user = await prisma.user.update({
+            where: { id: user.id },
+            data: updateData
+        });
 
         const token = jwt.sign(
             { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
@@ -841,30 +874,40 @@ exports.googleComplete = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid sign-up session.' });
         }
 
-        const email = payload.email;
-        const already = await prisma.user.findFirst({ where: { email } });
+        const cleanEmail = (payload.email || '').trim().toLowerCase();
+        const already = await prisma.user.findFirst({ 
+            where: { 
+                email: { equals: cleanEmail, mode: 'insensitive' } 
+            } 
+        });
         if (already) {
             return res.status(400).json({ success: false, message: 'An account with this email already exists. Please sign in.' });
         }
 
         const desiredName = (username || '').trim().replace(/[^a-zA-Z0-9_\s]/g, '')
             || (payload.displayName ? payload.displayName.trim().replace(/[^a-zA-Z0-9_\s]/g, '') : '')
-            || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')
+            || cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')
             || `User_${Math.floor(1000 + Math.random() * 9000)}`;
-        const taken = await prisma.user.findUnique({ where: { username: desiredName } });
+        const taken = await prisma.user.findFirst({ 
+            where: { 
+                username: { equals: desiredName, mode: 'insensitive' } 
+            } 
+        });
         const finalUsername = taken ? `${desiredName}_${Math.floor(100 + Math.random() * 900)}` : desiredName;
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: {
                 username: finalUsername,
-                email,
+                email: cleanEmail,
                 password: hashedPassword,
                 phoneNumber: payload.phoneNumber || null,
                 role: 'customer',
                 isEmailVerified: true,
                 isPhoneVerified: !!payload.phoneNumber,
-                walletBalance: 0
+                walletBalance: 0,
+                lastLoginAt: new Date(),
+                lastActiveAt: new Date()
             }
         });
 
@@ -917,7 +960,11 @@ exports.forgotPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Email is required.' });
         }
 
-        const user = await prisma.user.findFirst({ where: { email } });
+        const user = await prisma.user.findFirst({ 
+            where: { 
+                email: { equals: email, mode: 'insensitive' } 
+            } 
+        });
         if (!user || user.role !== 'customer') {
             return res.json(generic);
         }

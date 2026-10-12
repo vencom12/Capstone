@@ -28,8 +28,8 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     const isNewProcessed = PROCESSED_STATES.includes(newStatus);
     const isCancel = newStatus === 'Order Canceled';
 
-    const settings = await tx.systemSettings.findUnique({ where: { id: 'global' } });
-    const logEnabled = settings ? settings.inventoryAuditLog : true;
+    // Mandatory: Inventory audit trails cannot be disabled
+    const logEnabled = true;
     const items = Array.isArray(order.items) ? order.items : [];
 
     // CASE 1: Transition from RESERVED to PROCESSED
@@ -460,6 +460,29 @@ async function getReservedThreadCounts(tx = prisma) {
 }
 
 /**
+ * Automatically cancels unpaid checkouts exceeding the 24-hour payment window
+ * to guarantee stale reservations are never left hanging.
+ */
+async function autoExpireUnpaidOrders(tx = prisma) {
+    try {
+        const expirationCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        await tx.order.updateMany({
+            where: {
+                status: { in: ['Awaiting Payment', 'Pending Payment'] },
+                paymentStatus: { not: 'paid' },
+                createdAt: { lt: expirationCutoff }
+            },
+            data: {
+                status: 'Order Canceled',
+                paymentStatus: 'unpaid'
+            }
+        });
+    } catch (err) {
+        console.error('[InventoryManager] autoExpireUnpaidOrders error:', err);
+    }
+}
+
+/**
  * Enrichment function to calculate availableStock and isOutOfStock for products based on:
  * 1. Variants holding the stock (sum of variants = product stock).
  * 2. Variant linking to raw blank materials in the Materials tab (Inventory).
@@ -470,15 +493,25 @@ async function getReservedThreadCounts(tx = prisma) {
  * @returns {Promise<Array>} Enriched products
  */
 async function enrichProductsWithStock(products, tx = prisma) {
+    // 1. Proactively sweep away any stale checkouts past 24 hours
+    await autoExpireUnpaidOrders(tx);
+
     const inventory = await tx.inventory.findMany();
     const reservedThreads = await getReservedThreadCounts(tx);
 
-    // Calculate product reserved count dynamically to prevent any locked stock drift
+    // 2. Fetch active production orders; "Awaiting Payment" only locks stock within the 24h grace window
+    const ONE_DAY_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeOrders = await tx.order.findMany({
         where: {
-            status: {
-                in: RESERVED_STATES
-            }
+            OR: [
+                {
+                    status: { in: ['In Queue', 'On Hold - Awaiting Materials', 'Processing', 'Stitching', 'Assembly', 'Queued', 'Paid', 'Order Placed'] }
+                },
+                {
+                    status: { in: ['Awaiting Payment', 'Pending Payment', 'Payment Uploaded - Verifying'] },
+                    createdAt: { gte: ONE_DAY_AGO } // Strictly must be within 24 hours
+                }
+            ]
         }
     });
 
@@ -607,6 +640,7 @@ module.exports = {
     enrichProductsWithStock,
     getReservedThreadCounts,
     reconcileReservedCounts,
+    autoExpireUnpaidOrders,
     RESERVED_STATES,
     PROCESSED_STATES
 };

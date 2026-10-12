@@ -652,3 +652,4 @@
 {"timestamp":"2026-10-11T14:57:30.427Z","event":"dataChanged","sizeBytes":113,"entity":"INVENTORY","action":"DELETE"}
 {"timestamp":"2026-10-11T14:57:30.427Z","event":"dataChanged","sizeBytes":53,"entity":"INVENTORY","action":"UPDATE"}
 {"timestamp":"2026-10-11T14:57:30.427Z","event":"dataChanged","sizeBytes":59,"entity":"INVENTORY_BATCH","action":"UPDATE"}
+{"timestamp":"2026-10-12T05:40:31.444Z","event":"dataChanged","sizeBytes":240,"entity":"INVENTORY","action":"CREATE"}

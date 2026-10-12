@@ -5,22 +5,28 @@ import GlassModal from '@/components/ui/GlassModal';
 import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import type { Order } from '@/lib/types';
+import { api } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
+import { useProductStore } from '@/stores/useProductStore';
 
 interface OrderDetailsModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
   initialTab?: 'summary' | 'tracking';
+  onOrderCancelled?: (orderId: string) => void;
 }
 
 export default function OrderDetailsModal({
   order,
   isOpen,
   onClose,
-  initialTab = 'summary'
+  initialTab = 'summary',
+  onOrderCancelled
 }: OrderDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -30,6 +36,46 @@ export default function OrderDetailsModal({
 
   const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+
+  const isCanceled = order.status === 'Order Canceled';
+  const isPreparingOrBeyond = [
+    'Preparing Order',
+    'In Transit',
+    'Ready For Pick Up',
+    'Ready For Pick-Up',
+    'Ready for Pickup',
+    'Out for Delivery',
+    'Order Delivered',
+    'Completed'
+  ].includes(order.status);
+
+  // Can cancel only while still before Preparing Order (e.g. In Queue, Awaiting Payment, Pending Payment)
+  const canCancel = !isCanceled && !isPreparingOrBeyond;
+
+  const handleCancelOrder = async () => {
+    if (!canCancel || isCancelling) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel order #${order.orderId}?\n\nThis will cancel your order and release reserved materials.`
+    );
+    if (!confirmed) return;
+
+    setIsCancelling(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string }>(
+        `/api/customer/orders/${order.id || order.orderId}/cancel`,
+        {}
+      );
+      showToast(res?.message || 'Order cancelled successfully', 'success');
+      onOrderCancelled?.(order.id || order.orderId);
+      useProductStore.getState().fetchDashboardState().catch(() => {});
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to cancel order', 'error');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[620px]">
@@ -160,19 +206,51 @@ export default function OrderDetailsModal({
           </div>
         )}
 
+        {/* Informational warning if preparing or beyond */}
+        {isPreparingOrBeyond && !isCanceled && (
+          <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+            <span>🔒</span>
+            <span>
+              <strong>Cancellation locked:</strong> Order is in <em>{order.status}</em> status. Embroidery production is already underway and cannot be cancelled.
+            </span>
+          </div>
+        )}
+
         {/* Footer Actions */}
-        <div className="modal-footer pt-3 border-t border-border-glass flex items-center gap-2">
+        <div className="modal-footer pt-3 border-t border-border-glass flex flex-wrap items-center gap-2">
           <button 
             type="button"
             onClick={onClose}
-            className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass py-2 rounded-xl font-bold text-sm transition-all cursor-pointer text-text-main"
+            className="flex-1 min-w-[90px] bg-white/5 hover:bg-white/10 border border-border-glass py-2 rounded-xl font-bold text-sm transition-all cursor-pointer text-text-main"
           >
             Close
           </button>
+
+          {!isCanceled && (
+            <button
+              type="button"
+              onClick={handleCancelOrder}
+              disabled={!canCancel || isCancelling}
+              title={
+                !canCancel 
+                  ? "Orders in 'Preparing Order' or later cannot be cancelled because custom production has begun." 
+                  : "Cancel this order"
+              }
+              className={`flex-1 min-w-[120px] py-2 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 ${
+                canCancel
+                  ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 cursor-pointer'
+                  : 'bg-white/5 border border-white/10 text-text-muted/40 opacity-40 grayscale cursor-not-allowed'
+              }`}
+            >
+              <span>✕</span>
+              <span>{isCancelling ? 'Cancelling...' : 'Cancel Order'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsFeedbackModalOpen(true)}
-            className="flex-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            className="flex-1 min-w-[110px] bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>★</span>
             <span>Leave Review</span>
@@ -180,7 +258,7 @@ export default function OrderDetailsModal({
           {order.status === 'Completed' && (
             <button 
               type="button"
-              className="flex-1 bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
+              className="flex-1 min-w-[90px] bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
             >
               Reorder
             </button>

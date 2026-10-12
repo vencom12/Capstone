@@ -18,14 +18,18 @@ const staffAuth = () => {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             
-            // Token Versioning Check
+            // Token Versioning & Account Status Check
             const user = await prisma.user.findUnique({ 
                 where: { id: decoded.id }, 
-                select: { tokenVersion: true } 
+                select: { tokenVersion: true, isActive: true } 
             });
             
             if (!user || user.tokenVersion !== decoded.tokenVersion) {
                 return res.status(401).json({ message: 'Session expired or revoked. Please log in again.' });
+            }
+
+            if (user.isActive === false) {
+                return res.status(403).json({ message: 'Staff account has been deactivated. Please contact management.' });
             }
 
             if (decoded.role !== 'admin' && decoded.role !== 'employee') {

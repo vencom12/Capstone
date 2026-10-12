@@ -18,6 +18,9 @@ const fs = require('fs');
 const crypto = require('crypto');
 const app = express();
 
+// Trust reverse proxy headers (Render, Cloudflare, etc.)
+app.set('trust proxy', 1);
+
 // --- CRITICAL CORS Setup (Must be absolute first to cover rate limits and early errors) ---
 app.use(cors({
     origin: (origin, callback) => {

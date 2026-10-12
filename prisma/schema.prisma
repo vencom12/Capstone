@@ -39,6 +39,11 @@ model User {
   tokenVersion  Int      @default(0)
   createdAt     DateTime @default(now())
   shiftStatus   String   @default("offline") // clocked_in, offline
+  isActive      Boolean  @default(true)
+  disabledAt    DateTime?
+  disabledReason String?
+  lastLoginAt   DateTime?
+  lastActiveAt  DateTime?
 
   orders       Order[]
   transactions Transaction[]

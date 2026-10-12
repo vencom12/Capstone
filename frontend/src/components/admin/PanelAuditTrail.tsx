@@ -21,6 +21,14 @@ interface AuditLogEntry {
     email: string;
     role: string;
   } | null;
+  targetUser?: {
+    id?: string;
+    username?: string;
+    email?: string;
+    role?: string;
+  } | null;
+  targetName?: string | null;
+  targetDetail?: string | null;
 }
 
 export default function PanelAuditTrail() {
@@ -94,13 +102,14 @@ export default function PanelAuditTrail() {
         return;
       }
 
-      const headers = ['Timestamp', 'Actor Username', 'Actor Role', 'Action', 'Entity', 'Entity ID', 'IP Address', 'Diff'];
+      const headers = ['Timestamp', 'Actor Username', 'Actor Role', 'Action', 'Entity', 'Target Subject', 'Target ID', 'IP Address', 'Diff'];
       const rows = exportLogs.map((log) => [
         new Date(log.timestamp).toISOString(),
         `"${log.user?.username || log.userId || 'System'}"`,
         `"${log.userRole || 'System'}"`,
         `"${log.action}"`,
         `"${log.entity}"`,
+        `"${log.targetName || log.targetUser?.username || 'N/A'}"`,
         `"${log.entityId || 'N/A'}"`,
         `"${log.ipAddress || 'N/A'}"`,
         `"${log.diff ? JSON.stringify(log.diff).replace(/"/g, '""') : ''}"`
@@ -230,7 +239,7 @@ export default function PanelAuditTrail() {
               <th className="glass-th text-left">Timestamp</th>
               <th className="glass-th text-left">Actor</th>
               <th className="glass-th text-left">Action & Entity</th>
-              <th className="glass-th text-left">Target ID</th>
+              <th className="glass-th text-left">Target Subject</th>
               <th className="glass-th text-left">Network / IP</th>
               <th className="glass-th text-right">Payload</th>
             </tr>
@@ -298,10 +307,24 @@ export default function PanelAuditTrail() {
                       </div>
                     </td>
 
-                    {/* Target ID */}
+                    {/* Target Subject */}
                     <td className="glass-td text-left">
-                      {log.entityId ? (
-                        <span className="font-mono text-[0.7rem] bg-white/5 border border-border-glass px-2 py-0.5 rounded text-text-dim select-all">
+                      {log.targetName || log.targetUser?.username ? (
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                            <span>{log.targetName || log.targetUser?.username}</span>
+                            {log.targetUser?.role && (
+                              <span className="text-[0.6rem] font-semibold uppercase tracking-wider text-primary">
+                                ({log.targetUser.role})
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-[0.68rem] text-text-dim font-mono truncate max-w-[170px]" title={log.targetDetail || log.entityId}>
+                            {log.targetDetail || log.entityId}
+                          </span>
+                        </div>
+                      ) : log.entityId ? (
+                        <span className="font-mono text-[0.7rem] bg-white/5 border border-border-glass px-2 py-0.5 rounded text-text-dim select-all" title={log.entityId}>
                           {log.entityId}
                         </span>
                       ) : (
@@ -379,8 +402,20 @@ export default function PanelAuditTrail() {
                 <span className="font-mono text-text-main">{new Date(selectedLogForDetails.timestamp).toLocaleString()}</span>
               </div>
               <div>
-                <span className="text-text-dim block">Target ID:</span>
-                <span className="font-mono text-text-main select-all">{selectedLogForDetails.entityId || 'N/A'}</span>
+                <span className="text-text-dim block">Target Subject:</span>
+                <span className="font-bold text-text-main block">
+                  {selectedLogForDetails.targetName || selectedLogForDetails.targetUser?.username || selectedLogForDetails.entityId || 'N/A'}
+                </span>
+                {selectedLogForDetails.targetDetail && (
+                  <span className="text-[0.7rem] text-text-dim font-mono block">
+                    {selectedLogForDetails.targetDetail}
+                  </span>
+                )}
+                {selectedLogForDetails.entityId && (
+                  <span className="text-[0.65rem] text-text-dim/60 font-mono block select-all">
+                    ID: {selectedLogForDetails.entityId}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-text-dim block">Client IP:</span>
@@ -390,7 +425,7 @@ export default function PanelAuditTrail() {
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Recorded Changes Payload (JSON)</span>
-              <pre className="bg-black/60 border border-border-glass rounded-xl p-4 text-xs font-mono text-emerald-400 overflow-x-auto max-h-64 scrollbar-thin">
+              <pre className="bg-black/60 border border-border-glass rounded-xl p-4 text-xs font-mono text-success overflow-x-auto max-h-64 scrollbar-thin">
                 {JSON.stringify(selectedLogForDetails.diff, null, 2)}
               </pre>
             </div>

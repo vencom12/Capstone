@@ -49,7 +49,9 @@ export default function EmailVerificationBanner() {
     <div className="w-full bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-amber-400 text-base">⚠️</span>
+          <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           <span className="text-amber-200/90 font-medium">
             Your email <strong className="text-amber-100 font-bold">{user.email}</strong> is not verified yet.
           </span>

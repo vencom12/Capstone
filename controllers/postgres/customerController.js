@@ -1030,8 +1030,44 @@ exports.updateSettings = async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const updateData = {};
-        if (username) updateData.username = username;
-        if (email) updateData.email = email;
+        
+        // Username validation & uniqueness check
+        if (username && username.trim() && username.trim() !== user.username) {
+            const cleanUsername = username.trim();
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    username: { equals: cleanUsername, mode: 'insensitive' },
+                    id: { not: user.id }
+                }
+            });
+            if (existingUser) {
+                return res.status(400).json({ message: 'That username is already taken.' });
+            }
+            updateData.username = cleanUsername;
+        }
+
+        // Email validation & verification revocation check
+        let isEmailChanged = false;
+        if (email && email.trim()) {
+            const cleanEmail = email.trim().toLowerCase();
+            if (cleanEmail !== user.email.toLowerCase()) {
+                const existingEmail = await prisma.user.findFirst({
+                    where: {
+                        email: { equals: cleanEmail, mode: 'insensitive' },
+                        id: { not: user.id }
+                    }
+                });
+                if (existingEmail) {
+                    return res.status(400).json({ message: 'That email address is already in use by another account.' });
+                }
+                updateData.email = cleanEmail;
+                // Security: Changing email immediately revokes verification until verified on the new address
+                updateData.isEmailVerified = false;
+                updateData.tokenVersion = { increment: 1 };
+                isEmailChanged = true;
+            }
+        }
+
         if (address !== undefined) updateData.address = address;
         if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
         if (savedAddresses !== undefined) updateData.savedAddresses = savedAddresses;
@@ -1050,9 +1086,32 @@ exports.updateSettings = async (req, res) => {
             data: updateData
         });
 
+        // Dispatch verification link to the NEW email address if changed
+        if (isEmailChanged) {
+            const { generateVerificationToken, sendVerificationEmail } = require('../../utils/emailService');
+            await prisma.emailVerification.deleteMany({ where: { userId: user.id } });
+            const emailToken = generateVerificationToken();
+            await prisma.emailVerification.create({
+                data: {
+                    userId: user.id,
+                    email: updateData.email,
+                    token: emailToken,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                }
+            });
+            await sendVerificationEmail(updateData.email, updatedUser.username, emailToken).catch((err) => {
+                console.error('[Customer Settings] Failed to send verification email:', err);
+            });
+        }
+
         const safeUser = { ...updatedUser };
         delete safeUser.password;
-        res.json({ message: 'Settings updated successfully', user: safeUser });
+        
+        const responseMessage = isEmailChanged
+            ? 'Settings updated. A verification link has been sent to your new email address.'
+            : 'Settings updated successfully';
+
+        res.json({ message: responseMessage, user: safeUser, emailChanged: isEmailChanged });
     } catch (err) {
         console.error('updateSettings error:', err);
         res.status(500).json({ message: 'Error updating settings' });
@@ -1109,5 +1168,177 @@ exports.updateOrderLocation = async (req, res) => {
     } catch (err) {
         console.error('updateOrderLocation error:', err);
         res.status(500).json({ message: 'Error updating order location' });
+    }
+};
+
+exports.cancelOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const userId = req.user ? req.user.id : null;
+        if (!userId) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const { reason } = req.body || {};
+
+        // Find order belonging to this customer
+        const order = await prisma.order.findFirst({
+            where: {
+                userId,
+                OR: [
+                    { id: orderId },
+                    { orderId: orderId }
+                ]
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found.' });
+        }
+
+        // Strict rule: Orders cannot be cancelled if in Preparing Order or beyond
+        const NON_CANCELLABLE_STATES = [
+            'Preparing Order',
+            'In Transit',
+            'Ready For Pick Up',
+            'Ready For Pick-Up',
+            'Ready for Pickup',
+            'Out for Delivery',
+            'Order Delivered',
+            'Completed',
+            'Order Canceled'
+        ];
+
+        if (NON_CANCELLABLE_STATES.includes(order.status)) {
+            return res.status(400).json({
+                message: order.status === 'Order Canceled'
+                    ? 'This order has already been canceled.'
+                    : 'Cannot cancel order: custom embroidery production is already underway (Preparing Order).'
+            });
+        }
+
+        const { handleOrderStateTransition } = require('../../utils/inventoryManager');
+
+        const updatedOrder = await prisma.$transaction(async (tx) => {
+            // If order was paid via customer wallet, auto-refund wallet balance
+            if (order.paymentMethod === 'wallet' && order.paymentStatus === 'paid' && order.totalAmount > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: { walletBalance: { increment: order.totalAmount } }
+                });
+            }
+
+            return await handleOrderStateTransition(
+                tx,
+                order.id,
+                'Order Canceled',
+                req.user.username || 'Customer',
+                {
+                    note: reason ? `Customer canceled: ${reason}` : 'Customer requested order cancellation before production.'
+                }
+            );
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user:${order.userId}`).to('staff').emit('order:cancelled', {
+                orderId: order.orderId,
+                status: 'Order Canceled'
+            });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        res.json({
+            success: true,
+            message: 'Order cancelled successfully. Reserved materials have been released.',
+            order: updatedOrder
+        });
+    } catch (err) {
+        console.error('customer cancelOrder error:', err);
+        res.status(500).json({ message: err.message || 'Failed to cancel order' });
+    }
+};
+
+exports.deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Authentication required' });
+
+        const confirmationUsername = req.body?.confirmationUsername || req.query?.confirmationUsername;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!user) return res.status(404).json({ message: 'User account not found' });
+
+        if (user.role !== 'customer') {
+            return res.status(403).json({
+                message: 'Staff and administrator accounts cannot be deleted from the customer portal.'
+            });
+        }
+
+        // Validate username confirmation (case-insensitive)
+        if (!confirmationUsername || confirmationUsername.trim().toLowerCase() !== user.username.trim().toLowerCase()) {
+            return res.status(400).json({
+                message: 'Confirmation username does not match. Please type your exact account username to confirm deletion.'
+            });
+        }
+
+        // Check for active orders that are in production or transit
+        const activeOrders = await prisma.order.findMany({
+            where: {
+                userId,
+                status: {
+                    notIn: [
+                        'Completed', 'completed', 'Order Delivered', 'order delivered',
+                        'Delivered', 'Claimed', 'Cancelled', 'cancelled', 'Order Canceled', 'order canceled'
+                    ]
+                }
+            }
+        });
+
+        if (activeOrders.length > 0) {
+            return res.status(400).json({
+                message: `You currently have ${activeOrders.length} active order(s) in progress. Please wait for your orders to be completed or cancel pending orders before closing your account.`
+            });
+        }
+
+        const bcrypt = require('bcryptjs');
+        const shortId = user.id.slice(0, 8);
+        const anonymizedUsername = `Deleted User #${shortId}`;
+        const anonymizedEmail = `deleted_${user.id}@stitchopt.local`;
+        const randomPasswordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+
+        // Soft-delete & PII Scrubbing: preserve order receipts and tax history for business accounting
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                username: anonymizedUsername,
+                email: anonymizedEmail,
+                password: randomPasswordHash,
+                phoneNumber: null,
+                isPhoneVerified: false,
+                isEmailVerified: false,
+                address: null,
+                preferredDeliveryTime: null,
+                savedAddresses: [],
+                isActive: false,
+                disabledAt: new Date(),
+                disabledReason: 'Account deleted upon customer request',
+                tokenVersion: { increment: 1 }
+            }
+        });
+
+        // Clear JWT authentication cookies
+        res.clearCookie('customer_token', { path: '/' });
+        res.clearCookie('token', { path: '/' });
+
+        res.json({
+            success: true,
+            message: 'Your account has been permanently closed and your personal data has been erased.'
+        });
+    } catch (err) {
+        console.error('customer deleteAccount error:', err);
+        res.status(500).json({ message: err.message || 'Server error processing account closure' });
     }
 };

@@ -6,7 +6,6 @@ import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import { detectColorFromName } from '@/lib/colorUtils';
-import { computeStockLevel, StockLevelTier } from '@/lib/inventoryUtils';
 import Pagination from '@/components/ui/Pagination';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -70,113 +69,8 @@ export default function PanelManageDesigns({
     index: number;
   } | null>(null);
 
-  // Stock Filter State
-  const [stockFilter, setStockFilter] = useState<StockLevelTier>('all');
-
-  // Supplier Acquisition & Restock Modal State
-  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
-  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
-  const [pdfPreviewTitle, setPdfPreviewTitle] = useState('');
-  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
-  const [restockFilterQuery, setRestockFilterQuery] = useState('');
-
-  const [businessPhone, setBusinessPhone] = useState('0928 810 3928');
-
-  useEffect(() => {
-    api.get<any>('/api/admin/settings')
-      .then((settings) => {
-        if (settings?.businessContact) {
-          setBusinessPhone(settings.businessContact);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Products at or below safety stock threshold
-  const lowStockProducts = products.filter((p) => {
-    const availableStock = p.availableStock !== undefined
-      ? p.availableStock
-      : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
-    const threshold = p.minThreshold !== undefined ? p.minThreshold : 5;
-    return availableStock <= threshold;
-  });
-
-  const handlePreviewProductRestockPdf = async () => {
-    if (lowStockProducts.length === 0) {
-      showToast('All items in stock', 'info');
-      return;
-    }
-    setIsLoadingPdf(true);
-    try {
-      showToast('Loading preview...', 'info');
-      const blob = await api.getBlob('/api/admin/products/shopping-list/pdf?inline=true');
-      const url = URL.createObjectURL(blob);
-      setPdfPreviewUrl(url);
-      setPdfPreviewTitle('Product Blanks Supplier Requisition (PDF)');
-      setIsPdfModalOpen(true);
-    } catch (err: any) {
-      console.error('PDF Preview failed:', err);
-      showToast('Failed to load preview', 'error');
-    } finally {
-      setIsLoadingPdf(false);
-    }
-  };
-
-  const handleDownloadProductRestockPdf = async () => {
-    if (lowStockProducts.length === 0) {
-      showToast('All items in stock', 'info');
-      return;
-    }
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      await api.download('/api/admin/products/shopping-list/pdf', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.pdf`);
-      showToast('Downloaded PDF', 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to download PDF', 'error');
-    }
-  };
-
-  const handleDownloadProductRestockCsv = async () => {
-    if (lowStockProducts.length === 0) {
-      showToast('All items in stock', 'info');
-      return;
-    }
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      await api.download('/api/admin/products/shopping-list/csv', `PRODUCT_SUPPLIER_RESTOCK_${dateStr}.csv`);
-      showToast('Exported CSV', 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to export CSV', 'error');
-    }
-  };
-
-  const handleCopyProductRestockForMessenger = () => {
-    if (lowStockProducts.length === 0) {
-      showToast('All items in stock', 'info');
-      return;
-    }
-    const phone = businessPhone || '0928 810 3928';
-    let text = `📦 SUPPLIER ACQUISITION REQUEST — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following product blanks for embroidery:\n`;
-    lowStockProducts.forEach((p) => {
-      const avail = p.availableStock !== undefined
-        ? p.availableStock
-        : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
-      const minVal = p.minThreshold !== undefined ? p.minThreshold : 5;
-      const target = minVal * 2;
-      const toBuy = Math.max(1, target - avail);
-      text += `• ${toBuy} pcs — ${p.name} (Tag: ${p.tag || 'General'}, Current Avail: ${avail}, Min: ${minVal})\n`;
-    });
-    text += `\nPlease confirm blank garment availability, price quote, and earliest delivery date. Thank you!`;
-
-    navigator.clipboard.writeText(text).then(() => {
-      showToast(`Copied ${lowStockProducts.length} items to clipboard`, 'success');
-    }).catch(() => {
-      showToast('Failed to copy to clipboard', 'error');
-    });
-  };
+  // Stock Filter State ('all' | 'low' | 'normal')
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'normal'>('all');
 
   // 1. Filtering Designs
   const filteredProducts = products.filter((p) => {
@@ -191,8 +85,8 @@ export default function PanelManageDesigns({
     if (stockFilter === 'all') return true;
 
     const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
-    const levelInfo = computeStockLevel(availableStock, p.minThreshold || 5);
-    return levelInfo.tier === stockFilter;
+    const isLow = availableStock <= (p.minThreshold || 5);
+    return stockFilter === 'low' ? isLow : !isLow;
   });
 
   // Pagination for Products Grid
@@ -208,15 +102,19 @@ export default function PanelManageDesigns({
     currentPage * pageSize
   );
 
-  // Calculate stock metrics for all products
+  // Calculate stock metrics for all products (Low vs Normal)
   const productStockMetrics = products.reduce(
     (acc, p) => {
       const available = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
-      const info = computeStockLevel(available, p.minThreshold || 5);
-      acc[info.tier] = (acc[info.tier] || 0) + 1;
+      const isLow = available <= (p.minThreshold || 5);
+      if (isLow) {
+        acc.low += 1;
+      } else {
+        acc.normal += 1;
+      }
       return acc;
     },
-    { critical: 0, low: 0, moderate: 0, high: 0 } as Record<string, number>
+    { low: 0, normal: 0 }
   );
 
   // 2. Open Modal
@@ -555,98 +453,6 @@ export default function PanelManageDesigns({
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
-      {/* Smart Supplier Purchase Requisition Alert Banner */}
-      {lowStockProducts.length > 0 ? (
-        <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-danger/15 flex items-center justify-center text-danger shrink-0">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-danger">Stock alert: {lowStockProducts.length} items below threshold</span>
-              <span className="text-xs text-text-dim mt-0.5">
-                {lowStockProducts.length} items need restock.
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setIsRestockModalOpen(true)}
-              className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="View items to be bought for supplier replenishment"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Items to Restock ({lowStockProducts.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={handlePreviewProductRestockPdf}
-              disabled={isLoadingPdf}
-              className="bg-primary/20 border border-primary/30 text-primary font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-primary/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Preview printable supplier procurement sheet"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Preview PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadProductRestockPdf}
-              className="bg-danger/20 border border-danger/30 text-danger font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-danger/30 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Download procurement PDF sheet"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Download PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleCopyProductRestockForMessenger}
-              className="bg-blue-500/20 border border-blue-500/30 text-blue-300 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-blue-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Copy supplier restock order message to clipboard for Messenger / Viber"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Copy Messenger</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadProductRestockCsv}
-              className="bg-white/10 border border-white/20 text-text-main font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-white/15 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Export procurement CSV file for spreadsheet or supplier upload"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Export CSV</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-success/10 border border-success/20 p-3.5 rounded-xl flex items-center justify-between flex-wrap gap-2 mb-4 text-left animate-fade">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-success"></span>
-            <span className="text-xs font-bold text-success">All items in stock</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsRestockModalOpen(true)}
-            className="text-xs text-text-dim hover:text-text-main underline cursor-pointer bg-transparent border-none"
-          >
-            Check Stock Status
-          </button>
-        </div>
-      )}
-
       {/* Compact Top Filter & Action Toolbar */}
       <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
         {isAdmin && (
@@ -657,22 +463,6 @@ export default function PanelManageDesigns({
             + New Product
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setIsRestockModalOpen(true)}
-          className="bg-bg-surface border border-border-glass text-text-main hover:bg-white/10 font-bold px-3.5 py-2.5 rounded-xl text-[0.85rem] flex items-center gap-2 cursor-pointer transition-all"
-          title="View restock list and procurement sheets"
-        >
-          <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span>Supplier Restock</span>
-          {lowStockProducts.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-danger/20 text-danger border border-danger/30">
-              {lowStockProducts.length}
-            </span>
-          )}
-        </button>
         <input
           type="text"
           placeholder="Search products..."
@@ -686,24 +476,23 @@ export default function PanelManageDesigns({
           <span className="text-xs text-text-dim font-medium whitespace-nowrap mr-1">Stock:</span>
           {[
             { id: 'all', label: 'All Products', count: products.length },
-            { id: 'critical', label: 'Critical', count: productStockMetrics.critical },
             { id: 'low', label: 'Low Stock', count: productStockMetrics.low },
-            { id: 'moderate', label: 'Moderate', count: productStockMetrics.moderate },
-            { id: 'high', label: 'High Stock', count: productStockMetrics.high },
+            { id: 'normal', label: 'Normal Stock', count: productStockMetrics.normal },
           ].map((tier) => (
             <button
               key={tier.id}
               type="button"
-              onClick={() => setStockFilter(tier.id as StockLevelTier)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-1.5 ${
+              onClick={() => setStockFilter(tier.id as 'all' | 'low' | 'normal')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${
                 stockFilter === tier.id
                   ? 'bg-primary text-white border-primary/40 shadow-sm'
                   : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
               <span>{tier.label}</span>
-              <span className="text-[0.68rem] px-1.5 py-0.2 rounded-full bg-white/10 font-bold font-mono">
+              <span className={`text-[0.68rem] px-1.5 py-0.5 rounded-md font-mono font-bold ${
+                stockFilter === tier.id ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+              }`}>
                 {tier.count}
               </span>
             </button>
@@ -729,7 +518,23 @@ export default function PanelManageDesigns({
               const id = p.id || p._id;
               const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
               const dynamicReserved = p.dynamicReserved !== undefined ? p.dynamicReserved : (p.reservedCount || 0);
-              const stockInfo = computeStockLevel(availableStock, p.minThreshold || 5);
+              const minThreshold = p.minThreshold || 5;
+              const isOut = availableStock <= 0;
+              const isLow = availableStock <= minThreshold;
+
+              const stockBadge = isOut ? {
+                label: 'Out of Stock',
+                className: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+                color: '#f43f5e'
+              } : isLow ? {
+                label: 'Low Stock',
+                className: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+                color: '#f59e0b'
+              } : {
+                label: 'Normal Stock',
+                className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+                color: '#10b981'
+              };
               return (
                 <div
                   key={id}
@@ -755,37 +560,33 @@ export default function PanelManageDesigns({
                       </p>
                     )}
 
-                    {/* Variants / Color Swatches */}
+                    {/* Variants: Clean Shopify-Style Meta Summary */}
                     {p.variants && p.variants.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {p.variants.map((v: any, vi: number) => {
-                          const vStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
-                          const isVOutOfStock = vStock <= 0;
-                          return (
-                            <div
-                              key={vi}
-                              title={`${v.name} • Stock: ${vStock} pcs${v.materialName ? ` (Material: ${v.materialName})` : ''}${v.priceOverride ? ` — ₱${parseFloat(v.priceOverride).toFixed(2)}` : ''}`}
-                              className={`flex items-center gap-1.5 border px-2 py-0.5 rounded-full text-[0.68rem] font-semibold ${
-                                isVOutOfStock 
-                                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' 
-                                  : 'bg-white/5 border-border-glass/50 text-text-dim'
-                              }`}
-                            >
+                      <div className="flex items-center justify-between text-[0.72rem] py-1.5 px-2.5 rounded-lg bg-white/5 border border-white/5 mt-2">
+                        <span className="text-text-dim font-medium">
+                          {p.variants.length} {p.variants.length === 1 ? 'Option' : 'Options'} available
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex -space-x-1.5 overflow-hidden py-0.5">
+                            {p.variants.slice(0, 5).map((v: any, vi: number) => (
                               <span
-                                className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 inline-block"
-                                style={{ backgroundColor: v.color || '#6366f1' }}
+                                key={vi}
+                                title={`${v.name}${v.stock !== undefined ? ` (${v.stock} in stock)` : ''}`}
+                                className="inline-block w-3.5 h-3.5 rounded-full ring-2 ring-bg-surface border border-white/20"
+                                style={{ backgroundColor: v.color || '#94a3b8' }}
                               />
-                              <span>{v.name}</span>
-                              <span className={`font-mono text-[10px] ${isVOutOfStock ? 'text-rose-400 font-bold' : 'text-text-main/80'}`}>
-                                {isVOutOfStock ? '0' : vStock}
-                              </span>
-                            </div>
-                          );
-                        })}
+                            ))}
+                          </div>
+                          {p.variants.length > 5 && (
+                            <span className="text-[0.65rem] text-text-dim font-bold">
+                              +{p.variants.length - 5}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ) : (
-                      <div className="mt-2 text-[0.68rem] text-rose-400/90 font-medium italic flex items-center gap-1">
-                        <span>⚠️ No variants (0 Stock)</span>
+                      <div className="text-[0.7rem] text-text-dim/60 italic py-1 mt-1">
+                        Standard product (No variants)
                       </div>
                     )}
                     
@@ -800,20 +601,18 @@ export default function PanelManageDesigns({
                         )}
                       </span>
                       <span className="text-text-dim flex items-center gap-1">
-                        Available: <b style={{ color: stockInfo.dotColor }} className="font-mono font-bold">
+                        Available: <b style={{ color: stockBadge.color }} className="font-mono font-bold">
                           {availableStock}
                         </b>
                       </span>
                     </div>
                   </div>
                   
-                  {/* Stock Level Tier Pill Badge */}
+                  {/* Stock Level Badge */}
                   <span
-                    className={`absolute top-2 right-2 text-[0.65rem] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-lg flex items-center gap-1.5 backdrop-blur-md ${stockInfo.badgeClass}`}
-                    title={stockInfo.description}
+                    className={`absolute top-2 right-2 text-[0.65rem] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider shadow-lg backdrop-blur-md ${stockBadge.className}`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stockInfo.dotColor }} />
-                    {stockInfo.label}
+                    {stockBadge.label}
                   </span>
                   
                   <div className="flex gap-2 w-full mt-auto pt-2">
@@ -1052,7 +851,7 @@ export default function PanelManageDesigns({
                     </div>
                     {inventory.length === 0 ? (
                       <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
-                        ⚠️ No materials registered in the <b>Materials tab</b>. Variants can only have stock when linked to a material. Add materials in the Materials tab first.
+                        No materials registered in the <b>Materials tab</b>. Variants can only have stock when linked to a material. Add materials in the Materials tab first.
                       </div>
                     ) : (
                       <select
@@ -1075,14 +874,14 @@ export default function PanelManageDesigns({
                         const mat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
                         const matCount = mat ? (mat.count || 0) : 0;
                         return (
-                          <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1" : "text-amber-400 font-semibold flex items-center gap-1"}>
-                            <span>{matCount > 0 ? "✓" : "⚠️"}</span>
+                          <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1.5" : "text-amber-400 font-semibold flex items-center gap-1.5"}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${matCount > 0 ? "bg-emerald-400" : "bg-amber-400"}`} />
                             <span>Linked to <b>{mat?.item || 'Material'}</b>: <b>{matCount} pcs</b> in stock</span>
                           </span>
                         );
                       })() : (
                         <span className="text-text-dim/70 italic">
-                          ℹ️ No material selected. This variant will have <b>0 stock</b> until linked to an inventory item.
+                          No material selected. This variant will have <b>0 stock</b> until linked to an inventory item.
                         </span>
                       )}
                     </div>
@@ -1169,7 +968,7 @@ export default function PanelManageDesigns({
                               count > 0 ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                             }`}>
                               {v.materialId ? (
-                                `🔗 ${count} pcs (${v.materialName || mat?.item || 'Material'})`
+                                `${count} pcs (${v.materialName || mat?.item || 'Material'})`
                               ) : (
                                 '0 pcs (No material link)'
                               )}
@@ -1316,269 +1115,6 @@ export default function PanelManageDesigns({
         </div>
       </GlassModal>
 
-      {/* Product Supplier Requisition Modal */}
-      <GlassModal
-        isOpen={isRestockModalOpen}
-        onClose={() => setIsRestockModalOpen(false)}
-        title="Product Restock Form"
-      >
-        <div className="flex flex-col gap-4 text-left max-w-4xl w-full">
-          {/* Header Summary & Filter Bar */}
-          <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-white/10">
-            <div>
-              <div className="text-sm font-bold text-text-main">
-                Items to restock ({lowStockProducts.length} below threshold)
-              </div>
-              <div className="text-xs text-text-dim">
-                Products currently at or below minimum threshold.
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={handlePreviewProductRestockPdf}
-                disabled={isLoadingPdf || lowStockProducts.length === 0}
-                className="px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Preview PDF</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadProductRestockPdf}
-                disabled={lowStockProducts.length === 0}
-                className="px-3 py-1.5 rounded-xl bg-danger/20 border border-danger/30 text-danger text-xs font-bold hover:bg-danger/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Download PDF</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyProductRestockForMessenger}
-                disabled={lowStockProducts.length === 0}
-                className="px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold hover:bg-blue-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                title="Copy ready-to-send restock order message for Facebook Messenger / Viber"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Copy for Messenger</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadProductRestockCsv}
-                disabled={lowStockProducts.length === 0}
-                className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-text-main text-xs font-bold hover:bg-white/15 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Export CSV</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search bar inside modal if list is long */}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Search items..."
-              value={restockFilterQuery}
-              onChange={(e) => setRestockFilterQuery(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-2 rounded-xl text-text-main text-xs outline-none w-full max-w-sm"
-            />
-          </div>
-
-          {/* Requisition Table */}
-          {lowStockProducts.length === 0 ? (
-            <div className="p-8 text-center bg-bg-surface/40 rounded-2xl border border-dashed border-border-glass flex flex-col items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-success"></span>
-              <span className="text-sm font-bold text-text-main">All items in stock</span>
-              <span className="text-xs text-text-dim">
-                No products are currently below threshold.
-              </span>
-            </div>
-          ) : (
-            <div className="max-h-[50vh] overflow-y-auto border border-border-glass rounded-xl overflow-hidden bg-bg-surface/50">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-white/5 border-b border-border-glass text-text-dim font-bold">
-                    <th className="p-3">Product</th>
-                    <th className="p-3 text-center">Tag</th>
-                    <th className="p-3 text-center">On-Hand</th>
-                    <th className="p-3 text-center">Reserved</th>
-                    <th className="p-3 text-center">Available</th>
-                    <th className="p-3 text-center">Threshold</th>
-                    <th className="p-3 text-center font-extrabold text-primary">To Buy</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {lowStockProducts
-                    .filter((p) => {
-                      if (!restockFilterQuery.trim()) return true;
-                      const q = restockFilterQuery.toLowerCase();
-                      return (
-                        p.name.toLowerCase().includes(q) ||
-                        (p.tag && p.tag.toLowerCase().includes(q))
-                      );
-                    })
-                    .map((item) => {
-                      const avail = item.availableStock !== undefined
-                        ? item.availableStock
-                        : Math.max(0, (item.count || 0) - (item.reservedCount || 0));
-                      const threshold = item.minThreshold !== undefined ? item.minThreshold : 5;
-                      const target = threshold * 2;
-                      const toBuy = Math.max(1, target - avail);
-                      const isZero = avail <= 0;
-
-                      return (
-                        <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                          <td className="p-3">
-                            <div className="flex items-center gap-2.5">
-                              {item.imageUrl ? (
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className="w-8 h-8 rounded-lg object-cover border border-white/10 shrink-0"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-text-dim shrink-0 font-bold">
-                                  {item.name.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <div className="flex flex-col">
-                                <span className="font-bold text-text-main line-clamp-1">{item.name}</span>
-                                <span className="text-[10px] text-text-dim font-mono">ID: {item.id.slice(-6).toUpperCase()}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 border border-white/10 capitalize">
-                              {item.tag || 'General'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center font-mono text-text-main">{item.count || 0}</td>
-                          <td className="p-3 text-center font-mono text-amber-400">{item.reservedCount || 0}</td>
-                          <td className="p-3 text-center font-mono font-bold">
-                            <span className={isZero ? 'text-danger' : 'text-amber-400'}>{avail}</span>
-                          </td>
-                          <td className="p-3 text-center font-mono text-text-dim">{threshold}</td>
-                          <td className="p-3 text-center">
-                            <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-primary/20 text-primary border border-primary/30">
-                              +{toBuy} pcs
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                                isZero
-                                  ? 'bg-danger/20 text-danger border border-danger/30'
-                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              }`}
-                            >
-                              {isZero ? 'Out of Stock' : 'Low Stock'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsRestockModalOpen(false);
-                                openModal(item);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-text-main text-[11px] font-bold cursor-pointer transition"
-                            >
-                              Edit Stock
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center pt-2 border-t border-white/10 flex-wrap gap-2 text-xs text-text-dim">
-            <span>Formula: Reorder targets 2x threshold buffer to prevent operational stockouts during peak shifts.</span>
-            <button
-              type="button"
-              onClick={() => setIsRestockModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-text-main font-bold cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* PDF Document Preview Modal */}
-      {isPdfModalOpen && pdfPreviewUrl && (
-        <GlassModal
-          isOpen={isPdfModalOpen}
-          onClose={() => {
-            setIsPdfModalOpen(false);
-            if (pdfPreviewUrl) {
-              URL.revokeObjectURL(pdfPreviewUrl);
-              setPdfPreviewUrl('');
-            }
-          }}
-          title={pdfPreviewTitle}
-        >
-          <div className="flex flex-col gap-3">
-            <div className="w-full h-[65vh] rounded-xl overflow-hidden border border-border-glass bg-neutral-900 shadow-inner">
-              <iframe
-                src={pdfPreviewUrl}
-                title="Product Restock Requisition Preview"
-                className="w-full h-full border-0"
-              />
-            </div>
-            <div className="flex justify-between items-center gap-3 pt-2 flex-wrap">
-              <div className="text-xs text-text-dim">
-                Document previewed directly on screen without downloading to your computer.
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const iframe = document.querySelector('iframe');
-                    iframe?.contentWindow?.print();
-                  }}
-                  className="px-4 py-2 rounded-xl bg-bg-surface border border-border-glass hover:bg-white/10 text-text-main text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M6 14h12v8H6z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Print</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = pdfPreviewUrl;
-                    a.download = `${pdfPreviewTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-                    a.click();
-                  }}
-                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Save File</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </GlassModal>
-      )}
     </section>
   );
 }

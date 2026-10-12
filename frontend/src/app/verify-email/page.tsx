@@ -48,9 +48,23 @@ function VerifyEmailContent() {
         ${status === 'success' ? 'bg-green-500/20 border border-green-500/30' : ''}
         ${status === 'error' ? 'bg-red-500/20 border border-red-500/30' : ''}
       `}>
-        {status === 'loading' && '⏳'}
-        {status === 'success' && '✅'}
-        {status === 'error' && '❌'}
+        {status === 'loading' && (
+          <svg className="w-8 h-8 text-primary animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+          </svg>
+        )}
+        {status === 'success' && (
+          <svg className="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {status === 'error' && (
+          <svg className="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+        )}
       </div>
 
       {/* Title */}
