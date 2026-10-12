@@ -20,8 +20,22 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 const FALLBACK_AUTH_DOMAIN = 'ryven-4cbd5.firebaseapp.com';
 
 function resolveAuthDomain(): string {
-  if (typeof window !== 'undefined' && window.location?.host) {
-    return window.location.host;
+  if (typeof window !== 'undefined') {
+    // Local development (localhost / 127.0.0.1) runs on plain HTTP.
+    // Firebase authDomain strictly requires an SSL context (HTTPS); pointing authDomain
+    // to an HTTP localhost causes the browser to throw ERR_SSL_PROTOCOL_ERROR.
+    // Therefore, localhost routes through the official Firebase HTTPS authDomain.
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.endsWith('.local');
+
+    if (!isLocalhost && window.location.protocol === 'https:' && window.location.host) {
+      // In deployed production (HTTPS, e.g. capstone-btr7.onrender.com), using the
+      // app's own domain proxies /__/auth/* on the same origin, bypassing modern browser
+      // third-party cookie restrictions.
+      return window.location.host;
+    }
   }
   return FALLBACK_AUTH_DOMAIN;
 }
