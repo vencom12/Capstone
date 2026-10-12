@@ -1,6 +1,7 @@
 'use client';
 
 import GlassModal from '@/components/ui/GlassModal';
+import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
 import type { Order } from '@/lib/types';
 
 interface WaybillModalProps {
@@ -13,14 +14,28 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
   if (!order) return null;
 
   const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization as any : {};
-  const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
   const isPickup = personalization.fulfillmentType === 'pickup' ||
     (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up')) ||
     (personalization.courier && personalization.courier.toLowerCase().includes('pick-up')) ||
-    (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-'));
+    (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-')) ||
+    (order.orderId && order.orderId.startsWith('WI-'));
 
+  if (isPickup) {
+    return (
+      <GlassModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Store Counter Claim Slip"
+        maxWidth="max-w-[420px]"
+      >
+        <OfficialClaimSlip order={order} />
+      </GlassModal>
+    );
+  }
+
+  const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
   const trackingNumber = personalization.trackingNumber || null;
-  const courierName = isPickup ? 'IN-STORE PICK-UP' : (personalization.courier || 'Delivery Courier');
+  const courierName = personalization.courier || 'Delivery Courier';
 
   // QR code representation for parcel sorting & claiming
   const qrData = `${courierName}|TRACK:${trackingNumber}|ORDER:${order.orderId}|CLIENT:${encodeURIComponent(

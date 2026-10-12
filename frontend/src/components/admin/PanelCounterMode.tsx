@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
+import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
 import type { Product, ProductVariant } from '@/lib/types';
 
 interface PanelCounterModeProps {
@@ -1397,111 +1398,16 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       {/* THERMAL CLAIM STUB MODAL (ANTI-FRAUD PROTECTION)            */}
       {/* ───────────────────────────────────────────────────────────── */}
       {createdOrderTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-bg-surface border border-border-glass rounded-xl max-w-sm w-full p-5 shadow-2xl flex flex-col gap-4">
-            <div
-              id="thermal-claim-stub-print"
-              className="bg-white text-zinc-950 p-5 rounded font-mono text-center flex flex-col gap-2 text-xs border border-zinc-200 shadow-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-bg-surface border border-border-glass rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3">
+            <OfficialClaimSlip order={createdOrderTicket} showPrintAction={true} />
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition cursor-pointer"
             >
-              <div className="border-b border-dashed border-zinc-400 pb-2">
-                <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-700">
-                  CLAIM STUB &amp; INTAKE RECEIPT
-                </div>
-                <div className="text-base font-extrabold text-black mt-0.5 tracking-wider">
-                  EDS TOWELS &amp; CAPS
-                </div>
-                <div className="text-[10px] text-zinc-600">
-                  Pacific Mall Lucena • Ground Floor
-                </div>
-              </div>
-
-              <div className="py-2.5 border-b border-dashed border-zinc-400">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-600 font-bold">
-                  CLAIM TICKET NUMBER
-                </div>
-                <div className="text-3xl font-extrabold text-black tracking-widest my-1">
-                  #{createdOrderTicket.orderId}
-                </div>
-                <div className="text-[11px] font-semibold text-zinc-800">
-                  Ready for Claim: ~20 mins ({createdOrderTicket.readyBy})
-                </div>
-              </div>
-
-              <div className="text-left flex flex-col gap-1 py-1.5 text-[11px] border-b border-dashed border-zinc-400">
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Customer:</span>
-                  <span className="font-bold text-black">{createdOrderTicket.clientName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Item:</span>
-                  <span className="font-bold text-black">
-                    {createdOrderTicket.quantity}x {createdOrderTicket.itemName}
-                  </span>
-                </div>
-                {createdOrderTicket.personalizationText && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Embroidery:</span>
-                    <span className="font-bold text-black">"{createdOrderTicket.personalizationText}"</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Verification:</span>
-                  <span className="font-bold text-black">{createdOrderTicket.verificationCode}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1 py-1 text-[11px] border-b border-dashed border-zinc-400">
-                <div className="flex justify-between font-bold text-xs">
-                  <span>TOTAL DUE:</span>
-                  <span>₱{createdOrderTicket.grandTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-zinc-700">
-                  <span>Payment:</span>
-                  <span className="font-semibold">
-                    {createdOrderTicket.paymentMethod} (PAID IN FULL)
-                  </span>
-                </div>
-              </div>
-
-              {/* DYNAMIC QR CODE FOR LIVE MOBILE TRACKING */}
-              <div className="py-2.5 border-b border-dashed border-zinc-400 flex flex-col items-center justify-center gap-1">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/track?id=${createdOrderTicket.orderId}` : `http://localhost:3000/track?id=${createdOrderTicket.orderId}`)}`}
-                  alt="Track Order QR Code"
-                  className="w-20 h-20 border border-zinc-300 p-0.5 bg-white rounded"
-                />
-                <div className="text-[9px] font-bold text-zinc-800 uppercase tracking-wider">
-                  Scan QR to Track On Your Phone
-                </div>
-                <div className="text-[8px] text-zinc-500 font-mono">
-                  /track?id={createdOrderTicket.orderId}
-                </div>
-              </div>
-
-              <div className="pt-2 text-[10px] text-zinc-700 font-bold uppercase leading-relaxed">
-                Please present this claim stub upon pickup.
-                <div className="font-normal normal-case text-zinc-500 text-[9px] mt-0.5">
-                  Anti-fraud verification protection.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 py-2.5 rounded-lg bg-bg-surface border border-border-glass text-text-main text-xs font-semibold hover:bg-white/5 transition cursor-pointer"
-              >
-                Print Thermal Stub
-              </button>
-              <button
-                type="button"
-                onClick={handleResetForm}
-                className="flex-1 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition cursor-pointer"
-              >
-                Next Customer
-              </button>
-            </div>
+              Next Customer
+            </button>
           </div>
         </div>
       )}
