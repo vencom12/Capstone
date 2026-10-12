@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithRedirect } from 'firebase/auth';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -89,90 +89,29 @@ export default function AuthModal() {
     }
   };
 
-  // Handle 1-Click Google Sign-In & Sign-Up with concrete popup authentication and fallback
+  // Handle 1-Click Google Sign-In & Sign-Up via Full Window (Redirect)
   const handleGoogleSignIn = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isGoogleSubmitting) return;
     setIsGoogleSubmitting(true);
     setFormError(null);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('stitch-google-auth-pending', 'true');
-    }
 
     try {
-      // 1. Primary Rock-Solid Method: signInWithPopup
-      // Keeps current window/state intact, resolves directly without flaky cross-origin reloads
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      if (!user.email) {
-        showToast('No email associated with this Google account.', 'error');
-        setIsGoogleSubmitting(false);
-        return;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('stitch-google-auth-pending', 'true');
       }
-
-      const res = await loginWithGoogle({
-        email: user.email,
-        displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
-        phoneNumber: user.phoneNumber || '',
-        uid: user.uid,
-      });
-
-      if (res.success && res.needsPassword && res.setupToken) {
-        // First-time Google user: smoothly switch modal to set initial password
-        setGoogleSetup({
-          token: res.setupToken,
-          email: res.email || user.email,
-          username: res.suggestedUsername || '',
-        });
-        setNewPassword('');
-        setConfirmPassword('');
-        setView('googleSetup');
-        setIsGoogleSubmitting(false);
-        return;
-      }
-
-      if (res.success) {
-        showToast(`Welcome back, ${res.user?.username || user.displayName || 'Customer'}!`, 'success');
-        handleClose();
-        if (res.user?.role === 'admin') {
-          router.replace('/admin');
-        } else if (res.user?.role === 'employee') {
-          router.replace('/employee');
-        } else {
-          router.replace('/');
-          router.refresh();
-        }
-      } else {
-        setFormError(res.message || 'Google sign-in failed on server.');
-        showToast(res.message || 'Google sign-in failed on server.', 'error');
-      }
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
-      console.warn('Google Sign-In Notice:', err);
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        showToast('Google sign-in was cancelled.', 'info');
-      } else if (err.code === 'auth/popup-blocked') {
-        // Popup was blocked by browser settings: gracefully fall back to full redirect
-        try {
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('stitch-google-auth-pending', 'true');
-          }
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirErr: any) {
-          showToast(redirErr.message || 'Failed to redirect to Google.', 'error');
-        }
-      } else if (err.code === 'auth/unauthorized-domain') {
+      setIsGoogleSubmitting(false);
+      console.error('Google Sign-In Redirect Error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
         const domain = typeof window !== 'undefined' ? window.location.hostname : 'your domain';
         const msg = `Domain "${domain}" is not authorized. Add it in Firebase Console > Authentication > Settings > Authorized domains.`;
         setFormError(msg);
         showToast(msg, 'error');
       } else {
-        setFormError(err.message || 'Failed to sign in with Google.');
-        showToast(err.message || 'Failed to sign in with Google.', 'error');
+        setFormError(err.message || 'Failed to redirect to Google.');
+        showToast(err.message || 'Failed to redirect to Google.', 'error');
       }
-    } finally {
-      setIsGoogleSubmitting(false);
     }
   };
 
