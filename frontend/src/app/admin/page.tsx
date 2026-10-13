@@ -277,27 +277,28 @@ export default function AdminPage() {
     }
   }, [activeTab, historySearch, historyDate, isHydrated, isAuthenticated]);
 
-  // Dynamic Live Socket.IO Event Handler
+  // Dynamic Live Socket.IO Event Handler & Tab Sync
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     let activeSocket: any = null;
     let isCancelled = false;
 
-    const script = document.createElement('script');
-    script.src = `${API_BASE}/socket.io/socket.io.js`;
-    script.async = true;
-    script.onload = () => {
+    const connectSocket = () => {
       if (isCancelled) return;
-
       const io = (window as any).io;
       if (!io) return;
 
       const socket = io(API_BASE, {
         withCredentials: true,
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        auth: { portal: 'admin' }
       });
       activeSocket = socket;
+
+      socket.on('connect', () => {
+        scheduleFetchAdminData();
+      });
 
       socket.on('dataChanged', (data: any) => {
         if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
@@ -317,24 +318,46 @@ export default function AdminPage() {
           scheduleFetchAdminData();
         }
       });
+
+      socket.on('ordersUpdated', () => {
+        if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
+        scheduleFetchAdminData();
+      });
+
+      socket.on('order:cancelled', () => {
+        if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
+        scheduleFetchAdminData();
+      });
     };
 
-    document.head.appendChild(script);
+    if ((window as any).io) {
+      connectSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = connectSocket;
+      document.head.appendChild(script);
+    }
+
+    // Window Focus & Tab Switch Listener: instant refresh when switching back to admin tab
+    const handleTabActive = () => {
+      if (document.visibilityState === 'visible' && useAuthStore.getState().isAuthenticated) {
+        scheduleFetchAdminData();
+      }
+    };
+    window.addEventListener('focus', handleTabActive);
+    document.addEventListener('visibilitychange', handleTabActive);
 
     return () => {
       isCancelled = true;
+      window.removeEventListener('focus', handleTabActive);
+      document.removeEventListener('visibilitychange', handleTabActive);
       if (activeSocket) {
         activeSocket.close();
       }
-      const scripts = document.head.getElementsByTagName('script');
-      for (let i = 0; i < scripts.length; i++) {
-        if (scripts[i].src.includes('/socket.io/socket.io.js')) {
-          document.head.removeChild(scripts[i]);
-          break;
-        }
-      }
     };
-  }, []);
+  }, [scheduleFetchAdminData]);
 
   // client-side redirect gate if unauthenticated or not admin
   useEffect(() => {

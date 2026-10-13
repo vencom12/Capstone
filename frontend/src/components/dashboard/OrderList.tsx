@@ -113,6 +113,14 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
               Buy Again
             </button>
           </div>
+        ) : stage.tone === 'cancelled' ? (
+          <button
+            type="button"
+            onClick={() => onReorder(order)}
+            className="px-3.5 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+          >
+            Reorder
+          </button>
         ) : null}
       </div>
     </article>
@@ -120,7 +128,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
 }
 
 export default function OrderList({ orders, onTrack, onDetails, onReorder }: OrderListProps) {
-  const [tab, setTab] = useState<'active' | 'past'>('active');
+  const [tab, setTab] = useState<'active' | 'completed' | 'cancelled'>('active');
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
@@ -128,8 +136,9 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   const active = sorted.filter((o) => getOrderStage(o).isActive);
-  const past = sorted.filter((o) => !getOrderStage(o).isActive);
-  const visible = tab === 'active' ? active : past;
+  const completed = sorted.filter((o) => getOrderStage(o).tone === 'done');
+  const cancelled = sorted.filter((o) => getOrderStage(o).tone === 'cancelled');
+  const visible = tab === 'active' ? active : tab === 'completed' ? completed : cancelled;
 
   // Reset page when switching tabs
   useEffect(() => {
@@ -145,7 +154,8 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
       <div className="flex gap-2" role="tablist" aria-label="Order status">
         {([
           { id: 'active', label: 'In progress', count: active.length },
-          { id: 'past', label: 'Completed', count: past.length },
+          { id: 'completed', label: 'Completed', count: completed.length },
+          { id: 'cancelled', label: 'Cancelled', count: cancelled.length },
         ] as const).map((t) => (
           <button
             key={t.id}
@@ -168,7 +178,9 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
         <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 text-center text-text-dim text-sm">
           {tab === 'active'
             ? 'You have no orders in progress right now.'
-            : 'No completed orders yet.'}
+            : tab === 'completed'
+              ? 'No completed orders yet.'
+              : 'No cancelled orders.'}
         </div>
       ) : (
         <>
@@ -189,7 +201,13 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
             totalItems={visible.length}
             pageSize={pageSize}
             onPageChange={setPage}
-            itemLabel={tab === 'active' ? 'active orders' : 'completed orders'}
+            itemLabel={
+              tab === 'active'
+                ? 'active orders'
+                : tab === 'completed'
+                  ? 'completed orders'
+                  : 'cancelled orders'
+            }
           />
         </>
       )}

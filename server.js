@@ -101,10 +101,23 @@ app.set('io', io);
 io.use((socket, next) => {
     try {
         const cookieStr = socket.request.headers.cookie || '';
-        const cookies = Object.fromEntries(cookieStr.split('; ').filter(c => c).map(c => c.split('=')));
+        const cookies = Object.fromEntries(cookieStr.split('; ').filter(c => c).map(c => {
+            const idx = c.indexOf('=');
+            return idx > -1 ? [c.slice(0, idx).trim(), c.slice(idx + 1).trim()] : [c.trim(), ''];
+        }));
         
-        // Check for any of the portal-specific tokens
-        const token = cookies.admin_token || cookies.employee_token || cookies.customer_token || cookies.token;
+        // Portal-aware token selection to prevent customer/staff crosstalk in multi-tab testing
+        const portal = socket.handshake.auth?.portal || socket.handshake.query?.portal;
+        let token = null;
+        if (portal === 'customer') {
+            token = cookies.customer_token || cookies.token || cookies.employee_token || cookies.admin_token;
+        } else if (portal === 'admin') {
+            token = cookies.admin_token || cookies.token;
+        } else if (portal === 'employee') {
+            token = cookies.employee_token || cookies.admin_token || cookies.token;
+        } else {
+            token = cookies.customer_token || cookies.admin_token || cookies.employee_token || cookies.token;
+        }
 
         if (!token) return next(); // Allow guest connections but they won't join rooms
 

@@ -276,8 +276,10 @@ export const useAuthStore = create<AuthState>()(
               } 
             });
           }
-        } catch (err) {
-          console.error('Failed to refresh user state');
+        } catch (err: any) {
+          if (err?.name !== 'AbortError') {
+            console.warn('[refreshUser notice]:', err?.message || err);
+          }
         }
       },
     }),

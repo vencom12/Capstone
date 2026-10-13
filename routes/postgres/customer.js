@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const customerController = require('../../controllers/postgres/customerController');
 const auth = require('../../middleware/auth');
+const { resolveToken } = require('../../utils/tokenResolver');
 const multer = require('multer');
 const { storage } = require('../../utils/cloudinary');
 
@@ -36,7 +37,7 @@ const orderValidation = [
 
 // dashboard-state uses OPTIONAL auth (guests need to see products too)
 router.get('/dashboard-state', (req, res, next) => {
-    const token = req.cookies.customer_token || req.cookies.token;
+    const token = resolveToken(req, ['customer']);
     if (token) {
         try {
             req.user = jwt.verify(token, process.env.JWT_SECRET);
@@ -79,7 +80,7 @@ router.get('/products/:id/reviews', feedbackController.getProductReviews);
 
 // Customer feedback submission (supports authenticated or guest submission)
 router.post('/feedback', (req, res, next) => {
-    const token = req.cookies.customer_token || req.cookies.token;
+    const token = resolveToken(req, ['customer']);
     if (token) {
         try {
             req.user = jwt.verify(token, process.env.JWT_SECRET);

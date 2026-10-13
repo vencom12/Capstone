@@ -52,6 +52,17 @@ export async function apiFetch<T = unknown>(
     'X-Requested-With': 'XMLHttpRequest',
   };
 
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/admin') || url.startsWith('/api/admin')) {
+      headers['X-Portal'] = 'admin';
+    } else if (pathname.startsWith('/employee') || url.startsWith('/api/employee')) {
+      headers['X-Portal'] = 'employee';
+    } else if (pathname.startsWith('/dashboard') || url.startsWith('/api/customer')) {
+      headers['X-Portal'] = 'customer';
+    }
+  }
+
   if (_csrfToken) {
     headers['X-CSRF-Token'] = _csrfToken;
   }

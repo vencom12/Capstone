@@ -148,7 +148,12 @@ exports.submitOrder = async (req, res) => {
                     });
                 }
 
-                return res.json({ message: 'Order reference number recorded successfully.', order: existingOrder, receiptID: existingOrder.receipt?.receiptID });
+                const io = req.app.get('io');
+                if (io) {
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+                }
+
+                return res.json({ message: 'Order reference number recorded successfully.', order: updatedOrder, receiptID: existingOrder.receipt?.receiptID });
             }
         }
 
@@ -436,11 +441,17 @@ exports.submitOrder = async (req, res) => {
                 console.error('[AI Queue Background Error] Recalculation failed:', err);
             });
         });
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
-        // Broadcast product update (since reservedCount changed)
-        const productsList = await prisma.product.findMany();
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const enrichedList = await enrichProductsWithStock(productsList);
+        if (io) {
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${user.id}`);
+            // Broadcast new order creation to admin, staff, and customer
+            socketUtil.emitDataChanged(io, ACTIONS.CREATE, ENTITIES.ORDER, result);
+            // Broadcast product update (since reservedCount changed)
+            const productsList = await prisma.product.findMany();
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            const enrichedList = await enrichProductsWithStock(productsList);
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedList);
+        }
+
         // Send Order Confirmation Email via Resend / SMTP asynchronously
         const { sendOrderConfirmationEmail } = require('../../utils/emailService');
         if (user.email) {

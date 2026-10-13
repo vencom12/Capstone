@@ -61,9 +61,10 @@ export default function OfficialClaimSlip({
   const paymentRef = pers.referenceNumber || order.receipt?.referenceId || (order as any).referenceNumber || '';
 
   const orderStatus = (order.status || 'In Queue').toUpperCase();
-  const readyEstimate = order.readyBy || (order.estimatedTime
+  const isCanceled = (order.status || '').toLowerCase().includes('cancel');
+  const readyEstimate = isCanceled ? 'CANCELLED (VOID)' : (order.readyBy || (order.estimatedTime
     ? `~${order.estimatedTime} mins`
-    : '~15–20 mins');
+    : '~15–20 mins'));
 
   const orderDate = new Date(order.date || (order as any).createdAt || Date.now());
   const formattedDate = isNaN(orderDate.getTime())
@@ -206,18 +207,24 @@ export default function OfficialClaimSlip({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg>
-            <span>Print Slip</span>
-          </button>
+          {isCanceled ? (
+            <span className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold text-xs border border-red-500/30">
+              Voided (Cancelled)
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              <span>Print Slip</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -250,6 +257,14 @@ export default function OfficialClaimSlip({
           <div className="text-2xl font-black text-black tracking-widest my-0.5">
             #{orderId}
           </div>
+          {isCanceled && (
+            <div className="bg-red-50 border-2 border-dashed border-red-500 text-red-700 font-black p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
+              ⚠️ VOID — ORDER HAS BEEN CANCELLED ⚠️
+              <div className="text-[9px] font-normal normal-case text-red-600 mt-0.5">
+                Production stopped. Not valid for pickup or fulfillment.
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] font-semibold text-zinc-800">
               Status: <strong className="uppercase">{orderStatus}</strong>
@@ -376,10 +391,12 @@ export default function OfficialClaimSlip({
         </div>
 
         {/* Official Store Policy Footer */}
-        <div className="pt-1 text-[9.5px] text-zinc-700 font-bold uppercase leading-snug">
-          Please present this official claim slip upon pickup.
+        <div className={`pt-1 text-[9.5px] font-bold uppercase leading-snug ${isCanceled ? 'text-red-600' : 'text-zinc-700'}`}>
+          {isCanceled ? 'THIS CLAIM SLIP HAS BEEN VOIDED — ORDER CANCELLED' : 'Please present this official claim slip upon pickup.'}
           <div className="font-normal normal-case text-zinc-500 text-[8.5px] mt-0.5">
-            Strict anti-fraud counter protection • Pacific Mall Lucena Counter
+            {isCanceled
+              ? 'Order cancelled • Not valid for pickup at Pacific Mall Lucena Counter'
+              : 'Strict anti-fraud counter protection • Pacific Mall Lucena Counter'}
           </div>
         </div>
       </div>

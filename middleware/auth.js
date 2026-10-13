@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prisma');
+const { resolveToken } = require('../utils/tokenResolver');
 
 const auth = (roles = []) => {
     return async (req, res, next) => {
-        const token = req.cookies.admin_token || req.cookies.employee_token || req.cookies.customer_token || req.cookies.token;
+        const token = resolveToken(req, roles);
         
         if (!token) {
             return res.status(401).json({ message: 'No token, authorization denied' });

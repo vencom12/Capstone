@@ -267,7 +267,8 @@ export default function EmployeePage() {
 
       const socket = io(API_BASE, {
         withCredentials: true,
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        auth: { portal: 'employee' }
       });
       activeSocket = socket;
 

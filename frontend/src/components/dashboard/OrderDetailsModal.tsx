@@ -130,7 +130,11 @@ export default function OrderDetailsModal({
             <div className="flex items-center gap-2">
               <h3 className="modal-title-sm text-primary m-0">{order.orderId}</h3>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                isCompletedOrDelivered ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
+                isCanceled
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  : isCompletedOrDelivered
+                    ? 'bg-success/20 text-success'
+                    : 'bg-primary/20 text-primary'
               }`}>
                 {order.status}
               </span>
@@ -164,7 +168,9 @@ export default function OrderDetailsModal({
             }`}
           >
             <span>{isPickup ? 'Pick-up & Claim Tracking' : 'Logistics & Shipping Tracking'}</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
+            {!isCanceled && (
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
+            )}
           </button>
         </div>
 

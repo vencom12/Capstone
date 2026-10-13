@@ -98,7 +98,8 @@ function OrderTrackerContent() {
 
       const socket = io(API_BASE, {
         withCredentials: true,
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        auth: { portal: 'customer' }
       });
       activeSocket = socket;
 

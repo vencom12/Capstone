@@ -30,7 +30,7 @@ export function getOrderStage(order: Order): OrderStage {
   const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
-  if (status === 'cancelled') {
+  if (status.includes('cancel')) {
     return { label: 'Cancelled', hint: 'This order was cancelled.', step: 0, tone: 'cancelled', isActive: false };
   }
   if (status === 'completed' || status === 'order delivered' || progress >= 100) {
@@ -75,5 +75,5 @@ export const TONE_CLASSES: Record<OrderTone, string> = {
   progress: 'bg-primary/15 text-primary border-primary/30',
   shipping: 'bg-secondary/15 text-secondary border-secondary/30',
   done: 'bg-success/15 text-success border-success/30',
-  cancelled: 'bg-white/10 text-text-dim border-border-glass',
+  cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
 };

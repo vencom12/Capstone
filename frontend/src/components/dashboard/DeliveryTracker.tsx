@@ -30,9 +30,10 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
 
   // Normalize order status
   const rawStatus = (order.status || '').toLowerCase();
-  const isDelivered = rawStatus === 'completed' || rawStatus === 'order delivered' || order.progress >= 100;
-  const isOutForDelivery = rawStatus === 'out for delivery';
-  const isInTransit = rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery);
+  const isCanceled = rawStatus.includes('cancel');
+  const isDelivered = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || order.progress >= 100);
+  const isOutForDelivery = !isCanceled && rawStatus === 'out for delivery';
+  const isInTransit = !isCanceled && (rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery));
 
   // Real status history from database or active order status
   interface TimelineEvent {
@@ -118,23 +119,33 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
     <div className="flex flex-col gap-4 font-sans text-left animate-[fadeIn_0.2s_ease-out]">
       {/* 1. Shopee-Style Top Status Banner */}
       <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${
-        isDelivered
-          ? 'bg-success/10 border-success/30 text-success'
-          : isOutForDelivery
-            ? 'bg-secondary/10 border-secondary/30 text-secondary'
-            : isInTransit
-              ? 'bg-primary/10 border-primary/30 text-primary'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+        isCanceled
+          ? 'bg-red-500/10 border-red-500/30 text-red-400'
+          : isDelivered
+            ? 'bg-success/10 border-success/30 text-success'
+            : isOutForDelivery
+              ? 'bg-secondary/10 border-secondary/30 text-secondary'
+              : isInTransit
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
       }`}>
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm ${
-            isDelivered
-              ? 'bg-success text-white'
-              : isOutForDelivery
-                ? 'bg-secondary text-white animate-pulse'
-                : 'bg-white/10 text-text-main'
+            isCanceled
+              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+              : isDelivered
+                ? 'bg-success text-white'
+                : isOutForDelivery
+                  ? 'bg-secondary text-white animate-pulse'
+                  : 'bg-white/10 text-text-main'
           }`}>
-            {isDelivered ? (
+            {isCanceled ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            ) : isDelivered ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -160,7 +171,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
           <div>
             <h4 className="text-sm font-extrabold m-0 leading-tight">
-              {isPickup ? (
+              {isCanceled ? (
+                'Order Cancelled'
+              ) : isPickup ? (
                 isDelivered
                   ? 'Order Claimed at Pacific Mall Counter'
                   : isOutForDelivery || isInTransit
@@ -177,7 +190,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               )}
             </h4>
             <p className="text-[0.72rem] text-text-dim m-0 mt-0.5">
-              {isPickup ? (
+              {isCanceled ? (
+                'This order was cancelled before production. Reserved materials have been released.'
+              ) : isPickup ? (
                 isDelivered
                   ? 'Claimed by recipient at Eds Towels Counter • Verified'
                   : isOutForDelivery || isInTransit
@@ -193,23 +208,47 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
         </div>
 
         {/* Waybill / Dispatch Label Button */}
-        <button
-          onClick={() => setIsWaybillOpen(true)}
-          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-          title="View and print 4x6 inch pouch dispatch label"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          <span>{isPickup ? 'Claim Slip' : 'Parcel Label'}</span>
-        </button>
+        {isCanceled ? (
+          <span className="px-3 py-1.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            <span>{isPickup ? 'Claim Slip Voided' : 'Parcel Label Voided'}</span>
+          </span>
+        ) : (
+          <button
+            onClick={() => setIsWaybillOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            title="View and print 4x6 inch pouch dispatch label"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span>{isPickup ? 'Claim Slip' : 'Parcel Label'}</span>
+          </button>
+        )}
       </div>
 
       {/* 2. Logistics Partner & Tracking Number Card */}
       <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2.5">
-          {isPickup ? (
+          {isCanceled ? (
+            <>
+              <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span>ORDER CANCELLED</span>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-text-main block">{isPickup ? 'Pick-up Inactive' : 'Delivery Cancelled'}</span>
+                <span className="text-[0.7rem] text-text-dim">No physical pickup required</span>
+              </div>
+            </>
+          ) : isPickup ? (
             <>
               <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -228,7 +267,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               <div className="flex items-center gap-1.5 bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <rect x="1" y="3" width="15" height="13" />
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 8" />
                   <circle cx="5.5" cy="18.5" r="2.5" />
                   <circle cx="18.5" cy="18.5" r="2.5" />
                 </svg>
@@ -250,14 +289,18 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
                 <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
                   {isPickup ? 'Claim Reference' : 'Tracking No.'}
                 </span>
-                <span className="font-mono text-xs font-bold text-primary">{trackingNumber}</span>
+                <span className={`font-mono text-xs font-bold ${isCanceled ? 'line-through text-text-dim' : 'text-primary'}`}>
+                  {trackingNumber} {isCanceled ? '(VOID)' : ''}
+                </span>
               </div>
-              <button
-                onClick={handleCopyTracking}
-                className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+              {!isCanceled && (
+                <button
+                  onClick={handleCopyTracking}
+                  className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[0.7rem] font-bold border border-primary/20 cursor-pointer transition-all"
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              )}
             </div>
 
             {!isPickup && trackingNumber.startsWith('JNT') && (

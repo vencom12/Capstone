@@ -5,6 +5,7 @@ const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
 const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 const jwt = require('jsonwebtoken');
+const { resolveToken } = require('../../utils/tokenResolver');
 const { getActiveSuggestions } = require('./forecastingController');
 const { fetchGroqChatWithFallback, fetchGroqVisionWithFallback } = require('../../utils/groqClient');
 
@@ -1639,7 +1640,7 @@ exports.storefrontChat = async (req, res) => {
         }
 
         // Fetch user context if authenticated
-        const token = req.cookies?.admin_token || req.cookies?.employee_token || req.cookies?.customer_token || req.cookies?.token;
+        const token = resolveToken(req, ['customer']);
         let customerContext = '';
         if (token) {
             try {
