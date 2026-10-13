@@ -829,7 +829,7 @@ export default function AdminPage() {
                 <span className="opacity-90">{loadError}</span>
               </div>
               <button
-                onClick={fetchAdminData}
+                onClick={() => fetchAdminData()}
                 className="self-start sm:self-auto bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
               >
                 Retry

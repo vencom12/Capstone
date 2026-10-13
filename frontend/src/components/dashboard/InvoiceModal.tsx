@@ -69,7 +69,7 @@ export default function InvoiceModal({
   // Resolve source data from order, fetchedData, or transaction
   const effectiveOrderId = order?.orderId || fetchedData?.orderID || transaction?.orderID || targetTxId || 'N/A';
   const cleanOrderCode = String(effectiveOrderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  const receiptNo = order?.receipt?.receiptId || fetchedData?.receiptId || transaction?.receiptId || `RCP-${cleanOrderCode}`;
+  const receiptNo = (order as any)?.receipt?.receiptId || fetchedData?.receiptId || transaction?.receiptId || `RCP-${cleanOrderCode}`;
 
   const rawDate = order?.date || order?.createdAt || fetchedData?.timestamp || transaction?.timestamp || Date.now();
   const dateObj = new Date(rawDate);
