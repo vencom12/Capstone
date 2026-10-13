@@ -286,6 +286,13 @@ exports.updateUser = async (req, res) => {
         const { username, email, role, password, phoneNumber, address } = req.body;
         const userId = req.params.id;
 
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!currentUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         const updateData = {};
 
         if (username && username.trim()) {
@@ -322,7 +329,23 @@ exports.updateUser = async (req, res) => {
             }
         }
 
-        if (role) updateData.role = role;
+        if (role) {
+            if (userId === req.user.id && role !== 'admin') {
+                return res.status(400).json({ message: 'Cannot demote your own administrator account' });
+            }
+            if (currentUser.role === 'admin' && role !== 'admin') {
+                const adminCount = await prisma.user.count({
+                    where: { role: 'admin', isActive: true }
+                });
+                if (adminCount <= 1) {
+                    return res.status(400).json({ message: 'Cannot demote the last remaining active administrator account.' });
+                }
+            }
+            if (role !== currentUser.role) {
+                updateData.tokenVersion = { increment: 1 };
+            }
+            updateData.role = role;
+        }
         if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber ? phoneNumber.trim() : null;
         if (address !== undefined) updateData.address = address ? address.trim() : null;
 

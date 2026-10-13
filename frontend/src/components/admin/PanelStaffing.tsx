@@ -163,7 +163,6 @@ export default function PanelStaffing({
     }
 
     setIsOpen(false);
-    showToast(isEdit ? 'Staff updated' : 'Staff added', 'success');
 
     try {
       const path = isEdit ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
@@ -171,6 +170,8 @@ export default function PanelStaffing({
       const res: any = isEdit
         ? await api.put(path, payload)
         : await api.post(path, payload);
+
+      showToast(isEdit ? 'Staff updated successfully' : 'Staff added successfully', 'success');
 
       if (!isEdit && res?.user && setUsers) {
         setUsers((prev) =>
