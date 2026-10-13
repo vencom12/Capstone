@@ -11,6 +11,7 @@ const PersistentAssistant = dynamic(() => import('@/components/employee/Persiste
   ssr: false,
 });
 import GlassModal from '@/components/ui/GlassModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -1468,86 +1469,18 @@ export default function EmployeePage() {
 
 
 
-      {/* Receipt Details Modal */}
-      <GlassModal 
-        isOpen={isReceiptModalOpen} 
+      {/* Authentic Store Thermal Receipt Modal */}
+      <InvoiceModal
+        isOpen={isReceiptModalOpen}
         onClose={() => {
           setIsReceiptModalOpen(false);
           setViewingReceiptOrder(null);
         }}
-        title="Transaction Receipt Details"
-        maxWidth="max-w-[450px]"
-      >
-        {viewingReceiptOrder && (
-          <div className="flex flex-col gap-4 text-left font-sans">
-            <div className="flex flex-col items-center border-b border-border-glass pb-4 mb-2">
-              <span className="text-[1.8rem] font-black tracking-wider text-text-main">STITCH-OPT</span>
-              <span className="text-xs text-text-dim font-mono mt-1">RECEIPT ID: {viewingReceiptOrder.receiptID || viewingReceiptOrder.receiptId || viewingReceiptOrder.receiptRef || 'N/A'}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex flex-col">
-                <span className="text-xs text-text-dim">Order ID</span>
-                <span className="font-bold font-mono text-text-main">{viewingReceiptOrder.orderId}</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-text-dim">Date</span>
-                <span className="font-medium text-text-main">{new Date(viewingReceiptOrder.date || viewingReceiptOrder.createdAt).toLocaleString()}</span>
-              </div>
-              <div className="flex flex-col mt-2">
-                <span className="text-xs text-text-dim">Client Name</span>
-                <span className="font-bold text-text-main">{viewingReceiptOrder.client || 'Valued Client'}</span>
-              </div>
-              <div className="flex flex-col items-end mt-2">
-                <span className="text-xs text-text-dim">Payment Method</span>
-                <span className="font-medium uppercase text-text-main">{viewingReceiptOrder.paymentMethod || 'cash'}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-b border-border-glass py-3 my-2">
-              <div className="text-xs font-bold text-text-dim uppercase tracking-wider mb-2">Items Purchased</div>
-              <div className="flex flex-col gap-2">
-                {viewingReceiptOrder.items && Array.isArray(viewingReceiptOrder.items) ? (
-                  viewingReceiptOrder.items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-center text-sm">
-                      <span className="text-text-main font-medium">{item.quantity}x {item.name}</span>
-                      <span className="font-mono text-text-main font-bold">₱{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-text-main font-medium">{viewingReceiptOrder.design || 'Custom Embroidery'}</span>
-                    <span className="font-mono text-text-main font-bold">₱{parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center font-mono py-2">
-              <span className="text-base font-bold text-text-main">TOTAL AMOUNT:</span>
-              <span className="text-lg font-extrabold text-primary">₱{parseFloat(viewingReceiptOrder.totalAmount || viewingReceiptOrder.amount || 0).toFixed(2)}</span>
-            </div>
-
-            <div className="flex gap-3 mt-4">
-              <button 
-                onClick={() => handleDownloadReceipt(viewingReceiptOrder)}
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-md transition-all cursor-pointer text-center text-sm"
-              >
-                Download PDF
-              </button>
-              <button 
-                onClick={() => {
-                  setIsReceiptModalOpen(false);
-                  setViewingReceiptOrder(null);
-                }}
-                className="bg-white/5 border border-border-glass text-text-main font-bold py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-sm"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </GlassModal>
+        order={viewingReceiptOrder}
+        transaction={viewingReceiptOrder}
+        user={viewingReceiptOrder?.user || viewingReceiptOrder?.customer}
+        transactionId={viewingReceiptOrder?.transactionID || viewingReceiptOrder?.transactionId || viewingReceiptOrder?.receiptID || viewingReceiptOrder?.receiptId || viewingReceiptOrder?.orderId}
+      />
 
       {/* Persistent AI Assistant */}
       <PersistentAssistant />

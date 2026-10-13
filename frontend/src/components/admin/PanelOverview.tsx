@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import WaybillModal from '@/components/dashboard/WaybillModal';
 import ClaimStubModal from '@/components/admin/ClaimStubModal';
 import { api } from '@/lib/api';
@@ -809,78 +810,14 @@ export default function PanelOverview({
       </div>
 
       {/* Modal: View Receipt Details */}
-      <GlassModal
+      <InvoiceModal
         isOpen={isReceiptModalOpen}
         onClose={() => setIsReceiptModalOpen(false)}
-        title="Secure Checkout Receipt"
-      >
-        {isLoadingReceipt ? (
-          <div className="py-8 text-center text-text-dim">Retrieving transaction details...</div>
-        ) : receiptDetails ? (
-          <div className="modal-stack text-left font-sans">
-            <div className="border-b border-border-glass pb-3 flex justify-between items-center">
-              <div>
-                <span className="modal-label">Transaction ID</span>
-                <p className="font-mono text-sm font-bold text-primary m-0">{receiptDetails.transactionID}</p>
-              </div>
-              <button
-                onClick={() => handleDownloadReceipt(selectedReceipt)}
-                className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer"
-              >
-                Download PDF
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="modal-box">
-                <span className="modal-label block">Customer Name</span>
-                <span className="modal-text-sm font-bold">{receiptDetails.client || 'Guest'}</span>
-              </div>
-              <div className="modal-box">
-                <span className="modal-label block">Date & Time</span>
-                <span className="modal-text-sm font-bold">
-                  {new Date(receiptDetails.timestamp).toLocaleString()}
-                </span>
-              </div>
-              <div className="modal-box">
-                <span className="modal-label block">Payment Status</span>
-                <span className="modal-text-sm font-bold text-success capitalize">{receiptDetails.status}</span>
-              </div>
-              <div className="modal-box">
-                <span className="modal-label block">Total Paid</span>
-                <span className="modal-text-sm font-extrabold text-primary font-mono">
-                  ₱{parseFloat(receiptDetails.amount || 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            <div className="modal-section mt-2">
-              <span className="modal-label block">Stitched Items</span>
-              <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto pr-1">
-                {receiptDetails.items && receiptDetails.items.length > 0 ? (
-                  receiptDetails.items.map((item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="modal-box flex justify-between items-center text-sm"
-                    >
-                      <span className="font-medium text-text-main">
-                        {item.name} <b className="text-primary ml-1">x{item.quantity}</b>
-                      </span>
-                      <span className="font-mono text-text-dim font-bold">
-                        ₱{(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-text-dim italic m-0">No item details available.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center text-danger">Failed to fetch receipt data.</div>
-        )}
-      </GlassModal>
+        order={selectedReceipt}
+        transaction={receiptDetails || selectedReceipt}
+        user={receiptDetails?.user || selectedReceipt?.customer}
+        transactionId={receiptDetails?.transactionID || selectedReceipt?.orderId}
+      />
 
       {/* Modal: Edit Status */}
       <GlassModal

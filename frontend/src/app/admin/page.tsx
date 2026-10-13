@@ -25,6 +25,7 @@ const PersistentAssistant = dynamic(() => import('@/components/employee/Persiste
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import Pagination from '@/components/ui/Pagination';
@@ -657,80 +658,14 @@ export default function AdminPage() {
             </div>
 
             {/* Modal: View Receipt Details */}
-            <GlassModal
+            <InvoiceModal
               isOpen={!!historyReceiptOrder}
               onClose={() => setHistoryReceiptOrder(null)}
-              title="Secure Archived Transaction Receipt"
-            >
-              {isLoadingHistoryReceipt ? (
-                <div className="py-8 text-center text-text-dim">Retrieving archival transaction details...</div>
-              ) : historyReceiptDetails ? (
-                <div className="flex flex-col gap-4 text-left font-sans">
-                  <div className="border-b border-border-glass pb-3 flex justify-between items-center">
-                    <div>
-                      <span className="text-xs text-text-dim uppercase font-semibold">Transaction ID</span>
-                      <p className="font-mono text-sm font-bold text-primary m-0">
-                        {historyReceiptDetails.transactionID}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDownloadHistoryReceipt(historyReceiptOrder)}
-                      className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer"
-                    >
-                      Download PDF
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm font-medium">
-                    <div>
-                      <span className="text-xs text-text-dim block">Customer Name</span>
-                      <span className="font-bold text-text-main">{historyReceiptDetails.client || 'Guest'}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-text-dim block">Date & Time</span>
-                      <span className="font-bold text-text-main">
-                        {new Date(historyReceiptDetails.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-text-dim block">Payment Status</span>
-                      <span className="font-bold text-success capitalize">{historyReceiptDetails.status}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-text-dim block">Total Paid</span>
-                      <span className="font-bold text-primary font-mono">
-                        ₱{parseFloat(historyReceiptDetails.amount || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-2">
-                    <span className="text-xs text-text-dim block mb-2 font-bold uppercase tracking-wider">Items Stitched</span>
-                    <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto pr-1">
-                      {historyReceiptDetails.items && historyReceiptDetails.items.length > 0 ? (
-                        historyReceiptDetails.items.map((item: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between items-center bg-white/5 border border-border-glass p-2.5 rounded-lg text-sm"
-                          >
-                            <span className="font-medium text-text-main">
-                              {item.name} <b className="text-primary ml-1">x{item.quantity}</b>
-                            </span>
-                            <span className="font-mono text-text-dim">
-                              ₱{(item.price * item.quantity).toFixed(2)}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-text-dim italic m-0">No item details available.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-danger">Failed to fetch receipt data.</div>
-              )}
-            </GlassModal>
+              order={historyReceiptOrder}
+              transaction={historyReceiptDetails || historyReceiptOrder}
+              user={historyReceiptDetails?.user || historyReceiptOrder?.customer}
+              transactionId={historyReceiptDetails?.transactionID || historyReceiptOrder?.orderId}
+            />
           </section>
         );
 
