@@ -3,6 +3,17 @@ const crypto = require('crypto');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 
+// Idempotency cache (5-minute TTL) to prevent duplicate order submissions from double-taps / retries
+const orderIdempotencyStore = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, val] of orderIdempotencyStore.entries()) {
+        if (now - val.timestamp > 5 * 60 * 1000) {
+            orderIdempotencyStore.delete(key);
+        }
+    }
+}, 60 * 1000);
+
 exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
@@ -77,6 +88,14 @@ exports.submitOrder = async (req, res) => {
     try {
         const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization, isRush, dueDate, existingOrderId, referenceNumber, isTestBypass } = req.body;
         const userId = req.user.id;
+
+        // Idempotency guard: prevent duplicate orders from rapid double-taps or network retries
+        const idempotencyKey = req.headers['x-idempotency-key'] || req.body.idempotencyKey;
+        if (idempotencyKey && orderIdempotencyStore.has(idempotencyKey)) {
+            const cached = orderIdempotencyStore.get(idempotencyKey);
+            console.log(`[IDEMPOTENCY] Replaying cached order response for key: ${idempotencyKey}`);
+            return res.json(cached.response);
+        }
 
         // Allow test bypass in development mode OR for admin/staff/testing accounts
         const isBypassActive = Boolean(
@@ -430,7 +449,12 @@ exports.submitOrder = async (req, res) => {
             });
         }
 
-        res.json({ message: 'Order placed successfully.', order: result, receiptID: secureReceiptId });
+        const successPayload = { message: 'Order placed successfully.', order: result, receiptID: secureReceiptId };
+        if (idempotencyKey) {
+            orderIdempotencyStore.set(idempotencyKey, { response: successPayload, timestamp: Date.now() });
+        }
+
+        res.json(successPayload);
     } catch (err) {
         console.error('submitOrder error:', err);
         if (err.message && err.message.startsWith('OutOfStockMaterial:')) {

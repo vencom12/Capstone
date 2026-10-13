@@ -6,6 +6,7 @@ import ToastContainer from '@/components/ui/Toast';
 import DynamicFavicon from '@/components/ui/DynamicFavicon';
 import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 import AuthModal from '@/components/auth/AuthModal';
+import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -47,10 +48,10 @@ export const metadata: Metadata = {
     description: 'Custom embroidery designs & personalized monogramming for towels, fans, and more.',
   },
   icons: {
-    icon: '/api/customer/favicon.ico',
-    apple: '/api/customer/favicon.ico',
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
   },
-  manifest: '/api/customer/manifest.json',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -61,6 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
+        <ServiceWorkerRegister />
         <Suspense fallback={null}>
           <GlobalAuthListener />
         </Suspense>

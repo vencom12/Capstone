@@ -42,17 +42,68 @@ const startKeepAwakePing = () => {
     console.log(`[OK] Keep-Awake pinger initialized for ${RENDER_URL}`);
 };
 
+// Automatically expires orders left in unpaid/pending payment states for more than 24 hours
+const expireStaleOrders = async () => {
+    try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const staleOrders = await prisma.order.findMany({
+            where: {
+                status: { in: ['Awaiting Payment', 'Pending Payment'] },
+                paymentStatus: 'unpaid',
+                createdAt: { lt: twentyFourHoursAgo }
+            },
+            take: 50
+        });
+
+        if (staleOrders.length === 0) return;
+
+        console.log(`[CRON] Expiring ${staleOrders.length} abandoned orders older than 24 hours...`);
+
+        for (const ord of staleOrders) {
+            const currentPers = ord.personalization && typeof ord.personalization === 'object' ? ord.personalization : {};
+            const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+            history.push({
+                status: 'Cancelled - Payment Expired',
+                timestamp: new Date().toISOString(),
+                actor: 'System Auto-Expire',
+                hub: 'Stitch-Opt Automation',
+                note: 'Order automatically cancelled after 24h grace window without payment confirmation.'
+            });
+
+            await prisma.order.update({
+                where: { id: ord.id },
+                data: {
+                    status: 'Cancelled - Payment Expired',
+                    personalization: {
+                        ...currentPers,
+                        statusHistory: history
+                    }
+                }
+            });
+        }
+
+        console.log(`[CRON] Successfully expired ${staleOrders.length} abandoned orders.`);
+    } catch (err) {
+        console.error('[CRON] Stale order expiration check failed:', err.message);
+    }
+};
+
 const initCronJobs = () => {
     // Run immediately on server start
     runDatabaseCleanup();
+    expireStaleOrders();
 
-    // Then run every 24 hours (24 * 60 * 60 * 1000)
+    // Database cleanup every 24 hours
     setInterval(runDatabaseCleanup, 24 * 60 * 60 * 1000);
+
+    // Stale order check every 60 minutes (60 * 60 * 1000)
+    setInterval(expireStaleOrders, 60 * 60 * 1000);
     
     // Start self-pinging
     startKeepAwakePing();
     
-    console.log('[OK] Cron jobs initialized (Daily Database Cleanup active)');
+    console.log('[OK] Cron jobs initialized (Daily Cleanup & Hourly Order Expiration active)');
 };
 
 module.exports = { initCronJobs };

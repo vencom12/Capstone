@@ -6,6 +6,24 @@ if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR);
 }
 
+// Rotate logs if they exceed 5MB to preserve host disk space
+const rotateIfLarge = (filename) => {
+    try {
+        const fullPath = path.join(LOG_DIR, filename);
+        if (fs.existsSync(fullPath)) {
+            const stats = fs.statSync(fullPath);
+            if (stats.size > 5 * 1024 * 1024) {
+                const oldPath = path.join(LOG_DIR, `${filename}.old`);
+                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+                fs.renameSync(fullPath, oldPath);
+            }
+        }
+    } catch (e) { /* ignore rotation errors */ }
+};
+
+rotateIfLarge('socket_events.log');
+rotateIfLarge('rollbacks.log');
+
 const socketLogStream = fs.createWriteStream(path.join(LOG_DIR, 'socket_events.log'), { flags: 'a' });
 const rollbackLogStream = fs.createWriteStream(path.join(LOG_DIR, 'rollbacks.log'), { flags: 'a' });
 

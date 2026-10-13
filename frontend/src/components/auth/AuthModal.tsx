@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import { startGoogleSignIn, isGoogleAuthPending } from '@/lib/googleAuth';
+import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 
 export default function AuthModal() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function AuthModal() {
   const [formError, setFormError] = useState<string | null>(null);
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   // Alternate views: normal login/register, forgot-password, or first-time Google password setup
   const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
@@ -450,6 +452,20 @@ export default function AuthModal() {
             <span>Keep me signed in on this device</span>
           </label>
 
+          {mode === 'register' && (
+            <p className="text-[0.72rem] text-text-dim text-left leading-relaxed m-0 px-0.5">
+              By creating an account, you agree to our{' '}
+              <button
+                type="button"
+                onClick={() => setIsTermsOpen(true)}
+                className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer inline text-[0.72rem]"
+              >
+                Terms of Service &amp; Studio Policies
+              </button>
+              , including custom embroidery non-cancellation terms once machine stitching begins.
+            </p>
+          )}
+
           <GlassButton
             type="submit"
             variant="primary"
@@ -512,6 +528,8 @@ export default function AuthModal() {
         </div>
 
       </div>
+
+      <TermsAndPoliciesModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </GlassModal>
   );
 }

@@ -337,6 +337,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         paymentMethod: 'gcash',
         existingOrderId: pendingOrderId || undefined,
         referenceNumber: cleanRef,
+        idempotencyKey: cleanRef ? `ref-${cleanRef}` : `checkout-${user?.id || 'anon'}-${Date.now()}`,
         personalization: {
           fulfillmentType: isPickup ? 'pickup' : 'delivery',
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',
