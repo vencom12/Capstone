@@ -7,6 +7,8 @@ import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
+import { getNotificationPermission, requestNotificationPermission } from '@/lib/pushNotifications';
+import { showToast } from '@/components/ui/Toast';
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -31,9 +33,11 @@ export default function DashboardSidebar({
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     setMounted(true);
+    setPushStatus(getNotificationPermission());
     if (typeof document !== 'undefined') {
       const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
       setCurrentTheme(theme);
@@ -44,6 +48,16 @@ export default function DashboardSidebar({
       }).catch(() => {});
     });
   }, []);
+
+  const handleTogglePush = async () => {
+    const res = await requestNotificationPermission();
+    setPushStatus(res);
+    if (res === 'granted') {
+      showToast('Push alerts enabled! You will receive instant order milestone notifications.', 'success');
+    } else if (res === 'denied') {
+      showToast('Notifications are blocked by your browser settings.', 'info');
+    }
+  };
 
   const toggleTheme = () => {
     if (typeof document === 'undefined') return;
@@ -296,6 +310,29 @@ export default function DashboardSidebar({
 
           {/* Drawer Section 3: Preferences & Session */}
           <div className="pt-2 border-t border-border-glass/60 flex flex-col gap-1.5">
+            {/* Push Notifications Toggle Button */}
+            <button
+              onClick={handleTogglePush}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border-glass/40 bg-white/[0.02] hover:bg-white/5 cursor-pointer transition-all text-text-main"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-text-dim">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                </div>
+                <span className="text-[0.88rem] font-medium">Order Push Alerts</span>
+              </div>
+              <span className={`text-[0.68rem] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider ${
+                pushStatus === 'granted'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-white/10 text-text-dim'
+              }`}>
+                {pushStatus === 'granted' ? 'Active' : 'Enable'}
+              </span>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}

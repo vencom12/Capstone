@@ -907,6 +907,29 @@ exports.getManifest = async (req, res) => {
     }
 };
 
+// Web Push Subscription Registry
+const pushSubscriptionRegistry = new Map(); // userId -> Set<string>
+
+exports.savePushSubscription = async (req, res) => {
+    try {
+        const userId = req.user ? req.user.id : null;
+        const { endpoint, keys, userAgent } = req.body;
+        if (!endpoint) {
+            return res.status(400).json({ error: 'Endpoint is required' });
+        }
+        if (userId) {
+            if (!pushSubscriptionRegistry.has(userId)) {
+                pushSubscriptionRegistry.set(userId, new Set());
+            }
+            pushSubscriptionRegistry.get(userId).add(endpoint);
+            console.log(`[PUSH] Registered push subscription for user ${userId} (${userAgent || 'unknown'})`);
+        }
+        res.json({ success: true, message: 'Push subscription stored successfully' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save push subscription' });
+    }
+};
+
 exports.getFavicon = async (req, res) => {
     try {
         let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });

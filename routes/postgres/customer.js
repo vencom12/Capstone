@@ -53,6 +53,7 @@ router.get('/manifest.json', customerController.getManifest);
 router.get('/favicon.ico', customerController.getFavicon);
 
 // All routes below require authentication
+router.post('/push-subscription', auth(), customerController.savePushSubscription);
 router.post('/wallet/topup', auth(), customerController.topupWallet);
 router.post('/payment/validate', auth(), customerController.validatePayment);
 router.post('/order/submit', auth(), orderValidation, customerController.submitOrder);

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Product } from '@/lib/types';
+import OptimizedImage from '@/components/ui/OptimizedImage';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -70,12 +71,12 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         className="h-[140px] md:h-[180px] bg-bg-surface flex items-center justify-center relative overflow-hidden"
       >
         {product.imageUrl ? (
-          <img 
-            src={product.imageUrl} 
-            alt={product.name} 
-            loading="lazy" 
-            decoding="async" 
-            className="absolute inset-0 w-full h-full object-cover object-center" 
+          <OptimizedImage
+            src={product.imageUrl}
+            alt={product.name}
+            width={480}
+            quality={80}
+            className="absolute inset-0 w-full h-full object-cover object-center"
           />
         ) : (
           <span className="text-text-dim text-xs tracking-wider font-semibold z-10 relative">STITCH PREVIEW</span>

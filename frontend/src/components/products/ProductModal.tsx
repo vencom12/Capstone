@@ -10,6 +10,7 @@ import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
+import OptimizedImage from '@/components/ui/OptimizedImage';
 
 interface ProductModalProps {
   product: Product | null;
@@ -251,10 +252,11 @@ export default function ProductModal({
         <div className="bg-bg-surface/50 flex flex-col items-center justify-center p-6 relative border-r border-border-glass max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:h-[220px] max-[900px]:p-4 max-[650px]:h-[180px]">
           <div className="w-full max-w-[320px] aspect-square rounded-[24px] overflow-hidden bg-bg-surface shadow-sm border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
             {(selectedVariant?.imageUrl || product.imageUrl) ? (
-              <img
+              <OptimizedImage
                 src={selectedVariant?.imageUrl || product.imageUrl}
                 alt={product.name}
-                loading="lazy"
+                width={640}
+                quality={85}
                 className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
               />
             ) : (
