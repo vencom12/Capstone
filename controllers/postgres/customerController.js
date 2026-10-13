@@ -508,11 +508,14 @@ exports.getReceipt = async (req, res) => {
         res.json({
             transactionID: tx.transactionID,
             orderID: tx.orderID,
+            receiptId: tx.receiptId,
             amount: tx.amount,
             status: tx.status,
             timestamp: tx.timestamp,
+            paymentMethod: tx.paymentMethod || tx.order?.paymentMethod || 'GCash',
             items: tx.order ? tx.order.items : [],
-            client: tx.user?.username || 'Customer'
+            order: tx.order || null,
+            client: tx.user?.username || tx.order?.client || 'Customer'
         });
     } catch (err) {
         console.error('Download error:', err);

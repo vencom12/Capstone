@@ -409,10 +409,29 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
     try {
         const prisma = require('./utils/prisma');
-        const tx = await prisma.transaction.findUnique({
-            where: { transactionID: req.params.transactionID },
+        const id = req.params.transactionID;
+        let tx = await prisma.transaction.findFirst({
+            where: {
+                OR: [
+                    { transactionID: id },
+                    { orderID: id },
+                    { receiptId: id },
+                    { id: id }
+                ]
+            },
             include: { Order: true, user: true }
         });
+
+        if (!tx) {
+            const receiptRecord = await prisma.receipt.findFirst({ where: { receiptID: id } });
+            if (receiptRecord) {
+                tx = await prisma.transaction.findFirst({
+                    where: { orderID: receiptRecord.orderID },
+                    include: { Order: true, user: true }
+                });
+            }
+        }
+
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
         
         if (tx.Order) {
@@ -430,8 +449,10 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
             timestamp: tx.timestamp,
             amount: tx.amount,
             status: tx.status,
+            paymentMethod: tx.paymentMethod || tx.order?.paymentMethod || 'GCash',
             client: tx.order?.client || tx.user?.username || 'Guest',
-            items: tx.order?.items || []
+            items: tx.order?.items || [],
+            order: tx.order || null
         });
     } catch (err) {
         console.error('Receipt error:', err);

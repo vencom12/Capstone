@@ -1204,15 +1204,9 @@ export default function EmployeePage() {
                                       setViewingReceiptOrder(o);
                                       setIsReceiptModalOpen(true);
                                     }}
-                                    className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                                    className="bg-primary/10 border border-primary/20 text-primary px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
                                   >
-                                    View
-                                  </button>
-                                  <button
-                                    onClick={() => handleDownloadReceipt(o)}
-                                    className="bg-secondary/10 border border-secondary/20 text-secondary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-secondary/25 transition-all cursor-pointer"
-                                  >
-                                    Receipt
+                                    View Receipt
                                   </button>
                                 </div>
                               </td>
@@ -1273,21 +1267,15 @@ export default function EmployeePage() {
                             </div>
                           </div>
 
-                          <div className="flex gap-3 w-full mt-1">
+                          <div className="w-full mt-1">
                             <button
                               onClick={() => {
                                 setViewingReceiptOrder(o);
                                 setIsReceiptModalOpen(true);
                               }}
-                              className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
+                              className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
                             >
-                              View Details
-                            </button>
-                            <button
-                              onClick={() => handleDownloadReceipt(o)}
-                              className="flex-1 bg-secondary/10 border border-secondary/20 text-secondary py-2.5 rounded-xl text-xs font-bold hover:bg-secondary/20 transition-all cursor-pointer text-center"
-                            >
-                              Receipt
+                              View Receipt Preview
                             </button>
                           </div>
                         </div>

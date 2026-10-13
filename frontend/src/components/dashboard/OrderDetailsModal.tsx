@@ -5,6 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import OrderReviewModal from '@/components/dashboard/OrderReviewModal';
+import ReceiptModal from '@/components/dashboard/ReceiptModal';
 import type { Order } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -32,6 +33,7 @@ export default function OrderDetailsModal({
   const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
@@ -216,6 +218,23 @@ export default function OrderDetailsModal({
                 <span className="font-bold">Total Amount</span>
                 <span className="font-extrabold text-primary">₱{order.totalAmount.toFixed(2)}</span>
               </div>
+              <div className="flex justify-between items-center text-[0.78rem] pt-2 border-t border-border-glass/40">
+                <span className="text-text-dim">Official Receipt</span>
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptModalOpen(true)}
+                  className="text-primary hover:underline font-semibold bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                  <span>View Receipt Preview →</span>
+                </button>
+              </div>
             </div>
 
             {/* Shipping / Notes */}
@@ -367,6 +386,12 @@ export default function OrderDetailsModal({
           status: order.status,
           totalAmount: order.totalAmount
         }}
+      />
+
+      <ReceiptModal
+        transactionId={order.orderId}
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
       />
     </GlassModal>
   );
