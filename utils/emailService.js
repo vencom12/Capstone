@@ -97,9 +97,8 @@ async function dispatchEmail({ to, subject, html, simulationInfo }) {
   const transporter = createTransporter();
   if (transporter) {
     try {
-      const senderEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
       const info = await transporter.sendMail({
-        from: `"${businessName}" <${senderEmail}>`,
+        from: `"${businessName}" <${process.env.GMAIL_USER}>`,
         to,
         subject,
         html,

@@ -1,66 +1,11 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Clears ALL session cookies across all roles to enforce Strict Single Session.
- *
- * @param {import('express').Response} res
- */
-function clearAllSessionCookies(res) {
-    if (!res) return;
-    const clearOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
-        path: '/'
-    };
-    res.clearCookie('admin_token', clearOptions);
-    res.clearCookie('employee_token', clearOptions);
-    res.clearCookie('customer_token', clearOptions);
-    res.clearCookie('token', clearOptions);
-}
-
-/**
- * Enforces Strict Single Session by purging any previously held role cookies
- * and setting cookies strictly for the current authenticated user.
- *
- * @param {import('express').Response} res
- * @param {object} user
- * @param {boolean} [rememberMe=false]
- * @returns {string} The signed JWT
- */
-function setSessionCookies(res, user, rememberMe = false) {
-    // 1. Strict single-session enforcement: wipe any previous role sessions in the browser
-    clearAllSessionCookies(res);
-
-    // 2. Generate signed token
-    const expiresIn = (rememberMe && user.role !== 'admin' && user.role !== 'employee') ? '30d' : '1d';
-    const token = jwt.sign(
-        { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
-        process.env.JWT_SECRET,
-        { expiresIn }
-    );
-
-    // 3. Set cookie options
-    const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
-        path: '/'
-    };
-
-    if (rememberMe && user.role !== 'admin' && user.role !== 'employee') {
-        cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-    }
-
-    res.cookie('token', token, cookieOptions);
-    res.cookie(`${user.role}_token`, token, cookieOptions);
-
-    return token;
-}
-
-/**
  * Resolves the appropriate JWT token from request cookies and headers
  * based on route context, headers, and requested roles.
+ *
+ * Prevents identity crosstalk (e.g. customer orders being attributed to admin)
+ * when multiple portal sessions coexist in the same browser.
  *
  * @param {import('express').Request} req
  * @param {string[]} [roles]
@@ -127,8 +72,4 @@ function resolveToken(req, roles = []) {
     return cookies.customer_token || cookies.admin_token || cookies.employee_token || cookies.token || null;
 }
 
-module.exports = { 
-    resolveToken, 
-    setSessionCookies, 
-    clearAllSessionCookies 
-};
+module.exports = { resolveToken };

@@ -6,7 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const { normalizePhilippinePhone, generateOtp, sendSms } = require('../../utils/smsService');
 const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail } = require('../../utils/emailService');
-const { setSessionCookies, clearAllSessionCookies } = require('../../utils/tokenResolver');
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
@@ -61,7 +60,14 @@ exports.register = async (req, res) => {
             }
         });
 
-        setSessionCookies(res, user, false);
+        const token = jwt.sign({ id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.cookie('customer_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 24 * 60 * 60 * 1000
+        });
 
         res.json({ 
             user: { 
@@ -95,7 +101,14 @@ exports.login = async (req, res) => {
                 address: '123 Stitch Lane',
                 phoneNumber: '09171234567'
             };
-            setSessionCookies(res, mockUser, false);
+            const token = jwt.sign({ id: mockUser.id, role: mockRole, tokenVersion: 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax'
+            };
+            res.cookie(`${mockRole}_token`, token, cookieOptions);
+            res.cookie('token', token, cookieOptions);
             return res.json({ user: mockUser });
         }
         
@@ -129,7 +142,23 @@ exports.login = async (req, res) => {
             }
         }
 
-        setSessionCookies(res, user, rememberMe); 
+        const expiresIn = rememberMe ? '30d' : '1d';
+        const token = jwt.sign({ id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn });
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'Lax'
+        };
+
+        // Security: Privileged administrative and employee accounts must NEVER use persistent 30-day cookies.
+        // Sessions for staff are strictly session-only (destroyed by the browser upon closing the window).
+        if (rememberMe && user.role !== 'admin' && user.role !== 'employee') {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        }
+        
+        res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions); 
 
         // Track last login & active timestamps for CRM and security auditing
         prisma.user.update({
@@ -159,7 +188,17 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = (req, res) => {
-    clearAllSessionCookies(res);
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax',
+        path: '/'
+    };
+    res.clearCookie('admin_token', cookieOptions);
+    res.clearCookie('employee_token', cookieOptions);
+    res.clearCookie('customer_token', cookieOptions);
+    res.clearCookie('token', cookieOptions); 
+    
     res.json({ message: 'Logged out successfully' });
 };
 
@@ -249,7 +288,14 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
-        setSessionCookies(res, user, false);
+        const token = jwt.sign({ id: user.id, role: user.role, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/'
+        });
 
         res.json({ 
             user, 
@@ -526,7 +572,25 @@ exports.registerWithPhoneOtp = async (req, res) => {
             // Don't block registration if email sending fails
         }
 
-        setSessionCookies(res, user, false);
+        const token = jwt.sign(
+            { id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        res.cookie('customer_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 24 * 60 * 60 * 1000
+        });
 
         res.status(201).json({
             success: true,
@@ -775,7 +839,24 @@ exports.googleAuth = async (req, res) => {
             data: updateData
         });
 
-        setSessionCookies(res, user, true);
+        const token = jwt.sign(
+            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax'
+        };
+
+        if (user.role !== 'admin' && user.role !== 'employee') {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days for customers only
+        }
+
+        res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
 
         res.json({
             success: true,
@@ -859,7 +940,21 @@ exports.googleComplete = async (req, res) => {
             }
         });
 
-        setSessionCookies(res, user, true);
+        const token = jwt.sign(
+            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax'
+        };
+        if (user.role !== 'admin' && user.role !== 'employee') {
+            cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000;
+        }
+        res.cookie(`${user.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
 
         res.status(201).json({
             success: true,
