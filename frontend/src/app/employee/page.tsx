@@ -270,12 +270,42 @@ export default function EmployeePage() {
       });
       activeSocket = socket;
 
+      const handleInPlaceOrderUpdate = (payload: any) => {
+        if (!payload) return;
+        if (Array.isArray(payload.results)) {
+          setOrders((prev) => prev.map((o) => {
+            const match = payload.results.find((r: any) => (r.id === o.id || r.orderId === o.orderId));
+            return match ? { ...o, ...match } : o;
+          }));
+        } else if (payload.order) {
+          setOrders((prev) => prev.map((o) => {
+            if (o.id === payload.order.id || o.orderId === payload.order.orderId) {
+              return { ...o, ...payload.order };
+            }
+            return o;
+          }));
+        } else if (Array.isArray(payload.ids) && payload.status) {
+          setOrders((prev) => prev.map((o) => payload.ids.includes(o.id) ? { ...o, status: payload.status } : o));
+        } else if (payload.id || payload.orderId) {
+          setOrders((prev) => prev.map((o) => (o.id === (payload.id || payload.orderId) || o.orderId === (payload.orderId || payload.id)) ? { ...o, ...payload, status: payload.status || o.status } : o));
+        }
+      };
+
+      socket.on('ordersUpdated', (data: any) => {
+        handleInPlaceOrderUpdate(data);
+      });
+
       socket.on('dataChanged', (data: any) => {
         if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
-        console.log('[Socket] Data sync received:', data.entity, data.action);
-        if (['PRODUCT', 'INVENTORY', 'ORDER', 'MACHINE'].includes(data.entity)) {
+        if (data.entity === 'ORDER') {
+          if (data.action === 'CREATE') {
+            fetchEmployeeData();
+            showToast('New customer order ticket received!', 'info');
+          } else if (data.action === 'UPDATE' && data.data) {
+            handleInPlaceOrderUpdate(data.data);
+          }
+        } else if (['PRODUCT', 'INVENTORY', 'MACHINE'].includes(data.entity) && (data.action === 'CREATE' || data.action === 'DELETE')) {
           fetchEmployeeData();
-          showToast(`Dashboard updated in real-time (${data.entity.toLowerCase()})`, 'info', 'telemetry');
         }
       });
     };

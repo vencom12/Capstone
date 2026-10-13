@@ -84,7 +84,8 @@ function OrderTrackerContent() {
     };
 
     fetchOrder();
-    const interval = setInterval(fetchOrder, 3000);
+    // Fallback Polling (45s background safety net - WebSockets handle real-time sync)
+    const interval = setInterval(fetchOrder, 45000);
 
     // Real-time Socket.IO Listener for instant status change
     let activeSocket: any = null;
@@ -101,13 +102,42 @@ function OrderTrackerContent() {
       });
       activeSocket = socket;
 
-      const handleLiveOrderUpdate = () => {
+      const handleLiveOrderUpdate = (data?: any) => {
+        if (data) {
+          if (data.order) {
+            setOrder((prev: any) => {
+              if (!prev) return data.order;
+              const matches = (prev.id && (prev.id === data.order.id || prev.id === data.order.orderId)) ||
+                              (prev.orderId && (prev.orderId === data.order.orderId || prev.orderId === data.order.id));
+              return matches ? { ...prev, ...data.order } : prev;
+            });
+            return;
+          }
+          if (Array.isArray(data.results)) {
+            setOrder((prev: any) => {
+              if (!prev) return prev;
+              const match = data.results.find((r: any) => r.id === prev.id || r.orderId === prev.orderId);
+              return match ? { ...prev, ...match } : prev;
+            });
+            return;
+          }
+          if (data.status) {
+            setOrder((prev: any) => {
+              if (!prev) return prev;
+              const matches = (data.orderId && (prev.orderId === data.orderId || prev.id === data.orderId)) ||
+                              (data.id && (prev.id === data.id || prev.orderId === data.id)) ||
+                              (Array.isArray(data.ids) && (data.ids.includes(prev.id) || data.ids.includes(prev.orderId)));
+              return matches ? { ...prev, status: data.status } : prev;
+            });
+            return;
+          }
+        }
         fetchOrder();
       };
 
       socket.on('dataChanged', (data: any) => {
         if (!data || !data.entity || data.entity === 'ORDER') {
-          handleLiveOrderUpdate();
+          handleLiveOrderUpdate(data?.data);
         }
       });
       socket.on('ordersUpdated', handleLiveOrderUpdate);
@@ -124,10 +154,15 @@ function OrderTrackerContent() {
       document.head.appendChild(script);
     }
 
-    // Instant refresh when user switches tabs or window receives focus
+    // Refresh when user switches tabs, throttled to prevent spam
+    let lastTabFocus = 0;
     const handleTabActive = () => {
       if (document.visibilityState === 'visible') {
-        fetchOrder();
+        const now = Date.now();
+        if (now - lastTabFocus > 15000) {
+          lastTabFocus = now;
+          fetchOrder();
+        }
       }
     };
     window.addEventListener('focus', handleTabActive);

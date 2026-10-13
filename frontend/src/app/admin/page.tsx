@@ -127,24 +127,24 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isHydrated && isAuthenticated && activeTab === 'settings' && !isLoggingOutRef.current) {
-       api.get<any>('/api/admin/settings').then(res => {
-          if (res && res.giftPackagingPrice !== undefined) {
-             setGiftPrice(res.giftPackagingPrice);
-          }
-       }).catch(() => {});
+      api.get<any>('/api/admin/settings').then(res => {
+        if (res && res.giftPackagingPrice !== undefined) {
+          setGiftPrice(res.giftPackagingPrice);
+        }
+      }).catch(() => { });
     }
   }, [isHydrated, isAuthenticated, activeTab]);
 
   const handleUpdateGiftPrice = async () => {
-     setIsUpdatingSettings(true);
-     try {
-       await api.put('/api/admin/settings', { giftPackagingPrice: parseFloat(giftPrice as any) });
-       showToast('Gift packaging price updated successfully', 'success');
-     } catch (e) {
-       showToast('Failed to update gift price', 'error');
-     } finally {
-       setIsUpdatingSettings(false);
-     }
+    setIsUpdatingSettings(true);
+    try {
+      await api.put('/api/admin/settings', { giftPackagingPrice: parseFloat(giftPrice as any) });
+      showToast('Gift packaging price updated successfully', 'success');
+    } catch (e) {
+      showToast('Failed to update gift price', 'error');
+    } finally {
+      setIsUpdatingSettings(false);
+    }
   };
 
   // Fetch complete admin state with request deduplication & in-flight locking
@@ -187,7 +187,7 @@ export default function AdminPage() {
         } else if (Array.isArray(machineData)) {
           setMachines(machineData);
         }
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err: any) {
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) {
         return;
@@ -235,7 +235,7 @@ export default function AdminPage() {
     try {
       const savedTab = sessionStorage.getItem('stitch-admin-tab');
       if (savedTab) setActiveTab(savedTab);
-    } catch (e) {}
+    } catch (e) { }
     setIsHydrated(true);
   }, []);
 
@@ -261,7 +261,7 @@ export default function AdminPage() {
     if (isHydrated) {
       try {
         sessionStorage.setItem('stitch-admin-tab', activeTab);
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [activeTab, isHydrated]);
 
@@ -381,15 +381,15 @@ export default function AdminPage() {
   };
 
   const handleDownloadHistoryReceipt = async (order: any) => {
-    const receiptId = historyReceiptDetails?.transactionID || 
-                      historyReceiptDetails?.id || 
-                      order?.transactionID || 
-                      order?.transactionId || 
-                      order?.receiptID || 
-                      order?.receiptId || 
-                      order?.orderId || 
-                      order?.id || 
-                      order?._id;
+    const receiptId = historyReceiptDetails?.transactionID ||
+      historyReceiptDetails?.id ||
+      order?.transactionID ||
+      order?.transactionId ||
+      order?.receiptID ||
+      order?.receiptId ||
+      order?.orderId ||
+      order?.id ||
+      order?._id;
 
     if (!receiptId || receiptId === 'undefined') {
       showToast('No archived receipt reference available for download', 'error');
@@ -608,9 +608,8 @@ export default function AdminPage() {
                           >
                             <div className="flex justify-between items-start">
                               <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                              <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full border ${
-                                o.status === 'Order Canceled' ? 'text-danger bg-danger/15 border-danger/20' : 'text-success bg-success/15 border-success/20'
-                              }`}>
+                              <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full border ${o.status === 'Order Canceled' ? 'text-danger bg-danger/15 border-danger/20' : 'text-success bg-success/15 border-success/20'
+                                }`}>
                                 {o.status}
                               </span>
                             </div>

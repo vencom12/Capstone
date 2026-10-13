@@ -112,7 +112,7 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
       set({ favorites });
     }
   },
-  
+
   clearState: () => set({
     orders: [],
     favorites: [],

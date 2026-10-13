@@ -856,8 +856,8 @@ exports.updateOrdersStatus = async (req, res) => {
         // Broadcast immediate order change to all clients, staff, and customer user rooms
         const io = req.app.get('io');
         if (io) {
-            io.emit('ordersUpdated', { ids, status });
-            io.to('staff').emit('ordersUpdated', { ids, status });
+            io.emit('ordersUpdated', { ids, status, results });
+            io.to('staff').emit('ordersUpdated', { ids, status, results });
             results.forEach(updatedOrder => {
                 if (updatedOrder && updatedOrder.userId) {
                     io.to(`user:${updatedOrder.userId}`).emit('ordersUpdated', {
@@ -885,12 +885,15 @@ exports.updateOrdersStatus = async (req, res) => {
         // Run secondary table broadcasts, AI scheduler recalculation, and emails non-blocking in background
         setImmediate(async () => {
             try {
-                // Secondary socket broadcasts for full tables
-                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-                const productsList = await prisma.product.findMany();
-                const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-                const enrichedProducts = await enrichProductsWithStock(productsList);
-                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
+                // Only broadcast heavy inventory/product datasets if inventory was actually altered (e.g. order cancelled or completed)
+                const isStockAffecting = status?.toLowerCase().includes('cancel') || status?.toLowerCase() === 'completed';
+                if (isStockAffecting && io) {
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
+                    const productsList = await prisma.product.findMany();
+                    const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+                    const enrichedProducts = await enrichProductsWithStock(productsList);
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
+                }
 
                 // Recalculate AI Queue priorities asynchronously
                 const { recalculateQueuePriorities } = require('../../utils/aiScheduler');

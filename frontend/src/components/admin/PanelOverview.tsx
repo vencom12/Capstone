@@ -53,7 +53,7 @@ export default function PanelOverview({
       .then(res => {
         if (res) setDeliveryEnabled(Boolean(res.deliveryEnabled));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const isOrderPickup = (o: any) => {
@@ -289,15 +289,15 @@ export default function PanelOverview({
   };
 
   const handleDownloadReceipt = async (order: any) => {
-    const receiptId = receiptDetails?.transactionID || 
-                      receiptDetails?.id || 
-                      order?.transactionID || 
-                      order?.transactionId || 
-                      order?.receiptID || 
-                      order?.receiptId || 
-                      order?.orderId || 
-                      order?.id || 
-                      order?._id;
+    const receiptId = receiptDetails?.transactionID ||
+      receiptDetails?.id ||
+      order?.transactionID ||
+      order?.transactionId ||
+      order?.receiptID ||
+      order?.receiptId ||
+      order?.orderId ||
+      order?.id ||
+      order?._id;
 
     if (!receiptId || receiptId === 'undefined') {
       showToast('No receipt reference available for download', 'error');
@@ -341,7 +341,7 @@ export default function PanelOverview({
         ids: targetIds,
         status: targetStatus
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err) {
       // 3. Rollback on error
       if (setOrders) setOrders(prevOrders);
@@ -374,8 +374,8 @@ export default function PanelOverview({
       const hub = isPickup
         ? 'Eds Towels Pacific Mall Lucena Hub'
         : (editStatus.includes('Transit') || editStatus.includes('Delivery')
-            ? 'J&T Express South Luzon Sort Hub'
-            : 'Eds Towels Pacific Mall Lucena Hub');
+          ? 'J&T Express South Luzon Sort Hub'
+          : 'Eds Towels Pacific Mall Lucena Hub');
 
       await api.post('/api/admin/orders/batch-status', {
         ids: [orderId],
@@ -385,7 +385,7 @@ export default function PanelOverview({
         hub,
         courier: isPickup ? 'Store Pick-up' : 'J&T Express'
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err) {
       // 3. Rollback on error
       if (setOrders) setOrders(prevOrders);
@@ -413,7 +413,7 @@ export default function PanelOverview({
         status: 'Order Canceled',
         note: 'Cancelled by Admin/Staff'
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err) {
       if (setOrders) setOrders(prevOrders);
       console.error(err);
@@ -441,165 +441,163 @@ export default function PanelOverview({
 
       {/* Active orders queue (Full Width) */}
       <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-[24px]">
-          <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
-              <span className="text-xs font-mono font-bold bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full">
-                ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
-              </span>
+        <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
+            <span className="text-xs font-mono font-bold bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full">
+              ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
+            </span>
+          </div>
+          <div className="flex gap-3 items-center flex-wrap">
+            <GlassDatePicker
+              value={dateFilter}
+              onChange={(val) => setDateFilter(val)}
+              placeholder="Filter date"
+            />
+            <input
+              type="text"
+              placeholder="Search ID or Customer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+            />
+          </div>
+        </div>
+
+        {/* Status Tab Navigation */}
+        {(() => {
+          const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
+          const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+          const tabs = [
+            { key: 'all', label: 'All Active', count: allActiveOrders.length },
+            ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
+          ];
+          return (
+            <div className="flex gap-2 flex-wrap mb-3 border-b border-border-glass/30 pb-3">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setQueueTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${queueTab === tab.key
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                    }`}
+                >
+                  {tab.label}
+                  <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${queueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+                    }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
             </div>
-            <div className="flex gap-3 items-center flex-wrap">
-              <GlassDatePicker
-                value={dateFilter}
-                onChange={(val) => setDateFilter(val)}
-                placeholder="Filter date"
-              />
-              <input
-                type="text"
-                placeholder="Search ID or Customer..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
-              />
-            </div>
+          );
+        })()}
+
+        {/* Batch operations desk (auto-applies when a status is selected) */}
+        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
+          <span className="text-[0.8rem] text-text-dim font-bold">
+            Batch Action ({selectedIds.length} selected):
+          </span>
+          <div className="w-[200px]">
+            <GlassSelect
+              value={batchStatus}
+              onChange={(val) => {
+                setBatchStatus(val);
+                if (val) {
+                  handleBatchStatusApply(val);
+                }
+              }}
+              options={[
+                { value: '', label: 'Select Status to Apply...' },
+                { value: 'Preparing Order', label: 'Preparing Order' },
+                ...(deliveryEnabled ? [{ value: 'In Transit', label: 'In Transit' }] : []),
+                { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
+                { value: 'Order Delivered', label: deliveryEnabled ? 'Order Delivered' : 'Claimed / Completed' }
+              ]}
+            />
           </div>
 
-          {/* Status Tab Navigation */}
-          {(() => {
-            const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
-            const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
-            const tabs = [
-              { key: 'all', label: 'All Active', count: allActiveOrders.length },
-              ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
-            ];
-            return (
-              <div className="flex gap-2 flex-wrap mb-3 border-b border-border-glass/30 pb-3">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setQueueTab(tab.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                      queueTab === tab.key
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                    }`}
-                  >
-                    {tab.label}
-                    <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
-                      queueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* Batch operations desk (auto-applies when a status is selected) */}
-          <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
-            <span className="text-[0.8rem] text-text-dim font-bold">
-              Batch Action ({selectedIds.length} selected):
-            </span>
-            <div className="w-[200px]">
-              <GlassSelect
-                value={batchStatus}
-                onChange={(val) => {
-                  setBatchStatus(val);
-                  if (val) {
-                    handleBatchStatusApply(val);
-                  }
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  const selectedList = orders.filter((o) => selectedIds.includes(o.id || o._id));
+                  setBatchPrintOrders(selectedList);
                 }}
-                options={[
-                  { value: '', label: 'Select Status to Apply...' },
-                  { value: 'Preparing Order', label: 'Preparing Order' },
-                  ...(deliveryEnabled ? [{ value: 'In Transit', label: 'In Transit' }] : []),
-                  { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
-                  { value: 'Order Delivered', label: deliveryEnabled ? 'Order Delivered' : 'Claimed / Completed' }
-                ]}
-              />
-            </div>
+                className="px-3 py-2 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                title="Print continuous 4x6 inch thermal dispatch labels for selected orders"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                <span>Batch Print Labels ({selectedIds.length})</span>
+              </button>
 
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
+              {deliveryEnabled && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const selectedList = orders.filter((o) => selectedIds.includes(o.id || o._id));
-                    setBatchPrintOrders(selectedList);
-                  }}
-                  className="px-3 py-2 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                  title="Print continuous 4x6 inch thermal dispatch labels for selected orders"
+                  onClick={() => setIsManifestOpen(true)}
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  title="Generate a 1-page courier pickup handover sheet for rider signature"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="6 9 6 2 18 2 18 9" />
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                    <rect x="6" y="14" width="12" height="8" />
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
                   </svg>
-                  <span>Batch Print Labels ({selectedIds.length})</span>
+                  <span>Handover Manifest</span>
                 </button>
-
-                {deliveryEnabled && (
-                  <button
-                    type="button"
-                    onClick={() => setIsManifestOpen(true)}
-                    className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    title="Generate a 1-page courier pickup handover sheet for rider signature"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <polyline points="10 9 9 9 8 9" />
-                    </svg>
-                    <span>Handover Manifest</span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {selectedIds.length > 0 && (
-              <span className="text-xs text-primary font-medium animate-fade">
-                Selecting a status applies immediately to {selectedIds.length} order(s)
-              </span>
-            )}
-          </div>
-
-          {isSyncing && orders.length === 0 ? (
-            <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
-              <TableSkeleton rows={5} cols={7} />
+              )}
             </div>
-          ) : (
-            <div className="glass-table-container max-[1100px]:hidden">
-              <table className="glass-table">
-                <thead>
-                  <tr>
-                    <th className="glass-th w-[45px] text-center">
-                      <input
-                        type="checkbox"
-                        checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
-                        onChange={toggleSelectAll}
-                        className="cursor-pointer"
-                      />
-                    </th>
-                    <th className="glass-th text-left">Order ID</th>
-                    <th className="glass-th text-left">Client & Date</th>
-                    <th className="glass-th text-left">Items / Custom Design</th>
-                    <th className="glass-th text-left">Amount</th>
-                    <th className="glass-th text-left">Status</th>
-                    <th className="glass-th text-right">Actions</th>
+          )}
+
+          {selectedIds.length > 0 && (
+            <span className="text-xs text-primary font-medium animate-fade">
+              Selecting a status applies immediately to {selectedIds.length} order(s)
+            </span>
+          )}
+        </div>
+
+        {isSyncing && orders.length === 0 ? (
+          <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
+            <TableSkeleton rows={5} cols={7} />
+          </div>
+        ) : (
+          <div className="glass-table-container max-[1100px]:hidden">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th className="glass-th w-[45px] text-center">
+                    <input
+                      type="checkbox"
+                      checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                  <th className="glass-th text-left">Order ID</th>
+                  <th className="glass-th text-left">Client & Date</th>
+                  <th className="glass-th text-left">Items / Custom Design</th>
+                  <th className="glass-th text-left">Amount</th>
+                  <th className="glass-th text-left">Status</th>
+                  <th className="glass-th text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeOrders.length === 0 ? (
+                  <tr className="glass-tr">
+                    <td colSpan={7} className="glass-td text-center text-text-dim">
+                      No active orders found.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {activeOrders.length === 0 ? (
-                    <tr className="glass-tr">
-                      <td colSpan={7} className="glass-td text-center text-text-dim">
-                        No active orders found.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedOrders.map((o) => {
+                ) : (
+                  paginatedOrders.map((o) => {
                     const id = o.id || o._id;
                     const isChecked = selectedIds.includes(id);
                     return (
@@ -683,18 +681,18 @@ export default function PanelOverview({
               </tbody>
             </table>
           </div>
-          )}
+        )}
 
-          {/* Mobile Grid layout */}
-          <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-            {isSyncing && orders.length === 0 ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))
-            ) : activeOrders.length === 0 ? (
-              <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
-            ) : (
-              paginatedOrders.map((o) => {
+        {/* Mobile Grid layout */}
+        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isSyncing && orders.length === 0 ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))
+          ) : activeOrders.length === 0 ? (
+            <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
+          ) : (
+            paginatedOrders.map((o) => {
               const id = o.id || o._id;
               const isChecked = selectedIds.includes(id);
               return (
@@ -799,16 +797,16 @@ export default function PanelOverview({
               );
             })
           )}
-          </div>
-
-          <Pagination
-            currentPage={currentPage}
-            totalItems={activeOrders.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            itemLabel="orders in queue"
-          />
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalItems={activeOrders.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="orders in queue"
+        />
+      </div>
 
       {/* Modal: View Receipt Details */}
       <GlassModal
@@ -917,15 +915,14 @@ export default function PanelOverview({
                       setWaybillOrder(editingOrder);
                     }
                   }}
-                  className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border ${
-                    isPickup
+                  className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border ${isPickup
                       ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
                       : 'bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary'
-                  }`}
+                    }`}
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round"/>
-                    <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span>{isPickup ? 'Print Claim Slip' : 'Print Waybill'}</span>
                 </button>
@@ -938,19 +935,19 @@ export default function PanelOverview({
                 <div className="grid grid-cols-2 gap-2">
                   {(isPickup
                     ? [
-                        'In Queue',
-                        'Preparing Order',
-                        'Ready For Pick Up',
-                        'Order Delivered'
-                      ]
+                      'In Queue',
+                      'Preparing Order',
+                      'Ready For Pick Up',
+                      'Order Delivered'
+                    ]
                     : [
-                        'In Queue',
-                        'Preparing Order',
-                        'In Transit',
-                        'Ready For Pick Up',
-                        'Out for Delivery',
-                        'Order Delivered'
-                      ]
+                      'In Queue',
+                      'Preparing Order',
+                      'In Transit',
+                      'Ready For Pick Up',
+                      'Out for Delivery',
+                      'Order Delivered'
+                    ]
                   ).map((status) => {
                     const isActive = editStatus === status;
                     const displayLabel = (isPickup && status === 'Order Delivered')

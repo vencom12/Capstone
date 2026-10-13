@@ -62,7 +62,7 @@ export default function DashboardPage() {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
-      }).catch(() => {});
+      }).catch(() => { });
     });
   }, []);
 
@@ -143,7 +143,7 @@ export default function DashboardPage() {
       showToast('All favorited items are currently out of stock.', 'error');
     }
   };
-  
+
   // Settings State — inline edit one field at a time
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -361,13 +361,13 @@ export default function DashboardPage() {
       case 'shop':
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-            <OrderMilestoneHero 
-              orders={orders} 
+            <OrderMilestoneHero
+              orders={orders}
               onViewDetails={(ord, tab) => {
                 setSelectedOrder(ord);
                 setOrderDetailsTab(tab || 'summary');
                 setIsOrderDetailsOpen(true);
-              }} 
+              }}
               onViewAll={() => setActiveTab('tracking')}
             />
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-md:mb-3">
@@ -375,20 +375,20 @@ export default function DashboardPage() {
                 <h1 className="text-xl font-bold mb-0.5 max-md:text-lg">Design Catalog</h1>
                 <p className="text-text-dim text-[0.85rem] m-0 max-md:text-[0.75rem]">Select a professional design for your next project.</p>
               </div>
-              
+
               <div className="flex gap-3 w-full max-w-[400px] max-[1100px]:max-w-none max-[1100px]:order-2">
                 {/* Animated Custom Category Dropdown (Visible on Mobile only) */}
                 <div className="hidden max-md:block shrink-0 relative category-dropdown-container">
-                  <button 
+                  <button
                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                     className="flex items-center gap-2 bg-bg-surface border border-border-glass text-text-main px-4 py-2.5 rounded-xl text-[0.9rem] font-bold outline-none cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
                   >
                     {selectedCategory === 'All' ? 'All Designs' : selectedCategory}
-                    <svg 
+                    <svg
                       width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                       className={`transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`}
                     >
-                      <path d="m6 9 6 6 6-6"/>
+                      <path d="m6 9 6 6 6-6" />
                     </svg>
                   </button>
 
@@ -417,11 +417,11 @@ export default function DashboardPage() {
 
                 <div className="bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl flex items-center gap-3 flex-1">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-dim"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                  <input 
-                    type="text" 
-                    placeholder="Search designs..." 
-                    className="bg-transparent border-none text-text-main outline-none w-full text-[0.95rem]" 
-                    onChange={(e) => useProductStore.getState().setSearchQuery(e.target.value)} 
+                  <input
+                    type="text"
+                    placeholder="Search designs..."
+                    className="bg-transparent border-none text-text-main outline-none w-full text-[0.95rem]"
+                    onChange={(e) => useProductStore.getState().setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
@@ -431,7 +431,7 @@ export default function DashboardPage() {
             </div>
           </section>
         );
-      
+
       case 'tracking': {
         const filteredOrders = orders.filter(order => {
           if (!ordersDateFilter) return true;
@@ -444,14 +444,14 @@ export default function DashboardPage() {
 
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-             <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
+            <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
               <div className="max-[1100px]:w-full">
                 <h1 className="text-xl font-bold mb-0.5">Order Tracking</h1>
                 <p className="text-text-dim text-[0.85rem] m-0">Monitor your active and recent projects in real-time.</p>
               </div>
               <div className="shrink-0 flex items-center gap-2 max-md:w-full">
                 <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-md:hidden">Filter by date:</span>
-                <GlassDatePicker 
+                <GlassDatePicker
                   value={ordersDateFilter}
                   onChange={(val) => setOrdersDateFilter(val)}
                   placeholder="All Dates"
@@ -459,29 +459,29 @@ export default function DashboardPage() {
               </div>
             </header>
             <div className="flex-1 pr-0 md:pr-2">
-            
-            {isSyncing && orders.length === 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <CardSkeleton key={i} />
-                ))}
-              </div>
-            ) : filteredOrders.length === 0 ? (
-              <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                <p className="text-lg font-medium m-0">No active orders found</p>
-                <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
-              </div>
-            ) : (
-              <OrderList
-                orders={filteredOrders}
-                onTrack={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('tracking'); setIsOrderDetailsOpen(true); }}
-                onDetails={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('summary'); setIsOrderDetailsOpen(true); }}
-                onReorder={handleReorder}
-              />
-            )}
-          </div>
-        </section>
+
+              {isSyncing && orders.length === 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <CardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  <p className="text-lg font-medium m-0">No active orders found</p>
+                  <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
+                </div>
+              ) : (
+                <OrderList
+                  orders={filteredOrders}
+                  onTrack={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('tracking'); setIsOrderDetailsOpen(true); }}
+                  onDetails={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('summary'); setIsOrderDetailsOpen(true); }}
+                  onReorder={handleReorder}
+                />
+              )}
+            </div>
+          </section>
         );
       }
 
@@ -493,29 +493,29 @@ export default function DashboardPage() {
               <p className="text-text-dim text-[0.85rem] m-0">Designs you've saved for later.</p>
             </header>
             <div className="flex-1 pr-0 md:pr-2">
-            {isSyncing && favorites.length === 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <ProductCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : favorites.length === 0 ? (
-              <div className="border-2 border-dashed border-border-glass rounded-3xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
-                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-primary opacity-60"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                 <p className="text-base font-bold text-text-main m-0">You haven't favorited any designs yet</p>
-                 <p className="text-xs text-text-dim mt-1 max-w-xs">Heart any embroidery design from our catalog to save it for quick ordering anytime.</p>
-                 <button 
-                   onClick={() => setActiveTab('shop')} 
-                   className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
-                 >
-                   Explore Catalog →
-                 </button>
-              </div>
-            ) : (
-              <ProductGrid products={favorites} onQuickView={handleQuickView} />
-            )}
-          </div>
-        </section>
+              {isSyncing && favorites.length === 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <ProductCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : favorites.length === 0 ? (
+                <div className="border-2 border-dashed border-border-glass rounded-3xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-primary opacity-60"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                  <p className="text-base font-bold text-text-main m-0">You haven't favorited any designs yet</p>
+                  <p className="text-xs text-text-dim mt-1 max-w-xs">Heart any embroidery design from our catalog to save it for quick ordering anytime.</p>
+                  <button
+                    onClick={() => setActiveTab('shop')}
+                    className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                  >
+                    Explore Catalog →
+                  </button>
+                </div>
+              ) : (
+                <ProductGrid products={favorites} onQuickView={handleQuickView} />
+              )}
+            </div>
+          </section>
         );
 
       case 'history': {
@@ -542,7 +542,7 @@ export default function DashboardPage() {
               </div>
               <div className="shrink-0 flex items-center gap-2 max-md:w-full">
                 <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-md:hidden">Filter by date:</span>
-                <GlassDatePicker 
+                <GlassDatePicker
                   value={txDateFilter}
                   onChange={(val) => setTxDateFilter(val)}
                   placeholder="All Dates"
@@ -550,95 +550,94 @@ export default function DashboardPage() {
               </div>
             </header>
             <div className="flex-1 pr-0 md:pr-2 pb-6">
-            
-            {isSyncing && transactions.length === 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <CardSkeleton key={i} />
-                ))}
-              </div>
-            ) : filteredTransactions.length === 0 ? (
-              <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
-                <p className="text-lg font-medium m-0">No transactions found</p>
-                <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
-                  {paginatedTransactions.map((tx) => {
-                    const receipt = useProductStore.getState().receipts.find(r => r.orderID === tx.orderID);
-                    
-                    return (
-                      <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-primary font-bold m-0">{tx.transactionID}</h4>
-                            <p className="text-xs text-text-dim mt-1">
-                              {new Date(tx.timestamp).toLocaleString()} • Order {tx.orderID}
-                            </p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${
-                            tx.status === 'completed' ? 'bg-success/20 text-success' : 
-                            tx.status === 'processing' ? 'bg-primary/20 text-primary' :
-                            tx.status === 'canceled' ? 'bg-error/20 text-error' :
-                            'bg-warning/20 text-warning'
-                          }`}>
-                            {tx.status === 'completed' ? 'Payment Received' : 
-                             tx.status === 'processing' ? 'In Production' : 
-                             tx.status === 'canceled' ? 'Cancelled' : 
-                             tx.status}
-                          </span>
-                        </div>
 
-                        <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
-                          <div className="text-[0.85rem]">
-                            <span className="text-text-dim">Amount: </span>
-                            <span className="font-bold text-text-main">₱{tx.amount.toFixed(2)}</span>
+              {isSyncing && transactions.length === 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <CardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                  <p className="text-lg font-medium m-0">No transactions found</p>
+                  <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-3 md:gap-6 max-[1100px]:grid-cols-1">
+                    {paginatedTransactions.map((tx) => {
+                      const receipt = useProductStore.getState().receipts.find(r => r.orderID === tx.orderID);
+
+                      return (
+                        <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-primary font-bold m-0">{tx.transactionID}</h4>
+                              <p className="text-xs text-text-dim mt-1">
+                                {new Date(tx.timestamp).toLocaleString()} • Order {tx.orderID}
+                              </p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${tx.status === 'completed' ? 'bg-success/20 text-success' :
+                                tx.status === 'processing' ? 'bg-primary/20 text-primary' :
+                                  tx.status === 'canceled' ? 'bg-error/20 text-error' :
+                                    'bg-warning/20 text-warning'
+                              }`}>
+                              {tx.status === 'completed' ? 'Payment Received' :
+                                tx.status === 'processing' ? 'In Production' :
+                                  tx.status === 'canceled' ? 'Cancelled' :
+                                    tx.status}
+                            </span>
                           </div>
-                          <div className="flex gap-4 items-center">
-                            <button 
-                              onClick={() => {
-                                setSelectedTransactionId(tx.transactionID);
-                                setIsReceiptOpen(true);
-                              }}
-                              className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-                            >
-                              View Details
-                            </button>
-                            {tx.receiptLink && (
-                              <button 
-                                onClick={async () => {
-                                  try {
-                                    const { api } = await import('@/lib/api');
-                                    await api.download(tx.receiptLink!, `receipt-${tx.transactionID}.pdf`);
-                                  } catch (err) {
-                                    showToast('Download failed. Please try again.', 'error');
-                                  }
+
+                          <div className="flex justify-between items-center mt-2 pt-4 border-t border-border-glass/50">
+                            <div className="text-[0.85rem]">
+                              <span className="text-text-dim">Amount: </span>
+                              <span className="font-bold text-text-main">₱{tx.amount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex gap-4 items-center">
+                              <button
+                                onClick={() => {
+                                  setSelectedTransactionId(tx.transactionID);
+                                  setIsReceiptOpen(true);
                                 }}
                                 className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
                               >
-                                Receipt
+                                View Details
                               </button>
-                            )}
+                              {tx.receiptLink && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const { api } = await import('@/lib/api');
+                                      await api.download(tx.receiptLink!, `receipt-${tx.transactionID}.pdf`);
+                                    } catch (err) {
+                                      showToast('Download failed. Please try again.', 'error');
+                                    }
+                                  }}
+                                  className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
+                                >
+                                  Receipt
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
 
-                <Pagination
-                  currentPage={txPage}
-                  totalItems={filteredTransactions.length}
-                  pageSize={txPageSize}
-                  onPageChange={setTxPage}
-                  itemLabel="transactions"
-                />
-              </div>
-            )}
-          </div>
-        </section>
+                  <Pagination
+                    currentPage={txPage}
+                    totalItems={filteredTransactions.length}
+                    pageSize={txPageSize}
+                    onPageChange={setTxPage}
+                    itemLabel="transactions"
+                  />
+                </div>
+              )}
+            </div>
+          </section>
         );
       }
 
@@ -654,14 +653,14 @@ export default function DashboardPage() {
         const effectiveSavedAddresses: SavedAddress[] = (user?.savedAddresses && user.savedAddresses.length > 0)
           ? user.savedAddresses
           : (user?.address ? [{
-              id: 'addr_default_profile',
-              recipientName: user.username || 'Customer',
-              phoneNumber: user.phoneNumber || '',
-              streetAddress: user.address,
-              fullAddress: user.address,
-              label: 'Home',
-              isDefault: true,
-            }] : []);
+            id: 'addr_default_profile',
+            recipientName: user.username || 'Customer',
+            phoneNumber: user.phoneNumber || '',
+            streetAddress: user.address,
+            fullAddress: user.address,
+            label: 'Home',
+            isDefault: true,
+          }] : []);
 
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
@@ -793,11 +792,10 @@ export default function DashboardPage() {
                       <div
                         key={addr.id}
                         onClick={() => setIsAddressBookOpen(true)}
-                        className={`p-3.5 rounded-xl border flex flex-col gap-1.5 cursor-pointer transition-all ${
-                          addr.isDefault
+                        className={`p-3.5 rounded-xl border flex flex-col gap-1.5 cursor-pointer transition-all ${addr.isDefault
                             ? 'border-primary/40 bg-primary/5'
                             : 'border-border-glass bg-bg-surface/60 hover:bg-bg-surface'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -850,17 +848,17 @@ export default function DashboardPage() {
                 <div className="p-6">
                   <div className="flex items-center justify-between bg-bg-surface p-4 rounded-xl border border-border-glass flex-wrap gap-4">
                     <div className="flex items-center gap-3">
-                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
-                       <div>
-                         <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Interface Theme</h4>
-                         <p className="m-0 text-[0.8rem] text-text-dim">Toggle light and dark mode</p>
-                       </div>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
+                      <div>
+                        <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Interface Theme</h4>
+                        <p className="m-0 text-[0.8rem] text-text-dim">Toggle light and dark mode</p>
+                      </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const html = document.documentElement;
                         html.setAttribute('data-theme', html.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-                      }} 
+                      }}
                       className="bg-white/5 border border-border-glass px-4 py-2.5 rounded-lg text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95"
                     >
                       Switch Theme
@@ -906,62 +904,61 @@ export default function DashboardPage() {
     <div className="min-h-screen min-h-dvh w-full bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* Mobile Top Bar */}
       <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-3.5 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
-         <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0" title="Toggle Navigation Menu">
-           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-         </button>
+        <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0" title="Toggle Navigation Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
 
-         <div className="flex items-center gap-2 min-w-0 max-w-[210px] shrink">
-           {businessLogoUrl ? (
-             <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
-           ) : (
-             <div className="bg-primary w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-             </div>
-           )}
-           <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Eds Towels & Caps</span>
-         </div>
+        <div className="flex items-center gap-2 min-w-0 max-w-[210px] shrink">
+          {businessLogoUrl ? (
+            <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
+          ) : (
+            <div className="bg-primary w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+            </div>
+          )}
+          <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Eds Towels & Caps</span>
+        </div>
 
-         <div className="flex items-center gap-1.5 shrink-0">
-           <button
-             onClick={() => {
-               const html = document.documentElement;
-               const current = html.getAttribute('data-theme');
-               html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
-             }}
-             className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
-             title="Toggle theme"
-           >
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
-           </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => {
+              const html = document.documentElement;
+              const current = html.getAttribute('data-theme');
+              html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+            }}
+            className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
+            title="Toggle theme"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+          </button>
 
-           {/* Mobile Quick Account Avatar / Settings Trigger */}
-           <button
-             onClick={() => setActiveTab('settings')}
-             className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs cursor-pointer transition-all border ${
-               activeTab === 'settings'
-                 ? 'bg-primary text-white border-primary shadow-sm scale-105'
-                 : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
-             }`}
-             title="Account Settings"
-             aria-label="Account Settings"
-           >
-             {user?.username?.charAt(0).toUpperCase() || 'U'}
-           </button>
-         </div>
+          {/* Mobile Quick Account Avatar / Settings Trigger */}
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs cursor-pointer transition-all border ${activeTab === 'settings'
+                ? 'bg-primary text-white border-primary shadow-sm scale-105'
+                : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
+              }`}
+            title="Account Settings"
+            aria-label="Account Settings"
+          >
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
+          </button>
+        </div>
       </div>
 
-      <DashboardSidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <DashboardSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         onOpenAddressBook={() => setIsAddressBookOpen(true)}
       />
-      
+
       <main className="w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0">
         {renderTabContent()}
       </main>
 
       {/* Phone-Centric Bottom Navigation Dock */}
-      <nav 
+      <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-bg-card/95 backdrop-blur-2xl border-t border-border-glass px-2 py-1 flex items-center justify-around shadow-2xl safe-area-bottom"
         aria-label="Mobile Navigation"
       >
@@ -971,7 +968,7 @@ export default function DashboardPage() {
             label: 'Catalog',
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             ),
           },
@@ -982,7 +979,7 @@ export default function DashboardPage() {
             badgeColor: 'bg-primary text-white',
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
             ),
           },
@@ -993,7 +990,7 @@ export default function DashboardPage() {
             badgeColor: 'bg-primary text-white',
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
             ),
           },
@@ -1004,7 +1001,7 @@ export default function DashboardPage() {
             badgeColor: 'bg-rose-500 text-white',
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill={activeTab === 'favs' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             ),
           },
@@ -1018,11 +1015,10 @@ export default function DashboardPage() {
                 const mainEl = document.querySelector('main');
                 if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 cursor-pointer border-none bg-transparent ${
-                isActive
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 cursor-pointer border-none bg-transparent ${isActive
                   ? 'text-primary scale-105'
                   : 'text-text-dim hover:text-text-main'
-              }`}
+                }`}
             >
               <div className="relative">
                 {item.icon}

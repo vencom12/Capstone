@@ -368,7 +368,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       if (res && res.order) {
         // Reconcile temporary orderId with real DB orderId
         setPunchedSlipsToday(prev => prev.map(s => s.id === tempSlipId ? { ...s, id: res.order.id, orderId: res.order.orderId } : s));
-        refreshData().catch(() => {});
+        refreshData().catch(() => { });
       }
     } catch (err: any) {
       // 3. Rollback on error
@@ -445,7 +445,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         status: targetStatus,
         note: `Stitching initiated on Nanay's machine.`
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err: any) {
       // 3. Rollback on error
       if (setOrders) setOrders(prevOrders);
@@ -476,7 +476,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         status: targetStatus,
         note: `Stitching finished on machine for ${order.client}.`
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err: any) {
       // 3. Rollback on error
       if (setOrders) setOrders(prevOrders);
@@ -504,7 +504,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         status: targetStatus,
         note: `Turned over to customer (${order.client}).`
       });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err: any) {
       // 3. Rollback on error
       if (setOrders) setOrders(prevOrders);
@@ -545,11 +545,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('register')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'register'
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${activeTab === 'register'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-text-dim hover:text-text-main'
-            }`}
+              }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -559,11 +558,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('quick_punch')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'quick_punch'
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${activeTab === 'quick_punch'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-text-dim hover:text-text-main'
-            }`}
+              }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -573,11 +571,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('turnover')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'turnover'
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeTab === 'turnover'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-text-dim hover:text-text-main'
-            }`}
+              }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -611,11 +608,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                        selectedCategory === cat
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
                           ? 'bg-primary text-white'
                           : 'bg-white/5 text-text-dim hover:text-white'
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -632,11 +628,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectItem(item)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${
-                        isSelected
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
                           ? 'bg-primary/20 border-primary text-white shadow-sm ring-1 ring-primary/50'
                           : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-bold text-xs leading-snug">{item.name}</span>
@@ -670,13 +665,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             setSelectedVariant(v);
                             if (v.priceOverride) setUnitPrice(v.priceOverride);
                           }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
-                            isVarOutOfStock
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${isVarOutOfStock
                               ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
                               : isVarSelected
                                 ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
                                 : 'bg-white/5 border-border-glass text-text-dim hover:text-white cursor-pointer'
-                          }`}
+                            }`}
                         >
                           {v.color && (
                             <span
@@ -777,11 +771,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('Cash')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                    paymentMethod === 'Cash'
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'Cash'
                       ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
                       : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
-                  }`}
+                    }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                     <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -793,11 +786,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('GCash')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                    paymentMethod === 'GCash'
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'GCash'
                       ? 'bg-primary text-white border-primary shadow-sm'
                       : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
-                  }`}
+                    }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                     <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
@@ -884,11 +876,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
-                        selectedCategory === cat
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
                           ? 'bg-primary text-white shadow-sm'
                           : 'bg-white/5 text-text-dim hover:text-white'
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -905,11 +896,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectQuickItem(item)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${
-                        isSelected
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
                           ? 'bg-primary/10 border-primary text-white shadow-sm ring-1 ring-primary/40'
                           : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-bold text-xs leading-snug">{item.name}</span>
@@ -959,18 +949,16 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setQuickPayment('Cash')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
-                    }`}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                      }`}
                   >
                     Cash
                   </button>
                   <button
                     type="button"
                     onClick={() => setQuickPayment('GCash')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
-                    }`}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                      }`}
                   >
                     GCash
                   </button>
@@ -1065,22 +1053,20 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <button
                   type="button"
                   onClick={() => setQueueScope('all')}
-                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${
-                    queueScope === 'all'
+                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'all'
                       ? 'bg-primary text-white shadow-sm'
                       : 'text-text-dim hover:text-white'
-                  }`}
+                    }`}
                 >
                   All Shop Orders ({allActiveQueueOrders.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setQueueScope('walkin_only')}
-                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${
-                    queueScope === 'walkin_only'
+                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'walkin_only'
                       ? 'bg-primary text-white shadow-sm'
                       : 'text-text-dim hover:text-white'
-                  }`}
+                    }`}
                 >
                   Walk-In Slips Only ({walkInActiveOrders.length})
                 </button>
@@ -1095,22 +1081,20 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('all')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  queueFilterStage === 'all'
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${queueFilterStage === 'all'
                     ? 'bg-primary text-white shadow-sm'
                     : 'bg-white/5 text-text-dim hover:text-white'
-                }`}
+                  }`}
               >
                 All Stages ({queueScope === 'all' ? allActiveQueueOrders.length : walkInActiveOrders.length})
               </button>
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('in_queue')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  queueFilterStage === 'in_queue'
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'in_queue'
                     ? 'bg-primary text-white shadow-sm'
                     : 'bg-white/5 text-text-dim hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                 <span>In Queue</span>
@@ -1119,11 +1103,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('stitching')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  queueFilterStage === 'stitching'
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'stitching'
                     ? 'bg-primary text-white shadow-sm'
                     : 'bg-white/5 text-text-dim hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                 <span>Now Stitching</span>
@@ -1132,11 +1115,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('ready')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  queueFilterStage === 'ready'
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'ready'
                     ? 'bg-primary text-white shadow-sm'
                     : 'bg-white/5 text-text-dim hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                 <span>Ready for Claim</span>
@@ -1149,7 +1131,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {filteredTurnOverOrders.length === 0 ? (
             <div className="bg-bg-surface border border-border-glass rounded-xl p-12 text-center text-xs text-text-dim flex flex-col items-center gap-2">
               <svg className="w-8 h-8 text-text-dim opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>No active orders match this filter right now.</span>
             </div>
@@ -1169,13 +1151,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 return (
                   <div
                     key={order.id}
-                    className={`bg-bg-surface rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition ${
-                      isReady
+                    className={`bg-bg-surface rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition ${isReady
                         ? 'border-emerald-500/40'
                         : isStitching
-                        ? 'border-primary/40'
-                        : 'border-border-glass'
-                    }`}
+                          ? 'border-primary/40'
+                          : 'border-border-glass'
+                      }`}
                   >
                     <div>
                       {/* Top Row: IDs, Claim Badge, & Stage Indicator */}
@@ -1198,13 +1179,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         {/* Stage Badge */}
                         <div className="flex flex-col items-end gap-1">
                           <span
-                            className={`text-xs px-2.5 py-1 rounded-md font-bold border flex items-center gap-1.5 ${
-                              isReady
+                            className={`text-xs px-2.5 py-1 rounded-md font-bold border flex items-center gap-1.5 ${isReady
                                 ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                                 : isStitching
-                                ? 'bg-primary/15 border-primary/30 text-primary-light'
-                                : 'bg-white/5 border-border-glass text-text-muted'
-                            }`}
+                                  ? 'bg-primary/15 border-primary/30 text-primary-light'
+                                  : 'bg-white/5 border-border-glass text-text-muted'
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${isReady ? 'bg-emerald-400' : isStitching ? 'bg-primary-light' : 'bg-text-dim'}`} />
                             <span>
@@ -1216,14 +1196,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           {isExpress ? (
                             <span className="text-[10px] font-bold text-text-dim px-2 py-0.5 rounded bg-white/5 border border-border-glass flex items-center gap-1">
                               <svg className="w-3 h-3 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                               Express (~15m)
                             </span>
                           ) : (
                             <span className="text-[10px] font-bold text-text-dim px-2 py-0.5 rounded bg-white/5 border border-border-glass flex items-center gap-1">
                               <svg className="w-3 h-3 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                               Bulk ({qty} pcs)
                             </span>
@@ -1264,7 +1244,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           className="flex-1 py-2.5 px-3 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           <span>{isBusy ? 'Starting...' : 'Start Stitching'}</span>
                         </button>
@@ -1278,7 +1258,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           <span>{isBusy ? 'Updating...' : 'Mark Ready for Claim'}</span>
                         </button>
@@ -1292,7 +1272,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           <span>{isBusy ? 'Releasing...' : `Verify Claim & Release (${claimCode})`}</span>
                         </button>
@@ -1383,7 +1363,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     className="flex-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <span>Stub Matches — Complete Turnover</span>
                   </button>
