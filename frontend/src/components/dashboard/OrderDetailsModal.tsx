@@ -9,6 +9,7 @@ import type { Order } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
+import { getOrderStage } from '@/lib/orderStatus';
 
 interface OrderDetailsModalProps {
   order: Order | null;
@@ -255,7 +256,7 @@ export default function OrderDetailsModal({
             </button>
           )}
 
-          {order.status === 'Completed' ? (
+          {(order.status === 'Completed' || order.status === 'Order Delivered' || order.status === 'Claimed' || order.status === 'Delivered' || (order.progress ?? 0) >= 100 || getOrderStage(order).tone === 'done') ? (
             <>
               <button
                 type="button"

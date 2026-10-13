@@ -93,13 +93,24 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
             {isPickup ? 'Track Pick-up' : 'Track Delivery'}
           </button>
         ) : stage.tone === 'done' ? (
-          <button
-            type="button"
-            onClick={() => onReorder(order)}
-            className="px-4 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-          >
-            Buy Again
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onDetails(order)}
+              className="px-3 py-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+              title="Rate quality and leave a verified review"
+            >
+              <span className="text-amber-400">★</span>
+              <span>Rate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onReorder(order)}
+              className="px-3.5 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+            >
+              Buy Again
+            </button>
+          </div>
         ) : null}
       </div>
     </article>
