@@ -232,16 +232,16 @@ export default function PanelAuditTrail() {
       </div>
 
       {/* Audit Log Table */}
-      <div className="glass-table-container">
-        <table className="glass-table">
+      <div className="glass-table-container overflow-x-auto w-full">
+        <table className="glass-table w-full min-w-[980px]">
           <thead>
             <tr>
-              <th className="glass-th text-left">Timestamp</th>
-              <th className="glass-th text-left">Actor</th>
-              <th className="glass-th text-left">Action & Entity</th>
-              <th className="glass-th text-left">Target Subject</th>
-              <th className="glass-th text-left">Network / IP</th>
-              <th className="glass-th text-right">Payload</th>
+              <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Timestamp</th>
+              <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Actor</th>
+              <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Action & Entity</th>
+              <th className="glass-th text-left min-w-[250px] whitespace-nowrap">Target Subject</th>
+              <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Network / IP</th>
+              <th className="glass-th text-right min-w-[140px] whitespace-nowrap">Payload</th>
             </tr>
           </thead>
           <tbody>
@@ -267,7 +267,7 @@ export default function PanelAuditTrail() {
                 return (
                   <tr key={log.id} className="glass-tr hover:bg-white/[0.04] transition-all">
                     {/* Timestamp */}
-                    <td className="glass-td text-left">
+                    <td className="glass-td text-left whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-mono text-xs font-semibold text-text-main">
                           {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -279,7 +279,7 @@ export default function PanelAuditTrail() {
                     </td>
 
                     {/* Actor */}
-                    <td className="glass-td text-left">
+                    <td className="glass-td text-left whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xs font-bold shrink-0 uppercase">
                           {(log.user?.username || log.userRole || 'S')[0]}
@@ -296,7 +296,7 @@ export default function PanelAuditTrail() {
                     </td>
 
                     {/* Action & Entity */}
-                    <td className="glass-td text-left">
+                    <td className="glass-td text-left whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${getActionBadgeColor(log.action)}`}>
                           {log.action}
@@ -308,7 +308,7 @@ export default function PanelAuditTrail() {
                     </td>
 
                     {/* Target Subject */}
-                    <td className="glass-td text-left">
+                    <td className="glass-td text-left whitespace-nowrap">
                       {log.targetName || log.targetUser?.username ? (
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
@@ -319,7 +319,7 @@ export default function PanelAuditTrail() {
                               </span>
                             )}
                           </span>
-                          <span className="text-[0.68rem] text-text-dim font-mono truncate max-w-[170px]" title={log.targetDetail || log.entityId}>
+                          <span className="text-[0.68rem] text-text-dim font-mono truncate max-w-[280px]" title={log.targetDetail || log.entityId}>
                             {log.targetDetail || log.entityId}
                           </span>
                         </div>
@@ -333,14 +333,14 @@ export default function PanelAuditTrail() {
                     </td>
 
                     {/* Network / IP */}
-                    <td className="glass-td text-left">
+                    <td className="glass-td text-left whitespace-nowrap">
                       <span className="font-mono text-[0.7rem] text-text-dim">
                         {log.ipAddress || '127.0.0.1'}
                       </span>
                     </td>
 
                     {/* Details Payload Button */}
-                    <td className="glass-td text-right">
+                    <td className="glass-td text-right whitespace-nowrap">
                       {hasDiff ? (
                         <button
                           onClick={() => setSelectedLogForDetails(log)}

@@ -436,26 +436,26 @@ export default function PanelStaffing({
             <TableSkeleton rows={5} cols={6} />
           </div>
         ) : (
-          <div className="glass-table-container max-[650px]:hidden">
-            <table className="glass-table">
+          <div className="glass-table-container max-[650px]:hidden overflow-x-auto w-full">
+            <table className="glass-table w-full min-w-[960px]">
               <thead>
                 <tr>
-                  <th className="glass-th text-left">{activeTab === 'staff' ? 'Staff & Role' : 'Customer'}</th>
-                  <th className="glass-th text-left">Contact Info</th>
+                  <th className="glass-th text-left min-w-[180px] whitespace-nowrap">{activeTab === 'staff' ? 'Staff & Role' : 'Customer'}</th>
+                  <th className="glass-th text-left min-w-[200px] whitespace-nowrap">Contact Info</th>
                   {activeTab === 'staff' ? (
                     <>
-                      <th className="glass-th text-left">Shift Status</th>
-                      <th className="glass-th text-left">Assigned Machine</th>
+                      <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Shift Status</th>
+                      <th className="glass-th text-left min-w-[150px] whitespace-nowrap">Assigned Machine</th>
                     </>
                   ) : (
                     <>
-                      <th className="glass-th text-left">Orders Placed</th>
-                      <th className="glass-th text-left">Lifetime Spend</th>
+                      <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Orders Placed</th>
+                      <th className="glass-th text-left min-w-[140px] whitespace-nowrap">Lifetime Spend</th>
                     </>
                   )}
-                  <th className="glass-th text-left">Last Active</th>
-                  <th className="glass-th text-left">Status</th>
-                  <th className="glass-th text-right">Actions</th>
+                  <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Last Active</th>
+                  <th className="glass-th text-left min-w-[110px] whitespace-nowrap">Status</th>
+                  <th className="glass-th text-right min-w-[180px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -473,7 +473,7 @@ export default function PanelStaffing({
 
                   return (
                     <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
-                      <td className="glass-td font-bold text-sm text-text-main text-left">
+                      <td className="glass-td font-bold text-sm text-text-main text-left whitespace-nowrap">
                         <div className="font-bold text-sm text-text-main">{u.username}</div>
                         {activeTab === 'staff' ? (
                           <div className={`text-[0.68rem] font-semibold tracking-wide ${u.role === 'admin' ? 'text-secondary' : 'text-accent'}`}>
@@ -481,13 +481,13 @@ export default function PanelStaffing({
                           </div>
                         ) : (
                           u.address ? (
-                            <div className="text-[0.68rem] text-text-dim truncate max-w-[170px]" title={u.address}>
+                            <div className="text-[0.68rem] text-text-dim truncate max-w-[240px]" title={u.address}>
                               {u.address}
                             </div>
                           ) : null
                         )}
                       </td>
-                      <td className="glass-td font-medium text-sm text-text-main text-left">
+                      <td className="glass-td font-medium text-sm text-text-main text-left whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <span>{u.email}</span>
                           {customer && (
@@ -499,7 +499,7 @@ export default function PanelStaffing({
                         {u.phoneNumber && <div className="text-[0.7rem] text-text-dim">{u.phoneNumber}</div>}
                       </td>
                       {activeTab === 'staff' && (
-                        <td className="glass-td text-left">
+                        <td className="glass-td text-left whitespace-nowrap">
                           <span
                             className={`text-xs ${
                               u.shiftStatus === 'clocked_in' ? 'text-success font-semibold' : 'text-text-dim'
@@ -510,7 +510,7 @@ export default function PanelStaffing({
                         </td>
                       )}
                       {activeTab === 'staff' && (
-                        <td className="glass-td text-left text-sm">
+                        <td className="glass-td text-left text-sm whitespace-nowrap">
                           {(() => {
                             const assignedMachine = machines.find((m: any) => m.assignedUserId === (u.id || u._id));
                             return assignedMachine ? (
@@ -522,23 +522,23 @@ export default function PanelStaffing({
                         </td>
                       )}
                       {activeTab === 'customers' && (
-                        <td className="glass-td text-left">
+                        <td className="glass-td text-left whitespace-nowrap">
                           <div className="font-mono font-bold text-xs text-text-main">
                             {u.totalOrders || 0}
                           </div>
                         </td>
                       )}
                       {activeTab === 'customers' && (
-                        <td className="glass-td text-left font-mono font-extrabold text-xs text-success">
+                        <td className="glass-td text-left font-mono font-extrabold text-xs text-success whitespace-nowrap">
                           ₱{(u.totalSpent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
                       )}
-                      <td className="glass-td text-left text-xs font-mono text-text-dim">
+                      <td className="glass-td text-left text-xs font-mono text-text-dim whitespace-nowrap">
                         <span title={u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never logged in')}>
                           {formatLastActive(u.lastActiveAt || u.lastLoginAt)}
                         </span>
                       </td>
-                      <td className="glass-td text-left">
+                      <td className="glass-td text-left whitespace-nowrap">
                         <span
                           className={`text-xs font-semibold ${
                             u.isActive === false ? 'text-danger' : 'text-success'
@@ -547,7 +547,7 @@ export default function PanelStaffing({
                           {u.isActive === false ? 'Disabled' : 'Active'}
                         </span>
                       </td>
-                      <td className="glass-td text-right">
+                      <td className="glass-td text-right whitespace-nowrap">
                         <div className="flex gap-2 justify-end items-center">
                           <button
                             onClick={() => setViewingProfileUser(u)}
