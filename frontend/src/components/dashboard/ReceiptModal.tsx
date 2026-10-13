@@ -133,13 +133,17 @@ export default function ReceiptModal({ transactionId, isOpen, onClose }: Receipt
              <button onClick={onClose} className="flex-1 py-2 bg-white/5 rounded-xl font-bold text-sm border border-border-glass transition-all cursor-pointer hover:bg-white/10">Close</button>
              <button 
                 onClick={async () => {
-                   const rId = data?.receiptId || data?.receiptID;
+                   const rId = data?.receiptId || data?.receiptID || data?.transactionID || transactionId;
                    if (!rId) return;
                    try {
                       const { api } = await import('@/lib/api');
+                      const { showToast } = await import('@/components/ui/Toast');
                       await api.download(`/api/customer/receipt/${rId}/download`, `receipt-${rId}.pdf`);
+                      showToast('Official Receipt PDF downloaded successfully!', 'success');
                    } catch (err) {
-                      // Error handled by api.download
+                      console.error('Failed to download receipt PDF:', err);
+                      const { showToast } = await import('@/components/ui/Toast');
+                      showToast('Failed to download receipt PDF. Please try again.', 'error');
                    }
                 }}
                 className="flex-1 py-2 bg-primary text-white rounded-xl font-bold text-sm shadow-sm transition-all cursor-pointer hover:opacity-90"

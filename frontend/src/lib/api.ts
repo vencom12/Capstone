@@ -226,6 +226,31 @@ export const api = {
 
   download: async (url: string, filename: string) => {
     const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+    const isInternal = url.startsWith('/') || fullUrl.startsWith(API_BASE);
+
+    // If external URL (e.g. Cloudinary/S3), do not send credentials or CSRF headers that trigger CORS preflight blocks
+    if (!isInternal) {
+      try {
+        const extResponse = await fetch(fullUrl);
+        if (extResponse.ok) {
+          const blob = await extResponse.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+          return;
+        }
+      } catch {
+        // Fallback for cross-origin restricted assets: open in new tab directly
+        window.open(fullUrl, '_blank');
+        return;
+      }
+    }
+
     const response = await fetch(fullUrl, {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',

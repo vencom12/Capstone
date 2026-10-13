@@ -347,7 +347,7 @@ exports.submitOrder = async (req, res) => {
                     orderID: secureOrderId,
                     amount: numTotal,
                     status: isInstantApproved ? 'completed' : 'pending',
-                    receiptLink: receiptUrl || `/api/customer/receipt/${secureReceiptId}/download`,
+                    receiptLink: `/api/customer/receipt/${secureReceiptId}/download`,
                     receiptId: secureReceiptId,
                     userId: user.id
                 }
@@ -882,6 +882,7 @@ exports.downloadReceipt = async (req, res) => {
             where: {
                 OR: [
                     { transactionID: id },
+                    { receiptId: id },
                     { orderID: id },
                     { id: id }
                 ]
@@ -909,17 +910,17 @@ exports.downloadReceipt = async (req, res) => {
         const dateStr = date.toLocaleDateString();
         const timeStr = date.toLocaleTimeString();
         const items = tx.order?.items || [];
-        const subtotal = parseFloat(tx.amount);
-        const tax = subtotal * 0.12; 
-        const total = subtotal + tax;
+        const total = parseFloat(tx.amount || 0);
+        const vatableSales = total / 1.12;
+        const tax = total - vatableSales;
 
         // Fetch dynamic business settings
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'STITCH-OPT DESIGNS';
-        const bizTagline = settings?.receiptTagline || 'Premium Embroidery Services';
-        const bizAddress = settings?.businessAddress || '123 Digital Thread Lane, Manila';
+        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+        const bizTagline = settings?.receiptTagline || 'Custom Embroidery & Apparel';
+        const bizAddress = settings?.businessAddress || 'Pacific Mall Lucena, Quezon Province';
         const bizContact = settings?.businessContact || '0928 810 3928';
-        const bizWebsite = settings?.businessWebsite || 'www.stitch-opt.com';
+        const bizWebsite = settings?.businessWebsite || 'www.edstowels.com';
 
         // Create PDF
         const doc = new PDFDocument({ size: [300, 600], margin: 20 });
@@ -938,12 +939,17 @@ exports.downloadReceipt = async (req, res) => {
         if (logoUrl && logoUrl.startsWith('https')) {
             try {
                 const buffer = await new Promise((resolve, reject) => {
-                    https.get(logoUrl, (response) => {
+                    const req = https.get(logoUrl, (response) => {
                         if (response.statusCode !== 200) return reject(new Error('Failed to fetch image'));
                         const data = [];
                         response.on('data', (chunk) => data.push(chunk));
                         response.on('end', () => resolve(Buffer.concat(data)));
-                    }).on('error', reject);
+                    });
+                    req.on('error', reject);
+                    req.setTimeout(3000, () => {
+                        req.destroy();
+                        reject(new Error('Logo fetch timeout'));
+                    });
                 });
                 // Image dimensions and centering
                 const logoWidth = 40;
@@ -951,7 +957,7 @@ exports.downloadReceipt = async (req, res) => {
                 doc.y += 65; // Push text down so it doesn't overlap with the absolutely positioned image
                 doc.moveDown(0.5);
             } catch (err) {
-                console.error('Failed to load logo for PDF:', err);
+                console.error('Failed to load logo for PDF:', err.message);
             }
         }
 
@@ -990,9 +996,9 @@ exports.downloadReceipt = async (req, res) => {
         items.forEach(item => {
             const variantInfo = [item.selectedVariant, item.selectedSize ? `Size:${item.selectedSize}` : ''].filter(Boolean).join(' ');
             const displayName = variantInfo ? `${item.name || 'Design'} (${variantInfo})` : (item.name || 'Design');
-            const name = displayName.substring(0, 20).padEnd(20);
+            const name = displayName.substring(0, 18).padEnd(18);
             const qty = String(item.quantity || 1).padEnd(4);
-            const price = `$${(parseFloat(item.price || 0) * (item.quantity || 1)).toFixed(2)}`.padStart(8);
+            const price = `P${(parseFloat(item.price || 0) * (item.quantity || 1)).toFixed(2)}`.padStart(8);
             doc.text(name + qty + price, { align: 'center' });
             doc.moveDown(0.2);
         });
@@ -1004,9 +1010,9 @@ exports.downloadReceipt = async (req, res) => {
         doc.font('Courier').fontSize(9);
         doc.moveDown(0.5);
         
-        const subtotalLine = 'SUBTOTAL:'.padEnd(20) + `$${subtotal.toFixed(2)}`.padStart(12);
-        const vatLine      = 'VAT (12%):'.padEnd(20) + `$${tax.toFixed(2)}`.padStart(12);
-        const totalLine    = 'TOTAL:'.padEnd(20) + `$${total.toFixed(2)}`.padStart(12);
+        const subtotalLine = 'SUBTOTAL:'.padEnd(20) + `P${vatableSales.toFixed(2)}`.padStart(12);
+        const vatLine      = 'VAT (12%):'.padEnd(20) + `P${tax.toFixed(2)}`.padStart(12);
+        const totalLine    = 'TOTAL PAID:'.padEnd(20) + `P${total.toFixed(2)}`.padStart(12);
 
         doc.text(subtotalLine, { align: 'center' });
         doc.text(vatLine, { align: 'center' });

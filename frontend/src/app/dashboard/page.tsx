@@ -605,21 +605,29 @@ export default function DashboardPage() {
                               >
                                 View Details
                               </button>
-                              {tx.receiptLink && (
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      const { api } = await import('@/lib/api');
-                                      await api.download(tx.receiptLink!, `receipt-${tx.transactionID}.pdf`);
-                                    } catch (err) {
-                                      showToast('Download failed. Please try again.', 'error');
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const { api } = await import('@/lib/api');
+                                    const targetId = tx.receiptId || tx.transactionID;
+                                    const downloadUrl = (tx.receiptLink && tx.receiptLink.startsWith('/api'))
+                                      ? tx.receiptLink
+                                      : `/api/customer/receipt/${targetId}/download`;
+                                    await api.download(downloadUrl, `receipt-${tx.transactionID}.pdf`);
+                                    showToast('Receipt PDF downloaded successfully!', 'success');
+                                  } catch (err) {
+                                    console.error('Receipt download error:', err);
+                                    if (tx.receiptLink && tx.receiptLink.startsWith('http')) {
+                                      window.open(tx.receiptLink, '_blank');
+                                      return;
                                     }
-                                  }}
-                                  className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-                                >
-                                  Receipt
-                                </button>
-                              )}
+                                    showToast('Download failed. Please try again.', 'error');
+                                  }
+                                }}
+                                className="text-[0.8rem] font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
+                              >
+                                Receipt
+                              </button>
                             </div>
                           </div>
                         </div>
