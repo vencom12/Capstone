@@ -9,6 +9,7 @@ import type { Order } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
+import { useBasketStore } from '@/stores/useBasketStore';
 import { getOrderStage } from '@/lib/orderStatus';
 
 interface OrderDetailsModalProps {
@@ -17,6 +18,7 @@ interface OrderDetailsModalProps {
   onClose: () => void;
   initialTab?: 'summary' | 'tracking';
   onOrderCancelled?: (orderId: string) => void;
+  onReorder?: (order: Order) => void;
 }
 
 export default function OrderDetailsModal({
@@ -24,7 +26,8 @@ export default function OrderDetailsModal({
   isOpen,
   onClose,
   initialTab = 'summary',
-  onOrderCancelled
+  onOrderCancelled,
+  onReorder
 }: OrderDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -40,20 +43,27 @@ export default function OrderDetailsModal({
   const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
-  const isCanceled = order.status === 'Order Canceled';
-  const isPreparingOrBeyond = [
+  const isCanceled = order.status === 'Order Canceled' || order.status === 'Canceled' || order.status === 'Cancelled';
+  
+  const isCompletedOrDelivered = 
+    order.status === 'Completed' ||
+    order.status === 'Order Delivered' ||
+    order.status === 'Claimed' ||
+    order.status === 'Delivered' ||
+    (order.progress ?? 0) >= 100 ||
+    getOrderStage(order).tone === 'done';
+
+  const isInProduction = [
     'Preparing Order',
     'In Transit',
     'Ready For Pick Up',
     'Ready For Pick-Up',
     'Ready for Pickup',
-    'Out for Delivery',
-    'Order Delivered',
-    'Completed'
-  ].includes(order.status);
+    'Out for Delivery'
+  ].includes(order.status) && !isCompletedOrDelivered;
 
   // Can cancel only while still before Preparing Order (e.g. In Queue, Awaiting Payment, Pending Payment)
-  const canCancel = !isCanceled && !isPreparingOrBeyond;
+  const canCancel = !isCanceled && !isInProduction && !isCompletedOrDelivered;
 
   const handleCancelOrder = async () => {
     if (!canCancel || isCancelling) return;
@@ -80,6 +90,35 @@ export default function OrderDetailsModal({
     }
   };
 
+  const handleReorderAction = () => {
+    if (onReorder) {
+      onReorder(order);
+      onClose();
+      return;
+    }
+    if (!order.items || order.items.length === 0) {
+      showToast('No catalog items available to reorder from this order.', 'info');
+      return;
+    }
+    const { addItem } = useBasketStore.getState();
+    let count = 0;
+    order.items.forEach((item) => {
+      addItem({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        selectedVariant: item.selectedVariant,
+        selectedColor: item.selectedColor,
+        selectedSize: item.selectedSize,
+        quantity: item.quantity || 1
+      });
+      count += (item.quantity || 1);
+    });
+    showToast(`Added ${count} item(s) from #${order.orderId} to your basket!`, 'success');
+    onClose();
+  };
+
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[620px]">
       <div className="modal-stack">
@@ -89,7 +128,7 @@ export default function OrderDetailsModal({
             <div className="flex items-center gap-2">
               <h3 className="modal-title-sm text-primary m-0">{order.orderId}</h3>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                order.status === 'Completed' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
+                isCompletedOrDelivered ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
               }`}>
                 {order.status}
               </span>
@@ -193,7 +232,7 @@ export default function OrderDetailsModal({
                   </button>
                 </div>
                 <div className="modal-box text-[0.85rem]">
-                  {order.address || 'No address provided.'}
+                  {(order.address ? order.address.replace(/&amp;/g, '&') : 'No address provided.')}
                 </div>
               </div>
               
@@ -209,15 +248,28 @@ export default function OrderDetailsModal({
           </div>
         )}
 
-        {/* Informational warning if preparing or beyond */}
-        {isPreparingOrBeyond && !isCanceled && (
-          <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        {/* Informational warning only if active in production */}
+        {isInProduction && !isCanceled && (
+          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
             <span>
-              <strong>Cancellation locked:</strong> Order is in <em>{order.status}</em> status. Embroidery production is already underway and cannot be cancelled.
+              <strong>Cancellation locked:</strong> Order is in <em>{order.status}</em> status. Embroidery production is underway and cannot be cancelled.
+            </span>
+          </div>
+        )}
+
+        {/* Completion status confirmation */}
+        {isCompletedOrDelivered && (
+          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2.5 shadow-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-400">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            <span>
+              <strong>Order Fulfilled:</strong> This order has been successfully claimed & delivered. Thank you!
             </span>
           </div>
         )}
@@ -227,12 +279,12 @@ export default function OrderDetailsModal({
           <button 
             type="button"
             onClick={onClose}
-            className="flex-1 min-w-[90px] bg-white/5 hover:bg-white/10 border border-border-glass py-2 rounded-xl font-bold text-sm transition-all cursor-pointer text-text-main"
+            className="flex-1 min-w-[85px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 hover:bg-white/10 border border-border-glass transition-all cursor-pointer text-text-main flex items-center justify-center active:scale-[0.98]"
           >
             Close
           </button>
 
-          {!isCanceled && (
+          {!isCanceled && !isCompletedOrDelivered && (
             <button
               type="button"
               onClick={handleCancelOrder}
@@ -242,9 +294,9 @@ export default function OrderDetailsModal({
                   ? "Orders in 'Preparing Order' or later cannot be cancelled because custom production has begun." 
                   : "Cancel this order"
               }
-              className={`flex-1 min-w-[120px] py-2 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[120px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 ${
                 canCancel
-                  ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 cursor-pointer'
+                  ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 cursor-pointer active:scale-[0.98]'
                   : 'bg-white/5 border border-white/10 text-text-muted/40 opacity-40 grayscale cursor-not-allowed'
               }`}
             >
@@ -256,28 +308,37 @@ export default function OrderDetailsModal({
             </button>
           )}
 
-          {(order.status === 'Completed' || order.status === 'Order Delivered' || order.status === 'Claimed' || order.status === 'Delivered' || (order.progress ?? 0) >= 100 || getOrderStage(order).tone === 'done') ? (
+          {isCompletedOrDelivered ? (
             <>
               <button
                 type="button"
                 onClick={() => setIsReviewModalOpen(true)}
-                className="flex-1 min-w-[130px] bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 py-2 rounded-xl font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-[1.2] min-w-[130px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap bg-gradient-to-r from-amber-500/20 via-amber-400/15 to-amber-500/20 hover:from-amber-500/30 hover:via-amber-400/25 hover:to-amber-500/30 text-amber-200 border border-amber-400/40 hover:border-amber-400/60 shadow-[0_2px_12px_rgba(245,158,11,0.15)] hover:shadow-[0_4px_16px_rgba(245,158,11,0.25)] active:scale-[0.98]"
               >
-                <span className="text-amber-400">★</span>
-                <span>Rate Quality & Review</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 shrink-0">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <span>Rate Order</span>
               </button>
               <button 
                 type="button"
-                className="flex-1 min-w-[90px] bg-primary text-white py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-primary/90 cursor-pointer"
+                onClick={handleReorderAction}
+                className="flex-1 min-w-[105px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm bg-primary hover:bg-primary/90 text-white shadow-[0_2px_10px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.35)] transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
               >
-                Reorder
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <path d="M3 2v6h6" />
+                  <path d="M21 12A9 9 0 0 0 6 5.3L3 8" />
+                  <path d="M21 22v-6h-6" />
+                  <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
+                </svg>
+                <span>Buy Again</span>
               </button>
             </>
           ) : (
             <button
               type="button"
               onClick={() => setIsHelpModalOpen(true)}
-              className="flex-1 min-w-[130px] bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[130px] h-10 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
                 <circle cx="12" cy="12" r="10" />

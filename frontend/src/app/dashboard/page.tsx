@@ -1076,6 +1076,7 @@ export default function DashboardPage() {
         isOpen={isOrderDetailsOpen}
         onClose={() => setIsOrderDetailsOpen(false)}
         initialTab={orderDetailsTab}
+        onReorder={handleReorder}
       />
       {/* Address Book Modal */}
       <AddressBookModal

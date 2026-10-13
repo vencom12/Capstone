@@ -160,15 +160,19 @@ export default function OrderReviewModal({
                 className="text-3xl p-1 bg-transparent border-0 cursor-pointer hover:scale-115 transition-transform"
                 title={`${star} star(s)`}
               >
-                <span
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
                   className={
                     star <= activeStars
-                      ? 'text-amber-400 drop-shadow-[0_2px_8px_rgba(251,191,36,0.4)]'
-                      : 'text-white/20'
+                      ? 'text-amber-400 drop-shadow-[0_2px_10px_rgba(251,191,36,0.45)]'
+                      : 'text-white/20 hover:text-white/40'
                   }
                 >
-                  ★
-                </span>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
               </button>
             ))}
           </div>
