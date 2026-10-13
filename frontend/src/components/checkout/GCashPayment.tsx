@@ -90,7 +90,7 @@ export default function GCashPayment({
 
         <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
           <div className="flex flex-col">
-            <span className="text-[0.7rem] text-text-dim">GCash Number</span>
+            <span className="text-[0.7rem] text-text-dim">GCash Number (Payment Transfer Only)</span>
             <span className="text-[#007df2] font-black text-sm tracking-wide">{displayAccountNo}</span>
           </div>
           <button
