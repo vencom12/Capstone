@@ -42,6 +42,22 @@ exports.submitFeedback = async (req, res) => {
             }
         }
 
+        // One review per order per customer: update the existing one instead of duplicating
+        if (userId && orderId) {
+            const [existing] = await prisma.$queryRaw`
+                SELECT "id" FROM "Feedback" WHERE "orderId" = ${orderId.trim()} AND "userId" = ${userId} LIMIT 1
+            `;
+            if (existing) {
+                await prisma.$executeRaw`
+                    UPDATE "Feedback" SET "rating" = ${cleanRating}, "message" = ${cleanMessage}, "updatedAt" = NOW()
+                    WHERE "id" = ${existing.id}
+                `;
+                const [updated] = await prisma.$queryRaw`SELECT * FROM "Feedback" WHERE "id" = ${existing.id}`;
+                try { req.app.get('io') && socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'FEEDBACK', updated); } catch (e) {}
+                return res.json({ success: true, message: 'Your review has been updated.', feedback: updated });
+            }
+        }
+
         await prisma.$executeRaw`
             INSERT INTO "Feedback" (
                 "id", "category", "rating", "message", "status",

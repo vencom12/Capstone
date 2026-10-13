@@ -126,6 +126,7 @@ export interface Order {
   deliveryTime?: string;
   notes?: string;
   totalAmount: number;
+  myReview?: { rating: number; message: string } | null;
   date: string;
   createdAt: string;
   updatedAt: string;

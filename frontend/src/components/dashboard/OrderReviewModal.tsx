@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
@@ -16,6 +16,7 @@ interface OrderReviewModalProps {
     status: string;
     totalAmount?: number;
   };
+  existingReview?: { rating: number; message: string } | null;
   onReviewSubmitted?: () => void;
 }
 
@@ -32,6 +33,7 @@ export default function OrderReviewModal({
   isOpen,
   onClose,
   order,
+  existingReview,
   onReviewSubmitted,
 }: OrderReviewModalProps) {
   const { user } = useAuthStore();
@@ -43,6 +45,16 @@ export default function OrderReviewModal({
   ]);
   const [comment, setComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const isEditing = !!existingReview;
+
+  // Prefill from the saved review: message format is "[Highlights: a, b]\n\ncomment"
+  useEffect(() => {
+    if (!isOpen || !existingReview) return;
+    const match = existingReview.message.match(/^\[Highlights: (.*?)\]\s*/);
+    setRating(existingReview.rating);
+    setSelectedTags(match ? match[1].split(', ') : []);
+    setComment(match ? existingReview.message.slice(match[0].length) : existingReview.message);
+  }, [isOpen, existingReview]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -105,7 +117,7 @@ export default function OrderReviewModal({
         customerEmail: user?.email || undefined,
       });
 
-      showToast('Thank you! Your verified review has been recorded.', 'success');
+      showToast(isEditing ? 'Your review has been updated.' : 'Thank you! Your verified review has been recorded.', 'success');
       if (onReviewSubmitted) onReviewSubmitted();
       onClose();
     } catch (err: any) {
@@ -122,7 +134,7 @@ export default function OrderReviewModal({
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Rate Order & Embroidery Quality"
+      title={isEditing ? 'Edit Your Review' : 'Rate Order & Embroidery Quality'}
       maxWidth="max-w-[540px]"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
@@ -235,7 +247,7 @@ export default function OrderReviewModal({
             disabled={isSubmitting}
             className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
           >
-            {isSubmitting ? 'Publishing Review...' : 'Submit Verified Review'}
+            {isSubmitting ? 'Saving...' : isEditing ? 'Update Review' : 'Submit Verified Review'}
           </button>
         </div>
       </form>

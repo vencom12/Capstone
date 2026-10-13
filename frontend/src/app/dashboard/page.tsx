@@ -11,7 +11,6 @@ import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
 import OrderDetailsModal from '@/components/dashboard/OrderDetailsModal';
-import ReceiptModal from '@/components/dashboard/ReceiptModal';
 import type { Product, Order, BasketItem, SavedAddress } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
@@ -41,11 +40,9 @@ export default function DashboardPage() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
   const [orderDetailsTab, setOrderDetailsTab] = useState<'summary' | 'tracking'>('summary');
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedCheckoutItems, setSelectedCheckoutItems] = useState<BasketItem[] | undefined>(undefined);
   const [selectedFulfillmentType, setSelectedFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
@@ -1103,13 +1100,6 @@ export default function DashboardPage() {
         order={selectedInvoiceOrder ? orders.find((o) => (o.orderId && o.orderId === selectedInvoiceOrder.orderId) || (o.id && o.id === selectedInvoiceOrder.id)) || selectedInvoiceOrder : null}
         transaction={selectedInvoiceTx}
         user={user}
-      />
-
-      {/* Receipt Modal */}
-      <ReceiptModal
-        transactionId={selectedTransactionId}
-        isOpen={isReceiptOpen}
-        onClose={() => setIsReceiptOpen(false)}
       />
 
       {/* Delete Account Confirmation Modal */}

@@ -20,6 +20,13 @@ exports.getDashboardState = async (req, res) => {
                 prisma.receipt.findMany({ where: { userId }, orderBy: { timestamp: 'desc' } })
             ]);
             orders = o; currentUser = u; transactions = t; receipts = r;
+
+            // Attach the customer's own review (if any) so the UI shows "Edit Review" instead of "Rate"
+            const myReviews = await prisma.$queryRaw`
+                SELECT "orderId", "rating", "message" FROM "Feedback" WHERE "userId" = ${userId} AND "orderId" IS NOT NULL
+            `;
+            const reviewByOrder = new Map(myReviews.map(r => [r.orderId, { rating: r.rating, message: r.message }]));
+            orders = orders.map(ord => ({ ...ord, myReview: reviewByOrder.get(ord.orderId) || null }));
         }
 
         const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });

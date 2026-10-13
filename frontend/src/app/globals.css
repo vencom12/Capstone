@@ -617,8 +617,6 @@ select option {
   #jnt-thermal-waybill,
   #batch-thermal-labels,
   #courier-handover-manifest,
-  #stitch-invoice-printable,
-  #stitch-receipt-printable,
   #store-thermal-receipt-slip {
     visibility: visible !important;
     display: block !important;

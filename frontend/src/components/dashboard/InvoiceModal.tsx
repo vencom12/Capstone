@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
-import { showToast } from '@/components/ui/Toast';
 import type { Order, Transaction, User } from '@/lib/types';
 
 interface InvoiceModalProps {
@@ -31,7 +30,6 @@ export default function InvoiceModal({
   }>({});
   const [fetchedData, setFetchedData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
@@ -183,22 +181,6 @@ export default function InvoiceModal({
     }, 250);
   };
 
-  const handleDownloadPdf = async () => {
-    const rId = receiptNo || targetTxId || 'RECEIPT';
-    setIsDownloading(true);
-    try {
-      const { api } = await import('@/lib/api');
-      await api.download(`/api/customer/receipt/${targetTxId || rId}/download`, `receipt-${cleanOrderCode}.pdf`);
-      showToast('Official Receipt PDF downloaded successfully!', 'success');
-    } catch (err) {
-      console.error('Download error:', err);
-      // Fallback: trigger print dialog directly
-      handlePrint();
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
     <GlassModal
       isOpen={isOpen}
@@ -217,30 +199,18 @@ export default function InvoiceModal({
             {/* The Actual White Long Store Thermal Receipt Slip */}
             <div
               id="store-thermal-receipt-slip"
-              className="w-full max-w-[340px] sm:max-w-[360px] bg-white text-zinc-950 font-mono text-xs rounded shadow-2xl p-6 sm:p-7 border border-zinc-300 select-all relative overflow-hidden text-left"
+              className="w-full max-w-[340px] sm:max-w-[360px] bg-white text-zinc-950 font-mono text-xs rounded shadow-2xl p-6 sm:p-7 border border-zinc-300 text-left"
             >
-              {/* Serrated paper edge indicator top */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[repeating-linear-gradient(45deg,#e4e4e7,#e4e4e7_4px,#ffffff_4px,#ffffff_8px)] opacity-80" />
-
               {/* Store Header */}
-              <div className="text-center flex flex-col items-center pt-1 pb-2">
-                <div className="w-8 h-8 rounded-md bg-black text-white flex items-center justify-center font-bold text-xs mb-1.5 shadow-sm">
-                  ED
-                </div>
+              <div className="text-center flex flex-col items-center pb-2">
                 <div className="text-sm sm:text-base font-extrabold uppercase tracking-wider text-black leading-tight">
                   {businessSettings.businessName || 'EDS TOWELS & CAPS'}
                 </div>
                 <div className="text-[10px] text-zinc-600 mt-0.5 leading-tight">
-                  {businessSettings.receiptTagline || 'Custom Embroidery & Apparel Workshop'}
-                </div>
-                <div className="text-[10px] text-zinc-600 leading-tight">
-                  Pacific Mall Lucena • Ground Floor
-                </div>
-                <div className="text-[9px] text-zinc-500 leading-tight">
-                  M.L. Tagarao St., Lucena City, Quezon 4301
+                  {businessSettings.businessAddress || 'Pacific Mall Lucena, Lucena City, Quezon 4301'}
                 </div>
                 <div className="text-[9px] text-zinc-500 leading-tight mt-0.5">
-                  Tel: {businessSettings.businessContact || '0928 810 3928'} • TIN: 429-810-332-00000
+                  Tel: {businessSettings.businessContact || '0928 810 3928'}
                 </div>
               </div>
 
@@ -264,10 +234,6 @@ export default function InvoiceModal({
                 <div className="flex justify-between">
                   <span className="text-zinc-500">TIME:</span>
                   <span>{receiptTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">TERMINAL:</span>
-                  <span>POS #01 • Counter</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">CUSTOMER:</span>
@@ -372,22 +338,9 @@ export default function InvoiceModal({
                 </div>
               )}
 
-              {/* Barcode & Security Verification Footer */}
+              {/* Thermal Receipt Footer */}
               <div className="mt-4 pt-3 border-t border-dashed border-zinc-400 text-center flex flex-col items-center gap-1">
-                {/* Visual Barcode Graphic */}
-                <div className="flex items-center justify-center gap-[2px] h-8 my-1 text-black overflow-hidden">
-                  {[2, 1, 3, 1, 4, 2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 2, 4, 1].map((w, i) => (
-                    <span
-                      key={i}
-                      className="bg-black h-full inline-block"
-                      style={{ width: `${w}px` }}
-                    />
-                  ))}
-                </div>
-                <div className="text-[9px] font-mono tracking-wider text-zinc-600">
-                  STITCH-OPT-SECURE-{cleanOrderCode}
-                </div>
-                <div className="text-[10px] font-bold text-black mt-1">
+                <div className="text-[10px] font-bold text-black">
                   THANK YOU FOR YOUR PURCHASE!
                 </div>
                 <div className="text-[8.5px] text-zinc-500 max-w-[240px] leading-tight">
@@ -396,17 +349,14 @@ export default function InvoiceModal({
                   Eds Towels &amp; Caps • Pacific Mall Lucena
                 </div>
               </div>
-
-              {/* Serrated paper edge indicator bottom */}
-              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[repeating-linear-gradient(45deg,#e4e4e7,#e4e4e7_4px,#ffffff_4px,#ffffff_8px)] opacity-80" />
             </div>
 
             {/* Modal Actions */}
-            <div className="w-full flex items-center justify-between gap-2.5 pt-2 border-t border-border-glass print:hidden">
+            <div className="w-full flex items-center justify-between gap-3 pt-2 border-t border-border-glass print:hidden">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-text-dim hover:text-text-main border border-border-glass transition-all cursor-pointer"
               >
                 Close
               </button>
@@ -414,39 +364,15 @@ export default function InvoiceModal({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-text-main border border-white/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
-                title="Print 80mm thermal receipt slip"
+                className="flex-[1.5] py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                title="Print or Save as PDF"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                   <polyline points="6 9 6 2 18 2 18 9" />
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                   <rect x="6" y="14" width="12" height="8" />
                 </svg>
-                <span>Print Slip</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                disabled={isDownloading}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] disabled:opacity-50"
-                title="Download official receipt PDF"
-              >
-                {isDownloading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    <span>Save PDF</span>
-                  </>
-                )}
+                <span>Print / Save as PDF</span>
               </button>
             </div>
           </>
