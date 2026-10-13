@@ -3,7 +3,7 @@
  * Recognizes standard CSS colors, compound color phrases (e.g., "navy blue", "emerald green", "rose gold"),
  * and returns the appropriate hex code.
  */
-export const COLOR_DICTIONARY: Record<string, string> = {
+const COLOR_DICTIONARY: Record<string, string> = {
   // Primary & Core Colors
   blue: '#2563eb',
   red: '#dc2626',

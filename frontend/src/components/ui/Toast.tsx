@@ -11,12 +11,10 @@ export interface ToastMessage {
 
 let toastId = 0;
 const listeners: Set<(toast: ToastMessage) => void> = new Set();
-const targetedListeners: Map<string, Set<(message: string | null) => void>> = new Map();
 const recentToasts = new Map<string, number>();
 
 /**
  * Global toast function — can be called from anywhere.
- * If toastKey is provided, both the global notification and any matching inline components receive it.
  */
 export function showToast(
   message: string,
@@ -42,41 +40,6 @@ export function showToast(
 
   const toast: ToastMessage = { id: ++toastId, message, type, toastKey };
   listeners.forEach((listener) => listener(toast));
-
-  // If a targetKey is specified, also notify any listening inline components
-  if (toastKey && targetedListeners.has(toastKey)) {
-    targetedListeners.get(toastKey)?.forEach((cb) => cb(message));
-  }
-}
-
-/**
- * Hook to automatically receive errors targeted for a specific button or input
- */
-export function useTargetedNotification(targetKey: string) {
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!targetKey) return;
-    if (!targetedListeners.has(targetKey)) {
-      targetedListeners.set(targetKey, new Set());
-    }
-    const set = targetedListeners.get(targetKey)!;
-    const handler = (msg: string | null) => {
-      setError(msg);
-    };
-    set.add(handler);
-
-    return () => {
-      set.delete(handler);
-      if (set.size === 0) {
-        targetedListeners.delete(targetKey);
-      }
-    };
-  }, [targetKey]);
-
-  const clearError = () => setError(null);
-
-  return { error, setError, clearError };
 }
 
 export default function ToastContainer() {

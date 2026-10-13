@@ -176,15 +176,6 @@ export interface Receipt {
   aiVerificationStatus?: string;
 }
 
-export interface Inventory {
-  id: string;
-  item: string;
-  count: number;
-  unit: string;
-  minThreshold: number;
-  lastUpdated: string;
-}
-
 export interface BasketItem {
   id: string;
   productId: string;
@@ -231,7 +222,3 @@ export interface AuthResponse {
   user?: User;
 }
 
-export interface ApiError {
-  message: string;
-  error?: string;
-}

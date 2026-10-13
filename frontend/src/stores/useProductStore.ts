@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
 
-export const formatCategoryName = (str?: string) => {
+const formatCategoryName = (str?: string) => {
   if (!str) return 'General';
   if (str === 'All') return 'All';
   return str

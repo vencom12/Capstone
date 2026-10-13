@@ -10,7 +10,7 @@ import GlassModal from '@/components/ui/GlassModal';
  * You can edit any of the values below to customize your business details,
  * store locations, phone numbers, warranty windows, and storage limits.
  */
-export const STUDIO_BUSINESS_SAFEGUARDS = {
+const STUDIO_BUSINESS_SAFEGUARDS = {
   studioName: 'Eds Towels & Caps',
   legalEntity: 'Eds Towels & Caps Embroidery Studio',
   storeAddress: 'Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301',
