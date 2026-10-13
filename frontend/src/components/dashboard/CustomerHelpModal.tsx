@@ -31,7 +31,7 @@ const FAQS = [
   },
   {
     q: 'How do I submit GCash or Maya payments?',
-    a: 'During checkout, select your preferred digital payment method (GCash or Maya) and scan the verified merchant QR code. Upload your payment screenshot or input the transaction reference number. Your receipt and official BIR tax invoice will be instantly generated in your dashboard.'
+    a: 'During checkout, select your preferred digital payment method (GCash or Maya) and scan the verified merchant QR code. Upload your payment screenshot or input the transaction reference number. Your official payment receipt will be instantly generated in your dashboard.'
   },
   {
     q: 'How should I care for and wash embroidered towels and caps?',

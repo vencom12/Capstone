@@ -5,7 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import OrderReviewModal from '@/components/dashboard/OrderReviewModal';
-import ReceiptModal from '@/components/dashboard/ReceiptModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import type { Order } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -232,7 +232,7 @@ export default function OrderDetailsModal({
                     <line x1="16" y1="17" x2="8" y2="17" />
                     <polyline points="10 9 9 9 8 9" />
                   </svg>
-                  <span>View Receipt Preview →</span>
+                  <span>View Printable Receipt →</span>
                 </button>
               </div>
             </div>
@@ -388,8 +388,8 @@ export default function OrderDetailsModal({
         }}
       />
 
-      <ReceiptModal
-        transactionId={order.orderId}
+      <InvoiceModal
+        order={order}
         isOpen={isReceiptModalOpen}
         onClose={() => setIsReceiptModalOpen(false)}
       />

@@ -212,8 +212,8 @@ export default function DashboardSidebar({
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Receipts & Invoices</div>
-                  <div className={`text-[0.72rem] ${activeTab === 'history' ? 'text-white/80' : 'text-text-dim'}`}>Orders archive & VAT receipts</div>
+                  <div className="text-[0.9rem] font-medium leading-tight">Payments & Receipts</div>
+                  <div className={`text-[0.72rem] ${activeTab === 'history' ? 'text-white/80' : 'text-text-dim'}`}>Orders archive & official receipts</div>
                 </div>
                 <span className="text-xs opacity-60">→</span>
               </button>

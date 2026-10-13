@@ -616,7 +616,9 @@ select option {
   /* Target waybill thermal sticker and handover manifests */
   #jnt-thermal-waybill,
   #batch-thermal-labels,
-  #courier-handover-manifest {
+  #courier-handover-manifest,
+  #stitch-invoice-printable,
+  #stitch-receipt-printable {
     visibility: visible !important;
     display: block !important;
   }
