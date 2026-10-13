@@ -67,8 +67,12 @@ export default function QRIntakePage() {
              </div>
 
              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Embroidery Text</label>
-                <input required type="text" value={text} onChange={e => setText(e.target.value)} className="bg-black/30 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary text-xl font-bold" />
+                <div className="flex justify-between items-center">
+                   <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Embroidery Text</label>
+                   <span className="text-[11px] text-text-dim/80">{text.length}/25</span>
+                </div>
+                <input required type="text" maxLength={25} value={text} onChange={e => setText(e.target.value)} placeholder="e.g. SOPHIA (Max 25 chars)" className="bg-black/30 border border-white/10 p-3 rounded-xl text-white outline-none focus:border-primary text-xl font-bold" />
+                <span className="text-[11px] text-text-dim/60">Single-line standard hoop monogram / name (max 25 characters)</span>
              </div>
 
              <div className="grid grid-cols-2 gap-4">

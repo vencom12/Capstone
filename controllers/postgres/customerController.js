@@ -305,9 +305,27 @@ exports.submitOrder = async (req, res) => {
                 ]
             };
 
+            if (orderPersonalization.text && typeof orderPersonalization.text === 'string') {
+                orderPersonalization.text = orderPersonalization.text.trim().slice(0, 25);
+            }
+
+            // Sanitize items and enforce 25-character embroidery hoop limit
+            const sanitizedItems = Array.isArray(items) ? items.map(item => {
+                if (item && item.personalization && typeof item.personalization.text === 'string') {
+                    return {
+                        ...item,
+                        personalization: {
+                            ...item.personalization,
+                            text: item.personalization.text.trim().slice(0, 25)
+                        }
+                    };
+                }
+                return item;
+            }) : [];
+
             // 4. Create Order with descriptive design summary & empirical AI turnaround estimation
-            const designSummary = Array.isArray(items) && items.length > 0
-                ? items.map(i => {
+            const designSummary = sanitizedItems.length > 0
+                ? sanitizedItems.map(i => {
                     const variantInfo = i.selectedVariant ? ` [${i.selectedVariant}]` : '';
                     const textInfo = i.personalization?.text ? ` — "${i.personalization.text}"` : '';
                     return `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}${variantInfo}${textInfo}`;
@@ -317,7 +335,7 @@ exports.submitOrder = async (req, res) => {
             const { estimateProductionTime } = require('../../utils/aiScheduler');
             const calculatedEstTime = Math.ceil(estimateProductionTime({
                 design: designSummary,
-                items,
+                items: sanitizedItems,
                 personalization: orderPersonalization
             }));
 
@@ -327,7 +345,7 @@ exports.submitOrder = async (req, res) => {
                     client: user.username,
                     userId: user.id,
                     design: designSummary,
-                    items: items, // JSON field
+                    items: sanitizedItems, // JSON field
                     totalAmount: numTotal,
                     paymentMethod,
                     paymentStatus: isInstantApproved ? 'paid' : 'unpaid',

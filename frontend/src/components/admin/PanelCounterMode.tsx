@@ -710,13 +710,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </span>
                   {monogramText.trim() && (
                     <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold">
-                      "{monogramText.trim()}" ✓
+                      "{monogramText.trim()}" ({monogramText.length}/25) ✓
                     </span>
                   )}
                 </div>
                 <input
                   type="text"
-                  placeholder="OPTIONAL: e.g. SOPHIA (leave blank for plain item)"
+                  maxLength={25}
+                  placeholder="OPTIONAL: e.g. SOPHIA (Max 25 chars; blank for plain item)"
                   value={monogramText}
                   onChange={(e) => {
                     setMonogramText(e.target.value.toUpperCase());
