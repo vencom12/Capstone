@@ -731,6 +731,15 @@ export default function PanelStaffing({
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         title={editingStaff ? 'Edit Personnel Details' : 'Add Staff Member'}
+        onDiscard={() => {
+          setEditingStaff(null);
+          setUsername('');
+          setEmail('');
+          setPassword('');
+          setRole('employee');
+          setPhone('');
+          setAddress('');
+        }}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
           <div className="modal-section">

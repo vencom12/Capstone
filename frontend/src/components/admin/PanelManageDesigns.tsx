@@ -667,6 +667,23 @@ export default function PanelManageDesigns({
           setVariantToDeleteIndex(null);
           setLastDeletedVariant(null);
         }}
+        onDiscard={() => {
+          setEditingDesign(null);
+          setName('');
+          setPrice('');
+          setTag('towel');
+          setDescription('');
+          setRecipe([]);
+          setVariants([]);
+          setCount('0');
+          setMinThreshold('5');
+          setImageFile(null);
+          setSelectedMaterialId('');
+          setMaterialQty('');
+          handleCancelVariantEdit();
+          setVariantToDeleteIndex(null);
+          setLastDeletedVariant(null);
+        }}
         title={!isAdmin ? 'Product Specifications' : (editingDesign ? 'Edit Product Details' : 'Create New Product')}
       >
         <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">

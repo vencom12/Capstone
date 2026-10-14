@@ -60,8 +60,13 @@ export default function OfficialClaimSlip({
   const isPaid = (order.paymentStatus || 'paid').toLowerCase() === 'paid';
   const paymentRef = pers.referenceNumber || order.receipt?.referenceId || (order as any).referenceNumber || '';
 
+  const rawStatus = (order.status || '').toLowerCase();
   const orderStatus = (order.status || 'In Queue').toUpperCase();
-  const isCanceled = (order.status || '').toLowerCase().includes('cancel');
+  const isCanceled = rawStatus.includes('cancel');
+  const isReadyForPickup = !isCanceled && rawStatus.includes('ready');
+  const isClaimed = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || Number(order.progress) >= 100);
+  const isInProduction = !isCanceled && !isReadyForPickup && !isClaimed;
+
   const readyEstimate = isCanceled ? 'CANCELLED (VOID)' : (order.readyBy || (order.estimatedTime
     ? `~${order.estimatedTime} mins`
     : '~15–20 mins'));
@@ -194,35 +199,49 @@ export default function OfficialClaimSlip({
     <div className="flex flex-col gap-3 font-sans text-text-main">
       {/* Helper Action Header */}
       {showPrintAction && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400 shrink-0">
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted shrink-0">
               <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
               <path d="M6 14h12v8H6z" />
             </svg>
             <div>
-              <p className="font-bold text-text-main m-0">Official Store Counter Claim Slip</p>
+              <p className="font-bold text-text-main m-0">
+                {isCanceled
+                  ? 'Order Voided (Cancelled)'
+                  : isReadyForPickup
+                    ? 'Counter Claim Slip (Ready for Pick-up)'
+                    : isClaimed
+                      ? 'Order Receipt & Claim Record'
+                      : 'Order Ticket & Intake Receipt'}
+              </p>
               <p className="text-[0.7rem] text-text-dim m-0">
-                Standard 80mm thermal receipt format • Store pickup verification
+                {isCanceled
+                  ? 'Order cancelled • Production stopped'
+                  : isReadyForPickup
+                    ? 'Items ready for claiming at Pacific Mall Lucena ground floor counter'
+                    : isClaimed
+                      ? 'Order completed and released to customer'
+                      : 'Standard 80mm thermal receipt • Keep for counter pick-up'}
               </p>
             </div>
           </div>
           {isCanceled ? (
-            <span className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold text-xs border border-red-500/30">
-              Voided (Cancelled)
+            <span className="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 font-bold text-xs border border-red-500/25">
+              Voided
             </span>
           ) : (
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-text-main font-bold text-xs transition-all cursor-pointer border border-border-glass shadow-sm flex items-center gap-1.5"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
                 <rect x="6" y="14" width="12" height="8" />
               </svg>
-              <span>Print Slip</span>
+              <span>{isClaimed ? 'Print Receipt' : isReadyForPickup ? 'Print Claim Slip' : 'Print Ticket'}</span>
             </button>
           )}
         </div>
@@ -252,16 +271,38 @@ export default function OfficialClaimSlip({
         {/* Claim Ticket & Queue Status */}
         <div className="py-2 border-b border-dashed border-zinc-400 flex flex-col items-center">
           <div className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">
-            CLAIM TICKET NUMBER
+            {isClaimed ? 'TRANSACTION RECORD' : isReadyForPickup ? 'CLAIM TICKET NUMBER' : 'ORDER TICKET NUMBER'}
           </div>
           <div className="text-2xl font-black text-black tracking-widest my-0.5">
             #{orderId}
           </div>
-          {isCanceled && (
-            <div className="bg-red-50 border-2 border-dashed border-red-500 text-red-700 font-black p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
-              ⚠️ VOID — ORDER HAS BEEN CANCELLED ⚠️
+
+          {isCanceled ? (
+            <div className="bg-red-50 border border-red-300 text-red-700 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
+              VOID — ORDER CANCELLED
               <div className="text-[9px] font-normal normal-case text-red-600 mt-0.5">
                 Production stopped. Not valid for pickup or fulfillment.
+              </div>
+            </div>
+          ) : isReadyForPickup ? (
+            <div className="bg-zinc-100 border border-zinc-400 text-zinc-950 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
+              STATUS: READY FOR PICK-UP
+              <div className="text-[9.5px] font-normal normal-case text-zinc-700 mt-0.5">
+                Present this Claim Ticket &amp; Counter Claim Code at Eds Towels &amp; Caps, Ground Floor, Pacific Mall Lucena.
+              </div>
+            </div>
+          ) : isClaimed ? (
+            <div className="bg-zinc-100 border border-zinc-300 text-zinc-900 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
+              STATUS: CLAIMED &amp; COMPLETED
+              <div className="text-[9.5px] font-normal normal-case text-zinc-600 mt-0.5">
+                Order fulfilled and released at Eds Towels counter. This document serves as your official receipt.
+              </div>
+            </div>
+          ) : (
+            <div className="bg-zinc-50 border border-zinc-200 text-zinc-800 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
+              STATUS: IN PRODUCTION
+              <div className="text-[9.5px] font-normal normal-case text-zinc-600 mt-0.5">
+                Stitching in progress. Please wait for the ready notification before claiming at the counter.
               </div>
             </div>
           )}
@@ -392,11 +433,17 @@ export default function OfficialClaimSlip({
 
         {/* Official Store Policy Footer */}
         <div className={`pt-1 text-[9.5px] font-bold uppercase leading-snug ${isCanceled ? 'text-red-600' : 'text-zinc-700'}`}>
-          {isCanceled ? 'THIS CLAIM SLIP HAS BEEN VOIDED — ORDER CANCELLED' : 'Please present this official claim slip upon pickup.'}
+          {isCanceled
+            ? 'THIS CLAIM SLIP HAS BEEN VOIDED — ORDER CANCELLED'
+            : isReadyForPickup
+              ? 'Ready for pickup • Please present counter claim code upon arrival'
+              : isClaimed
+                ? 'Official Transaction & Claim Record • Order Completed'
+                : 'Intake Receipt • Present counter claim code once notified ready'}
           <div className="font-normal normal-case text-zinc-500 text-[8.5px] mt-0.5">
             {isCanceled
               ? 'Order cancelled • Not valid for pickup at Pacific Mall Lucena Counter'
-              : 'Strict anti-fraud counter protection • Pacific Mall Lucena Counter'}
+              : 'Strict anti-fraud counter protection • Eds Towels & Caps, Ground Floor, Pacific Mall Lucena'}
           </div>
         </div>
       </div>

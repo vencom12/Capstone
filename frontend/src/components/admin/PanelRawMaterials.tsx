@@ -1773,7 +1773,21 @@ export default function PanelRawMaterials({
       </div>
 
       {/* Modal: Add Material */}
-      <GlassModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Material">
+      <GlassModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Add Material"
+        onDiscard={() => {
+          setMaterialCategory('Bath Towel');
+          setSpoolColor('Black');
+          setCustomColor('');
+          setCustomName('');
+          setItemCount('');
+          setItemUnit('PCs');
+          setItemThreshold('10');
+          setItemSupplierCost('');
+        }}
+      >
         <form onSubmit={handleCreateSubmit} className="modal-stack text-left">
           {/* Material Category Selector */}
           <div className="modal-section">

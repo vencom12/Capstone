@@ -34,6 +34,8 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   const isDelivered = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || order.progress >= 100);
   const isOutForDelivery = !isCanceled && rawStatus === 'out for delivery';
   const isInTransit = !isCanceled && (rawStatus === 'in transit' || (order.progress >= 75 && !isDelivered && !isOutForDelivery));
+  const isReadyForPickup = isPickup && !isCanceled && (rawStatus.includes('ready') || isOutForDelivery);
+  const isClaimed = isPickup && !isCanceled && (isDelivered || rawStatus === 'completed');
 
   // Real status history from database or active order status
   interface TimelineEvent {
@@ -174,9 +176,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               {isCanceled ? (
                 'Order Cancelled'
               ) : isPickup ? (
-                isDelivered
+                isClaimed
                   ? 'Order Claimed at Pacific Mall Counter'
-                  : isOutForDelivery || isInTransit
+                  : isReadyForPickup
                     ? 'Ready for Counter Pick-up'
                     : 'Crafting at Pacific Mall Studio'
               ) : (
@@ -193,9 +195,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               {isCanceled ? (
                 'This order was cancelled before production. Reserved materials have been released.'
               ) : isPickup ? (
-                isDelivered
+                isClaimed
                   ? 'Claimed by recipient at Eds Towels Counter • Verified'
-                  : isOutForDelivery || isInTransit
+                  : isReadyForPickup
                     ? 'Available for claiming at Pacific Mall Lucena (10:00 AM – 8:00 PM)'
                     : 'Being hooped, digitized and stitched in our workshop'
               ) : (
@@ -220,13 +222,33 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           <button
             onClick={() => setIsWaybillOpen(true)}
             className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-            title="View and print 4x6 inch pouch dispatch label"
+            title={
+              isPickup
+                ? (isReadyForPickup
+                    ? 'View and print store claim slip to claim order at Pacific Mall'
+                    : isClaimed
+                      ? 'View completed order receipt and transaction record'
+                      : 'View order intake ticket and estimated pick-up schedule')
+                : (isDelivered
+                    ? 'View delivered parcel label and tracking proof'
+                    : 'View and print parcel dispatch label')
+            }
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <span>{isPickup ? 'Claim Slip' : 'Parcel Label'}</span>
+            <span>
+              {isPickup
+                ? (isReadyForPickup
+                    ? 'Claim Slip (Ready)'
+                    : isClaimed
+                      ? 'Receipt (Claimed)'
+                      : 'Order Ticket & Receipt')
+                : (isDelivered
+                    ? 'Parcel Label (Delivered)'
+                    : 'Parcel Label')}
+            </span>
           </button>
         )}
       </div>

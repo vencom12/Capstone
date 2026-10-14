@@ -21,11 +21,24 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
     (order.orderId && order.orderId.startsWith('WI-'));
 
   if (isPickup) {
+    const rawStatus = (order.status || '').toLowerCase();
+    const isCanceled = rawStatus.includes('cancel');
+    const isReadyForPickup = !isCanceled && rawStatus.includes('ready');
+    const isClaimed = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || Number(order.progress) >= 100);
+
+    const modalTitle = isCanceled
+      ? 'Store Counter Claim Slip (Voided)'
+      : isReadyForPickup
+        ? 'Counter Claim Slip (Ready for Pick-up)'
+        : isClaimed
+          ? 'Store Counter Receipt (Claimed)'
+          : 'Order Ticket & Intake Receipt';
+
     return (
       <GlassModal
         isOpen={isOpen}
         onClose={onClose}
-        title="Store Counter Claim Slip"
+        title={modalTitle}
         maxWidth="max-w-[420px]"
       >
         <OfficialClaimSlip order={order} />
@@ -181,9 +194,9 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
     >
       <div className="flex flex-col gap-4 font-sans text-text-main">
         {/* Helper Notice */}
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted shrink-0">
               <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
               <path d="M6 14h12v8H6z" />
             </svg>
@@ -196,9 +209,9 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
           </div>
           <button
             onClick={handlePrint}
-            className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-text-main font-bold text-xs transition-all cursor-pointer border border-border-glass shadow-sm flex items-center gap-1.5"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 6 2 18 2 18 9" />
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
               <rect x="6" y="14" width="12" height="8" />
