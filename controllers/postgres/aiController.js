@@ -1214,11 +1214,14 @@ exports.verifyReceipt = async (req, res) => {
                 }
                 inFlightVerificationLocks.add(currentHashLock);
 
-                // Check if this exact image was already used for an approved/verified order
+                // Check if this exact image was already used for an approved/verified order (ignoring testing/bypass orders)
                 const existingByHash = await prisma.receipt.findFirst({
                     where: {
                         imageHash,
-                        NOT: { id: receipt.id },
+                        NOT: [
+                            { id: receipt.id },
+                            { referenceId: { startsWith: 'TEST-' } }
+                        ],
                         aiVerificationStatus: 'verified'
                     }
                 });
@@ -1401,7 +1404,8 @@ Output ONLY a JSON object:
                 inFlightVerificationLocks.add(currentRefLock);
             }
 
-            const existingByRef = await prisma.receipt.findFirst({
+            const isTestRef = cleanRefId.startsWith('TEST-');
+            const existingByRef = isTestRef ? null : await prisma.receipt.findFirst({
                 where: {
                     referenceId: cleanRefId,
                     NOT: { id: receipt.id },

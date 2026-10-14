@@ -13,7 +13,7 @@ interface PanelSettingsProps {
   isUpdatingSettings: boolean;
 }
 
-type SettingsTab = 'store' | 'fulfillment' | 'ai' | 'appearance';
+type SettingsTab = 'store' | 'fulfillment' | 'ai' | 'appearance' | 'security';
 
 export default function PanelSettings({
   theme,
@@ -25,6 +25,15 @@ export default function PanelSettings({
 }: PanelSettingsProps) {
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<SettingsTab>('store');
+
+  // Security / Password State
+  const [currPass, setCurrPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showSecPass, setShowSecPass] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
 
   // AI Settings State
   const [aiChatModel, setAiChatModel] = useState('llama-3.3-70b-versatile');
@@ -312,8 +321,63 @@ export default function PanelSettings({
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
         </svg>
       )
+    },
+    {
+      id: 'security' as SettingsTab,
+      label: 'Security & Password',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      )
     }
   ];
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+
+    if (!currPass) {
+      setPassError('Please enter your current password.');
+      return;
+    }
+    if (newPass.length < 6) {
+      setPassError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassError('New password and confirmation do not match.');
+      return;
+    }
+    if (currPass === newPass) {
+      setPassError('New password cannot be the same as your current password.');
+      return;
+    }
+
+    setIsChangingPass(true);
+    try {
+      const res = await api.put<{ success: boolean; message: string }>('/api/auth/password/change', {
+        currentPassword: currPass,
+        newPassword: newPass,
+        confirmPassword: confirmPass
+      });
+      if (res && res.success) {
+        setPassSuccess(res.message || 'Password changed successfully.');
+        showToast('Password updated successfully', 'success');
+        setCurrPass('');
+        setNewPass('');
+        setConfirmPass('');
+      } else {
+        setPassError(res?.message || 'Failed to update password.');
+      }
+    } catch (err: any) {
+      setPassError(err.message || 'Current password is incorrect or could not be verified.');
+    } finally {
+      setIsChangingPass(false);
+    }
+  };
 
   return (
     <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
@@ -1042,6 +1106,117 @@ export default function PanelSettings({
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Account Security & Password Tab */}
+          {activeTab === 'security' && (
+            <div className="flex flex-col gap-6 animate-[fadeIn_0.2s_ease-out]">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-bold text-text-main m-0">Account Security & Password</h3>
+                <p className="text-xs text-text-dim m-0">
+                  Manage your administrative credentials and rotate passwords. Changing your password revokes all other active sessions for this account.
+                </p>
+              </div>
+
+              <div className="bg-bg-surface/80 border border-border-glass rounded-2xl p-6 flex flex-col gap-5 max-w-xl">
+                <div className="flex items-center gap-3 border-b border-border-glass/40 pb-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text-main m-0">Update Password</h4>
+                    <p className="text-xs text-text-dim m-0">Requires verification of your current administrative password</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-text-dim">Current Password</label>
+                    <input
+                      type={showSecPass ? 'text' : 'password'}
+                      required
+                      placeholder="Enter current password"
+                      value={currPass}
+                      onChange={(e) => setCurrPass(e.target.value)}
+                      className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-text-dim">New Password</label>
+                      <input
+                        type={showSecPass ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        placeholder="At least 6 characters"
+                        value={newPass}
+                        onChange={(e) => setNewPass(e.target.value)}
+                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-text-dim">Confirm New Password</label>
+                      <input
+                        type={showSecPass ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        placeholder="Re-enter new password"
+                        value={confirmPass}
+                        onChange={(e) => setConfirmPass(e.target.value)}
+                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-text-dim">
+                    <input
+                      type="checkbox"
+                      checked={showSecPass}
+                      onChange={(e) => setShowSecPass(e.target.checked)}
+                      className="accent-primary w-3.5 h-3.5 rounded"
+                    />
+                    <span>Show passwords</span>
+                  </label>
+
+                  {passError && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                      {passError}
+                    </div>
+                  )}
+
+                  {passSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                      {passSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={isChangingPass}
+                      className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 border border-primary/40 shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isChangingPass ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        <span>Update Password</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

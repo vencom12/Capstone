@@ -29,6 +29,7 @@ interface AuthState {
   completeGoogleSignup: (setupToken: string, password: string, username?: string) => Promise<AuthResponse>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;
@@ -216,6 +217,13 @@ export const useAuthStore = create<AuthState>()(
         return await api.post<{ success: boolean; message: string }>(
           '/api/auth/password/reset',
           { token, password }
+        );
+      },
+
+      changePassword: async (currentPassword, newPassword, confirmPassword) => {
+        return await api.put<{ success: boolean; message: string }>(
+          '/api/auth/password/change',
+          { currentPassword, newPassword, confirmPassword }
         );
       },
 

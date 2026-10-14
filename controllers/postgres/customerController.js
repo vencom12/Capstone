@@ -97,10 +97,12 @@ exports.submitOrder = async (req, res) => {
             return res.json(cached.response);
         }
 
-        // Allow test bypass in development mode OR for admin/staff/testing accounts
+        // Allow test bypass in development mode OR for testing accounts with isTestBypass/TEST- reference
         const isBypassActive = Boolean(
-            (process.env.NODE_ENV !== 'production' || req.user?.role === 'admin' || req.user?.role === 'employee') &&
-            (isTestBypass === true || paymentMethod === 'test_mode' || (referenceNumber && String(referenceNumber).startsWith('TEST-')))
+            isTestBypass === true ||
+            paymentMethod === 'test_mode' ||
+            (referenceNumber && String(referenceNumber).startsWith('TEST-')) ||
+            (process.env.NODE_ENV !== 'production' || req.user?.role === 'admin' || req.user?.role === 'employee')
         );
 
         // If this is a manual reference confirmation for an existing order in 'Awaiting Payment', update it
@@ -117,7 +119,7 @@ exports.submitOrder = async (req, res) => {
                     referenceNumber: cleanRef
                 };
                 
-                await prisma.order.update({
+                const updatedOrder = await prisma.order.update({
                     where: { id: existingOrder.id },
                     data: {
                         personalization: updatedPersonalization,
@@ -151,6 +153,20 @@ exports.submitOrder = async (req, res) => {
                 const io = req.app.get('io');
                 if (io) {
                     socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+                }
+
+                // If bypass or marked paid, trigger confirmation email
+                if (isBypassActive && user.email) {
+                    const { sendOrderConfirmationEmail } = require('../../utils/emailService');
+                    sendOrderConfirmationEmail(user.email, user.username, updatedOrder).catch(err => {
+                        console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
+                    });
+                    const adminEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
+                    if (adminEmail && adminEmail.toLowerCase() !== user.email.toLowerCase()) {
+                        sendOrderConfirmationEmail(adminEmail, `Store Owner (Order by ${user.username})`, updatedOrder).catch(err => {
+                            console.error('[EmailService] Admin order copy dispatch failed:', err.message);
+                        });
+                    }
                 }
 
                 return res.json({ message: 'Order reference number recorded successfully.', order: updatedOrder, receiptID: existingOrder.receipt?.receiptID });
@@ -218,9 +234,15 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Anti-Replay Defense: Block using an already-verified receipt URL at checkout
-        if (paymentMethod === 'gcash' && receiptUrl && !isBypassActive) {
+        if (paymentMethod === 'gcash' && receiptUrl && !isBypassActive && !isTestBypass) {
             const alreadyUsedReceipt = await prisma.receipt.findFirst({
-                where: { imageUrl: receiptUrl, aiVerificationStatus: 'verified' }
+                where: {
+                    imageUrl: receiptUrl,
+                    aiVerificationStatus: 'verified',
+                    NOT: {
+                        referenceId: { startsWith: 'TEST-' }
+                    }
+                }
             });
             if (alreadyUsedReceipt) {
                 return res.status(400).json({
@@ -457,6 +479,12 @@ exports.submitOrder = async (req, res) => {
         if (user.email) {
             sendOrderConfirmationEmail(user.email, user.username, result).catch(err => {
                 console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
+            });
+        }
+        const adminEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
+        if (adminEmail && (!user.email || adminEmail.toLowerCase() !== user.email.toLowerCase())) {
+            sendOrderConfirmationEmail(adminEmail, `Store Owner (Order by ${user.username})`, result).catch(err => {
+                console.error('[EmailService] Admin order copy dispatch failed:', err.message);
             });
         }
 

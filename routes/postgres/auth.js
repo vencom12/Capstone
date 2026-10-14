@@ -43,6 +43,8 @@ router.post('/google', authController.googleAuth);
 router.post('/google/complete', authController.googleComplete);
 router.post('/password/forgot', authController.forgotPassword);
 router.post('/password/reset', authController.resetPassword);
+router.put('/password/change', auth(), authController.changePassword);
+router.post('/password/change', auth(), authController.changePassword);
 router.post('/login', loginValidation, authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', auth(), authController.me);

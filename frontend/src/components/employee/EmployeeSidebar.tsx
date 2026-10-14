@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 interface EmployeeSidebarProps {
   activeTab: string;
@@ -17,6 +18,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
@@ -179,14 +181,31 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
           </div>
 
           <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start"
+            title="Change Password"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span className="max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block whitespace-nowrap text-[0.85rem] font-medium">Change Password</span>
+          </button>
+
+          <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start"
+            className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             <span className="max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block whitespace-nowrap text-[0.9rem] font-medium">Logout</span>
           </button>
         </div>
       </aside>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </>
   );
 }

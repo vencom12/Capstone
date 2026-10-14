@@ -414,7 +414,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         paymentMethod: 'gcash',
         isTestBypass: true,
         referenceNumber: testRef,
-        receiptUrl: 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg',
+        existingOrderId: pendingOrderId || undefined,
+        receiptUrl: `https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg?bypass=${testRef}`,
         personalization: {
           fulfillmentType: isPickup ? 'pickup' : 'delivery',
           courier: isPickup ? 'Store Pick-up' : 'J&T Express',

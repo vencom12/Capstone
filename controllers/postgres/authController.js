@@ -1013,17 +1013,18 @@ exports.forgotPassword = async (req, res) => {
             }
         }
 
-        await prisma.emailVerification.deleteMany({ where: { userId: user.id, token: { startsWith: 'rst_' } } });
-        const resetToken = 'rst_' + generateVerificationToken();
+        await prisma.emailVerification.deleteMany({ where: { userId: user.id } });
+        const rawToken = 'rst_' + generateVerificationToken();
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
         await prisma.emailVerification.create({
             data: {
                 userId: user.id,
                 email: user.email,
-                token: resetToken,
+                token: hashedToken,
                 expiresAt: new Date(Date.now() + 60 * 60 * 1000)
             }
         });
-        await sendPasswordResetEmail(user.email, user.username, resetToken);
+        await sendPasswordResetEmail(user.email, user.username, rawToken);
 
         res.json(generic);
     } catch (err) {
@@ -1045,12 +1046,20 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
         }
 
-        const record = await prisma.emailVerification.findUnique({ where: { token } });
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        const record = await prisma.emailVerification.findFirst({
+            where: {
+                OR: [
+                    { token: hashedToken },
+                    { token } // Backward compatibility for unhashed legacy tokens
+                ]
+            }
+        });
         if (!record) {
             return res.status(400).json({ success: false, message: 'Invalid or expired reset link. Please request a new one.' });
         }
         if (new Date() > new Date(record.expiresAt)) {
-            await prisma.emailVerification.delete({ where: { token } }).catch(() => {});
+            await prisma.emailVerification.deleteMany({ where: { id: record.id } }).catch(() => {});
             return res.status(400).json({ success: false, message: 'This reset link has expired. Please request a new one.' });
         }
 
@@ -1069,6 +1078,82 @@ exports.resetPassword = async (req, res) => {
     } catch (err) {
         console.error('resetPassword error:', err);
         res.status(500).json({ success: false, message: 'Server error resetting password.' });
+    }
+};
+
+/**
+ * PUT/POST /auth/password/change — Secure in-app password update for logged-in users (Customer, Staff, Admin)
+ */
+exports.changePassword = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Authentication required.' });
+        }
+
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        if (!currentPassword) {
+            return res.status(400).json({ success: false, message: 'Please enter your current password.' });
+        }
+        if (!newPassword || String(newPassword).length < 6) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+        }
+        if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+            return res.status(400).json({ success: false, message: 'New password and confirmation do not match.' });
+        }
+        if (currentPassword === newPassword) {
+            return res.status(400).json({ success: false, message: 'New password cannot be the same as your current password.' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User account not found.' });
+        }
+
+        // Verify current password with bcrypt
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: 'Current password is incorrect. Please verify and try again.' });
+        }
+
+        // Hash new password and increment tokenVersion (revoking other active sessions)
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const nextTokenVersion = (user.tokenVersion || 0) + 1;
+
+        const updatedUser = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                tokenVersion: nextTokenVersion,
+                lastActiveAt: new Date()
+            }
+        });
+
+        // Re-issue fresh JWT cookie for the current session so the user stays authenticated seamlessly
+        const token = jwt.sign(
+            { id: updatedUser.id, role: updatedUser.role, tenantId: updatedUser.tenantId, tokenVersion: nextTokenVersion },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/'
+        };
+
+        res.cookie(`${updatedUser.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
+
+        return res.json({
+            success: true,
+            message: 'Your password has been changed successfully. All other active sessions have been safely logged out.'
+        });
+    } catch (err) {
+        console.error('changePassword error:', err);
+        return res.status(500).json({ success: false, message: 'Server error while changing password.' });
     }
 };
 
