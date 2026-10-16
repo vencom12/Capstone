@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -11,7 +11,7 @@ function ResetPasswordContent() {
   const rawToken = searchParams.get('token');
   const [token, setToken] = useState(rawToken || '');
   const { resetPassword } = useAuthStore();
-
+  const hasCapturedToken = useRef(Boolean(rawToken));
 
   const [mounted, setMounted] = useState(false);
   const [password, setPassword] = useState('');
@@ -21,21 +21,18 @@ function ResetPasswordContent() {
   const [status, setStatus] = useState<'form' | 'success' | 'error'>('form');
   const [message, setMessage] = useState('');
 
-  // Security & Hydration: Mount gate and clean token from address bar
+  // Mount gate & token extraction
   useEffect(() => {
     setMounted(true);
     if (rawToken) {
+      hasCapturedToken.current = true;
       setToken(rawToken);
       setStatus('form');
-      // Clean up token from browser URL address bar to prevent history/referer leakage
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    } else {
+    } else if (!hasCapturedToken.current && !token) {
       setStatus('error');
       setMessage('No reset token found. Please use the link from your email.');
     }
-  }, [rawToken]);
+  }, [rawToken, token]);
 
   const inputCls =
     'w-full bg-bg-dark border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all';
@@ -61,6 +58,9 @@ function ResetPasswordContent() {
       if (res.success) {
         setStatus('success');
         setMessage(res.message);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       } else {
         setMessage(res.message || 'Could not reset password.');
       }

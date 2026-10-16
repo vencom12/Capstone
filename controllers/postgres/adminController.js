@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('../../utils/prisma');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
@@ -457,19 +458,20 @@ exports.sendUserPasswordReset = async (req, res) => {
         if (!targetUser.email) return res.status(400).json({ message: 'User does not have an email address on file.' });
 
         const { generateVerificationToken, sendPasswordResetEmail } = require('../../utils/emailService');
-        await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id, token: { startsWith: 'rst_' } } });
-        const resetToken = 'rst_' + generateVerificationToken();
+        await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id } });
+        const rawToken = 'rst_' + generateVerificationToken();
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
         await prisma.emailVerification.create({
             data: {
                 userId: targetUser.id,
                 email: targetUser.email,
-                token: resetToken,
+                token: hashedToken,
                 expiresAt: new Date(Date.now() + 60 * 60 * 1000)
             }
         });
-        const emailResult = await sendPasswordResetEmail(targetUser.email, targetUser.username, resetToken);
+        const emailResult = await sendPasswordResetEmail(targetUser.email, targetUser.username, rawToken);
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+        const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
         if (emailResult?.provider) {
             res.json({ 

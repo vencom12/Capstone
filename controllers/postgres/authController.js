@@ -994,7 +994,7 @@ exports.forgotPassword = async (req, res) => {
                 email: { equals: email, mode: 'insensitive' } 
             } 
         });
-        if (!user || user.role !== 'customer') {
+        if (!user || user.isActive === false) {
             return res.json(generic);
         }
 
@@ -1024,7 +1024,12 @@ exports.forgotPassword = async (req, res) => {
                 expiresAt: new Date(Date.now() + 60 * 60 * 1000)
             }
         });
-        await sendPasswordResetEmail(user.email, user.username, rawToken);
+        const emailResult = await sendPasswordResetEmail(user.email, user.username, rawToken);
+        if (emailResult?.simulated) {
+            console.warn(`[forgotPassword] Notice: Reset email for ${user.email} ran in simulation mode (${emailResult.provider || 'no live provider'}). Link: ${emailResult.url || 'see logs'}`);
+        } else {
+            console.log(`[forgotPassword] Reset email sent to ${user.email} via ${emailResult?.provider || 'live provider'}.`);
+        }
 
         res.json(generic);
     } catch (err) {

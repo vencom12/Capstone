@@ -70,8 +70,20 @@ services:
       - key: SEMAPHORE_SENDER_NAME
         value: SEMAPHORE
 
-      # Leave blank to run email verification in defense-simulation mode
-      # (verification links are printed to the server log).
+      # Live Email Delivery for Render (Render Free tier blocks standard SMTP ports 25, 465, 587).
+      # Primary Option: Brevo HTTP API (Port 443 — 300 free emails/day to any recipient, no custom domain required)
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+
+      # Secondary Option: Resend HTTP API (Port 443 — 100 emails/day; requires verified domain or testing account)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+
+      # Gmail SMTP (Nodemailer — works on localhost and paid cloud instances; blocked by Render Free tier)
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD

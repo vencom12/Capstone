@@ -46,8 +46,12 @@ export default function GlassModal({
     }
   }, [isOpen]);
 
-  // Form is considered dirty if explicitly marked so, or if the user typed into inputs
-  const isFormDirty = isDirty !== undefined ? isDirty : hasUserTyped;
+  // Form is considered dirty if:
+  // - explicitly flagged via `isDirty` prop (if isDirty === false, never prompt)
+  // - OR if an onDiscard handler is supplied and the user has actively typed
+  const isFormDirty = isDirty !== undefined 
+    ? Boolean(isDirty) 
+    : Boolean(onDiscard && hasUserTyped);
 
   const handleAttemptClose = useCallback(() => {
     if (isFormDirty) {
@@ -149,39 +153,39 @@ export default function GlassModal({
           {children}
         </div>
 
-        {/* Soft, non-AI Unsaved Changes Notice Pop-up */}
+        {/* Unsaved Changes Confirmation Modal */}
         {showDiscardNotice && (
           <div
-            className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
+            className="absolute inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-full max-w-[340px] bg-bg-card border border-border-glass rounded-2xl p-5 shadow-2xl flex flex-col items-center text-center">
-              {/* Soft, neutral outline badge — no garish colors */}
-              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-text-dim flex items-center justify-center mb-3">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
+            <div className="w-full max-w-[340px] bg-[#12141c]/95 border border-white/10 rounded-2xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col items-center text-center animate-[modalScaleUp_0.2s_cubic-bezier(0.16,1,0.3,1)]">
+              {/* Refined warning badge */}
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(245,158,11,0.15)] shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               </div>
 
-              <h3 className="text-sm sm:text-base font-semibold text-text-main m-0">Discard unsaved changes?</h3>
+              <h3 className="text-base font-bold text-text-main m-0 tracking-tight">Discard unsaved changes?</h3>
               <p className="text-xs text-text-dim mt-1.5 mb-5 leading-relaxed">
-                You have unsaved changes. Closing now will discard everything you entered.
+                You have unsaved entries. Closing now will discard your changes.
               </p>
 
               <div className="flex items-center gap-2.5 w-full">
                 <button
                   type="button"
                   onClick={() => setShowDiscardNotice(false)}
-                  className="flex-1 py-2 px-3 rounded-xl text-xs font-medium text-text-main bg-white/5 hover:bg-white/10 border border-border-glass transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-text-main bg-white/10 hover:bg-white/15 border border-white/15 transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
                   Keep editing
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmDiscard}
-                  className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/25 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 shadow-[0_4px_14px_rgba(225,29,72,0.35)] transition-all active:scale-95 cursor-pointer"
                 >
                   Discard
                 </button>

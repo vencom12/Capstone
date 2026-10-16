@@ -28,6 +28,52 @@ function getResendClient() {
 }
 
 /**
+ * Sends an email via Brevo's HTTP API (v3).
+ * Operates over standard HTTPS (Port 443), bypassing Render's SMTP port restrictions.
+ * Free tier provides 300 emails/day to ANY recipient without requiring custom domain DNS.
+ */
+async function sendViaBrevo({ to, subject, html, businessName }) {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (!apiKey) return null;
+
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
+  if (!senderEmail) {
+    console.error('[Brevo Error] BREVO_SENDER_EMAIL or GMAIL_USER is required to send via Brevo.');
+    return null;
+  }
+
+  try {
+    const fetchFn = typeof fetch === 'function' ? fetch : require('node-fetch');
+    const response = await fetchFn('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: businessName, email: senderEmail },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('[Brevo Error]', response.status, data);
+      return null;
+    }
+
+    console.log(`[Email Sent via Brevo HTTP API] To: ${to}, Message ID: ${data.messageId}`);
+    return { success: true, provider: 'brevo', id: data.messageId };
+  } catch (err) {
+    console.error('[Brevo Exception]', err.message || err);
+    return null;
+  }
+}
+
+/**
  * Creates and returns a reusable Nodemailer transporter.
  * Uses Gmail SMTP with an App Password. Includes strict connection timeouts
  * so requests never hang for 30 seconds if an outbound SMTP port is blocked.
@@ -63,14 +109,21 @@ function generateVerificationToken() {
 
 /**
  * Internal unified email dispatcher:
- * 1. Attempts Resend (HTTP Port 443 — 100% works on Render & Cloud)
- * 2. Attempts Gmail SMTP (Nodemailer with 5s timeout)
- * 3. Falls back to Console Simulation Mode
+ * 1. Attempts Brevo HTTP API (Port 443 — reliable on Render without domain setup)
+ * 2. Attempts Resend HTTP API (Port 443 — reliable on Render with verified domain or test email)
+ * 3. Attempts Gmail SMTP (Nodemailer — works locally, blocked by Render Free tier)
+ * 4. Falls back to Console Simulation Mode
  */
 async function dispatchEmail({ to, subject, html, simulationInfo }) {
   const businessName = process.env.BUSINESS_NAME || 'Stitch-Opt Designs';
 
-  // 1. Try Resend HTTP API (Ideal for Render / Production)
+  // 1. Try Brevo HTTP API (Port 443 — works out of the box on Render Free tier)
+  const brevoResult = await sendViaBrevo({ to, subject, html, businessName });
+  if (brevoResult?.success) {
+    return brevoResult;
+  }
+
+  // 2. Try Resend HTTP API (Port 443 — Render-safe)
   const resend = getResendClient();
   if (resend) {
     try {
@@ -93,12 +146,14 @@ async function dispatchEmail({ to, subject, html, simulationInfo }) {
     }
   }
 
-  // 2. Try Nodemailer Gmail SMTP (Fallback for local dev or unblocked environments)
+  // 3. Try Nodemailer Gmail SMTP (Works on localhost; blocked on Render Free)
+  const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
   const transporter = createTransporter();
   if (transporter) {
     try {
+      const senderEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
       const info = await transporter.sendMail({
-        from: `"${businessName}" <${process.env.GMAIL_USER}>`,
+        from: `"${businessName}" <${senderEmail}>`,
         to,
         subject,
         html,
@@ -108,20 +163,28 @@ async function dispatchEmail({ to, subject, html, simulationInfo }) {
       return { success: true, provider: 'nodemailer', id: info.messageId };
     } catch (err) {
       console.error('[Nodemailer Error]', err.message || err);
+      if (isRender) {
+        console.warn('[EmailService Warning] Render Free tier blocks standard SMTP ports (25, 465, 587). To send real emails from Render, set BREVO_API_KEY or RESEND_API_KEY in Render environment variables.');
+      }
     }
   }
 
-  // 3. Fallback: Simulation Mode
+  // 4. Fallback: Simulation Mode
   console.log('\n============================================================');
   console.log(`📧 [EMAIL GATEWAY SIMULATION — ${simulationInfo?.tag || 'STITCH-OPT'}]`);
   console.log(`Recipient: ${to}`);
   if (simulationInfo?.url) {
     console.log(`Action Link: ${simulationInfo.url}`);
   }
-  console.log('Notice: Configure RESEND_API_KEY or GMAIL_APP_PASSWORD for live delivery.');
+  if (isRender) {
+    console.log('⚠️ Render Warning: Outbound SMTP (ports 25, 465, 587) is blocked by Render Free.');
+    console.log('   Add BREVO_API_KEY or RESEND_API_KEY to Render Environment Variables for live delivery via HTTPS.');
+  } else {
+    console.log('Notice: Configure GMAIL_USER/GMAIL_APP_PASSWORD, BREVO_API_KEY, or RESEND_API_KEY for live delivery.');
+  }
   console.log('============================================================\n');
 
-  return { success: true, simulated: true };
+  return { success: true, simulated: true, url: simulationInfo?.url };
 }
 
 /**
