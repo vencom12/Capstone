@@ -15,13 +15,24 @@ interface UIStore {
   authMode: 'login' | 'register';
   authPortal: AuthPortal;
   googleSetupData: GoogleSetupData | null;
+  welcomeData: WelcomeTransitionData | null;
   setBasketOpen: (isOpen: boolean) => void;
   setSidebarOpen: (isOpen: boolean) => void;
   setAuthOpen: (isOpen: boolean, mode?: 'login' | 'register', portal?: AuthPortal) => void;
   setGoogleSetupData: (data: GoogleSetupData | null) => void;
   setAuthPortal: (portal: AuthPortal) => void;
+  triggerWelcome: (username: string, role?: string) => void;
+  markDashboardReady: () => void;
+  closeWelcome: () => void;
   toggleBasket: () => void;
   toggleSidebar: () => void;
+}
+
+export interface WelcomeTransitionData {
+  isOpen: boolean;
+  username: string;
+  role?: string;
+  isReady?: boolean;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -31,6 +42,7 @@ export const useUIStore = create<UIStore>((set) => ({
   authMode: 'login',
   authPortal: 'customer',
   googleSetupData: null,
+  welcomeData: null,
   setBasketOpen: (isOpen) => set({ isBasketOpen: isOpen }),
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   setAuthOpen: (isOpen, mode = 'login', portal) =>
@@ -41,6 +53,13 @@ export const useUIStore = create<UIStore>((set) => ({
     })),
   setGoogleSetupData: (data) => set({ googleSetupData: data }),
   setAuthPortal: (portal) => set({ authPortal: portal }),
+  triggerWelcome: (username: string, role?: string) =>
+    set({ welcomeData: { isOpen: true, username, role, isReady: false } }),
+  markDashboardReady: () =>
+    set((state) => ({
+      welcomeData: state.welcomeData ? { ...state.welcomeData, isReady: true } : null,
+    })),
+  closeWelcome: () => set({ welcomeData: null }),
   toggleBasket: () => set((state) => ({ isBasketOpen: !state.isBasketOpen })),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 }));

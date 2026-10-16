@@ -19,6 +19,7 @@ import RightPanel from '@/components/dashboard/RightPanel';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
 import { API_BASE } from '@/lib/api';
 import type { Product } from '@/lib/types';
+import { isGoogleAuthPending } from '@/lib/googleAuth';
 
 export default function StorefrontPage() {
   const router = useRouter();
@@ -28,23 +29,33 @@ export default function StorefrontPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAuthRedirecting, setIsAuthRedirecting] = useState(false);
 
-  // Role-based redirect: send admin/employee users back to their dashboards
+  // Role-based redirect & Google OAuth protection: prevent flashing the storefront UI
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin') {
-      router.replace('/admin');
-    } else if (isAuthenticated && user?.role === 'employee') {
-      router.replace('/employee');
+    if (isGoogleAuthPending()) {
+      setIsAuthRedirecting(true);
+      return;
+    }
+
+    if (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee')) {
+      setIsAuthRedirecting(true);
+      if (user.role === 'admin') router.replace('/admin');
+      else router.replace('/employee');
     }
   }, [isAuthenticated, user?.role, router]);
 
   useEffect(() => {
+    if (isAuthRedirecting || (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee'))) {
+      return;
+    }
+
     if (isAuthenticated) {
       fetchDashboardState();
     } else {
       fetchProducts();
     }
-  }, [isAuthenticated, fetchProducts, fetchDashboardState]);
+  }, [isAuthenticated, user?.role, isAuthRedirecting, fetchProducts, fetchDashboardState]);
 
   // Real-time socket updates for Storefront
   useEffect(() => {
@@ -99,6 +110,14 @@ export default function StorefrontPage() {
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
+
+  if (isAuthRedirecting || (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee'))) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-bg-dark text-text-main">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen lg:h-screen w-full overflow-x-hidden lg:overflow-hidden bg-transparent">

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import ToastContainer from '@/components/ui/Toast';
+import WelcomeTransition from '@/components/ui/WelcomeTransition';
 import DynamicFavicon from '@/components/ui/DynamicFavicon';
 import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 import AuthModal from '@/components/auth/AuthModal';
@@ -77,6 +78,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <AuthModal />
         </Suspense>
+        <WelcomeTransition />
         <DynamicFavicon />
         <ToastContainer />
       </body>

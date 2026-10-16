@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { completeGoogleSignIn } from '@/lib/googleAuth';
+import { completeGoogleSignIn, isGoogleAuthPending } from '@/lib/googleAuth';
 import { useUIStore } from '@/stores/useUIStore';
 import { showToast } from '@/components/ui/Toast';
 
@@ -14,8 +14,14 @@ export default function GlobalAuthListener() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the browser just redirected back from Google OAuth, immediately raise the welcome overlay
+    if (isGoogleAuthPending()) {
+      useUIStore.getState().triggerWelcome('Welcome', 'Signing in...');
+    }
+
     return completeGoogleSignIn((outcome) => {
       if (outcome.status === 'needs-password') {
+        useUIStore.getState().closeWelcome();
         useUIStore.getState().setGoogleSetupData({
           token: outcome.setupToken,
           email: outcome.email,
@@ -26,11 +32,12 @@ export default function GlobalAuthListener() {
       }
 
       if (outcome.status === 'error') {
+        useUIStore.getState().closeWelcome();
         showToast(outcome.message, 'error');
         return;
       }
 
-      showToast(`Welcome back, ${outcome.user.username || 'Customer'}!`, 'success');
+      useUIStore.getState().triggerWelcome(outcome.user.username || 'Customer', outcome.user.role || 'customer');
       if (outcome.user.role === 'admin') router.replace('/admin');
       else if (outcome.user.role === 'employee') router.replace('/employee');
       else router.refresh();

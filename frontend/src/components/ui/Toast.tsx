@@ -64,7 +64,7 @@ export default function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-[100000] flex flex-col items-center gap-2 pointer-events-none w-full max-w-md px-4"
+      className="fixed bottom-6 sm:bottom-auto sm:top-6 left-1/2 -translate-x-1/2 z-[100000] flex flex-col items-center gap-2 pointer-events-none w-full max-w-md px-4"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === 'success';
@@ -77,7 +77,7 @@ export default function ToastContainer() {
               pointer-events-auto flex items-center justify-between gap-3 w-full
               px-4 py-3 rounded-xl text-sm font-medium
               bg-bg-surface/95 backdrop-blur-xl border shadow-2xl
-              transition-all duration-300 animate-slideDown
+              transition-all duration-300 animate-slideUp sm:animate-slideDown
               ${
                 isSuccess
                   ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20'
@@ -134,8 +134,15 @@ export default function ToastContainer() {
 
             <button
               type="button"
-              onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-              className="text-text-dim hover:text-text-main p-1 rounded-md transition shrink-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+              }}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+              }}
+              className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 active:scale-90 transition shrink-0 cursor-pointer"
               aria-label="Dismiss notification"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">

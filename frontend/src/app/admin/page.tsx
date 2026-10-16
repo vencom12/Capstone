@@ -75,6 +75,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
   const [dbType, setDbType] = useState<string>('supabase');
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -217,6 +218,8 @@ export default function AdminPage() {
       });
     } finally {
       setIsSyncing(false);
+      setHasInitialDataLoaded(true);
+      useUIStore.getState().markDashboardReady();
       isFetchingAdminRef.current = false;
       if (queuedFetchRef.current) {
         queuedFetchRef.current = false;
@@ -373,10 +376,13 @@ export default function AdminPage() {
     }
   }, [isHydrated, isAuthenticated, checkAccess, router]);
 
-  if (!isHydrated || !isAuthenticated || !checkAccess('admin')) {
+  if (!isHydrated || !isAuthenticated || !checkAccess('admin') || !hasInitialDataLoaded) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-transparent text-text-main">
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-bg-dark text-text-main gap-3">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <span className="text-xs font-bold tracking-wider uppercase text-text-dim">
+          Preparing Admin Workspace...
+        </span>
       </div>
     );
   }

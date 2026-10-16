@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
+import { useUIStore } from '@/stores/useUIStore';
 import EmployeeSidebar from '@/components/employee/EmployeeSidebar';
 import dynamic from 'next/dynamic';
 
@@ -40,6 +41,7 @@ export default function EmployeePage() {
   const [machines, setMachines] = useState<any[]>([]);
   const [dbType, setDbType] = useState<string>('supabase');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
   const [shiftStatus, setShiftStatus] = useState('offline');
 
   // Search & Filters State
@@ -130,9 +132,10 @@ export default function EmployeePage() {
         router.replace('/?auth=login');
         return;
       }
-      console.error('Failed to fetch employee state:', err);
     } finally {
       setIsSyncing(false);
+      setHasInitialDataLoaded(true);
+      useUIStore.getState().markDashboardReady();
     }
   };
 
@@ -349,10 +352,13 @@ export default function EmployeePage() {
     setQueuePage(1);
   }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
 
-  if (!isHydrated || !isAuthenticated || !checkAccess('employee')) {
+  if (!isHydrated || !isAuthenticated || !checkAccess('employee') || !hasInitialDataLoaded) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0f172a] text-white">
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-bg-dark text-text-main gap-3">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <span className="text-xs font-bold tracking-wider uppercase text-text-dim">
+          Preparing Staff Workspace...
+        </span>
       </div>
     );
   }

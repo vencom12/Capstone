@@ -147,8 +147,8 @@ export default function AuthModal() {
       );
 
       if (res.success) {
-        showToast(`Account created! Welcome, ${res.user?.username || 'Customer'}!`, 'success');
         handleClose();
+        useUIStore.getState().triggerWelcome(res.user?.username || 'Customer', res.user?.role || 'customer');
         router.refresh();
       } else {
         setFormError(res.message || 'Registration failed.');
@@ -162,7 +162,7 @@ export default function AuthModal() {
     }
   };
 
-  // Smart Unified Login: Single clean toast, automatic role-based routing
+  // Smart Unified Login: Full-screen theme-aware welcome transition, automatic role-based routing
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -177,8 +177,8 @@ export default function AuthModal() {
       const res = await login(email.trim(), password, rememberMe);
       
       if (res.success) {
-        showToast(`Welcome back, ${res.user?.username || 'User'}!`, 'success');
         handleClose();
+        useUIStore.getState().triggerWelcome(res.user?.username || 'User', res.user?.role || 'customer');
 
         // Smart Role-Based Routing
         if (res.user?.role === 'admin') {
