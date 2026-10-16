@@ -176,89 +176,6 @@ This document compiles all chronological revisions, architectural refactors, bug
 
 ---
 
-### 13. Transactional Email Infrastructure via Brevo HTTP API (Port 443 on Render Cloud)
-* **Classification:** Cloud Network Architecture & Notification Engine
-* **Context & Problem:** Render's Free tier strictly blocks outbound standard SMTP ports (`25`, `465`, `587`). The previous Nodemailer configuration connecting to Gmail SMTP hung for 30 seconds before timing out, causing password reset and email verification deliveries to fail in production.
-* **Solution:**
-  - Integrated **Brevo (Sendinblue) REST API v3** (`https://api.brevo.com/v3/smtp/email`) over standard HTTPS (Port 443), fully bypassing cloud SMTP port blocks without requiring custom domain DNS records.
-  - Implemented an automated four-tier fallback dispatcher in `utils/emailService.js`: Brevo HTTP API → Resend HTTP API → Local Gmail SMTP → Console Simulation.
-  - Configured `render.yaml` and `.env` with `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` for 300 free transactional emails/day.
-* **Key Files:**
-  - `utils/emailService.js`
-  - `render.yaml`
-  - `.env`
-
----
-
-### 14. Reactive State Guard & URL Token Extraction on Reset Password Page
-* **Classification:** Frontend React Lifecycle & State Architecture
-* **Context & Problem:** When a customer clicked an emailed reset link, the reset page prematurely scrubbed the URL query string using `window.history.replaceState` on initial mount. In Next.js App Router, this reactive change caused `useSearchParams().get('token')` to immediately evaluate to `null`, displaying a false-positive error: *"No reset token found. Please use the link from your email."* even though the token was completely valid.
-* **Solution:**
-  - Introduced a persistent ref lock (`hasCapturedToken = useRef(Boolean(rawToken))`) in `frontend/src/app/reset-password/page.tsx` to cache the token in memory across render passes.
-  - Deferred URL query string sanitization to trigger exclusively *after* a successful password change submission.
-* **Key Files:**
-  - `frontend/src/app/reset-password/page.tsx`
-
----
-
-### 15. Single-Use Reset Token Invalidation & Current Password Reuse Prevention
-* **Classification:** Identity Governance & Authentication Security
-* **Context & Problem:** 
-  1. Reset links remained reusable after being consumed: token hashes stored in PostgreSQL failed to match deletion queries checking `token: { startsWith: 'rst_' }` because hex hashes do not start with `rst_`.
-  2. Users were permitted to set their new password to their current existing password without restriction.
-* **Solution:**
-  - Enforced password reuse prevention via `bcrypt.compare(password, user.password)` in both `resetPassword` and `changePassword`. Rejects matching passwords with: *"Your new password cannot be the same as your current password. Please choose a different password."*
-  - Corrected the token invalidation query to delete by `id: record.id` and `userId: record.userId`.
-  - Guaranteed single-use enforcement: purges all active reset and verification tokens for the user account immediately upon a successful password change.
-* **Key Files:**
-  - `controllers/postgres/authController.js`
-
----
-
-### 16. Elimination of Unwanted Form Discard Confirmation Dialog
-* **Classification:** UI/UX Interaction Polish & Modal Architecture
-* **Context & Problem:** In the Forgot Password modal, typing an email and clicking the close button ("✕") triggered an intrusive, squished confirmation dialog: *"Discard unsaved changes? Keep Editing / Discard"*.
-* **Solution:**
-  - Diagnosed `frontend/src/components/ui/GlassModal.tsx`: an aggressive document-level keystroke listener (`onInput`/`onChange` setting `hasUserTyped = true`) was intercepting input on every modal across the application.
-  - Removed the keystroke listener. Confined dirty checks strictly to forms that explicitly pass `warnOnDiscard={true}` with an active `isDirty` state.
-  - Configured `frontend/src/components/auth/AuthModal.tsx` with `isDirty={false}` so the Auth/Forgot modal closes instantly with zero popups.
-* **Key Files:**
-  - `frontend/src/components/ui/GlassModal.tsx`
-  - `frontend/src/components/auth/AuthModal.tsx`
-
----
-
-### 17. Flexible Identifier Matching (Username or Email) in Password Recovery
-* **Classification:** Authentication Usability & Account Recovery
-* **Context & Problem:** Privileged accounts (like the store administrator) often use dedicated usernames (e.g., `ryven`) rather than email addresses. The Forgot Password form strictly validated email format with `@`, preventing administrators from requesting a reset using their username.
-* **Solution:**
-  - Updated `forgotPassword` in `controllers/postgres/authController.js` to look up users with an `OR` query across both `email` and `username`.
-  - Updated `AuthModal.tsx` input to accept either username or email and updated helper copy to explicitly guide users to check their Spam/Junk folders.
-  - Fixed the reset cooldown query in `authController.js` to query by `userId`.
-* **Key Files:**
-  - `controllers/postgres/authController.js`
-  - `frontend/src/components/auth/AuthModal.tsx`
-
----
-
-### 18. Next.js 16.4.2 Security Upgrade & Dependency Vulnerability Remediation
-* **Classification:** Supply Chain Security & Dependency Hardening
-* **Context & Problem:** Cloud deployment logs on Render flagged `19 vulnerabilities (1 low, 1 moderate, 16 high, 1 critical)`, primarily stemming from unpatched Next.js 16.2.6 core modules and transitively bundled build dependencies.
-* **Solution:**
-  - Upgraded Next.js and ESLint plugin to `16.4.2` (`next@16.4.2`, `eslint-config-next@16.4.2`) in `frontend/package.json`, patching Next.js core advisories (SSRF, Image Optimization, PostCSS, Sharp).
-  - Upgraded root backend dependencies: `compression` to `^1.8.2` (memory leak patch) and `nodemailer` to `^10.1.1` (SSRF/addressparser patch).
-  - Implemented npm `overrides` in both root and frontend for `@grpc/grpc-js` (`^1.14.6`), `braces` (`3.0.3`), `proxy-addr` (`^2.0.7`), and `qs` (`^6.14.0`).
-  - Added `--no-audit` flag to cloud deployment commands in `render.yaml` and `package.json` to prevent informational advisory text from cluttering production build logs.
-  - Verified compilation: full Next.js Turbopack build succeeded with 0 errors in 5.1s across all 11 static routes.
-* **Key Files:**
-  - `frontend/package.json`
-  - `frontend/package-lock.json`
-  - `package.json`
-  - `package-lock.json`
-  - `render.yaml`
-
----
-
 ## 3. Comprehensive Verification & Testing Results
 
 | Test ID | Testing Target | Scope & Methodology | Verification Result | Operational Status |
@@ -270,18 +187,12 @@ This document compiles all chronological revisions, architectural refactors, bug
 | **T-05** | Google Auth Session Invalidation | Logout execution & page reload in browser | **PASSED** | `signOut(auth)` warded off auto-login loop; reloaded page remains cleanly logged out. |
 | **T-06** | Retail Material Dropdown | Add Material modal UI inspection | **PASSED** | Machine oil removed; retail products and thread colors display with appropriate auto-unit switching. |
 | **T-07** | Backend Server Health | Running Express instance on port 5001 | **PASSED** | Clean response from `GET /api/health` with active PostgreSQL connection. |
-| **T-08** | Brevo HTTP Email Dispatch | Live API call to Brevo v3 endpoint over Port 443 | **PASSED** (201 Created) | Dispatched real transactional emails with valid Message ID directly to Gmail recipient. |
-| **T-09** | Reset Token State Retention | Client token capture across component mounting | **PASSED** | Ref lock prevented premature query string clearing; token persisted smoothly into submit handler. |
-| **T-10** | Password Reuse Prevention | Submission of identical existing password via bcrypt compare | **PASSED** (400 Bad Request) | API rejected with: *"Your new password cannot be the same as your current password."* |
-| **T-11** | Single-Use Token Invalidation | Re-submitting reset request with previously consumed token | **PASSED** (400 Bad Request) | Deleted from database upon first use; subsequent attempts rejected with expired/used notice. |
-| **T-12** | Modal Keystroke Discard Decoupling | Keystroke entry followed by modal backdrop/close click | **PASSED** | Discard dialog eliminated on Auth and Forgot modals; instant closing restored. |
-| **T-13** | Next.js 16.4.2 Turbopack Build | `next build` with upgraded 16.4.2 core | **PASSED** (0 errors in 5.1s) | All 11 static pages generated with zero vulnerability alerts or deprecation warnings. |
 
 ---
 
 ## 4. Current System State & Readiness
 
-* **Branch:** `main` (clean working directory, pushed to `origin/main` at commit `c9e9d09`).
-* **Backend Engine:** Port `5001` (Express, Prisma ORM, PostgreSQL, Brevo HTTP API).
-* **Frontend Application:** Port `3000` (Next.js 16.4.2 with Turbopack).
-* **Readiness Level:** **Ready for User Acceptance, Production Deployment & Defense Presentation.**
+* **Branch:** `main` (clean working directory, pushed to `origin/main` at commit `4064495`).
+* **Backend Engine:** Port `5001` (Express, Prisma ORM, PostgreSQL).
+* **Frontend Application:** Port `3000` (Next.js 16 with Turbopack).
+* **Readiness Level:** **Ready for User Acceptance & Operational Testing.**
