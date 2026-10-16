@@ -677,8 +677,8 @@ export default function EmployeePage() {
                                              r="22"
                                              className="transition-all duration-500 ease-out"
                                              style={{
-                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#2563eb',
-                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(37,99,235,0.5)'})`
+                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#10b981',
+                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'})`
                                              }}
                                              strokeWidth="4"
                                              fill="transparent"

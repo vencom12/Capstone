@@ -10,7 +10,7 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: 'bg-primary text-white hover:bg-[#1d4ed8] shadow-sm hover:shadow-md transition-all',
+  primary: 'bg-primary text-white hover:bg-[#991b1b] shadow-sm hover:shadow-md transition-all',
   secondary: 'bg-bg-surface text-text-main border border-border-glass hover:bg-bg-surface/80',
   ghost: 'text-text-dim hover:text-text-main hover:bg-bg-surface',
   danger: 'bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20',

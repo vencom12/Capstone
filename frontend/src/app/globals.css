@@ -11,11 +11,11 @@
   /* Fonts */
   --font-sans: var(--font-outfit), 'Inter', sans-serif;
 
-  /* Color Palette - Industrial Precision Sapphire (Eye-Friendly, Anti-Fatigue) */
-  --color-primary: #2563eb;
-  --color-primary-glow: rgba(37, 99, 235, 0.2);
-  --color-secondary: #3b82f6;
-  --color-accent: #0284c7;
+  /* Color Palette - Artisan Crimson (EDZ Official Brand Identity) */
+  --color-primary: #b91c1c;
+  --color-primary-glow: rgba(185, 28, 28, 0.2);
+  --color-secondary: #dc2626;
+  --color-accent: #991b1b;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
@@ -62,7 +62,7 @@
   --color-text-main: #1c1917;     /* Warm Charcoal 900 - soft & highly readable */
   --color-text-dim: #78716c;      /* Warm Stone 500 */
   --color-border-glass: rgba(68, 64, 60, 0.12); /* Warm organic outline */
-  --color-primary-glow: rgba(37, 99, 235, 0.12);
+  --color-primary-glow: rgba(185, 28, 28, 0.12);
 }
 
 /* ========================================
@@ -449,7 +449,7 @@ input[type="date"]:focus {
 /* Modernize the native browser calendar trigger icon */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(0.8) sepia(100%) saturate(1000%) hue-rotate(210deg) brightness(1.2);
+  filter: invert(0.8) sepia(100%) saturate(1000%) hue-rotate(330deg) brightness(1.1);
   transition: all 0.2s ease-in-out;
   padding: 4px;
   border-radius: 6px;

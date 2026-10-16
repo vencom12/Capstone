@@ -40,7 +40,7 @@ export default function DynamicFavicon() {
             start_url: "/",
             display: "standalone",
             background_color: "#0f172a",
-            theme_color: "#2563eb",
+            theme_color: "#b91c1c",
             icons: [{ src: res.businessLogoUrl || "/favicon.ico", sizes: "192x192 512x512", type: "image/png" }]
           };
           const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });

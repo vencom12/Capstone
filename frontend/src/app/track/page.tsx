@@ -192,7 +192,7 @@ function OrderTrackerContent() {
   if (!rawId) {
     return (
       <main className="flex-1 p-6 max-w-sm w-full mx-auto flex flex-col items-center justify-center text-center gap-6">
-        <div className="w-16 h-16 rounded-xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-3xl shadow-lg shadow-blue-950/50">
+        <div className="w-16 h-16 rounded-xl bg-red-600/10 border border-red-500/30 flex items-center justify-center text-3xl shadow-lg shadow-red-950/50">
           🎟️
         </div>
 
@@ -209,14 +209,14 @@ function OrderTrackerContent() {
             placeholder="e.g. WI-582B or A-582B"
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-            className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-lg text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-blue-500 transition shadow-inner"
+            className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-lg text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-red-500 transition shadow-inner"
             required
             autoFocus
           />
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-blue-950/50 cursor-pointer"
+            className="w-full py-3.5 rounded-lg bg-red-600 hover:bg-red-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-red-950/50 cursor-pointer"
           >
             Check Order Status
           </button>
@@ -233,7 +233,7 @@ function OrderTrackerContent() {
   if (isLoading && !order) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-3" />
         <p className="text-xs text-slate-400">Loading order status...</p>
       </div>
     );
@@ -253,7 +253,7 @@ function OrderTrackerContent() {
         <button
           type="button"
           onClick={() => router.push('/track')}
-          className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow cursor-pointer"
+          className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition shadow cursor-pointer"
         >
           Enter Different Code
         </button>
@@ -444,11 +444,11 @@ function OrderTrackerContent() {
 
 export default function MobileOrderTrackerPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-slate-900/90 backdrop-blur-md px-5 py-3.5 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-sm text-white shadow">
+          <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-sm text-white shadow">
             E
           </div>
           <div>

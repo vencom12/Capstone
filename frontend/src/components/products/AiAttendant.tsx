@@ -691,7 +691,7 @@ export default function AiAttendant() {
                               border-none cursor-pointer transition-all duration-200
                               ${oos
                                 ? 'bg-white/5 text-text-dim cursor-not-allowed'
-                                : 'bg-primary text-white hover:bg-[#1d4ed8] hover:shadow-md active:scale-95'
+                                : 'bg-primary text-white hover:bg-[#991b1b] hover:shadow-md active:scale-95'
                               }
                             `}
                           >
@@ -759,7 +759,7 @@ export default function AiAttendant() {
                 suppressHydrationWarning
                 onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-                className="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center border-none cursor-pointer transition-all hover:bg-[#1d4ed8] disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
+                className="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center border-none cursor-pointer transition-all hover:bg-[#991b1b] disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
                 aria-label="Send message"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -617,7 +617,7 @@ export default function PanelSettings({
 
                     <div className="flex items-center gap-2">
                       <label className="flex-1">
-                        <span className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-semibold rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 cursor-pointer transition-all active:scale-95 text-center">
+                        <span className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-semibold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all active:scale-95 text-center">
                           {isUploadingQr ? 'Uploading QR...' : 'Upload New QR Code'}
                         </span>
                         <input
@@ -809,7 +809,7 @@ export default function PanelSettings({
           {activeTab === 'ai' && (
             <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col animate-[fadeIn_0.2s_ease-out]">
               <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="4" y="4" width="16" height="16" rx="2" />
                     <rect x="9" y="9" width="6" height="6" />

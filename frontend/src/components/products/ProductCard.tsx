@@ -149,7 +149,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               <span
                 key={i}
                 className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
-                style={{ backgroundColor: v.color || '#2563eb' }}
+                style={{ backgroundColor: v.color || '#b91c1c' }}
                 title={v.name}
               />
             ))}
