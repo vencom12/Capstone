@@ -62,11 +62,15 @@ function ResetPasswordContent() {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       } else {
-        setMessage(res.message || 'Could not reset password.');
+        const errMsg = res.message || 'Could not reset password.';
+        if (errMsg.toLowerCase().includes('already been used') || errMsg.toLowerCase().includes('expired') || errMsg.toLowerCase().includes('invalid')) {
+          setStatus('error');
+        }
+        setMessage(errMsg);
       }
     } catch (err: any) {
       setStatus('error');
-      setMessage(err.message || 'This reset link is invalid or has expired.');
+      setMessage(err.message || 'This reset link has already been used or has expired.');
     } finally {
       setSubmitting(false);
     }

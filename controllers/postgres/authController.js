@@ -1061,23 +1061,49 @@ exports.resetPassword = async (req, res) => {
             }
         });
         if (!record) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired reset link. Please request a new one.' });
+            return res.status(400).json({ success: false, message: 'This reset link has already been used or has expired. Please request a new one.' });
         }
         if (new Date() > new Date(record.expiresAt)) {
             await prisma.emailVerification.deleteMany({ where: { id: record.id } }).catch(() => {});
             return res.status(400).json({ success: false, message: 'This reset link has expired. Please request a new one.' });
         }
 
+        const user = await prisma.user.findUnique({ where: { id: record.userId } });
+        if (!user) {
+            await prisma.emailVerification.deleteMany({ where: { id: record.id } }).catch(() => {});
+            return res.status(404).json({ success: false, message: 'User account not found.' });
+        }
+
+        // Prevent reusing the exact same current password
+        if (user.password) {
+            const isSamePassword = await bcrypt.compare(password, user.password);
+            if (isSamePassword) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Your new password cannot be the same as your current password. Please choose a different password.' 
+                });
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         await prisma.user.update({
-            where: { id: record.userId },
+            where: { id: user.id },
             data: {
                 password: hashedPassword,
                 isEmailVerified: true,
                 tokenVersion: { increment: 1 }
             }
         });
-        await prisma.emailVerification.deleteMany({ where: { userId: record.userId, token: { startsWith: 'rst_' } } });
+
+        // Single-use guarantee: Invalidate all verification/reset tokens for this user immediately
+        await prisma.emailVerification.deleteMany({
+            where: {
+                OR: [
+                    { id: record.id },
+                    { userId: record.userId }
+                ]
+            }
+        }).catch(() => {});
 
         res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
     } catch (err) {
@@ -1120,6 +1146,12 @@ exports.changePassword = async (req, res) => {
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ success: false, message: 'Current password is incorrect. Please verify and try again.' });
+        }
+
+        // Verify new password is not identical to current password
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({ success: false, message: 'New password cannot be the same as your current password. Please choose a different password.' });
         }
 
         // Hash new password and increment tokenVersion (revoking other active sessions)
