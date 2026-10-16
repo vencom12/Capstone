@@ -54,14 +54,14 @@
    Soft, eye-friendly cream & linen tones with warm stone typography
    ======================================== */
 [data-theme="light"] {
-  --color-bg-dark: #f7f4ee;       /* Warm Linen base - soothing, zero glare */
-  --color-bg-card: #fffefb;       /* Soft Ivory Porcelain for cards */
-  --color-bg-sidebar: #f0ebe1;    /* Warm Oat/Stone sidebar */
-  --color-bg-header: rgba(247, 244, 238, 0.92);
-  --color-bg-surface: #eae3d5;    /* Muted sand tone for inputs, nested boxes */
-  --color-text-main: #1c1917;     /* Warm Charcoal 900 - soft & highly readable */
-  --color-text-dim: #78716c;      /* Warm Stone 500 */
-  --color-border-glass: rgba(68, 64, 60, 0.12); /* Warm organic outline */
+  --color-bg-dark: #f8fafc;       /* Crisp Porcelain base - clean, modern, zero glare */
+  --color-bg-card: #ffffff;       /* Pure white elevated cards */
+  --color-bg-sidebar: #f1f5f9;    /* Clean subtle slate sidebar */
+  --color-bg-header: rgba(255, 255, 255, 0.92);
+  --color-bg-surface: #f1f5f9;    /* Clean soft slate for nested surfaces & inputs */
+  --color-text-main: #0f172a;     /* Deep Slate 900 - crisp maximum readability */
+  --color-text-dim: #64748b;      /* Slate 500 */
+  --color-border-glass: rgba(15, 23, 42, 0.08); /* Crisp subtle border */
   --color-primary-glow: rgba(185, 28, 28, 0.12);
 }
 
@@ -549,12 +549,12 @@ select option {
   fill: var(--color-text-main) !important;
   color: var(--color-text-main) !important;
 }
-/* Warm Ambient Diffusion Shadows for Light Mode */
+/* Ambient Clean Shadows for Light Mode */
 [data-theme="light"] .glass-card,
 [data-theme="light"] .dash-card,
 [data-theme="light"] .glass-table-container,
 [data-theme="light"] .dash-table-container {
-  box-shadow: 0 4px 20px -2px rgba(68, 64, 60, 0.05), 0 2px 6px -1px rgba(68, 64, 60, 0.03);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.04);
 }
 
 [data-theme="light"] .modal-box {
@@ -563,16 +563,16 @@ select option {
 }
 
 [data-theme="light"] select option {
-  background-color: #fffefb;
-  color: #1c1917;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 [data-theme="light"] ::-webkit-scrollbar-track {
-  background: rgba(240, 235, 225, 0.6);
+  background: rgba(241, 245, 249, 0.8);
 }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(68, 64, 60, 0.18);
+  background: rgba(100, 116, 139, 0.25);
 }
 
 @keyframes slideDown {

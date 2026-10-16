@@ -608,9 +608,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
-                          ? 'bg-primary text-white'
-                          : 'bg-white/5 text-text-dim hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${selectedCategory === cat
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main'
                         }`}
                     >
                       {cat}
@@ -629,13 +629,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       type="button"
                       onClick={() => handleSelectItem(item)}
                       className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                          ? 'bg-primary/20 border-primary text-white shadow-sm ring-1 ring-primary/50'
-                          : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
+                          ? 'bg-primary/10 border-primary text-text-main shadow-sm ring-1 ring-primary/40'
+                          : 'bg-bg-card border-border-glass text-text-main hover:border-primary/40'
                         }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-bold text-xs leading-snug">{item.name}</span>
-                        <span className="font-mono font-bold text-xs text-primary shrink-0">₱{item.price}</span>
+                        <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">
                         <span>{item.category}</span>
@@ -723,7 +723,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     setMonogramText(e.target.value.toUpperCase());
                     if (intakeError) setIntakeError(null);
                   }}
-                  className="w-full bg-white/[0.03] border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
+                  className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
                 />
               </div>
             </div>
@@ -737,22 +737,22 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </span>
 
               {/* Compact Quantity & Price Block */}
-              <div className="bg-white/[0.03] border border-border-glass rounded-xl p-3 flex items-center justify-between">
+              <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-dim font-medium">Qty:</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                      className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 text-white font-bold text-xs cursor-pointer"
+                      className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
                     >
                       -
                     </button>
-                    <span className="font-mono font-bold text-sm px-2">{quantity}</span>
+                    <span className="font-mono font-bold text-sm px-2 text-text-main">{quantity}</span>
                     <button
                       type="button"
                       onClick={() => setQuantity(q => q + 1)}
-                      className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 text-white font-bold text-xs cursor-pointer"
+                      className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
                     >
                       +
                     </button>
@@ -761,7 +761,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                 <div className="text-right">
                   <span className="text-[11px] text-text-dim block">Total Due:</span>
-                  <span className="text-2xl font-black font-mono text-emerald-400">
+                  <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                     ₱{grandTotal.toFixed(2)}
                   </span>
                 </div>
@@ -773,8 +773,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   type="button"
                   onClick={() => setPaymentMethod('Cash')}
                   className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'Cash'
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
-                      : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
                     }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -789,7 +789,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   onClick={() => setPaymentMethod('GCash')}
                   className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'GCash'
                       ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
+                      : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
                     }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -802,7 +802,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
               {/* GCash Counter QR Standee Info & Optional Ref # */}
               {paymentMethod === 'GCash' && (
-                <div className="bg-white/5 border border-border-glass rounded-xl p-3 flex flex-col gap-2">
+                <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -812,7 +812,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <line x1="7" y1="16" x2="13" y2="16" />
                     </svg>
                     <div>
-                      <span className="text-xs font-bold text-white block">
+                      <span className="text-xs font-bold text-text-main block">
                         Customer scans printed counter QR standee
                       </span>
                       <span className="text-[11px] text-text-dim">
@@ -825,7 +825,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     placeholder="GCash Ref # (optional, e.g. 8492)"
                     value={gcashRef}
                     onChange={(e) => setGcashRef(e.target.value)}
-                    className="w-full bg-black/40 border border-border-glass px-3 py-1.5 rounded-lg text-text-main text-xs font-mono outline-none placeholder:text-text-dim/40 focus:border-primary"
+                    className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-lg text-text-main text-xs font-mono outline-none placeholder:text-text-dim/60 focus:border-primary"
                   />
                 </div>
               )}
@@ -837,7 +837,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   placeholder="Customer Phone or Google Email (optional)"
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-lg text-text-main text-xs outline-none"
+                  className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary transition"
                 />
               </div>
 
@@ -1050,13 +1050,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Scope Switcher: All vs Walk-In Only */}
-              <div className="flex bg-white/5 border border-border-glass rounded-lg p-0.5 text-xs font-bold self-stretch sm:self-auto">
+              <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs font-bold self-stretch sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setQueueScope('all')}
                   className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'all'
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-dim hover:text-white'
+                      : 'text-text-dim hover:text-text-main'
                     }`}
                 >
                   All Shop Orders ({allActiveQueueOrders.length})
@@ -1066,7 +1066,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   onClick={() => setQueueScope('walkin_only')}
                   className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'walkin_only'
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-dim hover:text-white'
+                      : 'text-text-dim hover:text-text-main'
                     }`}
                 >
                   Walk-In Slips Only ({walkInActiveOrders.length})
@@ -1082,9 +1082,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('all')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${queueFilterStage === 'all'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${queueFilterStage === 'all'
                     ? 'bg-primary text-white shadow-sm'
-                    : 'bg-white/5 text-text-dim hover:text-white'
+                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
               >
                 All Stages ({queueScope === 'all' ? allActiveQueueOrders.length : walkInActiveOrders.length})
@@ -1092,9 +1092,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('in_queue')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'in_queue'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'in_queue'
                     ? 'bg-primary text-white shadow-sm'
-                    : 'bg-white/5 text-text-dim hover:text-white'
+                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
@@ -1104,9 +1104,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('stitching')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'stitching'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'stitching'
                     ? 'bg-primary text-white shadow-sm'
-                    : 'bg-white/5 text-text-dim hover:text-white'
+                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
@@ -1116,9 +1116,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="button"
                 onClick={() => setQueueFilterStage('ready')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'ready'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'ready'
                     ? 'bg-primary text-white shadow-sm'
-                    : 'bg-white/5 text-text-dim hover:text-white'
+                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
@@ -1152,7 +1152,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 return (
                   <div
                     key={order.id}
-                    className={`bg-bg-surface rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition ${isReady
+                    className={`bg-bg-card rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition hover:shadow-md ${isReady
                         ? 'border-emerald-500/40'
                         : isStitching
                           ? 'border-primary/40'
@@ -1168,12 +1168,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               #{order.orderId}
                             </span>
                             {/* Visual Anti-Fraud Claim Code */}
-                            <span className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs font-bold text-text-main border border-white/10">
+                            <span className="px-2 py-0.5 rounded bg-bg-surface font-mono text-xs font-bold text-text-main border border-border-glass">
                               {claimCode}
                             </span>
                           </div>
                           <span className="text-xs text-text-dim block mt-0.5 font-medium">
-                            Customer: <strong className="text-white">{order.client}</strong>
+                            Customer: <strong className="text-text-main font-bold">{order.client}</strong>
                           </span>
                         </div>
 
@@ -1213,22 +1213,22 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       </div>
 
                       {/* Detail Box */}
-                      <div className="bg-black/25 border border-white/5 p-3 rounded-lg flex flex-col gap-1.5 text-xs">
+                      <div className="bg-slate-50 dark:bg-black/30 border border-border-glass p-3 rounded-lg flex flex-col gap-1.5 text-xs">
                         <div className="flex justify-between">
                           <span className="text-text-dim">Item Blank:</span>
                           <span className="font-semibold text-text-main">{order.design}</span>
                         </div>
                         {textToStitch && (
-                          <div className="flex justify-between items-center bg-white/[0.02] p-1.5 rounded border border-white/5">
+                          <div className="flex justify-between items-center bg-bg-card p-1.5 rounded-md border border-border-glass">
                             <span className="text-text-dim text-[11px]">Monogram Text:</span>
-                            <span className="font-bold text-primary-light uppercase font-mono text-sm tracking-wider">
+                            <span className="font-bold text-primary uppercase font-mono text-sm tracking-wider">
                               "{textToStitch}"
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between pt-1 border-t border-white/5">
                           <span className="text-text-dim">Payment:</span>
-                          <span className="font-mono text-emerald-400 font-bold">
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                             ₱{order.totalAmount?.toFixed(2)} ({order.paymentStatus === 'paid' ? 'PAID' : 'UNPAID'})
                           </span>
                         </div>
@@ -1242,7 +1242,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           type="button"
                           disabled={isBusy}
                           onClick={() => handleStartStitching(order)}
-                          className="flex-1 py-2.5 px-3 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-primary/10 hover:bg-primary border border-primary/30 hover:border-primary text-primary hover:text-white active:scale-[0.99] text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round" />
@@ -1256,7 +1256,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           type="button"
                           disabled={isBusy}
                           onClick={() => handleMarkStitchingDone(order)}
-                          className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-500/15 hover:bg-emerald-600 border border-emerald-500/30 hover:border-emerald-600 text-emerald-600 dark:text-emerald-300 hover:text-white active:scale-[0.99] text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
