@@ -250,7 +250,7 @@ export default function ProductModal({
       <div className="grid grid-cols-[1fr_1.15fr] max-[900px]:grid-cols-1">
         {/* Image & Preview Section */}
         <div className="bg-bg-surface/50 flex flex-col items-center justify-center p-6 relative border-r border-border-glass max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:h-[220px] max-[900px]:p-4 max-[650px]:h-[180px]">
-          <div className="w-full max-w-[320px] aspect-square rounded-[24px] overflow-hidden bg-bg-surface shadow-sm border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
+          <div className="w-full max-w-[320px] aspect-square rounded-xl overflow-hidden bg-bg-surface shadow-sm border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
             {(selectedVariant?.imageUrl || product.imageUrl) ? (
               <OptimizedImage
                 src={selectedVariant?.imageUrl || product.imageUrl}
@@ -474,7 +474,7 @@ export default function ProductModal({
           )}
 
           {/* Custom Embroidery Personalization (Lettering / Monogram) */}
-          <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-2xl border border-white/5">
+          <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-xl border border-white/5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-text-main flex items-center gap-1.5 cursor-pointer">
                 <span>🪡</span>
@@ -513,7 +513,7 @@ export default function ProductModal({
                     placeholder="e.g. Dr. Rafael Santos or R.S."
                     className={`w-full bg-bg-surface border ${
                       monogramError ? 'border-rose-500/60 ring-1 ring-rose-500/30' : 'border-border-glass'
-                    } focus:border-primary p-2.5 rounded-xl text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
+                    } focus:border-primary p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
                   />
                   <InlineError message={monogramError} className="mt-1" />
                 </div>

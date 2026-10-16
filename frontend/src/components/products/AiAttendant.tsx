@@ -581,7 +581,7 @@ export default function AiAttendant() {
           max-[500px]:rounded-none
         `}
       >
-        <div className="w-full h-full bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl max-[500px]:rounded-none flex flex-col overflow-hidden shadow-xl">
+        <div className="w-full h-full bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-xl max-[500px]:rounded-none flex flex-col overflow-hidden shadow-xl">
 
           {/* Header */}
           <div 
@@ -589,7 +589,7 @@ export default function AiAttendant() {
             onTouchStart={handleTouchStart}
             className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-bg-surface cursor-grab select-none"
           >
-            <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0 font-bold">
+            <div className="w-9 h-9 rounded-lg bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0 font-bold">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
               </svg>
@@ -640,8 +640,8 @@ export default function AiAttendant() {
                 <div className={`
                   max-w-[85%] px-4 py-2.5 text-[0.85rem] leading-relaxed
                   ${msg.role === 'user'
-                    ? 'bg-primary text-white rounded-2xl rounded-br-md whitespace-pre-wrap'
-                    : 'bg-white/[0.06] border border-border-glass text-text-main rounded-2xl rounded-bl-md'
+                    ? 'bg-primary text-white rounded-xl rounded-br-md whitespace-pre-wrap'
+                    : 'bg-white/[0.06] border border-border-glass text-text-main rounded-xl rounded-bl-md'
                   }
                 `}>
                   {msg.role === 'user' ? (
@@ -691,7 +691,7 @@ export default function AiAttendant() {
                               border-none cursor-pointer transition-all duration-200
                               ${oos
                                 ? 'bg-white/5 text-text-dim cursor-not-allowed'
-                                : 'bg-primary text-white hover:bg-[#4f46e5] hover:shadow-md active:scale-95'
+                                : 'bg-primary text-white hover:bg-[#1d4ed8] hover:shadow-md active:scale-95'
                               }
                             `}
                           >
@@ -708,7 +708,7 @@ export default function AiAttendant() {
             {/* Typing Indicator */}
             {isLoading && (
               <div className="flex items-start">
-                <div className="bg-white/[0.06] border border-border-glass rounded-2xl rounded-bl-md px-4 py-3 flex gap-1.5">
+                <div className="bg-white/[0.06] border border-border-glass rounded-xl rounded-bl-md px-4 py-3 flex gap-1.5">
                   <span className="w-2 h-2 bg-text-dim rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <span className="w-2 h-2 bg-text-dim rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-2 h-2 bg-text-dim rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -728,7 +728,7 @@ export default function AiAttendant() {
                   onClick={startListening}
                   type="button"
                   className={`
-                    w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer
+                    w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer
                     ${isListening 
                       ? 'bg-danger/20 border-danger/40 text-danger  animate-pulse'
                       : 'bg-white/[0.05] border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
@@ -753,13 +753,13 @@ export default function AiAttendant() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
-                className="flex-1 bg-white/[0.05] border border-border-glass text-text-main px-4 py-2.5 rounded-xl text-[0.85rem] outline-none transition-all focus:border-primary placeholder:text-text-dim/50 disabled:opacity-50"
+                className="flex-1 bg-white/[0.05] border border-border-glass text-text-main px-4 py-2.5 rounded-lg text-[0.85rem] outline-none transition-all focus:border-primary placeholder:text-text-dim/50 disabled:opacity-50"
               />
               <button
                 suppressHydrationWarning
                 onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-                className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center border-none cursor-pointer transition-all hover:bg-[#4f46e5] disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
+                className="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center border-none cursor-pointer transition-all hover:bg-[#1d4ed8] disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
                 aria-label="Send message"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

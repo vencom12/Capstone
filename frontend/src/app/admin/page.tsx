@@ -527,7 +527,7 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <div className="glass-card p-5 border border-border-glass rounded-[24px] flex-1 pr-2">
+            <div className="glass-card p-5 border border-border-glass rounded-xl flex-1 pr-2">
               {isLoadingArchived ? (
                 <>
                   <div className="max-[1024px]:hidden">
@@ -628,7 +628,7 @@ export default function AdminPage() {
                           <div
                             key={id}
                             onClick={() => viewHistoryReceipt(o)}
-                            className="bg-bg-card border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative cursor-pointer"
+                            className="bg-bg-card border border-border-glass rounded-lg p-4 flex flex-col gap-3 text-left relative cursor-pointer"
                           >
                             <div className="flex justify-between items-start">
                               <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>

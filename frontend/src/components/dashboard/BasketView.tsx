@@ -115,7 +115,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           </p>
         </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[420px] bg-white/[0.02] border-2 border-dashed border-border-glass rounded-3xl">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[420px] bg-white/[0.02] border-2 border-dashed border-border-glass rounded-xl">
           <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-5 shadow-inner">
             <svg
               width="40"
@@ -182,7 +182,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         {/* Left Column: Itemized List Container (7 of 12 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col gap-3">
           {/* Header Row / Select All Controls Bar */}
-          <div className="bg-bg-surface/90 border border-border-glass rounded-2xl px-4 py-3 flex items-center justify-between backdrop-blur-md">
+          <div className="bg-bg-surface/90 border border-border-glass rounded-xl px-4 py-3 flex items-center justify-between backdrop-blur-md">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -210,7 +210,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               return (
                 <div
                   key={item.id}
-                  className={`bg-bg-surface/70 border rounded-2xl p-4 sm:p-4.5 transition-all duration-200 ${
+                  className={`bg-bg-surface/70 border rounded-xl p-4 sm:p-4.5 transition-all duration-200 ${
                     isSelected
                       ? 'border-primary/40 bg-bg-surface/90 shadow-sm'
                       : 'border-border-glass opacity-75 hover:opacity-100'
@@ -427,7 +427,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           </div>
 
           {/* Quick catalog shortcut */}
-          <div className="p-3.5 bg-white/[0.02] border border-border-glass/60 rounded-2xl flex items-center justify-between text-xs text-text-dim">
+          <div className="p-3.5 bg-white/[0.02] border border-border-glass/60 rounded-lg flex items-center justify-between text-xs text-text-dim">
             <span className="flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
                 <circle cx="12" cy="12" r="10" />
@@ -447,7 +447,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
         {/* Right Column: Clean, Focused Order Summary (5 of 12 cols on desktop) */}
         <div className="lg:col-span-4 lg:sticky lg:top-4 flex flex-col gap-4">
-          <div className="bg-bg-surface/90 border border-border-glass rounded-3xl p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col gap-4">
+          <div className="bg-bg-surface/90 border border-border-glass rounded-xl p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col gap-4">
             <h2 className="text-base font-extrabold text-text-main m-0 pb-3 border-b border-white/10 flex items-center justify-between">
               <span>Order Summary</span>
               <span className="text-xs font-mono font-bold text-primary">
@@ -501,7 +501,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               type="button"
               onClick={handleCheckout}
               disabled={selectedItems.length === 0}
-              className="w-full py-3.5 sm:py-4 rounded-2xl bg-primary hover:bg-primary-light text-white font-extrabold text-sm tracking-wide transition-all duration-200 cursor-pointer border-none shadow-lg hover:shadow-primary/30 flex items-center justify-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+              className="w-full py-3.5 sm:py-4 rounded-lg bg-primary hover:bg-primary-light text-white font-extrabold text-sm tracking-wide transition-all duration-200 cursor-pointer border-none shadow-lg hover:shadow-primary/30 flex items-center justify-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
             >
               <span>Proceed to Checkout</span>
               <span className="transition-transform group-hover:translate-x-1 font-bold">→</span>
@@ -526,7 +526,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       >
         <div className="flex flex-col items-center text-center p-2">
           {/* Warning Icon Badge */}
-          <div className="w-14 h-14 rounded-2xl bg-danger/15 border border-danger/30 text-danger flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-xl bg-danger/15 border border-danger/30 text-danger flex items-center justify-center mb-4">
             <svg
               width="28"
               height="28"
@@ -626,7 +626,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           showToast(`Updated to "${v.name}"`, 'success');
                           setEditingItem(null);
                         }}
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer text-left ${
                           isSelected
                             ? 'bg-primary/15 border-primary shadow-sm ring-1 ring-primary'
                             : 'bg-bg-surface/80 hover:bg-white/[0.06] border-border-glass hover:border-white/20'
@@ -638,11 +638,11 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             <img
                               src={v.imageUrl}
                               alt={v.name}
-                              className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0"
+                              className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
                             />
                           ) : v.color ? (
                             <div
-                              className="w-8 h-8 rounded-xl border border-white/30 shrink-0 shadow-inner flex items-center justify-center"
+                              className="w-8 h-8 rounded-lg border border-white/30 shrink-0 shadow-inner flex items-center justify-center"
                               style={{ backgroundColor: v.color }}
                             />
                           ) : (

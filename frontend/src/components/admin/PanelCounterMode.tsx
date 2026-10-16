@@ -628,7 +628,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectItem(item)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
+                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
                           ? 'bg-primary/20 border-primary text-white shadow-sm ring-1 ring-primary/50'
                           : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
                         }`}
@@ -723,7 +723,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     setMonogramText(e.target.value.toUpperCase());
                     if (intakeError) setIntakeError(null);
                   }}
-                  className="w-full bg-white/[0.03] border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
+                  className="w-full bg-white/[0.03] border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
                 />
               </div>
             </div>
@@ -772,7 +772,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('Cash')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'Cash'
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'Cash'
                       ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
                       : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
                     }`}
@@ -787,7 +787,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('GCash')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'GCash'
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'GCash'
                       ? 'bg-primary text-white border-primary shadow-sm'
                       : 'bg-white/5 border-border-glass text-text-dim hover:text-white'
                     }`}
@@ -837,7 +837,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   placeholder="Customer Phone or Google Email (optional)"
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-xl text-text-main text-xs outline-none"
+                  className="w-full bg-bg-surface border border-border-glass px-3 py-2 rounded-lg text-text-main text-xs outline-none"
                 />
               </div>
 
@@ -845,7 +845,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -897,7 +897,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectQuickItem(item)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
+                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
                           ? 'bg-primary/10 border-primary text-white shadow-sm ring-1 ring-primary/40'
                           : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
                         }`}
@@ -919,13 +919,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   placeholder="NAME / MONOGRAM FROM SLIP (e.g. SOPHIA)"
                   value={quickText}
                   onChange={(e) => setQuickText(e.target.value.toUpperCase())}
-                  className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50"
+                  className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50"
                 />
               </div>
 
               {/* Step 3: Quantity & Payment */}
               <div className="grid grid-cols-2 gap-3 mb-4 items-center">
-                <div className="flex items-center gap-2 bg-white/[0.03] border border-border-glass rounded-xl p-1.5">
+                <div className="flex items-center gap-2 bg-white/[0.03] border border-border-glass rounded-lg p-1.5">
                   <span className="text-xs text-text-dim font-medium ml-1">Qty:</span>
                   <button
                     type="button"
@@ -946,11 +946,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </button>
                 </div>
 
-                <div className="flex rounded-xl border border-border-glass p-1 bg-white/[0.03]">
+                <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03]">
                   <button
                     type="button"
                     onClick={() => setQuickPayment('Cash')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
                       }`}
                   >
                     Cash
@@ -958,7 +958,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setQuickPayment('GCash')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
                       }`}
                   >
                     GCash
@@ -971,7 +971,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 type="button"
                 disabled={isPunchSubmitting}
                 onClick={handleQuickSlipPunch}
-                className="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -1290,7 +1290,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {/* ───────────────────────────────────────────────────────────── */}
           {verifyingOrderForRelease && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade">
-              <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left">
+              <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left">
                 <div className="flex items-center justify-between pb-3 border-b border-border-glass">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
@@ -1350,7 +1350,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setVerifyingOrderForRelease(null)}
-                    className="flex-1 py-2.5 rounded-xl border border-border-glass bg-white/5 hover:bg-white/10 text-text-main text-xs font-bold transition cursor-pointer"
+                    className="flex-1 py-2.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 text-text-main text-xs font-bold transition cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1361,7 +1361,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       setVerifyingOrderForRelease(null);
                       await handleTurnOverToCustomer(ord);
                     }}
-                    className="flex-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
@@ -1380,7 +1380,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       {/* ───────────────────────────────────────────────────────────── */}
       {createdOrderTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-bg-surface border border-border-glass rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3">
+          <div className="bg-bg-surface border border-border-glass rounded-xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3">
             <OfficialClaimSlip order={createdOrderTicket} showPrintAction={true} />
             <button
               type="button"

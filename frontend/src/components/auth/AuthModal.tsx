@@ -259,7 +259,7 @@ export default function AuthModal() {
     }
   };
 
-  const inputCls = 'w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40';
+  const inputCls = 'w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40';
 
   if (view === 'forgot') {
     return (
@@ -367,7 +367,7 @@ export default function AuthModal() {
                 placeholder="e.g. johndoe"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); if (formError) setFormError(null); }}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
           )}
@@ -382,7 +382,7 @@ export default function AuthModal() {
               placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
               value={email}
               onChange={(e) => { setEmail(e.target.value); if (formError) setFormError(null); }}
-              className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
+              className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
             />
           </div>
 
@@ -398,7 +398,7 @@ export default function AuthModal() {
                 placeholder="0917 123 4567"
                 value={phoneNumber}
                 onChange={(e) => { setPhoneNumber(e.target.value.replace(/[^\d+]/g, '')); if (formError) setFormError(null); }}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
             </div>
           )}
@@ -424,7 +424,7 @@ export default function AuthModal() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); if (formError) setFormError(null); }}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 pr-11 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
+                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 pr-11 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
               />
               <button 
                 type="button"
@@ -501,7 +501,7 @@ export default function AuthModal() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isSubmitting}
-          className="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
+          className="w-full py-2.5 px-4 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
         >
           {isGoogleSubmitting ? (
             <>

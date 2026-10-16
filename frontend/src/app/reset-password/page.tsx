@@ -35,7 +35,7 @@ function ResetPasswordContent() {
   }, [rawToken, token]);
 
   const inputCls =
-    'w-full bg-bg-dark border border-border-glass px-4 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all';
+    'w-full bg-bg-dark border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +83,8 @@ function ResetPasswordContent() {
 
   if (!mounted) {
     return (
-      <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 shadow-lg text-center">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-primary/20 border border-primary/30 text-primary">
+      <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-xl p-8 shadow-lg text-center">
+        <div className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center bg-primary/20 border border-primary/30 text-primary">
           <svg className="w-8 h-8 text-primary animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
           </svg>
@@ -95,9 +95,9 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 shadow-lg">
+    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-xl p-8 shadow-lg">
       <div className="text-center mb-5">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-primary/20 border border-primary/30 text-primary">
+        <div className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center bg-primary/20 border border-primary/30 text-primary">
           {status === 'success' ? (
             <svg className="w-8 h-8 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
@@ -150,7 +150,7 @@ function ResetPasswordContent() {
             type="submit"
             disabled={submitting}
             suppressHydrationWarning
-            className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary border-none cursor-pointer disabled:opacity-50"
+            className="w-full py-3 px-6 rounded-lg font-bold text-sm text-white bg-primary border-none cursor-pointer disabled:opacity-50"
           >
             {submitting ? 'Saving...' : 'Update Password'}
           </button>
@@ -160,7 +160,7 @@ function ResetPasswordContent() {
       {status === 'success' && (
         <div className="flex flex-col gap-4 text-center">
           <p className="text-sm text-text-dim m-0">{message}</p>
-          <button onClick={goSignIn} className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary border-none cursor-pointer">
+          <button onClick={goSignIn} className="w-full py-3 px-6 rounded-lg font-bold text-sm text-white bg-primary border-none cursor-pointer">
             Sign In →
           </button>
         </div>
@@ -169,7 +169,7 @@ function ResetPasswordContent() {
       {status === 'error' && (
         <div className="flex flex-col gap-4 text-center">
           <p className="text-sm text-text-dim m-0">{message}</p>
-          <button onClick={() => router.push('/')} className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary border-none cursor-pointer">
+          <button onClick={() => router.push('/')} className="w-full py-3 px-6 rounded-lg font-bold text-sm text-white bg-primary border-none cursor-pointer">
             Go to Homepage
           </button>
           <p className="text-xs text-text-dim m-0">You can request a new link from the &ldquo;Forgot password?&rdquo; option on the sign-in form.</p>

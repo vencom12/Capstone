@@ -58,7 +58,7 @@ export default function PanelManageDesigns({
 
   const [variants, setVariants] = useState<AdminVariantItem[]>([]);
   const [variantName, setVariantName] = useState('');
-  const [variantColor, setVariantColor] = useState('#6366f1');
+  const [variantColor, setVariantColor] = useState('#2563eb');
   const [variantPrice, setVariantPrice] = useState('');
   const [variantMaterialId, setVariantMaterialId] = useState('');
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(null);
@@ -206,7 +206,7 @@ export default function PanelManageDesigns({
     setVariantToDeleteIndex(null);
     setEditingVariantIndex(index);
     setVariantName(v.name);
-    setVariantColor(v.color || '#6366f1');
+    setVariantColor(v.color || '#2563eb');
     setVariantPrice(v.priceOverride ? v.priceOverride.toString() : '');
     setVariantMaterialId(v.materialId || '');
     setColorNotice(null);
@@ -215,7 +215,7 @@ export default function PanelManageDesigns({
   const handleCancelVariantEdit = () => {
     setEditingVariantIndex(null);
     setVariantName('');
-    setVariantColor('#6366f1');
+    setVariantColor('#2563eb');
     setVariantPrice('');
     setVariantMaterialId('');
     setColorNotice(null);
@@ -974,7 +974,7 @@ export default function PanelManageDesigns({
                       >
                         <span
                           className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0 inline-block shadow-sm"
-                          style={{ backgroundColor: v.color || '#6366f1' }}
+                          style={{ backgroundColor: v.color || '#2563eb' }}
                         />
                         <span className="font-bold">{v.name}</span>
                         {(() => {

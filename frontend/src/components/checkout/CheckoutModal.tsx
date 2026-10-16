@@ -542,7 +542,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                 {/* Shopee-style active address card */}
                 <div
                   onClick={() => setIsAddressBookOpen(true)}
-                  className="p-3.5 bg-white/[0.04] border border-border-glass hover:border-primary/40 rounded-2xl flex flex-col gap-1.5 cursor-pointer transition-all group"
+                  className="p-3.5 bg-white/[0.04] border border-border-glass hover:border-primary/40 rounded-xl flex flex-col gap-1.5 cursor-pointer transition-all group"
                 >
                   {deliveryAddress || user?.address ? (
                     <>
@@ -584,15 +584,15 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                   rows={1}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none focus:border-primary resize-none placeholder:text-text-dim/40"
+                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none focus:border-primary resize-none placeholder:text-text-dim/40"
                 />
               </div>
             ) : (
               /* Single Streamlined Store Pick-up Card */
               <div className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
-                <div className="p-3 bg-white/[0.04] border border-border-glass rounded-2xl flex items-center justify-between gap-3">
+                <div className="p-3 bg-white/[0.04] border border-border-glass rounded-xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                         <polyline points="9 22 9 12 15 12 15 22" />

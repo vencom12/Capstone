@@ -511,7 +511,7 @@ export default function PersistentAssistant() {
         <div 
           style={position ? { top: `${position.y}px`, left: `${position.x}px`, bottom: 'auto', right: 'auto' } : undefined}
           className={`
-            fixed z-[10000] bg-bg-card backdrop-blur-[15px] border border-border-glass rounded-[20px] shadow-xl flex flex-col overflow-hidden
+            fixed z-[10000] bg-bg-card backdrop-blur-[15px] border border-border-glass rounded-xl shadow-xl flex flex-col overflow-hidden
             transition-all duration-300 ease-in-out
             
             ${isExpanded 
@@ -519,7 +519,7 @@ export default function PersistentAssistant() {
               : 'bottom-6 right-6 w-[380px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-8rem)]'
             }
             
-            max-[650px]:bottom-0 max-[650px]:right-0 max-[650px]:left-0 max-[650px]:w-full max-[650px]:h-[60vh] max-[650px]:max-h-[80vh] max-[650px]:rounded-b-none max-[650px]:rounded-t-[20px]
+            max-[650px]:bottom-0 max-[650px]:right-0 max-[650px]:left-0 max-[650px]:w-full max-[650px]:h-[60vh] max-[650px]:max-h-[80vh] max-[650px]:rounded-b-none max-[650px]:rounded-t-xl
             animate-[modalScaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]
           `}
         >
@@ -576,7 +576,7 @@ export default function PersistentAssistant() {
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`
-                      max-w-[85%] p-3 rounded-2xl text-[0.9rem] leading-relaxed text-left
+                      max-w-[85%] p-3 rounded-xl text-[0.9rem] leading-relaxed text-left
                       ${msg.sender === 'user' 
                         ? 'bg-primary text-white rounded-br-sm whitespace-pre-wrap' 
                         : 'bg-white/10 text-text-main rounded-bl-sm border border-border-glass'}
@@ -587,7 +587,7 @@ export default function PersistentAssistant() {
                 ))}
                 {isTyping && (
                   <div className="flex w-full justify-start">
-                    <div className="bg-white/10 text-text-dim rounded-2xl rounded-bl-sm border border-border-glass p-3 text-[0.8rem] italic animate-pulse">
+                    <div className="bg-white/10 text-text-dim rounded-xl rounded-bl-sm border border-border-glass p-3 text-[0.8rem] italic animate-pulse">
                       Analyzing and updating system context...
                     </div>
                   </div>
@@ -597,7 +597,7 @@ export default function PersistentAssistant() {
 
               {/* Input Area */}
               <form onSubmit={handleSend} className="p-3 bg-bg-surface border-t border-border-glass shrink-0">
-                <div className="flex items-center gap-2 bg-black/30 border border-border-glass rounded-xl p-1 pr-2 focus-within:border-primary transition-colors">
+                <div className="flex items-center gap-2 bg-black/30 border border-border-glass rounded-lg p-1 pr-2 focus-within:border-primary transition-colors">
                   {isClient && SpeechRecognition && (
                     <button
                       onClick={startListening}

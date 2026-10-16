@@ -40,10 +40,10 @@ function VerifyEmailContent() {
   }, [token, verifyEmailToken]);
 
   return (
-    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 text-center shadow-lg">
+    <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-xl p-8 text-center shadow-lg">
       {/* Icon */}
       <div className={`
-        w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center text-3xl
+        w-16 h-16 rounded-xl mx-auto mb-5 flex items-center justify-center text-3xl
         ${status === 'loading' ? 'bg-primary/20 border border-primary/30 animate-pulse' : ''}
         ${status === 'success' ? 'bg-green-500/20 border border-green-500/30' : ''}
         ${status === 'error' ? 'bg-red-500/20 border border-red-500/30' : ''}
@@ -81,7 +81,7 @@ function VerifyEmailContent() {
       {status === 'success' && (
         <button
           onClick={() => router.push('/')}
-          className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
+          className="w-full py-3 px-6 rounded-lg font-bold text-sm text-white cursor-pointer
             bg-primary text-white 
             shadow-sm 
             hover:shadow-md 
@@ -95,7 +95,7 @@ function VerifyEmailContent() {
         <div className="flex flex-col gap-3">
           <button
             onClick={() => router.push('/')}
-            className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white cursor-pointer
+            className="w-full py-3 px-6 rounded-lg font-bold text-sm text-white cursor-pointer
               bg-primary text-white 
               shadow-sm 
               transition-all border-none"
@@ -115,8 +115,8 @@ export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-dark p-4">
       <Suspense fallback={
-        <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-2xl p-8 text-center text-text-dim">
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center text-3xl bg-primary/20 border border-primary/30 animate-pulse">
+        <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-xl p-8 text-center text-text-dim">
+          <div className="w-16 h-16 rounded-xl mx-auto mb-5 flex items-center justify-center text-3xl bg-primary/20 border border-primary/30 animate-pulse">
             ⏳
           </div>
           <h2 className="text-lg font-bold text-text-main mb-2">Loading verification...</h2>

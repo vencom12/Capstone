@@ -33,7 +33,7 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
   return (
-    <div className="mb-5 bg-bg-card/90 border border-border-glass backdrop-blur-xl rounded-2xl p-4 shadow-sm animate-[fadeIn_0.3s_ease-out]">
+    <div className="mb-5 bg-bg-card/90 border border-border-glass backdrop-blur-xl rounded-xl p-4 shadow-sm animate-[fadeIn_0.3s_ease-out]">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -59,7 +59,7 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
           <button
             type="button"
             onClick={() => onViewDetails(order, 'tracking')}
-            className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+            className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
           >
             {isPickup ? 'Track Pick-up' : 'Track Delivery'}
           </button>

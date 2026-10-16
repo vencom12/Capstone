@@ -441,7 +441,7 @@ export default function PanelOverview({
 
 
       {/* Active orders queue (Full Width) */}
-      <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-[24px]">
+      <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-xl">
         <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
           <div className="flex items-center gap-3">
             <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
@@ -460,7 +460,7 @@ export default function PanelOverview({
               placeholder="Search ID or Customer..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
+              className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none min-w-[200px]"
             />
           </div>
         </div>
@@ -496,7 +496,7 @@ export default function PanelOverview({
         })()}
 
         {/* Batch operations desk (auto-applies when a status is selected) */}
-        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-xl mb-3 flex-wrap">
+        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-lg mb-3 flex-wrap">
           <span className="text-[0.8rem] text-text-dim font-bold">
             Batch Action ({selectedIds.length} selected):
           </span>
@@ -527,7 +527,7 @@ export default function PanelOverview({
                   const selectedList = orders.filter((o) => selectedIds.includes(o.id || o._id));
                   setBatchPrintOrders(selectedList);
                 }}
-                className="px-3 py-2 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className="px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 title="Print continuous 4x6 inch thermal dispatch labels for selected orders"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -542,7 +542,7 @@ export default function PanelOverview({
                 <button
                   type="button"
                   onClick={() => setIsManifestOpen(true)}
-                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                   title="Generate a 1-page courier pickup handover sheet for rider signature"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -700,7 +700,7 @@ export default function PanelOverview({
                 <div
                   key={id}
                   onClick={() => viewReceipt(o)}
-                  className={`bg-bg-card backdrop-blur-[12px] border rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
+                  className={`bg-bg-card backdrop-blur-[12px] border rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
                     }`}
                 >
                   {/* Select Toggle Box */}
@@ -790,7 +790,7 @@ export default function PanelOverview({
                       e.stopPropagation();
                       openEditModal(o);
                     }}
-                    className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
+                    className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
                   >
                     Edit Status Panel
                   </button>
@@ -831,7 +831,7 @@ export default function PanelOverview({
 
           return (
             <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
-              <div className="modal-box bg-white/5 p-3 rounded-xl border border-white/10 flex justify-between items-center">
+              <div className="modal-box bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
                 <div>
                   <span className="modal-label text-text-dim text-xs">Active Order ID</span>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -895,7 +895,7 @@ export default function PanelOverview({
                         key={status}
                         type="button"
                         onClick={() => setEditStatus(status)}
-                        className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border text-center
+                        className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border text-center
                           ${isActive
                             ? 'bg-primary text-white border-transparent shadow-sm'
                             : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
@@ -924,7 +924,7 @@ export default function PanelOverview({
                     value={editTrackingNumber || claimCode}
                     onChange={(e) => setEditTrackingNumber(e.target.value)}
                     placeholder="e.g. #A-9632"
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
                   />
                   <span className="text-[0.68rem] text-text-dim">
                     Customer presents this claim code at Pacific Mall Lucena counter to collect items.
@@ -950,7 +950,7 @@ export default function PanelOverview({
                     value={editTrackingNumber}
                     onChange={(e) => setEditTrackingNumber(e.target.value)}
                     placeholder="e.g. JNT-PH-78..."
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
                   />
                 </div>
               )}
@@ -967,7 +967,7 @@ export default function PanelOverview({
                       ? 'e.g. Stitched and placed on Shelf A ready for counter pick-up'
                       : 'e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier'
                   }
-                  className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
+                  className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
                 />
               </div>
 
@@ -975,14 +975,14 @@ export default function PanelOverview({
                 <button
                   type="button"
                   onClick={handleCancelOrderAdmin}
-                  className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold py-3 px-4 rounded-xl transition-all cursor-pointer text-xs font-sans flex items-center justify-center gap-1.5 shrink-0"
+                  className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold py-3 px-4 rounded-lg transition-all cursor-pointer text-xs font-sans flex items-center justify-center gap-1.5 shrink-0"
                 >
                   <span>✕</span>
                   <span>Cancel Order</span>
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center text-sm font-sans"
+                  className="flex-1 bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center text-sm font-sans"
                 >
                   Save Operational Status
                 </button>
@@ -1014,7 +1014,7 @@ export default function PanelOverview({
         maxWidth="max-w-[540px]"
       >
         <div className="flex flex-col gap-4 font-sans text-text-main">
-          <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
             <div className="flex items-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
                 <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
@@ -1148,7 +1148,7 @@ export default function PanelOverview({
         maxWidth="max-w-[700px]"
       >
         <div className="flex flex-col gap-4 font-sans text-text-main">
-          <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
             <div className="flex items-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

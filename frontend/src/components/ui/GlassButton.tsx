@@ -10,16 +10,16 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: 'bg-primary text-white hover:bg-[#4338ca] shadow-sm hover:shadow-md transition-all',
+  primary: 'bg-primary text-white hover:bg-[#1d4ed8] shadow-sm hover:shadow-md transition-all',
   secondary: 'bg-bg-surface text-text-main border border-border-glass hover:bg-bg-surface/80',
   ghost: 'text-text-dim hover:text-text-main hover:bg-bg-surface',
   danger: 'bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20',
 };
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-xs rounded-lg',
-  md: 'px-5 py-2.5 text-sm rounded-xl',
-  lg: 'px-6 py-3 text-base rounded-xl',
+  sm: 'px-3 py-1.5 text-xs rounded-md',
+  md: 'px-5 py-2.5 text-sm rounded-lg',
+  lg: 'px-6 py-3 text-base rounded-lg',
 };
 
 export default function GlassButton({

@@ -9,7 +9,7 @@ import React from 'react';
 // 1. Storefront Product Card Skeleton
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] overflow-hidden flex flex-col animate-pulse">
+    <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden flex flex-col animate-pulse">
       <div className="h-[140px] md:h-[180px] bg-white/5" />
       <div className="p-4 md:p-6 flex flex-col gap-3 flex-1">
         <div className="h-3 w-16 bg-white/5 rounded-full" />
@@ -19,7 +19,7 @@ export function ProductCardSkeleton() {
         </div>
         <div className="h-3 w-full bg-white/5 rounded mt-2" />
         <div className="h-3 w-4/5 bg-white/5 rounded" />
-        <div className="h-9 w-full bg-white/10 rounded-xl mt-auto pt-2" />
+        <div className="h-9 w-full bg-white/10 rounded-lg mt-auto pt-2" />
       </div>
     </div>
   );
@@ -63,7 +63,7 @@ export function TableSkeleton({ rows = 5, cols = 5 }: TableSkeletonProps) {
 // 3. central Dashboard Card Skeleton (e.g. for Fleet / Machinery blocks)
 export function CardSkeleton() {
   return (
-    <div className="bg-white/5 border border-border-glass p-5 rounded-2xl flex flex-col justify-between h-[200px] animate-pulse">
+    <div className="bg-white/5 border border-border-glass p-5 rounded-xl flex flex-col justify-between h-[200px] animate-pulse">
       <div>
         <div className="flex justify-between items-start mb-4">
           <div className="h-5 w-32 bg-white/10 rounded" />

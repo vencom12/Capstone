@@ -17,15 +17,15 @@ setInterval(() => {
 exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
-        
+
         let orders = [], currentUser = null, transactions = [], receipts = [];
 
         if (userId) {
             const [o, u, t, r] = await Promise.all([
                 prisma.order.findMany({ where: { userId }, orderBy: { date: 'desc' } }),
-                prisma.user.findUnique({ 
-                    where: { id: userId }, 
-                    include: { favorites: true } 
+                prisma.user.findUnique({
+                    where: { id: userId },
+                    include: { favorites: true }
                 }),
                 prisma.transaction.findMany({ where: { userId }, orderBy: { timestamp: 'desc' } }),
                 prisma.receipt.findMany({ where: { userId }, orderBy: { timestamp: 'desc' } })
@@ -118,7 +118,7 @@ exports.submitOrder = async (req, res) => {
                     ...(personalization || {}),
                     referenceNumber: cleanRef
                 };
-                
+
                 const updatedOrder = await prisma.order.update({
                     where: { id: existingOrder.id },
                     data: {
@@ -203,7 +203,7 @@ exports.submitOrder = async (req, res) => {
             if (!productId) return res.status(400).json({ message: `Invalid product in cart item: ${item.name || 'Unknown'}` });
             const product = await prisma.product.findUnique({ where: { id: productId } });
             if (!product) return res.status(404).json({ message: `Product not found: ${item.name || productId}` });
-            
+
             let itemUnitPrice = product.price;
             if (item.selectedVariant && Array.isArray(product.variants)) {
                 const matchedVariant = product.variants.find(v => v && (v.name === item.selectedVariant || v.id === item.selectedVariant));
@@ -285,7 +285,7 @@ exports.submitOrder = async (req, res) => {
                     const reservedThreads = await getReservedThreadCounts(tx);
                     for (const component of product.recipe) {
                         const neededMaterial = Math.ceil(component.quantity * needed);
-                        
+
                         // SELECT FOR UPDATE to lock the inventory row
                         const invItems = await tx.$queryRaw`
                             SELECT * FROM "Inventory" WHERE id = ${component.inventoryId} FOR UPDATE
@@ -294,7 +294,7 @@ exports.submitOrder = async (req, res) => {
                         const invCount = inventoryItem ? inventoryItem.count : 0;
                         const reservedCount = reservedThreads[component.inventoryId] || 0;
                         const availableMaterial = Math.max(0, invCount - reservedCount);
-                        
+
                         if (availableMaterial < neededMaterial) {
                             throw new Error(`OutOfStockMaterial:${product.name}:${component.name}`);
                         }
@@ -344,8 +344,8 @@ exports.submitOrder = async (req, res) => {
                         timestamp: new Date().toISOString(),
                         actor: 'Customer Checkout',
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
-                        note: isInstantApproved 
-                            ? (isPickup ? 'Payment confirmed; placed in embroidery queue for Store Pick-up.' : 'Payment confirmed; placed in embroidery queue for J&T Delivery.') 
+                        note: isInstantApproved
+                            ? (isPickup ? 'Payment confirmed; placed in embroidery queue for Store Pick-up.' : 'Payment confirmed; placed in embroidery queue for J&T Delivery.')
                             : 'Order submitted, pending payment confirmation.'
                     }
                 ]
@@ -455,7 +455,7 @@ exports.submitOrder = async (req, res) => {
         // Socket notifications
         const updatedUser = await prisma.user.findUnique({ where: { id: userId } });
         const io = req.app.get('io');
-        
+
         // Recalculate AI Queue priorities asynchronously
         const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
         setImmediate(() => {
@@ -583,11 +583,11 @@ exports.getReceipt = async (req, res) => {
         }
 
         if (!tx) return res.status(404).json({ message: 'Receipt not found' });
-        
+
         if (tx.Order) {
             tx.order = tx.Order;
         }
-        
+
         // Check authorization if it's a customer
         if (req.user.role === 'customer' && tx.userId !== req.user.id) {
             return res.status(403).json({ message: 'Unauthorized' });
@@ -612,305 +612,305 @@ exports.getReceipt = async (req, res) => {
 };
 
 exports.getCapacity = async (req, res) => {
-  try {
-    // Only real production orders actively waiting for or on the embroidery machines
-    const queuedOrders = await prisma.order.findMany({
-      where: {
-        status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
-      },
-      select: {
-        estimatedTime: true
-      }
-    });
+    try {
+        // Only real production orders actively waiting for or on the embroidery machines
+        const queuedOrders = await prisma.order.findMany({
+            where: {
+                status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+            },
+            select: {
+                estimatedTime: true
+            }
+        });
 
-    const activeOrders = queuedOrders.length;
+        const activeOrders = queuedOrders.length;
 
-    const activeMachines = await prisma.machine.count({
-      where: {
-        status: { in: ['Running', 'Idle'] } // Active machines available in the shop
-      }
-    });
+        const activeMachines = await prisma.machine.count({
+            where: {
+                status: { in: ['Running', 'Idle'] } // Active machines available in the shop
+            }
+        });
 
-    const machineCount = Math.max(1, activeMachines);
+        const machineCount = Math.max(1, activeMachines);
 
-    // Sum actual estimated stitch times recorded on queued orders, fallback 6 mins per typical order (incl. 1m buffer)
-    const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 6), 0);
-    const estimatedMinutes = activeOrders === 0 ? 6 : Math.ceil(totalQueueMinutes / machineCount);
+        // Sum actual estimated stitch times recorded on queued orders, fallback 6 mins per typical order (incl. 1m buffer)
+        const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 6), 0);
+        const estimatedMinutes = activeOrders === 0 ? 6 : Math.ceil(totalQueueMinutes / machineCount);
 
-    res.json({
-      activeOrders,
-      activeMachines,
-      estimatedMinutes
-    });
-  } catch (err) {
-    console.error('Capacity error:', err);
-    res.status(500).json({ error: 'Server error fetching capacity' });
-  }
+        res.json({
+            activeOrders,
+            activeMachines,
+            estimatedMinutes
+        });
+    } catch (err) {
+        console.error('Capacity error:', err);
+        res.status(500).json({ error: 'Server error fetching capacity' });
+    }
 };
 
 exports.trackOrder = async (req, res) => {
-  try {
-    const rawCode = (req.params.code || '').trim();
-    if (!rawCode) return res.status(400).json({ error: 'Tracking code is required' });
+    try {
+        const rawCode = (req.params.code || '').trim();
+        if (!rawCode) return res.status(400).json({ error: 'Tracking code is required' });
 
-    const cleanCode = rawCode.replace(/^[#]/, '').trim();
-    const strippedCode = cleanCode.replace(/^A-/i, '').replace(/^WI-/i, '').replace(/^ORD-/i, '').trim();
+        const cleanCode = rawCode.replace(/^[#]/, '').trim();
+        const strippedCode = cleanCode.replace(/^A-/i, '').replace(/^WI-/i, '').replace(/^ORD-/i, '').trim();
 
-    const order = await prisma.order.findFirst({
-      where: {
-        OR: [
-          { orderId: { equals: cleanCode, mode: 'insensitive' } },
-          { orderId: { equals: `WI-${cleanCode}`, mode: 'insensitive' } },
-          { orderId: { equals: `ORD-${cleanCode}`, mode: 'insensitive' } },
-          { orderId: { endsWith: strippedCode, mode: 'insensitive' } }
-        ]
-      },
-      select: {
-        id: true,
-        orderId: true,
-        client: true,
-        design: true,
-        status: true,
-        isRush: true,
-        estimatedTime: true,
-        personalization: true,
-        items: true,
-        totalAmount: true,
-        paymentStatus: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [
+                    { orderId: { equals: cleanCode, mode: 'insensitive' } },
+                    { orderId: { equals: `WI-${cleanCode}`, mode: 'insensitive' } },
+                    { orderId: { equals: `ORD-${cleanCode}`, mode: 'insensitive' } },
+                    { orderId: { endsWith: strippedCode, mode: 'insensitive' } }
+                ]
+            },
+            select: {
+                id: true,
+                orderId: true,
+                client: true,
+                design: true,
+                status: true,
+                isRush: true,
+                estimatedTime: true,
+                personalization: true,
+                items: true,
+                totalAmount: true,
+                paymentStatus: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        });
 
-    if (!order) {
-      return res.status(404).json({ error: `Order '${rawCode}' not found. Please check your claim stub.` });
-    }
-
-    const sanitizeClient = (rawName) => {
-      if (!rawName) return 'Customer';
-      const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
-      if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In';
-      const parts = clean.split(' ');
-      if (parts.length === 1) return parts[0];
-      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-    };
-
-    const getVerificationCode = (orderId) => {
-      if (!orderId) return '#A-000';
-      if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
-      const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
-      return `#A-${suffix.toUpperCase()}`;
-    };
-
-    const parsePersonalizationText = (order) => {
-      if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
-        return order.personalization.text;
-      }
-      if (Array.isArray(order.items) && order.items.length > 0) {
-        const item = order.items[0];
-        if (item.personalization && item.personalization.text) return item.personalization.text;
-      }
-      return null;
-    };
-
-    // Calculate stage & wait
-    let stage = 'queue';
-    if (['Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
-      stage = 'stitching';
-    } else if (['Ready For Pick Up', 'Ready for Pickup'].includes(order.status)) {
-      stage = 'ready';
-    } else if (order.status === 'Completed') {
-      stage = 'completed';
-    }
-
-    let ordersAhead = 0;
-    if (stage === 'queue') {
-      ordersAhead = await prisma.order.count({
-        where: {
-          status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] },
-          createdAt: { lt: order.createdAt }
+        if (!order) {
+            return res.status(404).json({ error: `Order '${rawCode}' not found. Please check your claim stub.` });
         }
-      });
-    }
 
-    const estMins = order.estimatedTime || 6;
-    let estimatedMinutesLeft = estMins;
-    if (stage === 'stitching') {
-      const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
-      estimatedMinutesLeft = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
-    } else if (stage === 'queue') {
-      estimatedMinutesLeft = (ordersAhead + 1) * estMins;
-    } else {
-      estimatedMinutesLeft = 0;
-    }
+        const sanitizeClient = (rawName) => {
+            if (!rawName) return 'Customer';
+            const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
+            if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In';
+            const parts = clean.split(' ');
+            if (parts.length === 1) return parts[0];
+            return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+        };
 
-    res.json({
-      success: true,
-      order: {
-        orderId: order.orderId,
-        claimCode: getVerificationCode(order.orderId),
-        client: sanitizeClient(order.client),
-        design: order.design,
-        monogramText: parsePersonalizationText(order),
-        status: order.status,
-        stage,
-        ordersAhead,
-        estimatedMinutesLeft,
-        totalAmount: order.totalAmount,
-        paymentStatus: order.paymentStatus,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
-      }
-    });
-  } catch (err) {
-    console.error('Error tracking order:', err);
-    res.status(500).json({ error: 'Server error tracking order' });
-  }
+        const getVerificationCode = (orderId) => {
+            if (!orderId) return '#A-000';
+            if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
+            const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+            return `#A-${suffix.toUpperCase()}`;
+        };
+
+        const parsePersonalizationText = (order) => {
+            if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
+                return order.personalization.text;
+            }
+            if (Array.isArray(order.items) && order.items.length > 0) {
+                const item = order.items[0];
+                if (item.personalization && item.personalization.text) return item.personalization.text;
+            }
+            return null;
+        };
+
+        // Calculate stage & wait
+        let stage = 'queue';
+        if (['Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
+            stage = 'stitching';
+        } else if (['Ready For Pick Up', 'Ready for Pickup'].includes(order.status)) {
+            stage = 'ready';
+        } else if (order.status === 'Completed') {
+            stage = 'completed';
+        }
+
+        let ordersAhead = 0;
+        if (stage === 'queue') {
+            ordersAhead = await prisma.order.count({
+                where: {
+                    status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] },
+                    createdAt: { lt: order.createdAt }
+                }
+            });
+        }
+
+        const estMins = order.estimatedTime || 6;
+        let estimatedMinutesLeft = estMins;
+        if (stage === 'stitching') {
+            const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
+            estimatedMinutesLeft = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
+        } else if (stage === 'queue') {
+            estimatedMinutesLeft = (ordersAhead + 1) * estMins;
+        } else {
+            estimatedMinutesLeft = 0;
+        }
+
+        res.json({
+            success: true,
+            order: {
+                orderId: order.orderId,
+                claimCode: getVerificationCode(order.orderId),
+                client: sanitizeClient(order.client),
+                design: order.design,
+                monogramText: parsePersonalizationText(order),
+                status: order.status,
+                stage,
+                ordersAhead,
+                estimatedMinutesLeft,
+                totalAmount: order.totalAmount,
+                paymentStatus: order.paymentStatus,
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt
+            }
+        });
+    } catch (err) {
+        console.error('Error tracking order:', err);
+        res.status(500).json({ error: 'Server error tracking order' });
+    }
 };
 
 exports.getLiveQueue = async (req, res) => {
-  try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    try {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
-    const [activeOrders, completedTodayCount, activeMachines] = await Promise.all([
-      prisma.order.findMany({
-        where: {
-          status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing', 'Ready For Pick Up', 'Ready for Pickup'] }
-        },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          id: true,
-          orderId: true,
-          client: true,
-          design: true,
-          status: true,
-          progress: true,
-          isRush: true,
-          estimatedTime: true,
-          personalization: true,
-          items: true,
-          createdAt: true,
-          updatedAt: true
-        }
-      }),
-      prisma.order.count({
-        where: {
-          status: 'Completed',
-          updatedAt: { gte: todayStart }
-        }
-      }),
-      prisma.machine.count({
-        where: { status: { in: ['Running', 'Idle'] } }
-      })
-    ]);
+        const [activeOrders, completedTodayCount, activeMachines] = await Promise.all([
+            prisma.order.findMany({
+                where: {
+                    status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing', 'Ready For Pick Up', 'Ready for Pickup'] }
+                },
+                orderBy: { createdAt: 'asc' },
+                select: {
+                    id: true,
+                    orderId: true,
+                    client: true,
+                    design: true,
+                    status: true,
+                    progress: true,
+                    isRush: true,
+                    estimatedTime: true,
+                    personalization: true,
+                    items: true,
+                    createdAt: true,
+                    updatedAt: true
+                }
+            }),
+            prisma.order.count({
+                where: {
+                    status: 'Completed',
+                    updatedAt: { gte: todayStart }
+                }
+            }),
+            prisma.machine.count({
+                where: { status: { in: ['Running', 'Idle'] } }
+            })
+        ]);
 
-    const sanitizeClient = (rawName) => {
-      if (!rawName) return 'Customer';
-      const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
-      if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In Customer';
-      const parts = clean.split(' ');
-      if (parts.length === 1) return parts[0];
-      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-    };
+        const sanitizeClient = (rawName) => {
+            if (!rawName) return 'Customer';
+            const clean = rawName.replace(/^Walk-In\s*\(/i, '').replace(/\)$/, '').trim();
+            if (!clean || clean.startsWith('Walk-In') || clean.startsWith('Customer')) return 'Walk-In Customer';
+            const parts = clean.split(' ');
+            if (parts.length === 1) return parts[0];
+            return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+        };
 
-    const getVerificationCode = (orderId) => {
-      if (!orderId) return '#A-000';
-      if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
-      const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
-      return `#A-${suffix.toUpperCase()}`;
-    };
+        const getVerificationCode = (orderId) => {
+            if (!orderId) return '#A-000';
+            if (orderId.startsWith('WI-')) return `#${orderId.replace('WI-', 'A-')}`;
+            const suffix = orderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+            return `#A-${suffix.toUpperCase()}`;
+        };
 
-    const parsePersonalizationText = (order) => {
-      if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
-        return order.personalization.text;
-      }
-      if (Array.isArray(order.items) && order.items.length > 0) {
-        const item = order.items[0];
-        if (item.personalization && item.personalization.text) return item.personalization.text;
-      }
-      return null;
-    };
+        const parsePersonalizationText = (order) => {
+            if (order.personalization && typeof order.personalization === 'object' && order.personalization.text) {
+                return order.personalization.text;
+            }
+            if (Array.isArray(order.items) && order.items.length > 0) {
+                const item = order.items[0];
+                if (item.personalization && item.personalization.text) return item.personalization.text;
+            }
+            return null;
+        };
 
-    const getQuantity = (order) => {
-      if (Array.isArray(order.items)) {
-        return order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-      }
-      return 1;
-    };
+        const getQuantity = (order) => {
+            if (Array.isArray(order.items)) {
+                return order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            }
+            return 1;
+        };
 
-    const nowStitching = [];
-    const readyForPickup = [];
-    const upNext = [];
+        const nowStitching = [];
+        const readyForPickup = [];
+        const upNext = [];
 
-    activeOrders.forEach(order => {
-      const isWorking = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
-      const isReady = ['Ready For Pick Up', 'Ready for Pickup'].includes(order.status);
-      const qty = getQuantity(order);
-      const isExpress = qty === 1;
-      const text = parsePersonalizationText(order);
-      const baseInfo = {
-        id: order.id,
-        orderId: order.orderId,
-        client: sanitizeClient(order.client),
-        design: order.design,
-        text,
-        quantity: qty,
-        isExpress,
-        isRush: order.isRush || false,
-        verificationCode: getVerificationCode(order.orderId),
-        createdAt: order.createdAt
-      };
+        activeOrders.forEach(order => {
+            const isWorking = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
+            const isReady = ['Ready For Pick Up', 'Ready for Pickup'].includes(order.status);
+            const qty = getQuantity(order);
+            const isExpress = qty === 1;
+            const text = parsePersonalizationText(order);
+            const baseInfo = {
+                id: order.id,
+                orderId: order.orderId,
+                client: sanitizeClient(order.client),
+                design: order.design,
+                text,
+                quantity: qty,
+                isExpress,
+                isRush: order.isRush || false,
+                verificationCode: getVerificationCode(order.orderId),
+                createdAt: order.createdAt
+            };
 
-      if (isWorking) {
-        const estMins = order.estimatedTime || 6;
-        const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
-        const remainingMinutes = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
-        nowStitching.push({
-          ...baseInfo,
-          remainingMinutes,
-          progress: order.progress || Math.min(90, Math.max(20, Math.floor((elapsedMinutes / estMins) * 100)))
+            if (isWorking) {
+                const estMins = order.estimatedTime || 6;
+                const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
+                const remainingMinutes = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
+                nowStitching.push({
+                    ...baseInfo,
+                    remainingMinutes,
+                    progress: order.progress || Math.min(90, Math.max(20, Math.floor((elapsedMinutes / estMins) * 100)))
+                });
+            } else if (isReady) {
+                readyForPickup.push({
+                    ...baseInfo,
+                    readyAt: order.updatedAt
+                });
+            } else {
+                upNext.push({
+                    ...baseInfo,
+                    estimatedMinutes: order.estimatedTime || (isExpress ? 6 : 12)
+                });
+            }
         });
-      } else if (isReady) {
-        readyForPickup.push({
-          ...baseInfo,
-          readyAt: order.updatedAt
-        });
-      } else {
-        upNext.push({
-          ...baseInfo,
-          estimatedMinutes: order.estimatedTime || (isExpress ? 6 : 12)
-        });
-      }
-    });
 
-    const machineCount = Math.max(1, activeMachines);
-    const totalRemainingMinutes = nowStitching.reduce((acc, o) => acc + o.remainingMinutes, 0) +
-                                  upNext.reduce((acc, o) => acc + o.estimatedMinutes, 0);
-    const averageWaitMinutes = Math.ceil(totalRemainingMinutes / machineCount);
+        const machineCount = Math.max(1, activeMachines);
+        const totalRemainingMinutes = nowStitching.reduce((acc, o) => acc + o.remainingMinutes, 0) +
+            upNext.reduce((acc, o) => acc + o.estimatedMinutes, 0);
+        const averageWaitMinutes = Math.ceil(totalRemainingMinutes / machineCount);
 
-    res.json({
-      success: true,
-      nowStitching,
-      readyForPickup,
-      upNext,
-      stats: {
-        activeCount: activeOrders.length,
-        completedTodayCount,
-        activeMachines: machineCount,
-        averageWaitMinutes: activeOrders.length === 0 ? 10 : averageWaitMinutes
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching live queue:', err);
-    res.status(500).json({ error: 'Server error fetching live queue' });
-  }
+        res.json({
+            success: true,
+            nowStitching,
+            readyForPickup,
+            upNext,
+            stats: {
+                activeCount: activeOrders.length,
+                completedTodayCount,
+                activeMachines: machineCount,
+                averageWaitMinutes: activeOrders.length === 0 ? 10 : averageWaitMinutes
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching live queue:', err);
+        res.status(500).json({ error: 'Server error fetching live queue' });
+    }
 };
 
 exports.getPublicSettings = async (req, res) => {
     try {
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        res.json({ 
+        res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
             businessLogoUrl: settings?.businessLogoUrl || null,
@@ -925,7 +925,7 @@ exports.getManifest = async (req, res) => {
     try {
         let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         let logoUrl = settings?.businessLogoUrl || '/fallback-icon.png';
-        
+
         res.json({
             name: settings?.businessName || "Stitch-Opt | Premium Embroidery Designs",
             short_name: "Stitch-Opt",
@@ -991,7 +991,7 @@ const https = require('https');
 exports.downloadReceipt = async (req, res) => {
     try {
         const id = req.params.id;
-        
+
         let tx = await prisma.transaction.findFirst({
             where: {
                 OR: [
@@ -1038,10 +1038,10 @@ exports.downloadReceipt = async (req, res) => {
 
         // Create PDF
         const doc = new PDFDocument({ size: [300, 600], margin: 20 });
-        
+
         res.setHeader('Content-disposition', `attachment; filename=STITCH_OPT_RECEIPT_${id}.pdf`);
         res.setHeader('Content-type', 'application/pdf');
-        
+
         doc.pipe(res);
 
         const pageWidth = 300;
@@ -1094,7 +1094,7 @@ exports.downloadReceipt = async (req, res) => {
         drawDetail('TIME', timeStr);
         drawDetail('CASHIER', 'StitchMaster AI');
         drawDetail('CUSTOMER', tx.user?.username || 'Valued Client');
-        
+
         doc.moveDown(1);
         doc.font('Helvetica').text('------------------------------------------', { align: 'center' });
         doc.moveDown(0.5);
@@ -1119,14 +1119,14 @@ exports.downloadReceipt = async (req, res) => {
 
         doc.moveDown(0.5);
         doc.font('Helvetica').text('------------------------------------------', { align: 'center' });
-        
+
         // Totals Section
         doc.font('Courier').fontSize(9);
         doc.moveDown(0.5);
-        
+
         const subtotalLine = 'SUBTOTAL:'.padEnd(20) + `P${vatableSales.toFixed(2)}`.padStart(12);
-        const vatLine      = 'VAT (12%):'.padEnd(20) + `P${tax.toFixed(2)}`.padStart(12);
-        const totalLine    = 'TOTAL PAID:'.padEnd(20) + `P${total.toFixed(2)}`.padStart(12);
+        const vatLine = 'VAT (12%):'.padEnd(20) + `P${tax.toFixed(2)}`.padStart(12);
+        const totalLine = 'TOTAL PAID:'.padEnd(20) + `P${total.toFixed(2)}`.padStart(12);
 
         doc.text(subtotalLine, { align: 'center' });
         doc.text(vatLine, { align: 'center' });
@@ -1171,7 +1171,7 @@ exports.updateSettings = async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const updateData = {};
-        
+
         // Username validation & uniqueness check
         if (username && username.trim() && username.trim() !== user.username) {
             const cleanUsername = username.trim();
@@ -1247,7 +1247,7 @@ exports.updateSettings = async (req, res) => {
 
         const safeUser = { ...updatedUser };
         delete safeUser.password;
-        
+
         const responseMessage = isEmailChanged
             ? 'Settings updated. A verification link has been sent to your new email address.'
             : 'Settings updated successfully';

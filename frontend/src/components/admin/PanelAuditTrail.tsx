@@ -376,7 +376,7 @@ export default function PanelAuditTrail() {
       {/* Inspect Diff Modal */}
       {selectedLogForDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-bg-surface border border-border-glass rounded-2xl w-full max-w-xl p-6 shadow-2xl flex flex-col gap-4 text-left">
+          <div className="bg-bg-surface border border-border-glass rounded-xl w-full max-w-xl p-6 shadow-2xl flex flex-col gap-4 text-left">
             <div className="flex justify-between items-center border-b border-border-glass pb-3">
               <div>
                 <h3 className="text-lg font-bold text-text-main m-0">Mutation Payload & State Diff</h3>
@@ -433,7 +433,7 @@ export default function PanelAuditTrail() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setSelectedLogForDetails(null)}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-text-main border border-border-glass transition-all cursor-pointer"
+                className="px-5 py-2 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/15 text-text-main border border-border-glass transition-all cursor-pointer"
               >
                 Close Inspector
               </button>

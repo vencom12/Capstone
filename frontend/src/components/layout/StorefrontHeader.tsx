@@ -94,7 +94,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 const current = html.getAttribute('data-theme');
                 html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
               }}
-              className="w-9 h-9 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 border-none bg-transparent"
+              className="w-9 h-9 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 border-none bg-transparent"
               title="Toggle theme"
               aria-label="Toggle theme"
             >
@@ -111,7 +111,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'customer')}
-                className="px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-xs active:scale-95 transition-all border-none cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs active:scale-95 transition-all border-none cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
               >
                 Sign In
               </button>
@@ -120,7 +120,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <button
               suppressHydrationWarning
               onClick={handleBasketClick}
-              className="w-9 h-9 rounded-xl bg-transparent border-none text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center relative shrink-0"
+              className="w-9 h-9 rounded-lg bg-transparent border-none text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center relative shrink-0"
               title="View My Basket"
               aria-label="View My Basket"
             >
@@ -141,7 +141,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <button
               suppressHydrationWarning
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 bg-bg-surface border border-border-glass text-text-main px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold outline-none cursor-pointer hover:bg-white/5 active:scale-95 transition-all whitespace-nowrap"
+              className="flex items-center gap-1.5 sm:gap-2 bg-bg-surface border border-border-glass text-text-main px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold outline-none cursor-pointer hover:bg-white/5 active:scale-95 transition-all whitespace-nowrap"
             >
               <span className="max-w-[85px] sm:max-w-none truncate">
                 {selectedCategory === 'All' ? 'All Designs' : selectedCategory}
@@ -156,7 +156,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
             {/* Dropdown Options */}
             <div className={`
-              absolute top-[calc(100%+8px)] left-0 w-[190px] bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-1.5 z-[3000] shadow-xl max-h-[260px] overflow-y-auto
+              absolute top-[calc(100%+8px)] left-0 w-[190px] bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-xl p-1.5 z-[3000] shadow-xl max-h-[260px] overflow-y-auto
               transition-all duration-300 origin-top-left
               ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
             `}>
@@ -169,7 +169,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                     setIsCategoryOpen(false);
                   }}
                   className={`
-                    w-full text-left px-3 py-2 text-xs font-medium rounded-xl transition-all hover:bg-white/10 cursor-pointer border-none bg-transparent block truncate
+                    w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-all hover:bg-white/10 cursor-pointer border-none bg-transparent block truncate
                     ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-sm' : 'text-text-main hover:text-primary'}
                   `}
                 >
@@ -187,7 +187,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               placeholder="Search designs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-bg-surface border border-border-glass px-4 py-2 sm:py-2.5 pr-9 rounded-xl text-text-main outline-none text-xs sm:text-[0.92rem] transition-all focus:border-primary"
+              className="w-full bg-bg-surface border border-border-glass px-4 py-2 sm:py-2.5 pr-9 rounded-lg text-text-main outline-none text-xs sm:text-[0.92rem] transition-all focus:border-primary"
             />
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -204,7 +204,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               const current = html.getAttribute('data-theme');
               html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
             }}
-            className="w-10 h-10 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
+            className="w-10 h-10 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
             title="Toggle theme"
             aria-label="Toggle theme"
           >
@@ -224,14 +224,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'customer')}
-                className="px-4 py-2 rounded-xl text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all active:scale-95"
+                className="px-4 py-2 rounded-lg text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all active:scale-95"
               >
                 Login
               </button>
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'register')}
-                className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity shadow-sm active:scale-95"
+                className="px-4 py-2 rounded-lg bg-primary text-white font-bold text-xs no-underline whitespace-nowrap border-none cursor-pointer hover:opacity-90 transition-opacity shadow-sm active:scale-95"
               >
                 Sign Up
               </button>
@@ -241,7 +241,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           <button
             suppressHydrationWarning
             onClick={handleBasketClick}
-            className="w-10 h-10 rounded-xl text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center"
+            className="w-10 h-10 rounded-lg text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center"
             title="View My Basket"
             aria-label="View My Basket"
           >

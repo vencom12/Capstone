@@ -258,7 +258,7 @@ export default function GCashPayment({
       {/* QR Code Fullscreen Lightbox Modal */}
       {showQrModal && activeQrCodeUrl && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={() => setShowQrModal(false)}>
-          <div className="bg-bg-dark border border-white/20 p-6 rounded-3xl flex flex-col items-center gap-4 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+          <div className="bg-bg-dark border border-white/20 p-6 rounded-xl flex flex-col items-center gap-4 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowQrModal(false)}
               className="absolute top-4 right-4 text-text-dim hover:text-white text-lg font-bold w-8 h-8 rounded-full bg-white/10 flex items-center justify-center cursor-pointer"
@@ -266,7 +266,7 @@ export default function GCashPayment({
               ✕
             </button>
             <h3 className="text-white font-bold text-base m-0">GCash Official QR Code</h3>
-            <div className="bg-white p-3 rounded-2xl shadow-inner">
+            <div className="bg-white p-3 rounded-lg shadow-inner">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={activeQrCodeUrl} alt="GCash QR Code Enlarged" className="w-64 h-64 object-contain" />
             </div>

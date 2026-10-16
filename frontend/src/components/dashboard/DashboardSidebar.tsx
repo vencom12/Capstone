@@ -177,7 +177,7 @@ export default function DashboardSidebar({
               setActiveTab('settings');
               closeMobileDrawer();
             }}
-            className={`w-full p-3 rounded-2xl border flex items-center gap-3 text-left cursor-pointer transition-all ${
+            className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left cursor-pointer transition-all ${
               activeTab === 'settings'
                 ? 'bg-primary/15 border-primary text-text-main shadow-sm'
                 : 'bg-white/[0.04] border-border-glass hover:bg-white/10 text-text-main'

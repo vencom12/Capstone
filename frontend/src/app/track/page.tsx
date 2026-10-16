@@ -192,7 +192,7 @@ function OrderTrackerContent() {
   if (!rawId) {
     return (
       <main className="flex-1 p-6 max-w-sm w-full mx-auto flex flex-col items-center justify-center text-center gap-6">
-        <div className="w-16 h-16 rounded-3xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-3xl shadow-lg shadow-blue-950/50">
+        <div className="w-16 h-16 rounded-xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-3xl shadow-lg shadow-blue-950/50">
           🎟️
         </div>
 
@@ -209,14 +209,14 @@ function OrderTrackerContent() {
             placeholder="e.g. WI-582B or A-582B"
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-            className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-2xl text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-blue-500 transition shadow-inner"
+            className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-lg text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-blue-500 transition shadow-inner"
             required
             autoFocus
           />
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-blue-950/50 cursor-pointer"
+            className="w-full py-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-blue-950/50 cursor-pointer"
           >
             Check Order Status
           </button>
@@ -243,7 +243,7 @@ function OrderTrackerContent() {
   if (error || !order) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl mb-4">
+        <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl mb-4">
           🔍
         </div>
         <h2 className="text-lg font-bold text-white mb-1">Ticket Not Found</h2>
@@ -253,7 +253,7 @@ function OrderTrackerContent() {
         <button
           type="button"
           onClick={() => router.push('/track')}
-          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow cursor-pointer"
+          className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow cursor-pointer"
         >
           Enter Different Code
         </button>
@@ -270,7 +270,7 @@ function OrderTrackerContent() {
     <main className="flex-1 p-4 max-w-md w-full mx-auto flex flex-col gap-4 animate-fade">
       {/* HERO STATUS CARD */}
       <div
-        className={`rounded-2xl p-6 border-2 shadow-xl transition-all flex flex-col gap-4 ${
+        className={`rounded-xl p-6 border-2 shadow-xl transition-all flex flex-col gap-4 ${
           isReady
             ? 'bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 border-emerald-500 shadow-emerald-950/50'
             : isStitching
@@ -402,7 +402,7 @@ function OrderTrackerContent() {
       </div>
 
       {/* ORDER SUMMARY */}
-      <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
+      <div className="bg-slate-900 border border-white/10 rounded-xl p-4 flex flex-col gap-3">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-white/5">
           Order Details
         </span>
@@ -413,7 +413,7 @@ function OrderTrackerContent() {
         </div>
 
         {order.monogramText && (
-          <div className="bg-white/[0.03] border border-white/5 rounded-xl p-2.5 flex items-center justify-between text-xs">
+          <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 flex items-center justify-between text-xs">
             <span className="text-slate-400 text-[11px]">Embroidered Text:</span>
             <span className="font-mono font-black text-amber-300 text-sm tracking-wider uppercase">
               "{order.monogramText}"
@@ -435,7 +435,7 @@ function OrderTrackerContent() {
       </div>
 
       {/* Customer Mall Tip */}
-      <div className="mt-auto bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-xs text-slate-400 text-center leading-relaxed">
+      <div className="mt-auto bg-white/[0.03] border border-white/5 rounded-xl p-4 text-xs text-slate-400 text-center leading-relaxed">
         💡 <strong>Customer Tip:</strong> Feel free to browse around Pacific Mall while you wait. This tracker automatically updates and plays a chime once your order is ready for pickup!
       </div>
     </main>

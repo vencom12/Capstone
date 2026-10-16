@@ -110,7 +110,7 @@ export default function GlassModal({
           flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100vh-3rem)]
           bg-bg-card backdrop-blur-[16px]
           border border-border-glass
-          rounded-2xl sm:rounded-xl overflow-hidden
+          rounded-xl overflow-hidden
           shadow-2xl
           animate-[modalScaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]
           ${className}
@@ -149,9 +149,9 @@ export default function GlassModal({
             className="absolute inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-full max-w-[340px] bg-[#12141c]/95 border border-white/10 rounded-2xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col items-center text-center animate-[modalScaleUp_0.2s_cubic-bezier(0.16,1,0.3,1)]">
+            <div className="w-full max-w-[340px] bg-[#12141c]/95 border border-white/10 rounded-xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col items-center text-center animate-[modalScaleUp_0.2s_cubic-bezier(0.16,1,0.3,1)]">
               {/* Refined warning badge */}
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(245,158,11,0.15)] shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(245,158,11,0.15)] shrink-0">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
@@ -168,14 +168,14 @@ export default function GlassModal({
                 <button
                   type="button"
                   onClick={() => setShowDiscardNotice(false)}
-                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold text-text-main bg-white/10 hover:bg-white/15 border border-white/15 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold text-text-main bg-white/10 hover:bg-white/15 border border-white/15 transition-all shadow-sm active:scale-95 cursor-pointer"
                 >
                   Keep editing
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmDiscard}
-                  className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 shadow-[0_4px_14px_rgba(225,29,72,0.35)] transition-all active:scale-95 cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 shadow-[0_4px_14px_rgba(225,29,72,0.35)] transition-all active:scale-95 cursor-pointer"
                 >
                   Discard
                 </button>

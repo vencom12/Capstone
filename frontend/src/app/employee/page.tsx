@@ -581,7 +581,7 @@ export default function EmployeePage() {
                    const myMachines = machines.filter((m: any) => m.assignedUserId === user?.id);
                    if (myMachines.length === 0) {
                      return (
-                       <div className="col-span-full py-12 text-center opacity-50 bg-white/5 rounded-2xl border border-white/10">
+                       <div className="col-span-full py-12 text-center opacity-50 bg-white/5 rounded-xl border border-white/10">
                          No machines are currently assigned to you.
                        </div>
                      );
@@ -677,8 +677,8 @@ export default function EmployeePage() {
                                              r="22"
                                              className="transition-all duration-500 ease-out"
                                              style={{
-                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#6366f1',
-                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(99,102,241,0.5)'})`
+                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#2563eb',
+                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(37,99,235,0.5)'})`
                                              }}
                                              strokeWidth="4"
                                              fill="transparent"
@@ -699,7 +699,7 @@ export default function EmployeePage() {
                                      </div>
                                   </div>
 
-                                  <div className="flex-1 bg-bg-surface p-6 rounded-2xl border border-border-glass mb-6 flex flex-col items-center justify-center text-center shadow-inner">
+                                  <div className="flex-1 bg-bg-surface p-6 rounded-xl border border-border-glass mb-6 flex flex-col items-center justify-center text-center shadow-inner">
                                      <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
                                         {assignedOrder.personalization?.text || assignedOrder.client}
                                      </h2>
@@ -964,7 +964,7 @@ export default function EmployeePage() {
               ) : (
                 paginatedQueueOrders.map((o) => {
                   return (
-                    <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
+                    <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px]">
                       <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
                         {/* Left Side: ID & Status Badge, Client, Priority Details */}
                         <div className="flex flex-col gap-2 text-left justify-between h-full">
@@ -1229,7 +1229,7 @@ export default function EmployeePage() {
                   ) : (
                     archivedOrders.map((o) => {
                       return (
-                        <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-5 flex flex-col justify-between text-left relative group h-[260px]">
+                        <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px]">
                           <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
                             {/* Left Side: ID & Timestamp, Status Badge, Client Name */}
                             <div className="flex flex-col gap-2.5 text-left justify-between h-full">
@@ -1309,7 +1309,7 @@ export default function EmployeePage() {
               <h1 className="text-3xl font-extrabold mb-1">Portal Settings</h1>
               <p className="text-text-dim text-[0.95rem] m-0">Personalize your workspace experience.</p>
             </header>
-            <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-8 max-w-[600px] flex flex-col gap-5">
+            <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-8 max-w-[600px] flex flex-col gap-5">
               <h3 className="text-lg font-bold m-0 mb-2">Interface Preferences</h3>
               
               <div className="flex items-center justify-between bg-bg-surface p-5 rounded-xl border border-border-glass">

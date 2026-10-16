@@ -64,7 +64,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   return (
     <div
       onClick={() => onQuickView(product)}
-      className="group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary/40 hover:-translate-y-1 shadow-sm hover:shadow-md flex flex-col"
+      className="group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary/40 hover:-translate-y-1 shadow-sm hover:shadow-md flex flex-col"
     >
       {/* Image */}
       <div
@@ -149,7 +149,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               <span
                 key={i}
                 className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
-                style={{ backgroundColor: v.color || '#6366f1' }}
+                style={{ backgroundColor: v.color || '#2563eb' }}
                 title={v.name}
               />
             ))}

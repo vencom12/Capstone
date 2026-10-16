@@ -614,7 +614,7 @@ export default function PanelStaffing({
             return (
               <div
                 key={id}
-                className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative"
+                className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-4 flex flex-col gap-3 text-left relative"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex items-center gap-2">
@@ -917,7 +917,7 @@ export default function PanelStaffing({
         {viewingProfileUser && (
           <div className="flex flex-col gap-4 text-left">
             {/* Top Identity Card */}
-            <div className="flex items-start justify-between gap-3 p-3.5 rounded-2xl bg-white/5 border border-border-glass">
+            <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-white/5 border border-border-glass">
               <div className="flex items-center gap-3">
                 <span className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center text-lg font-extrabold uppercase border border-primary/30">
                   {(viewingProfileUser.username || 'U')[0]}

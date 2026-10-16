@@ -524,7 +524,7 @@ export default function PanelEmployeeSupport() {
             {isLoadingFeedback ? (
               <div className="py-12 text-center text-text-dim text-xs">Loading feedbacks...</div>
             ) : feedbacks.length === 0 ? (
-              <div className="py-16 text-center text-text-dim border border-dashed border-border-glass rounded-2xl flex flex-col items-center justify-center gap-2">
+              <div className="py-16 text-center text-text-dim border border-dashed border-border-glass rounded-xl flex flex-col items-center justify-center gap-2">
                 <span className="text-3xl">💬</span>
                 <p className="font-bold text-sm text-text-main m-0">No customer feedback submitted yet.</p>
                 <p className="text-xs text-text-dim m-0">
@@ -536,7 +536,7 @@ export default function PanelEmployeeSupport() {
                 {feedbacks.map((f) => (
                   <div
                     key={f.id}
-                    className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col justify-between gap-3 text-left shadow-sm"
+                    className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between gap-3 text-left shadow-sm"
                   >
                     <div>
                       <div className="flex justify-between items-start gap-2">
@@ -691,7 +691,7 @@ export default function PanelEmployeeSupport() {
             {isLoadingMaintenance ? (
               <div className="py-12 text-center text-text-dim text-xs">Loading machine incidents...</div>
             ) : filteredTickets.length === 0 ? (
-              <div className="py-16 text-center text-text-dim border border-dashed border-border-glass rounded-2xl flex flex-col items-center justify-center gap-2">
+              <div className="py-16 text-center text-text-dim border border-dashed border-border-glass rounded-xl flex flex-col items-center justify-center gap-2">
                 <span className="text-3xl">⚙️</span>
                 <p className="font-bold text-sm text-text-main m-0">No active maintenance breakdown tickets.</p>
                 <p className="text-xs text-text-dim m-0">All registered embroidery machines are clear. Click "+ Report Machine Issue" if a breakdown occurs.</p>
@@ -701,7 +701,7 @@ export default function PanelEmployeeSupport() {
                 {filteredTickets.map((t) => (
                   <div
                     key={t.id}
-                    className="p-4 rounded-2xl bg-bg-surface border border-border-glass flex flex-col justify-between gap-3 text-left"
+                    className="p-4 rounded-xl bg-bg-surface border border-border-glass flex flex-col justify-between gap-3 text-left"
                   >
                     <div>
                       <div className="flex justify-between items-start gap-2">

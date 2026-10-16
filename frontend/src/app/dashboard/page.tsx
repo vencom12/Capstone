@@ -391,7 +391,7 @@ export default function DashboardPage() {
                   </button>
 
                   <div className={`
-                    absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-2xl overflow-hidden z-[3000] shadow-lg
+                    absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-xl overflow-hidden z-[3000] shadow-lg
                     transition-all duration-300 origin-top-left
                     ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible'}
                   `}>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : filteredOrders.length === 0 ? (
-                <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
+                <div className="bg-bg-surface border border-border-glass rounded-xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                   <p className="text-lg font-medium m-0">No active orders found</p>
                   <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
@@ -498,13 +498,13 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : favorites.length === 0 ? (
-                <div className="border-2 border-dashed border-border-glass rounded-3xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
+                <div className="border-2 border-dashed border-border-glass rounded-xl p-12 flex flex-col items-center justify-center text-text-dim text-center min-h-[300px]">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-primary opacity-60"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                   <p className="text-base font-bold text-text-main m-0">You haven't favorited any designs yet</p>
                   <p className="text-xs text-text-dim mt-1 max-w-xs">Heart any embroidery design from our catalog to save it for quick ordering anytime.</p>
                   <button
                     onClick={() => setActiveTab('shop')}
-                    className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                    className="mt-4 px-5 py-2.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
                   >
                     Explore Catalog →
                   </button>
@@ -556,7 +556,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : filteredTransactions.length === 0 ? (
-                <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
+                <div className="bg-bg-surface border border-border-glass rounded-xl p-8 flex flex-col items-center justify-center text-text-dim min-h-[300px]">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                   <p className="text-lg font-medium m-0">No transactions found</p>
                   <p className="text-sm mt-1 opacity-70">Try adjusting your date selection filter.</p>
@@ -568,7 +568,7 @@ export default function DashboardPage() {
                       const receipt = useProductStore.getState().receipts.find(r => r.orderID === tx.orderID);
 
                       return (
-                        <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-6 flex flex-col gap-4">
+                        <div key={tx.id} className="bg-bg-card backdrop-blur-md border border-border-glass rounded-xl p-6 flex flex-col gap-4">
                           <div className="flex justify-between items-start">
                             <div>
                               <h4 className="text-primary font-bold m-0">{tx.transactionID}</h4>
@@ -688,7 +688,7 @@ export default function DashboardPage() {
             </header>
             <div className="flex-1 pr-0 md:pr-2 pb-8">
               {/* Profile Card */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col">
                 {/* Avatar Header */}
                 <div className="px-6 py-5 border-b border-border-glass/50 bg-black/10 flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-xl font-bold shrink-0 shadow-sm">
@@ -790,7 +790,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Shopee-Style Saved Addresses Panel */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10 flex justify-between items-center">
                   <div>
                     <h3 className="text-base font-bold text-text-main m-0">My Delivery Addresses</h3>
@@ -798,7 +798,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setIsAddressBookOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
                   >
                     <span>Manage / Add</span>
                     <span>+</span>
@@ -859,7 +859,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Preferences / Theme Panel */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
                   <h3 className="text-base font-bold text-text-main m-0">Preferences</h3>
                 </div>
@@ -886,7 +886,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Account Management Panel */}
-              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-[24px] overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
                   <h3 className="text-base font-bold text-text-main m-0">Account Management</h3>
                 </div>
@@ -901,7 +901,7 @@ export default function DashboardPage() {
                         setDeleteConfirmName('');
                         setIsDeleteAccountModalOpen(true);
                       }}
-                      className="bg-danger/10 border border-danger/25 text-danger px-4 py-2.5 rounded-xl text-[0.85rem] font-bold hover:bg-danger hover:text-white cursor-pointer transition-all active:scale-95"
+                      className="bg-danger/10 border border-danger/25 text-danger px-4 py-2.5 rounded-lg text-[0.85rem] font-bold hover:bg-danger hover:text-white cursor-pointer transition-all active:scale-95"
                     >
                       Delete Account
                     </button>
@@ -1033,7 +1033,7 @@ export default function DashboardPage() {
                 const mainEl = document.querySelector('main');
                 if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 cursor-pointer border-none bg-transparent ${isActive
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200 cursor-pointer border-none bg-transparent ${isActive
                   ? 'text-primary scale-105'
                   : 'text-text-dim hover:text-text-main'
                 }`}

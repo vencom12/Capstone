@@ -295,7 +295,7 @@ export default function AddressBookModal({
         {viewMode === 'list' ? (
           <>
             {/* Top Action Bar */}
-            <div className="flex justify-between items-center bg-bg-surface/80 p-3.5 rounded-2xl border border-border-glass">
+            <div className="flex justify-between items-center bg-bg-surface/80 p-3.5 rounded-xl border border-border-glass">
               <div>
                 <p className="text-xs text-text-dim m-0">Shopee-Style Fast Courier Addressing</p>
                 <p className="text-sm font-bold m-0 text-text-main">
@@ -304,7 +304,7 @@ export default function AddressBookModal({
               </div>
               <button
                 onClick={handleOpenAdd}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all shadow-sm cursor-pointer border-none"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all shadow-sm cursor-pointer border-none"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -316,7 +316,7 @@ export default function AddressBookModal({
 
             {/* Address List */}
             {addresses.length === 0 ? (
-              <div className="border-2 border-dashed border-border-glass rounded-2xl p-8 flex flex-col items-center justify-center text-center text-text-dim">
+              <div className="border-2 border-dashed border-border-glass rounded-xl p-8 flex flex-col items-center justify-center text-center text-text-dim">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 opacity-50">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
@@ -325,7 +325,7 @@ export default function AddressBookModal({
                 <p className="text-xs mt-1 max-w-[280px]">Add your home, office, or branch location for 1-click checkout delivery.</p>
                 <button
                   onClick={handleOpenAdd}
-                  className="mt-3 px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none"
+                  className="mt-3 px-4 py-2 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none"
                 >
                   + Add First Address
                 </button>
@@ -339,7 +339,7 @@ export default function AddressBookModal({
                     <div
                       key={addr.id}
                       className={`
-                        p-4 rounded-2xl border transition-all duration-200 flex flex-col gap-2.5 relative
+                        p-4 rounded-xl border transition-all duration-200 flex flex-col gap-2.5 relative
                         ${isSelected
                           ? 'border-primary bg-primary/10 shadow-sm'
                           : addr.isDefault
@@ -527,7 +527,7 @@ export default function AddressBookModal({
                 placeholder="e.g. Unit 4B, Sunrise Heights Condominium, 14 Katipunan Avenue"
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary resize-none transition-all"
+                className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary resize-none transition-all"
               />
             </div>
 
@@ -543,7 +543,7 @@ export default function AddressBookModal({
                     type="button"
                     onClick={() => setLabel(tag)}
                     className={`
-                      px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border flex items-center gap-2
+                      px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer border flex items-center gap-2
                       ${label === tag
                         ? 'bg-primary text-white border-primary shadow-sm'
                         : 'bg-bg-surface text-text-dim border-border-glass hover:bg-white/5'}
@@ -591,7 +591,7 @@ export default function AddressBookModal({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
               >
                 {isSaving ? 'Saving Address...' : editingId ? 'Update Address' : 'Save Address'}
               </button>
@@ -599,7 +599,7 @@ export default function AddressBookModal({
                 type="button"
                 onClick={() => setViewMode('list')}
                 disabled={isSaving}
-                className="px-4 py-2.5 rounded-xl bg-transparent border border-border-glass text-text-dim font-bold text-xs hover:bg-white/5 transition-all cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 rounded-lg bg-transparent border border-border-glass text-text-dim font-bold text-xs hover:bg-white/5 transition-all cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>

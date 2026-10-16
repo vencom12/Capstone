@@ -120,7 +120,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   return (
     <div className="flex flex-col gap-4 font-sans text-left animate-[fadeIn_0.2s_ease-out]">
       {/* 1. Shopee-Style Top Status Banner */}
-      <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${
+      <div className={`p-4 rounded-xl border flex items-center justify-between flex-wrap gap-3 ${
         isCanceled
           ? 'bg-red-500/10 border-red-500/30 text-red-400'
           : isDelivered
@@ -254,7 +254,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       </div>
 
       {/* 2. Logistics Partner & Tracking Number Card */}
-      <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3">
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2.5">
           {isCanceled ? (
             <>
@@ -350,7 +350,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       </div>
 
       {/* 3. Shopee-Style Chronological Logistics Timeline Stepper */}
-      <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 flex flex-col gap-4">
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-5 flex flex-col gap-4">
         <div className="flex justify-between items-center border-b border-border-glass pb-3">
           <h4 className="text-xs font-extrabold uppercase tracking-wider text-text-dim m-0">
             Logistics Tracking History
@@ -414,7 +414,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
       </div>
 
       {/* 4. Recipient / Claimant Location Card */}
-      <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 flex flex-col gap-2">
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col gap-2">
         <div className="flex items-start gap-2.5">
           <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

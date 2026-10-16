@@ -31,9 +31,9 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
   const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
   return (
-    <article className="bg-bg-card backdrop-blur-md border border-border-glass rounded-2xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
+    <article className="bg-bg-card backdrop-blur-md border border-border-glass rounded-xl p-4 flex flex-col gap-3 hover:border-primary/30 transition-colors">
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center text-lg sm:text-xl">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center text-lg sm:text-xl">
           {thumb ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumb} alt={title} className="w-full h-full object-cover" />
@@ -88,7 +88,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
           <button
             type="button"
             onClick={() => onTrack(order)}
-            className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+            className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
           >
             {isPickup ? 'Track Pick-up' : 'Track Delivery'}
           </button>
@@ -97,7 +97,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
             <button
               type="button"
               onClick={() => onDetails(order)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
+              className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
               title="Rate quality and leave a verified review"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 shrink-0">
@@ -108,7 +108,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
             <button
               type="button"
               onClick={() => onReorder(order)}
-              className="px-3.5 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-lg bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
             >
               Buy Again
             </button>
@@ -117,7 +117,7 @@ function OrderCard({ order, onTrack, onDetails, onReorder }: {
           <button
             type="button"
             onClick={() => onReorder(order)}
-            className="px-3.5 py-2 rounded-xl bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-primary/15 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
           >
             Reorder
           </button>
@@ -175,7 +175,7 @@ export default function OrderList({ orders, onTrack, onDetails, onReorder }: Ord
       </div>
 
       {visible.length === 0 ? (
-        <div className="bg-bg-surface border border-border-glass rounded-2xl p-8 text-center text-text-dim text-sm">
+        <div className="bg-bg-surface border border-border-glass rounded-xl p-8 text-center text-text-dim text-sm">
           {tab === 'active'
             ? 'You have no orders in progress right now.'
             : tab === 'completed'

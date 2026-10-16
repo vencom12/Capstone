@@ -190,7 +190,7 @@ export default function GlassDatePicker({
   };
 
   const renderCalendarContent = () => (
-    <div className="w-[285px] max-w-full bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-2xl p-4 shadow-xl border border-border-glass animate-[fadeIn_0.15s_ease-out]">
+    <div className="w-[285px] max-w-full bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-xl p-4 shadow-xl border border-border-glass animate-[fadeIn_0.15s_ease-out]">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <span className="font-bold text-[0.95rem] text-text-main">
@@ -288,7 +288,7 @@ export default function GlassDatePicker({
         type="button"
         suppressHydrationWarning
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary  transition-all"
+        className="flex items-center justify-between gap-3 bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none min-w-[155px] cursor-pointer hover:border-primary/40 focus:border-primary  transition-all"
       >
         <span className="font-sans text-text-main font-medium">{formatDateDisplay(value)}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-dim shrink-0">

@@ -139,7 +139,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
         {activeTab === 'faqs' ? (
           <>
             {/* Store Info Quick Card */}
-            <div className="p-4 rounded-2xl bg-white/[0.04] border border-border-glass flex flex-col gap-2">
+            <div className="p-4 rounded-xl bg-white/[0.04] border border-border-glass flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-sm text-text-main">Eds Towels & Caps</span>
                 <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30">
@@ -213,14 +213,14 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               <button
                 type="button"
                 onClick={() => setActiveTab('feedback')}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-xs text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 rounded-lg bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-xs text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
               >
                 <span>Have a Question? Contact Staff</span>
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs font-semibold cursor-pointer transition-all"
+                className="py-2.5 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs font-semibold cursor-pointer transition-all"
               >
                 Close
               </button>
@@ -240,7 +240,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none cursor-pointer"
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none cursor-pointer"
                 >
                   <option value="Custom Embroidery Inquiry">Custom Embroidery & Personalization</option>
                   <option value="Rush Production">Rush Production & Turnaround</option>
@@ -257,7 +257,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                   placeholder="e.g. ORD-2026-1001"
                   value={orderId}
                   onChange={(e) => setOrderId(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs font-mono outline-none"
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs font-mono outline-none"
                 />
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                   placeholder="e.g. Maria Santos"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none"
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
                 />
               </div>
 
@@ -284,7 +284,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                   placeholder="e.g. maria@gmail.com or 0917 123 4567"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none"
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
                 />
               </div>
             </div>
@@ -298,7 +298,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 placeholder="Describe your custom embroidery requirements, questions, or order instructions in detail..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-xs outline-none focus:border-primary leading-relaxed"
+                className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main text-xs outline-none focus:border-primary leading-relaxed"
               />
             </div>
 
@@ -307,14 +307,14 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               <button
                 type="button"
                 onClick={() => setActiveTab('faqs')}
-                className="py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs font-semibold cursor-pointer"
+                className="py-2.5 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim text-xs font-semibold cursor-pointer"
               >
                 Back to FAQs
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
+                className="flex-1 py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
               >
                 {isSubmitting ? 'Sending Message...' : 'Send Inquiry to Workshop'}
               </button>

@@ -1386,7 +1386,7 @@ export default function PanelRawMaterials({
               {isLoadingPOs ? (
                 <div className="text-center py-8 text-xs text-text-dim">Loading purchase orders...</div>
               ) : purchaseOrders.length === 0 ? (
-                <div className="p-8 text-center bg-bg-surface/40 rounded-2xl border border-dashed border-border-glass flex flex-col items-center gap-2">
+                <div className="p-8 text-center bg-bg-surface/40 rounded-xl border border-dashed border-border-glass flex flex-col items-center gap-2">
                   <svg className="w-8 h-8 text-text-dim opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
@@ -1397,7 +1397,7 @@ export default function PanelRawMaterials({
                   <button
                     type="button"
                     onClick={() => openDraftPoModal()}
-                    className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer"
+                    className="mt-2 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold cursor-pointer"
                   >
                     + Create Acquisition Form
                   </button>
@@ -1414,7 +1414,7 @@ export default function PanelRawMaterials({
                     return (
                       <div
                         key={po.id}
-                        className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                           isReceived
                             ? 'bg-emerald-500/5 border-emerald-500/20'
                             : isOrdered
@@ -1703,7 +1703,7 @@ export default function PanelRawMaterials({
                 return (
                   <div
                     key={id}
-                    className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-[20px] p-4 flex flex-col gap-3 text-left relative"
+                    className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-4 flex flex-col gap-3 text-left relative"
                   >
                     <div className="flex justify-between items-start gap-1">
                       <span className="font-bold text-text-main text-sm truncate">{i.item}</span>
@@ -2239,7 +2239,7 @@ export default function PanelRawMaterials({
             const unit = target?.unit || 'units';
 
             return (
-              <div className="bg-emerald-500/10 border border-emerald-500/25 p-3.5 rounded-2xl flex justify-between items-center gap-2 mt-1">
+              <div className="bg-emerald-500/10 border border-emerald-500/25 p-3.5 rounded-xl flex justify-between items-center gap-2 mt-1">
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-emerald-400">Stockpile Projection:</span>
                   <span className="text-[0.75rem] text-text-dim">
@@ -2329,7 +2329,7 @@ export default function PanelRawMaterials({
               </div>
             </div>
 
-            <div className="bg-black/30 border border-white/10 rounded-2xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
+            <div className="bg-black/30 border border-white/10 rounded-xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
               <img
                 src={shoppingListImageUrl}
                 alt="Supplier Restock Slip"
@@ -2453,7 +2453,7 @@ export default function PanelRawMaterials({
 
             {/* Low Stock Reference Panel */}
             {lowStockItems.length > 0 ? (
-              <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3.5 flex flex-col gap-2.5">
+              <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 flex flex-col gap-2.5">
                 <div className="flex justify-between items-center flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
