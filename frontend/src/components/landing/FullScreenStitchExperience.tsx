@@ -209,9 +209,9 @@ export default function FullScreenStitchExperience() {
           className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         />
 
-        {/* Ambient bottom gradient for a buttery-smooth storefront transition */}
+        {/* Ambient bottom shadow vignette */}
         <div
-          className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-bg-dark via-bg-dark/70 to-transparent pointer-events-none z-[5]"
+          className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-[5]"
         />
 
         {/* Top spacer to ensure clear headroom beneath fixed StorefrontHeader */}
@@ -281,10 +281,10 @@ export default function FullScreenStitchExperience() {
             </p>
           </div>
 
-          {/* Arrival & Direct Call to Action (86% to 100%) */}
+          {/* Arrival & Direct Call to Action (86% to 94%) */}
           <div
             className={`transition-all duration-700 absolute pointer-events-auto ${
-              scrollProgress >= 0.86
+              scrollProgress >= 0.86 && scrollProgress < 0.94
                 ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
             }`}
@@ -299,6 +299,7 @@ export default function FullScreenStitchExperience() {
               Explore our ready-to-stitch products below or order custom personalized monogramming.
             </p>
             <button
+              suppressHydrationWarning
               onClick={scrollToProducts}
               className="px-8 py-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm tracking-wide shadow-[0_0_35px_rgba(220,38,38,0.6)] hover:shadow-[0_0_50px_rgba(220,38,38,0.8)] active:scale-95 transition-all cursor-pointer flex items-center gap-2.5 mx-auto"
             >
@@ -311,7 +312,11 @@ export default function FullScreenStitchExperience() {
         {/* =========================================================================
             BOTTOM PROGRESS BAR & SCROLL TICKER
             ========================================================================= */}
-        <div className="relative z-10 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto pointer-events-auto">
+        <div
+          className={`relative z-10 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto pointer-events-auto transition-opacity duration-500 ${
+            scrollProgress < 0.94 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
           {/* Active Shelf Compartment Indicator */}
           <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/15 text-xs font-mono shadow-xl">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -329,6 +334,7 @@ export default function FullScreenStitchExperience() {
               </span>
             ) : (
               <button
+                suppressHydrationWarning
                 onClick={scrollToProducts}
                 className="text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer border-none bg-transparent font-bold"
               >

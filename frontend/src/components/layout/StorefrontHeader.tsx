@@ -195,12 +195,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         {/* Desktop Actions (Story Link, Products Link, Theme, Auth, Basket) - visible only on lg:flex */}
         <div className="hidden lg:flex items-center gap-3 justify-end shrink-0 lg:min-w-[220px]">
           <button
+            suppressHydrationWarning
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="text-xs font-bold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
           >
             Atelier Story
           </button>
           <button
+            suppressHydrationWarning
             onClick={() => {
               const el = document.getElementById('products-section');
               if (el) el.scrollIntoView({ behavior: 'smooth' });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import type { Product } from '@/lib/types';
 import OptimizedImage from '@/components/ui/OptimizedImage';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -15,10 +16,38 @@ interface ProductCardProps {
   isVisible?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView, index, isVisible }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, index = 0, isVisible }: ProductCardProps) {
   const { items, addItem } = useBasketStore();
   const { favorites, toggleFavorite } = useProductStore();
   const { isAuthenticated } = useAuthStore();
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hasEntered, setHasEntered] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasEntered(true);
+        } else if (entry.boundingClientRect.top > window.innerHeight) {
+          // Reset when scrolled back above into hero
+          setHasEntered(false);
+        }
+      },
+      {
+        threshold: 0.12,
+        rootMargin: '0px 0px -20px 0px',
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const showCard = hasEntered && isVisible !== false;
 
   const productId = product.id || product._id || '';
   const isFav = favorites.some((f) => (f.id || f._id) === productId);
@@ -65,14 +94,15 @@ export default function ProductCard({ product, onQuickView, index, isVisible }: 
 
   return (
     <div
+      ref={cardRef}
       onClick={() => onQuickView(product)}
       style={{
-        transitionDelay: isVisible !== false && index !== undefined ? `${Math.min(index, 11) * 60}ms` : '0ms',
+        transitionDelay: showCard ? `${(index % 4) * 120}ms` : '0ms',
       }}
-      className={`group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md flex flex-col hover:border-primary/40 hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isVisible === false
-          ? 'opacity-0 translate-y-10 scale-[0.94] pointer-events-none'
-          : 'opacity-100 translate-y-0 scale-100'
+      className={`group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md flex flex-col hover:border-primary/40 hover:-translate-y-1 transition-all duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        showCard
+          ? 'opacity-100 translate-y-0 scale-100'
+          : 'opacity-0 translate-y-12 scale-[0.92] pointer-events-none'
       }`}
     >
       {/* Image */}

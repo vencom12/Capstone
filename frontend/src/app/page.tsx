@@ -131,29 +131,12 @@ export default function StorefrontPage() {
       <FullScreenStitchExperience />
 
       {/* Storefront Products Section */}
-      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-bg-dark border-t border-white/10 scroll-mt-20">
-        {/* Products Section Header Bar */}
-        <div className="w-full bg-slate-900/60 backdrop-blur-md border-b border-border-glass px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight m-0">
-                All Products
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-text-dim mt-0.5 m-0">
-              Industrial precision embroidery on demand. Choose a design or order custom monogramming.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-semibold px-3 py-1 rounded-full bg-white/5 border border-white/10">
-              Active Embroidery Collection
-            </span>
-          </div>
-        </div>
+      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col scroll-mt-20">
+        {/* Background follows the boxes as user scrolls down */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-bg-dark/75 via-200px to-bg-dark to-450px pointer-events-none transition-colors duration-500" />
 
         {/* Main Layout: Sidebar & Products Grid */}
-        <div className="flex-1 flex w-full min-h-0 min-w-0 items-stretch relative">
+        <div className="flex-1 flex w-full min-h-0 min-w-0 items-stretch relative pt-4 md:pt-6">
           <Sidebar />
 
           {/* Main Products Grid */}
