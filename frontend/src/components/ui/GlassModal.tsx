@@ -14,6 +14,7 @@ interface GlassModalProps {
   zIndex?: string;
   isDirty?: boolean;
   onDiscard?: () => void;
+  warnOnDiscard?: boolean;
 }
 
 export default function GlassModal({
@@ -27,9 +28,9 @@ export default function GlassModal({
   zIndex = 'z-[99999]',
   isDirty,
   onDiscard,
+  warnOnDiscard = false,
 }: GlassModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [hasUserTyped, setHasUserTyped] = useState(false);
   const [showDiscardNotice, setShowDiscardNotice] = useState(false);
 
   // Mark component as mounted on the client side
@@ -38,28 +39,24 @@ export default function GlassModal({
     return () => setMounted(false);
   }, []);
 
-  // Reset dirty / notice state when modal opens or closes from outside
+  // Reset notice state when modal opens or closes from outside
   useEffect(() => {
     if (isOpen) {
-      setHasUserTyped(false);
       setShowDiscardNotice(false);
     }
   }, [isOpen]);
 
-  // Form is considered dirty if:
-  // - explicitly flagged via `isDirty` prop (if isDirty === false, never prompt)
-  // - OR if an onDiscard handler is supplied and the user has actively typed
-  const isFormDirty = isDirty !== undefined 
-    ? Boolean(isDirty) 
-    : Boolean(onDiscard && hasUserTyped);
+  // Only prompt for discard if explicitly requested via warnOnDiscard AND the form is dirty
+  const isFormDirty = Boolean(warnOnDiscard && isDirty);
 
   const handleAttemptClose = useCallback(() => {
     if (isFormDirty) {
       setShowDiscardNotice(true);
     } else {
+      onDiscard?.();
       onClose();
     }
-  }, [isFormDirty, onClose]);
+  }, [isFormDirty, onDiscard, onClose]);
 
   // Close or dismiss notice on Escape key
   const handleEscape = useCallback(
@@ -90,7 +87,6 @@ export default function GlassModal({
 
   const handleConfirmDiscard = () => {
     setShowDiscardNotice(false);
-    setHasUserTyped(false);
     onDiscard?.();
     onClose();
   };
@@ -109,12 +105,6 @@ export default function GlassModal({
       }}
     >
       <div
-        onInput={() => {
-          if (!hasUserTyped) setHasUserTyped(true);
-        }}
-        onChange={() => {
-          if (!hasUserTyped) setHasUserTyped(true);
-        }}
         className={`
           relative w-full ${maxWidth} my-auto
           flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100vh-3rem)]
