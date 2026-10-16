@@ -39,7 +39,7 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isHydrated, setIsHydrated] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const tabTitles: Record<string, string> = {
     overview: 'Overview',

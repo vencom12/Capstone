@@ -35,7 +35,7 @@ export default function DashboardSidebar({
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
 
   useEffect(() => {

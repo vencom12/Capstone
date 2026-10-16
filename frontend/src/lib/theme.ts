@@ -7,7 +7,7 @@ export const THEME_STORAGE_KEY = 'stitch_theme';
  * Defaults to 'dark' if none is stored or if running on server.
  */
 export function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
     if (saved === 'light' || saved === 'dark') {
@@ -16,7 +16,7 @@ export function getStoredTheme(): Theme {
   } catch {
     // LocalStorage might be disabled or blocked
   }
-  return 'dark';
+  return 'light';
 }
 
 /**
@@ -36,9 +36,9 @@ export function applyTheme(theme: Theme): void {
  * Toggles between 'light' and 'dark', saves the choice, and returns the newly active theme.
  */
 export function toggleTheme(): Theme {
-  if (typeof document === 'undefined') return 'dark';
-  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-  const next: Theme = current === 'light' ? 'dark' : 'light';
+  if (typeof document === 'undefined') return 'light';
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next: Theme = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   return next;
 }

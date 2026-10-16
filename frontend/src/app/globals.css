@@ -67,6 +67,18 @@
   --color-primary-glow: rgba(185, 28, 28, 0.12);
 }
 
+[data-theme="dark"] {
+  --color-bg-dark: #090d16;       /* Grounded Obsidian */
+  --color-bg-card: #111827;       /* Deep Slate card */
+  --color-bg-sidebar: #0d121f;    /* Obsidian sidebar */
+  --color-bg-header: rgba(13, 18, 31, 0.85);
+  --color-bg-surface: #1e293b;    /* Elevated dark slate */
+  --color-text-main: #f8fafc;     /* Crisp white text */
+  --color-text-dim: #94a3b8;      /* Slate 400 */
+  --color-border-glass: rgba(255, 255, 255, 0.08);
+  --color-primary-glow: rgba(185, 28, 28, 0.2);
+}
+
 /* ========================================
    Global Resets & Typography
    ======================================== */
