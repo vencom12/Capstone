@@ -10,6 +10,7 @@ import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import { getNotificationPermission, requestNotificationPermission } from '@/lib/pushNotifications';
 import { showToast } from '@/components/ui/Toast';
+import { applyTheme, getStoredTheme } from '@/lib/theme';
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -41,7 +42,7 @@ export default function DashboardSidebar({
     setMounted(true);
     setPushStatus(getNotificationPermission());
     if (typeof document !== 'undefined') {
-      const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      const theme = getStoredTheme();
       setCurrentTheme(theme);
     }
     import('@/lib/api').then(({ api }) => {
@@ -64,7 +65,7 @@ export default function DashboardSidebar({
   const toggleTheme = () => {
     if (typeof document === 'undefined') return;
     const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', nextTheme);
+    applyTheme(nextTheme);
     setCurrentTheme(nextTheme);
   };
 

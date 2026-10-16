@@ -1213,7 +1213,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       </div>
 
                       {/* Detail Box */}
-                      <div className="bg-slate-50 dark:bg-black/30 border border-border-glass p-3 rounded-lg flex flex-col gap-1.5 text-xs">
+                      <div className="bg-bg-surface border border-border-glass p-3 rounded-lg flex flex-col gap-1.5 text-xs">
                         <div className="flex justify-between">
                           <span className="text-text-dim">Item Blank:</span>
                           <span className="font-semibold text-text-main">{order.design}</span>
@@ -1226,7 +1226,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             </span>
                           </div>
                         )}
-                        <div className="flex justify-between pt-1 border-t border-white/5">
+                        <div className="flex justify-between pt-1 border-t border-border-glass">
                           <span className="text-text-dim">Payment:</span>
                           <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                             ₱{order.totalAmount?.toFixed(2)} ({order.paymentStatus === 'paid' ? 'PAID' : 'UNPAID'})
@@ -1319,14 +1319,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </span>
                 </div>
 
-                <div className="bg-black/30 border border-white/5 rounded-xl p-3 flex flex-col gap-1.5 text-xs">
+                <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex flex-col gap-1.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-text-dim">Order ID:</span>
-                    <span className="font-mono font-bold text-white">#{verifyingOrderForRelease.orderId}</span>
+                    <span className="font-mono font-bold text-text-main">#{verifyingOrderForRelease.orderId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-dim">Customer:</span>
-                    <span className="font-bold text-white">{verifyingOrderForRelease.client}</span>
+                    <span className="font-bold text-text-main">{verifyingOrderForRelease.client}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-dim">Item Blank:</span>
@@ -1335,12 +1335,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {verifyingOrderForRelease.personalization?.text && (
                     <div className="flex justify-between">
                       <span className="text-text-dim">Monogram:</span>
-                      <span className="font-mono font-bold text-primary-light">"{verifyingOrderForRelease.personalization.text}"</span>
+                      <span className="font-mono font-bold text-primary">"{verifyingOrderForRelease.personalization.text}"</span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1 border-t border-white/5">
+                  <div className="flex justify-between pt-1 border-t border-border-glass">
                     <span className="text-text-dim">Payment:</span>
-                    <span className="font-bold text-emerald-400">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       ₱{verifyingOrderForRelease.totalAmount?.toFixed(2)} (PAID IN FULL)
                     </span>
                   </div>

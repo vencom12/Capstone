@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { toggleTheme } from '@/lib/theme';
 
 interface StorefrontHeaderProps {
   onMenuToggle?: () => void;
@@ -89,11 +90,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 lg:hidden">
             <button
               suppressHydrationWarning
-              onClick={() => {
-                const html = document.documentElement;
-                const current = html.getAttribute('data-theme');
-                html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
-              }}
+              onClick={() => toggleTheme()}
               className="w-9 h-9 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 border-none bg-transparent"
               title="Toggle theme"
               aria-label="Toggle theme"
@@ -199,11 +196,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         <div className="hidden lg:flex items-center gap-3 justify-end shrink-0 lg:min-w-[220px]">
           <button
             suppressHydrationWarning
-            onClick={() => {
-              const html = document.documentElement;
-              const current = html.getAttribute('data-theme');
-              html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
-            }}
+            onClick={() => toggleTheme()}
             className="w-10 h-10 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
             title="Toggle theme"
             aria-label="Toggle theme"

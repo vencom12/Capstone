@@ -327,13 +327,13 @@ export default function PanelStaffing({
             className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[220px]"
           />
           {/* Status Filter Chips */}
-          <div className="flex items-center bg-black/20 p-1 rounded-xl border border-white/10 gap-1 text-xs">
+          <div className="flex items-center bg-bg-surface p-1 rounded-xl border border-border-glass gap-1 text-xs">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none ${
                 statusFilter === 'all'
-                  ? 'bg-white/20 text-white shadow-sm'
+                  ? 'bg-primary text-white shadow-sm'
                   : 'text-text-dim hover:text-text-main bg-transparent'
               }`}
             >
@@ -344,8 +344,8 @@ export default function PanelStaffing({
               onClick={() => setStatusFilter('active')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
                 statusFilter === 'active'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-text-dim hover:text-emerald-400 bg-transparent'
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
+                  : 'text-text-dim hover:text-emerald-500 bg-transparent'
               }`}
             >
               Active ({users.length - disabledCount})
@@ -355,8 +355,8 @@ export default function PanelStaffing({
               onClick={() => setStatusFilter('disabled')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
                 statusFilter === 'disabled'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                  : 'text-text-dim hover:text-rose-400 bg-transparent'
+                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-sm'
+                  : 'text-text-dim hover:text-rose-500 bg-transparent'
               }`}
             >
               Disabled ({disabledCount})
@@ -879,7 +879,7 @@ export default function PanelStaffing({
                   placeholder="e.g. Account suspended, policy violation, customer requested..."
                   value={disableReason}
                   onChange={(e) => setDisableReason(e.target.value)}
-                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all font-sans"
+                  className="bg-bg-surface border border-border-glass rounded-xl px-3 py-2 text-xs text-text-main focus:outline-none focus:border-primary transition-all font-sans"
                 />
               </div>
             </div>
@@ -953,19 +953,19 @@ export default function PanelStaffing({
 
             {/* CRM Stats Grid (No wallet balance displayed) */}
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="p-3 rounded-xl bg-black/25 border border-white/5 flex flex-col gap-1">
+              <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1">
                 <span className="text-[0.68rem] text-text-dim font-bold uppercase tracking-wider">Total Orders</span>
                 <span className="text-base font-extrabold text-primary font-mono">
                   {viewingProfileUser.totalOrders || 0}
                 </span>
               </div>
-              <div className="p-3 rounded-xl bg-black/25 border border-white/5 flex flex-col gap-1">
+              <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1">
                 <span className="text-[0.68rem] text-text-dim font-bold uppercase tracking-wider">Lifetime Spend</span>
                 <span className="text-base font-extrabold text-success font-mono">
                   ₱{(viewingProfileUser.totalSpent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className="p-3 rounded-xl bg-black/25 border border-white/5 flex flex-col gap-1">
+              <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1">
                 <span className="text-[0.68rem] text-text-dim font-bold uppercase tracking-wider">Last Active</span>
                 <span className="text-xs font-bold text-text-main font-mono">
                   {formatLastActive(viewingProfileUser.lastActiveAt || viewingProfileUser.lastLoginAt)}
@@ -974,7 +974,7 @@ export default function PanelStaffing({
             </div>
 
             {/* Contact & Shipping Details */}
-            <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/5 text-xs">
+            <div className="flex flex-col gap-2 p-3 rounded-xl bg-bg-surface border border-border-glass text-xs">
               <div className="flex justify-between">
                 <span className="text-text-dim font-bold">Contact Phone:</span>
                 <span className="font-mono text-text-main font-bold">{viewingProfileUser.phoneNumber || 'Not provided'}</span>

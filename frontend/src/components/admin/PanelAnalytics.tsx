@@ -491,7 +491,7 @@ export default function PanelAnalytics({
               step="50"
               value={dailyStallOverhead}
               onChange={(e) => setDailyStallOverhead(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-20 bg-black/40 border border-border-glass px-2 py-1 rounded text-white font-mono text-xs outline-none"
+              className="w-20 bg-bg-surface border border-border-glass px-2 py-1 rounded text-text-main font-mono text-xs outline-none"
             />
             <button
               type="button"
@@ -499,7 +499,7 @@ export default function PanelAnalytics({
                 setShowOverheadSettings(false);
                 showToast('Stall cost saved', 'success');
               }}
-              className="px-2.5 py-1 bg-white/10 hover:bg-white/15 text-white rounded font-medium text-xs"
+              className="px-2.5 py-1 bg-primary text-white rounded font-medium text-xs cursor-pointer"
             >
               Save
             </button>
@@ -823,7 +823,7 @@ export default function PanelAnalytics({
                 </div>
               </div>
 
-              <div className="bg-black/20 border border-border-glass rounded-lg p-3 space-y-3">
+              <div className="bg-bg-card border border-border-glass rounded-lg p-3 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-text-dim block mb-1">Item</label>
@@ -879,7 +879,7 @@ export default function PanelAnalytics({
               ) : (
                 <div className="space-y-2 overflow-y-auto max-h-[170px] pr-1">
                   {threadBatches.map((b) => (
-                    <div key={b.color} className="bg-black/20 border border-border-glass rounded-lg p-2.5 flex items-center justify-between text-xs">
+                    <div key={b.color} className="bg-bg-card border border-border-glass rounded-lg p-2.5 flex items-center justify-between text-xs">
                       <div>
                         <span className="font-semibold text-text-main">{b.color}</span>
                         <span className="text-text-dim ml-2 font-mono">({b.count} orders)</span>

@@ -21,6 +21,7 @@ import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
 import Pagination from '@/components/ui/Pagination';
+import { toggleTheme } from '@/lib/theme';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -1323,8 +1324,7 @@ export default function EmployeePage() {
                    </div>
                 </div>
                 <button onClick={() => {
-                  const html = document.documentElement;
-                  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+                  toggleTheme();
                 }} className="bg-primary text-white font-bold px-5 py-2.5 rounded-lg text-[0.9rem] hover:shadow-md cursor-pointer transition-all">Toggle Theme</button>
               </div>
             </div>

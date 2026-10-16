@@ -924,7 +924,7 @@ export default function PanelOverview({
                     value={editTrackingNumber || claimCode}
                     onChange={(e) => setEditTrackingNumber(e.target.value)}
                     placeholder="e.g. #A-9632"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
+                    className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
                   />
                   <span className="text-[0.68rem] text-text-dim">
                     Customer presents this claim code at Pacific Mall Lucena counter to collect items.
@@ -950,7 +950,7 @@ export default function PanelOverview({
                     value={editTrackingNumber}
                     onChange={(e) => setEditTrackingNumber(e.target.value)}
                     placeholder="e.g. JNT-PH-78..."
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary transition-all"
+                    className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-primary transition-all"
                   />
                 </div>
               )}
@@ -967,7 +967,7 @@ export default function PanelOverview({
                       ? 'e.g. Stitched and placed on Shelf A ready for counter pick-up'
                       : 'e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier'
                   }
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-all"
+                  className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-primary transition-all"
                 />
               </div>
 

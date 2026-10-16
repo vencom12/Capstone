@@ -23,6 +23,7 @@ import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import BasketView from '@/components/dashboard/BasketView';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { getOrderStage } from '@/lib/orderStatus';
+import { toggleTheme } from '@/lib/theme';
 import Pagination from '@/components/ui/Pagination';
 import GlassModal from '@/components/ui/GlassModal';
 
@@ -873,10 +874,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        const html = document.documentElement;
-                        html.setAttribute('data-theme', html.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-                      }}
+                      onClick={() => toggleTheme()}
                       className="bg-white/5 border border-border-glass px-4 py-2.5 rounded-lg text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95"
                     >
                       Switch Theme
@@ -939,11 +937,7 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-1.5 shrink-0">
           <button
-            onClick={() => {
-              const html = document.documentElement;
-              const current = html.getAttribute('data-theme');
-              html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
-            }}
+            onClick={() => toggleTheme()}
             className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
             title="Toggle theme"
           >

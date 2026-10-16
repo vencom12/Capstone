@@ -2329,11 +2329,11 @@ export default function PanelRawMaterials({
               </div>
             </div>
 
-            <div className="bg-black/30 border border-white/10 rounded-xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
               <img
                 src={shoppingListImageUrl}
                 alt="Supplier Restock Slip"
-                className="w-full max-w-md rounded-xl shadow-md border border-white/10 object-contain cursor-pointer"
+                className="w-full max-w-md rounded-xl shadow-md border border-border-glass object-contain cursor-pointer"
                 title="Right-click or press and hold to copy"
               />
             </div>

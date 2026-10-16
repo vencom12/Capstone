@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /* ========================================
    Stitch-Opt Design Tokens
    Migrated from legacy base.css

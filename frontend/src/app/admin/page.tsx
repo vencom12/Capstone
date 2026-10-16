@@ -22,6 +22,7 @@ import dynamic from 'next/dynamic';
 const PersistentAssistant = dynamic(() => import('@/components/employee/PersistentAssistant'), {
   ssr: false,
 });
+import { getStoredTheme, applyTheme } from '@/lib/theme';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
@@ -55,14 +56,15 @@ export default function AdminPage() {
   // Sync theme state on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const currentTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' || 'dark';
-      setTheme(currentTheme);
+      const active = getStoredTheme();
+      applyTheme(active);
+      setTheme(active);
     }
   }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', nextTheme);
+    applyTheme(nextTheme);
     setTheme(nextTheme);
   };
 
