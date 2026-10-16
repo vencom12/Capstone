@@ -150,7 +150,9 @@ export default function AuthModal() {
       if (res.success) {
         handleClose(true);
         useUIStore.getState().triggerWelcome(res.user?.username || 'Customer', res.user?.role || 'customer');
-        router.refresh();
+        if (authParam) {
+          router.replace('/');
+        }
       } else {
         setFormError(res.message || 'Registration failed.');
         showToast(res.message || 'Registration failed.', 'error');
@@ -187,8 +189,9 @@ export default function AuthModal() {
         } else if (res.user?.role === 'employee') {
           router.replace('/employee');
         } else {
-          router.replace('/');
-          router.refresh();
+          if (authParam) {
+            router.replace('/');
+          }
         }
       } else {
         setFormError(res.message || 'Invalid username or password.');

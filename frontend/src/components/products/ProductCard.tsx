@@ -11,9 +11,11 @@ import GlassButton from '@/components/ui/GlassButton';
 interface ProductCardProps {
   product: Product;
   onQuickView: (product: Product) => void;
+  index?: number;
+  isVisible?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, index, isVisible }: ProductCardProps) {
   const { items, addItem } = useBasketStore();
   const { favorites, toggleFavorite } = useProductStore();
   const { isAuthenticated } = useAuthStore();
@@ -64,7 +66,14 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   return (
     <div
       onClick={() => onQuickView(product)}
-      className="group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:border-primary/40 hover:-translate-y-1 shadow-sm hover:shadow-md flex flex-col"
+      style={{
+        transitionDelay: isVisible !== false && index !== undefined ? `${Math.min(index, 11) * 60}ms` : '0ms',
+      }}
+      className={`group bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md flex flex-col hover:border-primary/40 hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isVisible === false
+          ? 'opacity-0 translate-y-10 scale-[0.94] pointer-events-none'
+          : 'opacity-100 translate-y-0 scale-100'
+      }`}
     >
       {/* Image */}
       <div

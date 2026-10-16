@@ -53,7 +53,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   }, [isCategoryOpen]);
 
   return (
-    <header className="sticky top-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
+    <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
@@ -141,7 +141,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               className="flex items-center gap-1.5 sm:gap-2 bg-bg-surface border border-border-glass text-text-main px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold outline-none cursor-pointer hover:bg-white/5 active:scale-95 transition-all whitespace-nowrap"
             >
               <span className="max-w-[85px] sm:max-w-none truncate">
-                {selectedCategory === 'All' ? 'All Designs' : selectedCategory}
+                {selectedCategory === 'All' ? 'All Products' : selectedCategory}
               </span>
               <svg
                 width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -170,7 +170,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                     ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-sm' : 'text-text-main hover:text-primary'}
                   `}
                 >
-                  {c === 'All' ? 'All Designs' : c}
+                  {c === 'All' ? 'All Products' : c}
                 </button>
               ))}
             </div>
@@ -181,7 +181,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <input
               suppressHydrationWarning
               type="text"
-              placeholder="Search designs..."
+              placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-bg-surface border border-border-glass px-4 py-2 sm:py-2.5 pr-9 rounded-lg text-text-main outline-none text-xs sm:text-[0.92rem] transition-all focus:border-primary"
@@ -192,8 +192,24 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </div>
         </div>
 
-        {/* Desktop Actions (Theme, Auth, Basket) - visible only on lg:flex */}
+        {/* Desktop Actions (Story Link, Products Link, Theme, Auth, Basket) - visible only on lg:flex */}
         <div className="hidden lg:flex items-center gap-3 justify-end shrink-0 lg:min-w-[220px]">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="text-xs font-bold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
+          >
+            Atelier Story
+          </button>
+          <button
+            onClick={() => {
+              const el = document.getElementById('products-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="text-xs font-bold text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all cursor-pointer"
+          >
+            Products ↓
+          </button>
+
           <button
             suppressHydrationWarning
             onClick={() => toggleTheme()}

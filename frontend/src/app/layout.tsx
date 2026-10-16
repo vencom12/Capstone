@@ -29,15 +29,15 @@ export const metadata: Metadata = {
     default: 'Stitch-Opt | Premium Embroidery Designs',
     template: '%s | Stitch-Opt',
   },
-  description: 'Explore our curated catalog of professional embroidery designs optimized for high-speed production. Custom monogramming, towels, fans, and more.',
-  keywords: ['embroidery', 'monogramming', 'custom towels', 'personalized gifts', 'Stitch-Opt'],
+  description: 'Explore our curated collection of professional embroidery products optimized for high-speed production. Custom monogramming, towels, fans, caps, and more.',
+  keywords: ['embroidery', 'monogramming', 'custom towels', 'personalized gifts', 'Stitch-Opt', 'custom caps', 'embroidered fans'],
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: 'Stitch-Opt | Premium Embroidery Designs',
-    description: 'Explore our curated catalog of professional embroidery designs optimized for high-speed production.',
+    title: 'Stitch-Opt | Premium Embroidery Products',
+    description: 'Explore our curated collection of professional embroidery products optimized for high-speed production.',
     url: 'https://capstone-btr7.onrender.com',
     siteName: 'Stitch-Opt',
     type: 'website',
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: 'Stitch-Opt | Premium Embroidery Designs',
-    description: 'Custom embroidery designs & personalized monogramming for towels, fans, and more.',
+    title: 'Stitch-Opt | Premium Embroidery Products',
+    description: 'Custom embroidery products & personalized monogramming for towels, fans, caps, and more.',
   },
   icons: {
     icon: '/favicon.ico',

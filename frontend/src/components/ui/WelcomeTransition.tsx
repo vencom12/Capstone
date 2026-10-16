@@ -12,6 +12,7 @@ export default function WelcomeTransition() {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('Authorizing session...');
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
+  const [isOffline, setIsOffline] = useState(false);
 
   const timersRef = useRef<NodeJS.Timeout[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -24,7 +25,24 @@ export default function WelcomeTransition() {
 
   useEffect(() => {
     setMounted(true);
-    return () => clearTimers();
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      setStatusText('Network disconnected. Waiting for connection...');
+    };
+    const handleOnline = () => {
+      setIsOffline(false);
+      setStatusText('Connection restored. Resuming data sync...');
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      clearTimers();
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   // When welcomeData opens or a new session is triggered
@@ -32,6 +50,7 @@ export default function WelcomeTransition() {
     if (!welcomeData?.isOpen) {
       setStage('hidden');
       setProgress(0);
+      setIsOffline(false);
       isClosingRef.current = false;
       clearTimers();
       return;
@@ -43,33 +62,58 @@ export default function WelcomeTransition() {
     setStage('entering');
     setProgress(25);
     setStatusText('Authorizing session...');
-    startTimeRef.current = Date.now();
+    setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+    startTimeRef.current = welcomeData?.startTime || Date.now();
     isClosingRef.current = false;
     clearTimers();
 
-    // Stage 1: Present view and step up progress
+    // Stage 1 (60ms): Present view and step up progress
     const tPresent = setTimeout(() => {
       setStage('present');
       setProgress(55);
       setStatusText('Connecting to workspace...');
     }, 60);
 
-    // Stage 2: Step up progress as dashboard initializes
+    // Stage 2 (380ms): Step up progress as dashboard initializes
     const tMid = setTimeout(() => {
       if (!isClosingRef.current) {
-        setProgress(80);
+        setProgress(78);
         setStatusText('Loading operational data...');
       }
     }, 380);
 
-    // Stage 3: Generous safety fallback (6.5s) in case of unexpected network stall
+    // Stage 3 (2000ms): Continuous asymptotic progress creep (never looks frozen)
+    const tCreep1 = setTimeout(() => {
+      if (!isClosingRef.current) {
+        setProgress(87);
+        setStatusText('Synchronizing workspace data...');
+      }
+    }, 2000);
+
+    // Stage 4 (3600ms): Steady creep forward
+    const tSlow = setTimeout(() => {
+      if (!isClosingRef.current) {
+        setProgress(93);
+        setStatusText('Finalizing workspace setup...');
+      }
+    }, 3600);
+
+    // Stage 5 (5000ms): Friendly reassurance
+    const tReassure = setTimeout(() => {
+      if (!isClosingRef.current) {
+        setProgress(96);
+        setStatusText('Almost ready...');
+      }
+    }, 5000);
+
+    // Stage 6 (6800ms): Generous silent safety fallback in case of unexpected network stall
     const tSafety = setTimeout(() => {
       if (!isClosingRef.current) {
         triggerExitSequence();
       }
-    }, 6500);
+    }, 6800);
 
-    timersRef.current.push(tPresent, tMid, tSafety);
+    timersRef.current.push(tPresent, tMid, tCreep1, tSlow, tReassure, tSafety);
   }, [welcomeData?.isOpen, welcomeData?.triggerId]);
 
   // When destination dashboard signals that all initial data has finished loading
@@ -84,7 +128,8 @@ export default function WelcomeTransition() {
     isClosingRef.current = true;
 
     // Minimum graceful display time (750ms) to ensure branding and username are legible
-    const elapsed = Date.now() - startTimeRef.current;
+    const effectiveStart = welcomeData?.startTime || startTimeRef.current || Date.now();
+    const elapsed = Date.now() - effectiveStart;
     const remainingDelay = Math.max(0, 750 - elapsed);
 
     const tFill = setTimeout(() => {
@@ -153,7 +198,7 @@ export default function WelcomeTransition() {
       aria-live="polite"
       onClick={() => {
         // Fast manual dismiss safeguard if user taps after initial presentation
-        const elapsed = Date.now() - startTimeRef.current;
+        const elapsed = Date.now() - (welcomeData?.startTime || startTimeRef.current || Date.now());
         if (stage === 'present' && elapsed > 1200 && !isClosingRef.current) {
           triggerExitSequence();
         }
@@ -177,6 +222,14 @@ export default function WelcomeTransition() {
           : 'radial-gradient(circle at 50% 48%, rgba(185, 28, 28, 0.12) 0%, rgba(248, 250, 252, 0.94) 58%, rgba(248, 250, 252, 1) 100%)',
       }}
     >
+      {/* Inline Keyframes for continuous active scanning light shimmer */}
+      <style>{`
+        @keyframes welcomeShimmerSweep {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
+
       {/* Ambient background glow orb */}
       <div
         className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-primary/20 blur-[100px] pointer-events-none animate-pulse"
@@ -266,25 +319,40 @@ export default function WelcomeTransition() {
         )}
 
         {/* Progress & Workspace Status Line */}
-        <div className={`w-48 sm:w-60 flex flex-col items-center gap-2.5 ${isGenericLoading ? 'mt-4' : ''}`}>
+        <div className={`w-52 sm:w-64 flex flex-col items-center gap-2.5 ${isGenericLoading ? 'mt-4' : ''}`}>
           <div
             className={`
-              w-full h-1.5 rounded-full overflow-hidden
+              w-full h-1.5 rounded-full overflow-hidden relative
               ${isDark ? 'bg-white/10' : 'bg-slate-200'}
             `}
           >
+            {/* Main Filled Bar */}
             <div
-              className="h-full bg-gradient-to-r from-primary via-red-500 to-rose-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(185,28,28,0.8)]"
+              className="h-full bg-gradient-to-r from-primary via-red-500 to-rose-400 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(185,28,28,0.8)] relative overflow-hidden"
               style={{ width: `${progress}%` }}
-            />
+            >
+              {/* Continuous Active Scanning Light Beam (never looks frozen) */}
+              <div
+                className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
+                style={{
+                  animation: 'welcomeShimmerSweep 1.6s ease-in-out infinite',
+                }}
+              />
+            </div>
           </div>
 
+          {/* Dynamic Status Text */}
           <span
             className={`
-              text-[0.7rem] tracking-wider uppercase font-semibold transition-all duration-300
-              ${isDark ? 'text-slate-400' : 'text-slate-600'}
+              text-[0.7rem] tracking-wider uppercase font-semibold transition-all duration-300 flex items-center gap-1.5
+              ${isOffline ? 'text-amber-500' : isDark ? 'text-slate-400' : 'text-slate-600'}
             `}
           >
+            {isOffline && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-pulse">
+                <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
+              </svg>
+            )}
             {statusText}
           </span>
         </div>

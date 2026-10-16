@@ -34,6 +34,7 @@ export interface WelcomeTransitionData {
   role?: string;
   isReady?: boolean;
   triggerId?: number;
+  startTime?: number;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -54,16 +55,19 @@ export const useUIStore = create<UIStore>((set) => ({
     })),
   setGoogleSetupData: (data) => set({ googleSetupData: data }),
   setAuthPortal: (portal) => set({ authPortal: portal }),
-  triggerWelcome: (username: string, role?: string) =>
+  triggerWelcome: (username: string, role?: string) => {
+    const now = Date.now();
     set({
       welcomeData: {
         isOpen: true,
         username,
         role,
         isReady: false,
-        triggerId: Date.now(),
+        triggerId: now,
+        startTime: now,
       },
-    }),
+    });
+  },
   markDashboardReady: () =>
     set((state) => ({
       welcomeData: state.welcomeData

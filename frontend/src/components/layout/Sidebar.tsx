@@ -70,7 +70,7 @@ export default function Sidebar() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         className={`
-          h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col p-5 px-3 transition-all duration-300 overflow-y-auto shrink-0 z-[2000]
+          lg:sticky lg:top-[var(--header-height)] lg:h-[calc(100vh-var(--header-height))] bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col p-5 px-3 transition-all duration-300 overflow-y-auto shrink-0 z-[2000]
           w-[230px] max-[1250px]:w-[200px]
           max-[1024px]:fixed max-[1024px]:left-0 max-[1024px]:top-0 max-[1024px]:w-[280px] max-[1024px]:p-4 max-[1024px]:shadow-2xl
           ${isSidebarOpen ? 'max-[1024px]:translate-x-0' : 'max-[1024px]:-translate-x-full'}
@@ -128,7 +128,7 @@ export default function Sidebar() {
             Intelligence in Every Stitch.
           </h2>
           <p className="text-text-dim text-[0.78rem] leading-relaxed opacity-80 m-0">
-            Explore our curated catalog of professional embroidery designs optimized for high-speed production.
+            Explore our curated collection of professional embroidery products optimized for high-speed production.
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export default function Sidebar() {
                       }
                     `}
                   >
-                    {category === 'All' ? 'All Designs' : category}
+                    {category === 'All' ? 'All Products' : category}
                   </button>
                 </li>
               ))}

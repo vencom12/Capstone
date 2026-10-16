@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 const AiAttendant = dynamic(() => import('@/components/products/AiAttendant'), {
   ssr: false,
 });
+import FullScreenStitchExperience from '@/components/landing/FullScreenStitchExperience';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -122,19 +123,45 @@ export default function StorefrontPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-screen w-full overflow-x-hidden lg:overflow-hidden bg-transparent">
+    <div className="flex flex-col min-h-screen w-full overflow-x-clip bg-bg-dark text-text-main">
       <StorefrontHeader />
       <EmailVerificationBanner />
 
-      {/* Main Layout */}
-      <div className="flex-1 flex w-full min-h-0 min-w-0 lg:overflow-hidden items-stretch relative">
-        <Sidebar />
+      {/* Interactive Full-Screen Scroll-Driven Stitch Canvas Experience */}
+      <FullScreenStitchExperience />
 
-        {/* Main Content */}
-        <main className="flex-1 min-h-0 min-w-0 lg:overflow-y-auto p-4 md:p-6 max-[480px]:p-3 bg-transparent">
-          <ProductGrid onQuickView={handleQuickView} />
-        </main>
-      </div>
+      {/* Storefront Products Section */}
+      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-bg-dark border-t border-white/10 scroll-mt-20">
+        {/* Products Section Header Bar */}
+        <div className="w-full bg-slate-900/60 backdrop-blur-md border-b border-border-glass px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight m-0">
+                All Products
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-text-dim mt-0.5 m-0">
+              Industrial precision embroidery on demand. Choose a design or order custom monogramming.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold px-3 py-1 rounded-full bg-white/5 border border-white/10">
+              Active Embroidery Collection
+            </span>
+          </div>
+        </div>
+
+        {/* Main Layout: Sidebar & Products Grid */}
+        <div className="flex-1 flex w-full min-h-0 min-w-0 items-stretch relative">
+          <Sidebar />
+
+          {/* Main Products Grid */}
+          <main className="flex-1 min-h-0 min-w-0 p-4 md:p-6 max-[480px]:p-3 bg-transparent">
+            <ProductGrid onQuickView={handleQuickView} />
+          </main>
+        </div>
+      </section>
 
       {/* Product Quick-View Modal */}
       <ProductModal
@@ -149,21 +176,21 @@ export default function StorefrontPage() {
         fixed top-0 right-0 h-full z-[2000] transition-transform duration-300
         ${isBasketOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
-        <RightPanel 
+        <RightPanel
           onCheckout={() => {
             if (!isAuthenticated) {
               useUIStore.getState().setAuthOpen(true, 'login');
               return;
             }
             setIsCheckoutOpen(true);
-          }} 
-          onCloseMobile={() => setBasketOpen(false)} 
+          }}
+          onCloseMobile={() => setBasketOpen(false)}
         />
       </div>
 
       {/* Drawer Overlay */}
       {isBasketOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1900]"
           onClick={() => setBasketOpen(false)}
         />

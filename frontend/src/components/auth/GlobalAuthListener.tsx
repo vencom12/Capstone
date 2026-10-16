@@ -40,7 +40,7 @@ export default function GlobalAuthListener() {
       useUIStore.getState().triggerWelcome(outcome.user.username || 'Customer', outcome.user.role || 'customer');
       if (outcome.user.role === 'admin') router.replace('/admin');
       else if (outcome.user.role === 'employee') router.replace('/employee');
-      else router.refresh();
+      else router.replace('/');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
