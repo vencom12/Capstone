@@ -211,9 +211,9 @@ export default function AuthModal() {
     e.preventDefault();
     setForgotError(null);
     const target = email.trim();
-    if (!target || !target.includes('@')) {
-      setForgotError('Please enter the email address of your account.');
-      showToast('Please enter the email address of your account.', 'error');
+    if (!target) {
+      setForgotError('Please enter your account email or username.');
+      showToast('Please enter your account email or username.', 'error');
       return;
     }
     setIsFormSubmitting(true);
@@ -269,15 +269,22 @@ export default function AuthModal() {
             <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Reset Password</h2>
             <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
               {forgotSent
-                ? 'Check your inbox. If an account exists for that email, a reset link is on its way (valid for 1 hour).'
-                : "Enter your account email and we'll send you a link to set a new password."}
+                ? 'Check your inbox and spam folder. If an account exists, a reset link is on its way (valid for 1 hour).'
+                : "Enter your account email or username and we'll send a link to set a new password."}
             </p>
           </div>
           {!forgotSent && (
             <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-1">
-                <label className="text-[0.75rem] font-bold text-text-dim ml-1">Email Address *</label>
-                <input type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                <label className="text-[0.75rem] font-bold text-text-dim ml-1">Email Address or Username *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. ryven or revinaryven7@gmail.com" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className={inputCls} 
+                />
               </div>
               <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
                 {isFormSubmitting ? 'Sending...' : 'Send Reset Link'}

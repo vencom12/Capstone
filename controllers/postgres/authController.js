@@ -982,16 +982,19 @@ exports.googleComplete = async (req, res) => {
  * POST /auth/password/forgot — Emails a one-hour reset link (generic success to avoid account enumeration)
  */
 exports.forgotPassword = async (req, res) => {
-    const generic = { success: true, message: 'If an account exists for that email, a reset link has been sent.', cooldownSeconds: 60 };
+    const generic = { success: true, message: 'If an account exists for that email or username, a reset link has been sent to its registered email.', cooldownSeconds: 60 };
     try {
-        const email = String(req.body.email || '').trim().toLowerCase();
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Email is required.' });
+        const input = String(req.body.email || req.body.username || '').trim();
+        if (!input) {
+            return res.status(400).json({ success: false, message: 'Email or username is required.' });
         }
 
         const user = await prisma.user.findFirst({ 
             where: { 
-                email: { equals: email, mode: 'insensitive' } 
+                OR: [
+                    { email: { equals: input, mode: 'insensitive' } },
+                    { username: { equals: input, mode: 'insensitive' } }
+                ]
             } 
         });
         if (!user || user.isActive === false) {
@@ -999,7 +1002,7 @@ exports.forgotPassword = async (req, res) => {
         }
 
         const recent = await prisma.emailVerification.findFirst({
-            where: { userId: user.id, token: { startsWith: 'rst_' } },
+            where: { userId: user.id },
             orderBy: { createdAt: 'desc' }
         });
         if (recent) {
