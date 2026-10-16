@@ -477,7 +477,13 @@ export default function PanelStaffing({
                       <td className="glass-td font-bold text-sm text-text-main text-left whitespace-nowrap">
                         <div className="font-bold text-sm text-text-main">{u.username}</div>
                         {activeTab === 'staff' ? (
-                          <div className={`text-[0.68rem] font-semibold tracking-wide ${u.role === 'admin' ? 'text-secondary' : 'text-accent'}`}>
+                          <div
+                            className={`text-[0.68rem] font-bold tracking-wide ${
+                              u.role === 'admin'
+                                ? 'text-rose-500 dark:text-rose-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            }`}
+                          >
                             {u.role === 'admin' ? 'Administrator' : 'Artisan / Employee'}
                           </div>
                         ) : (
@@ -630,7 +636,9 @@ export default function PanelStaffing({
                   {!customer && (
                     <span
                       className={`text-xs font-bold uppercase tracking-wider ${
-                        u.role === 'admin' ? 'text-secondary' : 'text-accent'
+                        u.role === 'admin'
+                          ? 'text-rose-500 dark:text-rose-400'
+                          : 'text-amber-600 dark:text-amber-400'
                       }`}
                     >
                       {u.role === 'admin' ? 'Administrator' : 'Artisan'}
