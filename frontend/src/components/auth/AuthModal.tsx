@@ -81,11 +81,12 @@ export default function AuthModal() {
   // Auto-close modal whenever user becomes authenticated
   useEffect(() => {
     if (isAuthenticated && isAuthOpen) {
-      handleClose();
+      handleClose(true);
     }
   }, [isAuthenticated, isAuthOpen]);
 
-  const handleClose = () => {
+  const handleClose = (skipRedirect: boolean | any = false) => {
+    const shouldSkip = typeof skipRedirect === 'boolean' ? skipRedirect : false;
     setIsFormSubmitting(false);
     setIsGoogleSubmitting(false);
     setAuthOpen(false);
@@ -95,7 +96,7 @@ export default function AuthModal() {
     setGoogleSetupData(null);
     setNewPassword('');
     setConfirmPassword('');
-    if (authParam) {
+    if (authParam && !shouldSkip && !isAuthenticated) {
       router.replace('/');
     }
   };
@@ -117,7 +118,7 @@ export default function AuthModal() {
       setFormError(failure.message);
       showToast(failure.message, 'error');
     } else {
-      handleClose();
+      handleClose(true);
     }
   };
 
@@ -147,7 +148,7 @@ export default function AuthModal() {
       );
 
       if (res.success) {
-        handleClose();
+        handleClose(true);
         useUIStore.getState().triggerWelcome(res.user?.username || 'Customer', res.user?.role || 'customer');
         router.refresh();
       } else {
@@ -177,7 +178,7 @@ export default function AuthModal() {
       const res = await login(email.trim(), password, rememberMe);
       
       if (res.success) {
-        handleClose();
+        handleClose(true);
         useUIStore.getState().triggerWelcome(res.user?.username || 'User', res.user?.role || 'customer');
 
         // Smart Role-Based Routing

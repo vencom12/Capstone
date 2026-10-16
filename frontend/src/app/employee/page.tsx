@@ -170,6 +170,13 @@ export default function EmployeePage() {
     setIsHydrated(true);
   }, []);
 
+  // Reset logout lock when authenticated employee enters
+  useEffect(() => {
+    if (isAuthenticated) {
+      isLoggingOutRef.current = false;
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     api.get<{ dbType: string }>('/api/health')
       .then(res => {
@@ -352,15 +359,8 @@ export default function EmployeePage() {
     setQueuePage(1);
   }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
 
-  if (!isHydrated || !isAuthenticated || !checkAccess('employee') || !hasInitialDataLoaded) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-bg-dark text-text-main gap-3">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-        <span className="text-xs font-bold tracking-wider uppercase text-text-dim">
-          Preparing Staff Workspace...
-        </span>
-      </div>
-    );
+  if (!isHydrated || !isAuthenticated || !checkAccess('employee')) {
+    return <div className="h-screen w-full bg-bg-dark" />;
   }
 
   // --- Action Handlers ---

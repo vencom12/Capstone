@@ -33,6 +33,7 @@ export interface WelcomeTransitionData {
   username: string;
   role?: string;
   isReady?: boolean;
+  triggerId?: number;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -54,10 +55,20 @@ export const useUIStore = create<UIStore>((set) => ({
   setGoogleSetupData: (data) => set({ googleSetupData: data }),
   setAuthPortal: (portal) => set({ authPortal: portal }),
   triggerWelcome: (username: string, role?: string) =>
-    set({ welcomeData: { isOpen: true, username, role, isReady: false } }),
+    set({
+      welcomeData: {
+        isOpen: true,
+        username,
+        role,
+        isReady: false,
+        triggerId: Date.now(),
+      },
+    }),
   markDashboardReady: () =>
     set((state) => ({
-      welcomeData: state.welcomeData ? { ...state.welcomeData, isReady: true } : null,
+      welcomeData: state.welcomeData
+        ? { ...state.welcomeData, isReady: true }
+        : null,
     })),
   closeWelcome: () => set({ welcomeData: null }),
   toggleBasket: () => set((state) => ({ isBasketOpen: !state.isBasketOpen })),

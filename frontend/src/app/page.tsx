@@ -29,33 +29,31 @@ export default function StorefrontPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isAuthRedirecting, setIsAuthRedirecting] = useState(false);
 
-  // Role-based redirect & Google OAuth protection: prevent flashing the storefront UI
+  // Computed staff check: immediately true if logged in as staff, false otherwise
+  const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'employee');
+
   useEffect(() => {
-    if (isGoogleAuthPending()) {
-      setIsAuthRedirecting(true);
-      return;
-    }
-
-    if (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee')) {
-      setIsAuthRedirecting(true);
-      if (user.role === 'admin') router.replace('/admin');
+    if (isStaff) {
+      useUIStore.getState().triggerWelcome(user?.username || 'Staff', user?.role || 'admin');
+      if (user?.role === 'admin') router.replace('/admin');
       else router.replace('/employee');
     }
-  }, [isAuthenticated, user?.role, router]);
+  }, [isStaff, user?.role, user?.username, router]);
 
   useEffect(() => {
-    if (isAuthRedirecting || (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee'))) {
-      return;
-    }
+    if (isStaff) return;
 
     if (isAuthenticated) {
-      fetchDashboardState();
+      fetchDashboardState()
+        .then(() => useUIStore.getState().markDashboardReady())
+        .catch(() => useUIStore.getState().markDashboardReady());
     } else {
-      fetchProducts();
+      fetchProducts()
+        .then(() => useUIStore.getState().markDashboardReady())
+        .catch(() => useUIStore.getState().markDashboardReady());
     }
-  }, [isAuthenticated, user?.role, isAuthRedirecting, fetchProducts, fetchDashboardState]);
+  }, [isAuthenticated, isStaff, fetchProducts, fetchDashboardState]);
 
   // Real-time socket updates for Storefront
   useEffect(() => {
@@ -111,11 +109,15 @@ export default function StorefrontPage() {
     setIsModalOpen(true);
   };
 
-  if (isAuthRedirecting || (isAuthenticated && (user?.role === 'admin' || user?.role === 'employee'))) {
+  if (isStaff) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-bg-dark text-text-main">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-      </div>
+      <div
+        className="h-screen w-full flex items-center justify-center select-none"
+        style={{
+          backgroundColor: '#090d16',
+          backgroundImage: 'radial-gradient(circle at 50% 48%, rgba(185, 28, 28, 0.22) 0%, rgba(9, 13, 22, 0.92) 58%, rgba(9, 13, 22, 1) 100%)',
+        }}
+      />
     );
   }
 

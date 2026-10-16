@@ -10,6 +10,7 @@ export default function WelcomeTransition() {
   const [mounted, setMounted] = useState(false);
   const [stage, setStage] = useState<'entering' | 'present' | 'exiting' | 'hidden'>('hidden');
   const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('Authorizing session...');
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
 
   const timersRef = useRef<NodeJS.Timeout[]>([]);
@@ -26,7 +27,7 @@ export default function WelcomeTransition() {
     return () => clearTimers();
   }, []);
 
-  // When welcomeData opens
+  // When welcomeData opens or a new session is triggered
   useEffect(() => {
     if (!welcomeData?.isOpen) {
       setStage('hidden');
@@ -36,35 +37,42 @@ export default function WelcomeTransition() {
       return;
     }
 
-    // Only start entrance sequence if not already in progress
-    if (stage === 'hidden') {
-      const htmlTheme = document.documentElement.getAttribute('data-theme');
-      setCurrentTheme(htmlTheme === 'light' ? 'light' : 'dark');
+    const htmlTheme = document.documentElement.getAttribute('data-theme');
+    setCurrentTheme(htmlTheme === 'light' ? 'light' : 'dark');
 
-      setStage('entering');
-      setProgress(20);
-      startTimeRef.current = Date.now();
-      isClosingRef.current = false;
-      clearTimers();
+    setStage('entering');
+    setProgress(25);
+    setStatusText('Authorizing session...');
+    startTimeRef.current = Date.now();
+    isClosingRef.current = false;
+    clearTimers();
 
-      // Step 2: Trigger presentation and progressive bar fill up to 80% while waiting for dashboard data
-      const tPresent = setTimeout(() => {
-        setStage('present');
-        setProgress(75);
-      }, 50);
+    // Stage 1: Present view and step up progress
+    const tPresent = setTimeout(() => {
+      setStage('present');
+      setProgress(55);
+      setStatusText('Connecting to workspace...');
+    }, 60);
 
-      // Safety timeout: If dashboard takes > 3.5s or fails silently, dissolve safely
-      const tSafety = setTimeout(() => {
-        if (!isClosingRef.current) {
-          triggerExitSequence();
-        }
-      }, 3500);
+    // Stage 2: Step up progress as dashboard initializes
+    const tMid = setTimeout(() => {
+      if (!isClosingRef.current) {
+        setProgress(80);
+        setStatusText('Loading operational data...');
+      }
+    }, 380);
 
-      timersRef.current.push(tPresent, tSafety);
-    }
-  }, [welcomeData?.isOpen]);
+    // Stage 3: Generous safety fallback (6.5s) in case of unexpected network stall
+    const tSafety = setTimeout(() => {
+      if (!isClosingRef.current) {
+        triggerExitSequence();
+      }
+    }, 6500);
 
-  // When dashboard signals that all initial data has finished loading!
+    timersRef.current.push(tPresent, tMid, tSafety);
+  }, [welcomeData?.isOpen, welcomeData?.triggerId]);
+
+  // When destination dashboard signals that all initial data has finished loading
   useEffect(() => {
     if (welcomeData?.isOpen && welcomeData?.isReady && !isClosingRef.current) {
       triggerExitSequence();
@@ -75,23 +83,27 @@ export default function WelcomeTransition() {
     if (isClosingRef.current) return;
     isClosingRef.current = true;
 
-    // Guarantee a minimum graceful display time of 750ms for visual polish
+    // Minimum graceful display time (750ms) to ensure branding and username are legible
     const elapsed = Date.now() - startTimeRef.current;
     const remainingDelay = Math.max(0, 750 - elapsed);
 
     const tFill = setTimeout(() => {
       setProgress(100);
+      setStatusText('Workspace Ready');
 
+      // Hold briefly at 100% for visual completion
       const tExit = setTimeout(() => {
         setStage('exiting');
 
+        // Allow 400ms smooth cross-fade dissolve into the fully populated dashboard
         const tDone = setTimeout(() => {
           setStage('hidden');
+          isClosingRef.current = false;
           closeWelcome();
-        }, 500);
+        }, 400);
 
         timersRef.current.push(tDone);
-      }, 250);
+      }, 180);
 
       timersRef.current.push(tExit);
     }, remainingDelay);
@@ -140,20 +152,21 @@ export default function WelcomeTransition() {
       aria-label="Welcome greeting"
       aria-live="polite"
       onClick={() => {
-        // Fast dismiss on user tap if already in present stage
-        if (stage === 'present' && !isClosingRef.current) {
+        // Fast manual dismiss safeguard if user taps after initial presentation
+        const elapsed = Date.now() - startTimeRef.current;
+        if (stage === 'present' && elapsed > 1200 && !isClosingRef.current) {
           triggerExitSequence();
         }
       }}
       className={`
         fixed inset-0 z-[999999] flex flex-col items-center justify-center p-6
         select-none cursor-default
-        transition-all duration-500 ease-out
+        transition-all duration-400 ease-out
         ${
           isEntering
             ? 'opacity-0 scale-[0.98]'
             : isExiting
-            ? 'opacity-0 scale-[1.03] blur-sm pointer-events-none'
+            ? 'opacity-0 scale-[1.02] blur-sm pointer-events-none'
             : 'opacity-100 scale-100 pointer-events-auto'
         }
       `}
@@ -253,26 +266,26 @@ export default function WelcomeTransition() {
         )}
 
         {/* Progress & Workspace Status Line */}
-        <div className={`w-48 sm:w-56 flex flex-col items-center gap-2 ${isGenericLoading ? 'mt-4' : ''}`}>
+        <div className={`w-48 sm:w-60 flex flex-col items-center gap-2.5 ${isGenericLoading ? 'mt-4' : ''}`}>
           <div
             className={`
-              w-full h-1 rounded-full overflow-hidden
+              w-full h-1.5 rounded-full overflow-hidden
               ${isDark ? 'bg-white/10' : 'bg-slate-200'}
             `}
           >
             <div
-              className="h-full bg-gradient-to-r from-primary via-red-500 to-rose-400 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(185,28,28,0.8)]"
+              className="h-full bg-gradient-to-r from-primary via-red-500 to-rose-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(185,28,28,0.8)]"
               style={{ width: `${progress}%` }}
             />
           </div>
 
           <span
             className={`
-              text-[0.68rem] tracking-wider uppercase font-semibold
-              ${isDark ? 'text-slate-500' : 'text-slate-400'}
+              text-[0.7rem] tracking-wider uppercase font-semibold transition-all duration-300
+              ${isDark ? 'text-slate-400' : 'text-slate-600'}
             `}
           >
-            {progress < 100 ? 'Entering workspace...' : 'Ready'}
+            {statusText}
           </span>
         </div>
       </div>

@@ -166,6 +166,13 @@ function initSingletonAuthWatcher() {
   });
 }
 
+export function resetGoogleAuthState(): void {
+  hasStartedRedirectCheck = false;
+  isExchanging = false;
+  finalOutcome = null;
+  setPending(false);
+}
+
 /**
  * Step 1: Trigger Google Sign-In.
  * Automatically chooses the optimal, browser-secure strategy based on environment:
@@ -173,6 +180,7 @@ function initSingletonAuthWatcher() {
  * - Local Dev (HTTP localhost): In-memory popup (signInWithPopup) to avoid Chrome's cross-origin iframe storage blocks.
  */
 export async function startGoogleSignIn(): Promise<{ ok: false; message: string } | void> {
+  resetGoogleAuthState();
   const isLocalDev =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' ||

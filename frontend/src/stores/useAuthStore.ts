@@ -4,6 +4,8 @@ import { api } from '@/lib/api';
 import type { User, AuthResponse } from '@/lib/types';
 import { useProductStore } from './useProductStore';
 import { useBasketStore } from './useBasketStore';
+import { useUIStore } from './useUIStore';
+import { resetGoogleAuthState } from '@/lib/googleAuth';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 
@@ -236,6 +238,7 @@ export const useAuthStore = create<AuthState>()(
           sessionStorage.removeItem('stitch-admin-tab');
           sessionStorage.removeItem('stitch-employee-tab');
           sessionStorage.removeItem('stitch-auth');
+          sessionStorage.removeItem('stitch-google-auth-pending');
           localStorage.removeItem('stitch-admin-tab');
           localStorage.removeItem('stitch-employee-tab');
           localStorage.removeItem('stitch-auth');
@@ -244,6 +247,8 @@ export const useAuthStore = create<AuthState>()(
         // Clear other stores first to ensure UI updates immediately
         useProductStore.getState().clearState();
         useBasketStore.getState().clearBasket();
+        useUIStore.getState().closeWelcome();
+        resetGoogleAuthState();
 
         try {
           if (auth) {
