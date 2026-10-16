@@ -30,7 +30,7 @@ services:
     # `npm install` triggers root package.json "postinstall", which runs
     # `prisma generate`, installs frontend deps, and builds the Next.js static
     # export into frontend/out. `prisma db push` then syncs the database.
-    buildCommand: npm install && npx prisma db push
+    buildCommand: npm install --no-audit && npx prisma db push
 
     startCommand: npm run start
 
