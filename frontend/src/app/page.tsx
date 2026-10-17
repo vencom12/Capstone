@@ -131,9 +131,7 @@ export default function StorefrontPage() {
       <FullScreenStitchExperience />
 
       {/* Storefront Products Section */}
-      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col scroll-mt-20">
-        {/* Background follows the boxes as user scrolls down */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-bg-dark/75 via-200px to-bg-dark to-450px pointer-events-none transition-colors duration-500" />
+      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-transparent scroll-mt-20">
 
         {/* Main Layout: Mobile Drawer & Full-Width Products Grid */}
         <Sidebar />

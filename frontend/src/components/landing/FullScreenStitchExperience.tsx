@@ -10,13 +10,24 @@ interface ShelfKeyframe {
 }
 
 const KEYFRAMES: ShelfKeyframe[] = [
-  { p: 0.00, x: 0.285, y: 0.50, zoom: 2.15 }, // Compartment 01: Towels
-  { p: 0.22, x: 0.285, y: 0.50, zoom: 2.15 }, // Towels linger
-  { p: 0.45, x: 0.500, y: 0.50, zoom: 2.10 }, // Compartment 02: Fans
-  { p: 0.60, x: 0.500, y: 0.50, zoom: 2.10 }, // Fans linger
-  { p: 0.78, x: 0.715, y: 0.50, zoom: 2.15 }, // Compartment 03: Caps
-  { p: 0.88, x: 0.715, y: 0.50, zoom: 2.15 }, // Caps linger
-  { p: 1.00, x: 0.500, y: 0.54, zoom: 1.25 }, // Pull back to reveal entire shelf wall into storefront
+  // Chapter 1: Towels
+  { p: 0.00, x: 0.285, y: 0.50, zoom: 2.15 },
+  { p: 0.20, x: 0.285, y: 0.50, zoom: 2.15 },
+
+  // Pan to Fans
+  { p: 0.28, x: 0.500, y: 0.50, zoom: 2.10 },
+  // Chapter 2: Fans
+  { p: 0.48, x: 0.500, y: 0.50, zoom: 2.10 },
+
+  // Pan to Caps
+  { p: 0.56, x: 0.715, y: 0.50, zoom: 2.15 },
+  // Chapter 3: Caps
+  { p: 0.70, x: 0.715, y: 0.50, zoom: 2.15 },
+
+  // Zoom out to reveal whole shelf
+  { p: 0.82, x: 0.500, y: 0.50, zoom: 1.00 },
+  // Chapter 4: Fully zoomed out of those products
+  { p: 1.00, x: 0.500, y: 0.50, zoom: 1.00 },
 ];
 
 // Smooth Hermite / Catmull-Rom interpolation for cinematic camera dolly
@@ -81,10 +92,10 @@ export default function FullScreenStitchExperience() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Load panoramic atelier shelf wall
+    // Load panoramic atelier shelf wall (Pristine 2.7K master with cache-buster)
     const shelfImg = new window.Image();
     let isLoaded = false;
-    shelfImg.src = '/landing/atelier-shelf-panoramic.jpg';
+    shelfImg.src = '/landing/atelier-shelf-panoramic-v4.jpg?v=pristine-hd';
     shelfImg.onload = () => {
       isLoaded = true;
     };
@@ -116,6 +127,8 @@ export default function FullScreenStitchExperience() {
 
       ctx.save();
       ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.clearRect(0, 0, w, h);
 
       if (isLoaded) {
@@ -156,17 +169,18 @@ export default function FullScreenStitchExperience() {
         ctx.fillRect(0, 0, w, h);
       }
 
-      // Cinematic Vignette & Atmospheric Lighting
-      const vignette = ctx.createRadialGradient(w / 2, h / 2, w * 0.22, w / 2, h / 2, w * 0.75);
-      vignette.addColorStop(0, 'rgba(6, 9, 16, 0.25)');
-      vignette.addColorStop(0.7, 'rgba(6, 9, 16, 0.75)');
+      // Subtle Edge Vignette (Keeps wood shelf vibrant & clean without banding)
+      const vignette = ctx.createRadialGradient(w / 2, h / 2, w * 0.35, w / 2, h / 2, w * 0.85);
+      vignette.addColorStop(0, 'transparent');
+      vignette.addColorStop(0.7, 'rgba(6, 9, 16, 0.35)');
       vignette.addColorStop(1, '#060910');
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, w, h);
 
-      // Warm Overhead Spotlight Following Active Compartment
-      const spotX = p < 0.35 ? w * 0.45 : p < 0.70 ? w * 0.50 : w * 0.55;
-      const spotLight = ctx.createRadialGradient(spotX, h * 0.35, 20, spotX, h * 0.35, w * 0.45);
+      // Warm Overhead Spotlight Following Active Compartment or Soft Center Ambient for Wide View
+      const spotX = p < 0.24 ? w * 0.45 : p < 0.52 ? w * 0.50 : p < 0.78 ? w * 0.55 : w * 0.50;
+      const spotRadius = p >= 0.78 ? w * 0.75 : w * 0.45;
+      const spotLight = ctx.createRadialGradient(spotX, h * 0.35, 20, spotX, h * 0.35, spotRadius);
       spotLight.addColorStop(0, 'rgba(234, 179, 8, 0.18)');
       spotLight.addColorStop(0.6, 'rgba(234, 179, 8, 0.04)');
       spotLight.addColorStop(1, 'transparent');
@@ -181,16 +195,17 @@ export default function FullScreenStitchExperience() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // Window resize observer for crisp Retina canvas
+  // Window resize observer for crisp Retina canvas matching exact DOM rect
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      const w = rect.width || window.innerWidth;
+      const h = rect.height || (window.innerHeight - 80);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -205,7 +220,7 @@ export default function FullScreenStitchExperience() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[420vh] bg-[#060910] text-white selection:bg-red-500/30"
+      className="relative w-full h-[480vh] bg-[#060910] text-white selection:bg-red-500/30"
     >
       {/* =========================================================================
           FIXED FULL-SCREEN VIEWPORT (Pinned to Screen while scrolling shelf runway)
@@ -228,19 +243,19 @@ export default function FullScreenStitchExperience() {
         <div className="w-full h-8 pointer-events-none" />
 
         {/* =========================================================================
-            DYNAMIC FLOATING LUXURY TYPOGRAPHY (Transitions As Camera Dollies Across Shelves)
+            DYNAMIC FLOATING LUXURY TYPOGRAPHY (Transitions Across 4 Chapters)
             ========================================================================= */}
         <div className="relative z-10 w-full px-6 flex-1 flex flex-col items-center justify-center text-center max-w-4xl mx-auto pointer-events-none">
-          {/* Compartment 01: Turkish Terry Towels (0% to 33%) */}
+          {/* Chapter 01: Turkish Terry Towels */}
           <div
-            className={`transition-all duration-700 absolute ${
-              scrollProgress < 0.33
+            className={`transition-all duration-400 absolute ${
+              scrollProgress < 0.20
                 ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 -translate-y-8 scale-95 pointer-events-none'
             }`}
           >
             <span className="text-[0.72rem] tracking-[0.3em] uppercase font-bold text-amber-400 block mb-2 drop-shadow">
-              Compartment 01 · Turkish Cotton Terry
+              Chapter 01 · Turkish Cotton Terry
             </span>
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
               Precision In{' '}
@@ -253,16 +268,16 @@ export default function FullScreenStitchExperience() {
             </p>
           </div>
 
-          {/* Compartment 02: Pleated Silk Fans (33% to 66%) */}
+          {/* Chapter 02: Pleated Silk Fans */}
           <div
-            className={`transition-all duration-700 absolute ${
-              scrollProgress >= 0.33 && scrollProgress < 0.66
+            className={`transition-all duration-400 absolute ${
+              scrollProgress >= 0.28 && scrollProgress < 0.48
                 ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
             }`}
           >
             <span className="text-[0.72rem] tracking-[0.3em] uppercase font-bold text-rose-400 block mb-2 drop-shadow">
-              Compartment 02 · Pleated Silk & Bamboo Fans
+              Chapter 02 · Pleated Silk & Bamboo Fans
             </span>
             <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
               Micro-Gauge Silk Weaving.
@@ -272,16 +287,16 @@ export default function FullScreenStitchExperience() {
             </p>
           </div>
 
-          {/* Compartment 03: 3D High-Density Puff Caps (66% to 86%) */}
+          {/* Chapter 03: 3D High-Density Puff Caps (Firmly on the Cap) */}
           <div
-            className={`transition-all duration-700 absolute ${
-              scrollProgress >= 0.66 && scrollProgress < 0.86
+            className={`transition-all duration-400 absolute ${
+              scrollProgress >= 0.56 && scrollProgress < 0.70
                 ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
             }`}
           >
             <span className="text-[0.72rem] tracking-[0.3em] uppercase font-bold text-sky-400 block mb-2 drop-shadow">
-              Compartment 03 · 3D Puff Headwear
+              Chapter 03 · 3D Puff Headwear
             </span>
             <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
               3D Architectural Relief.
@@ -291,16 +306,16 @@ export default function FullScreenStitchExperience() {
             </p>
           </div>
 
-          {/* Arrival & Direct Call to Action (86% to 94%) */}
+          {/* Chapter 04: The Atelier Collection (Firmly Zoomed Out of Those Products) */}
           <div
-            className={`transition-all duration-700 absolute pointer-events-auto ${
-              scrollProgress >= 0.86 && scrollProgress < 0.94
+            className={`transition-all duration-500 absolute pointer-events-auto ${
+              scrollProgress >= 0.82 && scrollProgress < 0.97
                 ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
             }`}
           >
             <span className="text-[0.72rem] tracking-[0.3em] uppercase font-bold text-red-400 block mb-2 drop-shadow">
-              The Atelier Collection
+              Chapter 04 · The Atelier Collection
             </span>
             <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
               Ready For Your Custom Piece.
@@ -323,21 +338,14 @@ export default function FullScreenStitchExperience() {
             BOTTOM PROGRESS BAR & SCROLL TICKER
             ========================================================================= */}
         <div
-          className={`relative z-10 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto pointer-events-auto transition-opacity duration-500 ${
-            scrollProgress < 0.94 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          className={`relative z-10 w-full px-6 py-6 flex items-center justify-end max-w-7xl mx-auto pointer-events-auto transition-opacity duration-500 ${
+            scrollProgress < 0.97 ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          {/* Active Shelf Compartment Indicator */}
-          <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/15 text-xs font-mono shadow-xl">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-slate-200 font-bold">
-              {scrollProgress < 0.33 ? 'Shelf 01 · Terry Bath Towels' : scrollProgress < 0.66 ? 'Shelf 02 · Silk Folding Fans' : 'Shelf 03 · 3D Puff Caps'}
-            </span>
-          </div>
 
           {/* Minimalist Scroll Prompt / Direction Indicator */}
           <div className="flex items-center gap-2 text-slate-300 text-xs font-bold uppercase tracking-widest">
-            {scrollProgress < 0.86 ? (
+            {scrollProgress < 0.82 ? (
               <span className="flex items-center gap-1.5">
                 <span>Scroll Shelf Camera</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-bounce"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>

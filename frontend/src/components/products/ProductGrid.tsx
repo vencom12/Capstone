@@ -36,9 +36,10 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
     const counts: Record<string, number> = { All: products.length };
     categories.forEach((cat) => {
       if (cat !== 'All') {
-        counts[cat] = products.filter(
-          (p) => (p.category || '').toLowerCase() === cat.toLowerCase()
-        ).length;
+        counts[cat] = products.filter((p) => {
+          const formatted = p.tag ? p.tag.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : 'General';
+          return formatted === cat || p.tag === cat;
+        }).length;
       }
     });
     return counts;
