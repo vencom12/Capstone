@@ -135,12 +135,12 @@ export default function StorefrontPage() {
         {/* Background follows the boxes as user scrolls down */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-bg-dark/75 via-200px to-bg-dark to-450px pointer-events-none transition-colors duration-500" />
 
-        {/* Main Layout: Sidebar & Products Grid */}
-        <div className="flex-1 flex w-full min-h-0 min-w-0 items-stretch relative pt-4 md:pt-6">
-          <Sidebar />
+        {/* Main Layout: Mobile Drawer & Full-Width Products Grid */}
+        <Sidebar />
 
-          {/* Main Products Grid */}
-          <main className="flex-1 min-h-0 min-w-0 p-4 md:p-6 max-[480px]:p-3 bg-transparent">
+        <div className="flex-1 flex w-full min-h-0 min-w-0 flex-col relative pt-4 md:pt-6">
+          {/* Main Products Grid - Centered & Spacious */}
+          <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-transparent">
             <ProductGrid onQuickView={handleQuickView} />
           </main>
         </div>

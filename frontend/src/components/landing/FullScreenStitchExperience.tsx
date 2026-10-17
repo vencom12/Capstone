@@ -50,6 +50,7 @@ export default function FullScreenStitchExperience() {
   // Smooth spring inertia for 60fps camera dolly
   const currentProgressRef = useRef(0);
   const targetProgressRef = useRef(0);
+  const lastReportedPRef = useRef(0);
 
   // Track window scroll and map to exact progress [0, 1]
   useEffect(() => {
@@ -62,7 +63,6 @@ export default function FullScreenStitchExperience() {
       const rawProgress = -rect.top / totalScrollable;
       const clamped = Math.max(0, Math.min(1, rawProgress));
       targetProgressRef.current = clamped;
-      setScrollProgress(clamped);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -92,8 +92,18 @@ export default function FullScreenStitchExperience() {
     const render = () => {
       // Damped spring lerp (silky smooth Apple-grade camera inertia)
       const diff = targetProgressRef.current - currentProgressRef.current;
-      currentProgressRef.current += diff * 0.12;
+      currentProgressRef.current += diff * 0.08;
       const p = currentProgressRef.current;
+
+      // Synchronize floating titles & shelf badges with the interpolated camera dolly
+      if (
+        Math.abs(p - lastReportedPRef.current) > 0.003 ||
+        (p <= 0.002 && lastReportedPRef.current !== 0) ||
+        (p >= 0.998 && lastReportedPRef.current !== 1)
+      ) {
+        lastReportedPRef.current = p;
+        setScrollProgress(p);
+      }
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.width / dpr;
@@ -195,7 +205,7 @@ export default function FullScreenStitchExperience() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[240vh] bg-[#060910] text-white selection:bg-red-500/30"
+      className="relative w-full h-[420vh] bg-[#060910] text-white selection:bg-red-500/30"
     >
       {/* =========================================================================
           FIXED FULL-SCREEN VIEWPORT (Pinned to Screen while scrolling shelf runway)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useProductStore } from '@/stores/useProductStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -14,28 +14,6 @@ export default function Sidebar() {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
-  const sidebarRef = useRef<HTMLElement>(null);
-  const [isInView, setIsInView] = useState(false);
-
-  useEffect(() => {
-    const el = sidebarRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-        } else if (entry.boundingClientRect.top > window.innerHeight) {
-          setIsInView(false);
-        }
-      },
-      { threshold: 0.05, rootMargin: '0px 0px -20px 0px' }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
@@ -86,17 +64,14 @@ export default function Sidebar() {
         />
       )}
 
+      {/* Mobile-Only Navigation Drawer (Desktop uses horizontal category bar above grid) */}
       <aside
-        ref={sidebarRef}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         className={`
-          lg:sticky lg:top-[var(--header-height)] lg:h-[calc(100vh-var(--header-height))] bg-bg-sidebar/90 backdrop-blur-[16px] border-r border-border-glass flex flex-col p-5 px-3 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-y-auto shrink-0 z-[2000]
-          w-[230px] max-[1250px]:w-[200px]
-          max-[1024px]:fixed max-[1024px]:left-0 max-[1024px]:top-0 max-[1024px]:w-[280px] max-[1024px]:p-4 max-[1024px]:shadow-2xl
-          ${isSidebarOpen ? 'max-[1024px]:translate-x-0' : 'max-[1024px]:-translate-x-full'}
-          ${isInView ? 'opacity-100 translate-y-0 scale-100' : 'lg:opacity-0 lg:translate-y-8 lg:scale-[0.96]'}
+          hidden max-[1024px]:flex fixed inset-y-0 left-0 w-[280px] p-4 bg-bg-sidebar/95 backdrop-blur-[20px] border-r border-border-glass shadow-2xl z-[2000] flex-col overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         {/* Mobile / Tablet Header Inside Sidebar */}
