@@ -113,6 +113,15 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
       )
     },
     {
+      id: 'reviews',
+      label: 'Customer Reviews',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      )
+    },
+    {
       id: 'analytics',
       label: 'Analytics',
       icon: (
@@ -193,7 +202,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
           <button
             suppressHydrationWarning
             onClick={() => setSidebarOpen(false)}
-            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-white hover:bg-white/10 hidden max-[650px]:flex items-center justify-center cursor-pointer transition-all shrink-0"
+            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 hidden max-[650px]:flex items-center justify-center cursor-pointer transition-all shrink-0"
             aria-label="Close navigation"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>

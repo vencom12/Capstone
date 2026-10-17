@@ -351,11 +351,11 @@ export default function AiAttendant() {
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         const inner = part.slice(2, -2);
-        return <strong key={i} className="font-bold text-white">{renderStatusBadges(inner)}</strong>;
+        return <strong key={i} className="font-bold text-text-main">{renderStatusBadges(inner)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         const inner = part.slice(1, -1);
-        return <em key={i} className="italic text-white/80">{renderStatusBadges(inner)}</em>;
+        return <em key={i} className="italic text-text-main/90">{renderStatusBadges(inner)}</em>;
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         const inner = part.slice(1, -1);
@@ -391,7 +391,7 @@ export default function AiAttendant() {
           <div key={`table-${key}`} className="w-full overflow-x-auto my-3 rounded-xl border border-white/10 bg-white/[0.03] shadow-inner">
             <table className="w-full border-collapse text-[0.8rem] text-left">
               <thead>
-                <tr className="border-b border-white/15 bg-white/5 font-semibold text-white/95">
+                <tr className="border-b border-border-glass bg-white/5 font-semibold text-text-main">
                   {headers.map((h, i) => (
                     <th key={i} className="px-4 py-2.5 font-bold">{renderTextInline(h.trim())}</th>
                   ))}
@@ -455,7 +455,7 @@ export default function AiAttendant() {
       if (trimmed.startsWith('###')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h4 key={elementKey++} className="text-[0.95rem] font-bold text-white mt-4 mb-2 first:mt-0 tracking-tight">
+          <h4 key={elementKey++} className="text-[0.95rem] font-bold text-text-main mt-4 mb-2 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^###\s*/, ''))}
           </h4>
         );
@@ -463,7 +463,7 @@ export default function AiAttendant() {
       } else if (trimmed.startsWith('##')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h3 key={elementKey++} className="text-[1.1rem] font-bold text-white mt-5 mb-2 first:mt-0 tracking-tight">
+          <h3 key={elementKey++} className="text-[1.1rem] font-bold text-text-main mt-5 mb-2 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^##\s*/, ''))}
           </h3>
         );
@@ -471,7 +471,7 @@ export default function AiAttendant() {
       } else if (trimmed.startsWith('#')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h2 key={elementKey++} className="text-[1.25rem] font-bold text-white mt-6 mb-3 first:mt-0 tracking-tight">
+          <h2 key={elementKey++} className="text-[1.25rem] font-bold text-text-main mt-6 mb-3 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^#\s*/, ''))}
           </h2>
         );

@@ -111,7 +111,7 @@ export default function GlassSelect({
                   onClick={() => handleSelect(opt.value)}
                   className={`
                     w-full text-left px-3 py-2 text-[0.82rem] font-medium rounded-lg transition-all cursor-pointer border-none bg-transparent block truncate
-                    ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : 'text-text-main hover:bg-white/10 hover:text-white'}
+                    ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : 'text-text-main hover:bg-white/10'}
                   `}
                 >
                   {opt.label}

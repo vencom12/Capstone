@@ -73,7 +73,7 @@ export default function GCashPayment({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="bg-[#007df2] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">G</span>
-            <span className="text-[0.85rem] font-extrabold text-white">GCash Express Pay</span>
+            <span className="text-[0.85rem] font-extrabold text-text-main">GCash Express Pay</span>
           </div>
           <button
             type="button"
@@ -88,7 +88,7 @@ export default function GCashPayment({
           Transfer to our official store GCash account & upload your payment screenshot:
         </p>
 
-        <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
+        <div className="flex justify-between items-center bg-bg-surface p-2.5 rounded-lg border border-border-glass font-mono text-[0.8rem]">
           <div className="flex flex-col">
             <span className="text-[0.7rem] text-text-dim">GCash Number (Payment Transfer Only)</span>
             <span className="text-[#007df2] font-black text-sm tracking-wide">{displayAccountNo}</span>
@@ -102,9 +102,9 @@ export default function GCashPayment({
           </button>
         </div>
 
-        <div className="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[0.8rem]">
+        <div className="flex justify-between items-center bg-bg-surface p-2.5 rounded-lg border border-border-glass font-mono text-[0.8rem]">
           <span className="text-text-dim">Account Name:</span>
-          <span className="text-white font-bold text-[0.8rem]">Eds Towels and Caps Embroidery</span>
+          <span className="text-text-main font-bold text-[0.8rem]">Eds Towels and Caps Embroidery</span>
         </div>
 
         {activeQrCodeUrl && (
@@ -196,7 +196,7 @@ export default function GCashPayment({
         <div className="flex items-center gap-3 bg-[#007df2]/15 border border-[#007df2] p-3.5 rounded-xl animate-pulse">
           <div className="w-3 h-3 bg-[#007df2] rounded-full animate-ping"></div>
           <div className="flex flex-col">
-            <span className="text-[0.8rem] text-white font-bold">Checking your receipt...</span>
+            <span className="text-[0.8rem] text-text-main font-bold">Checking your receipt...</span>
             <span className="text-[0.7rem] text-text-dim">Confirming your GCash payment details</span>
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function GCashPayment({
                   placeholder="e.g. 1002 9384 1029"
                   value={manualRef}
                   onChange={(e) => handleRefChange(e.target.value)}
-                  className="flex-1 bg-black/40 border border-white/20 px-3 py-2 rounded-lg text-white font-mono text-[0.85rem] outline-none focus:border-primary"
+                  className="flex-1 bg-bg-surface border border-border-glass px-3 py-2 rounded-lg text-text-main font-mono text-[0.85rem] outline-none focus:border-primary"
                 />
                 <button
                   type="button"
@@ -261,11 +261,11 @@ export default function GCashPayment({
           <div className="bg-bg-dark border border-white/20 p-6 rounded-xl flex flex-col items-center gap-4 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 text-text-dim hover:text-white text-lg font-bold w-8 h-8 rounded-full bg-white/10 flex items-center justify-center cursor-pointer"
+              className="absolute top-4 right-4 text-text-dim hover:text-text-main text-lg font-bold w-8 h-8 rounded-full bg-white/5 border border-border-glass flex items-center justify-center cursor-pointer"
             >
               ✕
             </button>
-            <h3 className="text-white font-bold text-base m-0">GCash Official QR Code</h3>
+            <h3 className="text-text-main font-bold text-base m-0">GCash Official QR Code</h3>
             <div className="bg-white p-3 rounded-lg shadow-inner">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={activeQrCodeUrl} alt="GCash QR Code Enlarged" className="w-64 h-64 object-contain" />

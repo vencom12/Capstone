@@ -5,7 +5,7 @@ export default function Success() {
           <div className="w-24 h-24 bg-success/20 text-success rounded-full flex items-center justify-center mb-6 border border-success/30">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
-          <h1 className="text-4xl font-extrabold text-white mb-4">Intake Secured!</h1>
+          <h1 className="text-4xl font-extrabold text-text-main mb-4">Intake Secured!</h1>
           <p className="text-text-dim text-lg mb-8">Your information and waiver have been recorded.</p>
           
           <div className="bg-white p-4 rounded-xl mb-8">

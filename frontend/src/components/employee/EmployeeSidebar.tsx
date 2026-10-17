@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
-import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 interface EmployeeSidebarProps {
   activeTab: string;
@@ -18,7 +17,6 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
@@ -61,23 +59,16 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
       )
     },
     {
-      id: 'products', label: 'Products', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>
-      )
-    },
-    {
-      id: 'materials', label: 'Materials', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg>
-      )
-    },
-    {
       id: 'history', label: 'Order History', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18" /><path d="M18 9l-5 5-4-4-4 4" /></svg>
       )
     },
     {
-      id: 'support', label: 'Support', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      id: 'support', label: 'Workshop Quality (QA)', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="m9 12 2 2 4-4"></path>
+        </svg>
       )
     },
     {
@@ -121,7 +112,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
               </div>
             )}
             <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block truncate">
-              Stitch-Opt
+              Eds Towels &amp; Caps
             </span>
           </Link>
 
@@ -132,7 +123,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
               if (onMobileToggle) onMobileToggle();
               setSidebarOpen(false);
             }}
-            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-white hover:bg-white/10 hidden max-[650px]:flex items-center justify-center cursor-pointer transition-all shrink-0"
+            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 hidden max-[650px]:flex items-center justify-center cursor-pointer transition-all shrink-0"
             aria-label="Close navigation"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -168,29 +159,9 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
           ))}
         </ul>
 
-        {/* User Profile */}
-        <div className="mt-auto p-3 pb-10 border-t border-border-glass">
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-border-glass max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start">
-            <div className="w-10 h-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold shrink-0">
-              {user?.username?.charAt(0).toUpperCase() || 'OP'}
-            </div>
-            <div className="flex flex-col overflow-hidden max-[1100px]:hidden min-[1101px]:group-hover:flex max-[650px]:!flex text-left">
-              <span className="text-[0.9rem] font-bold text-text-main whitespace-nowrap truncate">{user?.username || 'Operator 01'}</span>
-              <span className="text-[0.75rem] text-text-dim">Primary Operator</span>
-            </div>
-          </div>
+        {/* User Actions */}
+        <div className="mt-auto p-3 pb-8 border-t border-border-glass flex flex-col gap-1">
 
-          <button
-            onClick={() => setIsChangePasswordOpen(true)}
-            className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start"
-            title="Change Password"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
-              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <span className="max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block whitespace-nowrap text-[0.85rem] font-medium">Change Password</span>
-          </button>
 
           <button
             onClick={logout}
@@ -202,10 +173,6 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
         </div>
       </aside>
 
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-      />
     </>
   );
 }

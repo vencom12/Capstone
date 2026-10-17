@@ -14,6 +14,23 @@ export default function Sidebar() {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setSidebarOpen(false);
+    if (typeof window !== 'undefined') {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+      window.scrollTo(0, 0);
+      if (window.location.pathname === '/' && !window.location.search && !window.location.hash) {
+        window.location.reload();
+      } else {
+        window.location.href = '/';
+      }
+    }
+  };
+
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
@@ -76,7 +93,7 @@ export default function Sidebar() {
       >
         {/* Mobile / Tablet Header Inside Sidebar */}
         <div className="hidden max-[1024px]:flex items-center justify-between pb-4 border-b border-border-glass mb-4 shrink-0">
-          <Link href="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 no-underline cursor-pointer">
+          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 no-underline cursor-pointer">
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
@@ -91,7 +108,7 @@ export default function Sidebar() {
           <button
             suppressHydrationWarning
             onClick={() => setSidebarOpen(false)}
-            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all"
+            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all"
             aria-label="Close navigation"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -107,7 +124,7 @@ export default function Sidebar() {
               w-full flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer
               transition-all duration-300 text-[0.88rem] font-bold border
               ${isBasketOpen
-                ? 'bg-primary/20 border-primary text-white shadow-sm'
+                ? 'bg-primary border-primary text-white shadow-sm'
                 : 'bg-white/5 border-border-glass text-text-main hover:bg-white/10'
               }
             `}

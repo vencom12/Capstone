@@ -7,7 +7,6 @@ import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
-import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import { getNotificationPermission, requestNotificationPermission } from '@/lib/pushNotifications';
 import { showToast } from '@/components/ui/Toast';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
@@ -34,7 +33,6 @@ export default function DashboardSidebar({
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
 
@@ -160,7 +158,7 @@ export default function DashboardSidebar({
           <button
             suppressHydrationWarning
             onClick={() => setSidebarOpen(false)}
-            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-white hover:bg-white/10 hidden max-md:flex items-center justify-center cursor-pointer transition-all shrink-0"
+            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 hidden max-md:flex items-center justify-center cursor-pointer transition-all shrink-0"
             aria-label="Close navigation"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -356,26 +354,6 @@ export default function DashboardSidebar({
               </span>
             </button>
 
-            {/* Change Password / Account Security */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsChangePasswordOpen(true);
-                closeMobileDrawer();
-              }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border-glass/40 bg-white/[0.02] hover:bg-white/5 cursor-pointer transition-all text-text-main"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-text-dim">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                </div>
-                <span className="text-[0.88rem] font-medium">Change Password</span>
-              </div>
-              <span className="text-xs text-text-dim opacity-60">→</span>
-            </button>
 
             {/* Logout / Sign out */}
             <button
@@ -482,17 +460,6 @@ export default function DashboardSidebar({
               <span className="max-[1100px]:hidden whitespace-nowrap text-[0.82rem] font-medium">Terms & Policies</span>
             </button>
 
-            <button
-              onClick={() => setIsChangePasswordOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
-              title="Change Password"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              <span className="max-[1100px]:hidden whitespace-nowrap text-[0.82rem] font-medium">Change Password</span>
-            </button>
 
             <button
               onClick={logout}
@@ -515,10 +482,6 @@ export default function DashboardSidebar({
         onClose={() => setIsHelpOpen(false)}
       />
 
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-      />
     </>
   );
 }

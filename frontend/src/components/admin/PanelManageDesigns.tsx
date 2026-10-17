@@ -943,7 +943,7 @@ export default function PanelManageDesigns({
                       >
                         <span className="w-2 h-2 rounded-full bg-danger shrink-0 animate-ping" />
                         <span className="font-semibold text-danger-light">
-                          Remove <strong className="text-white">"{v.name}"</strong>?
+                          Remove <strong className="text-text-main">"{v.name}"</strong>?
                         </span>
                         <div className="flex items-center gap-1.5 ml-1">
                           <button
@@ -956,7 +956,7 @@ export default function PanelManageDesigns({
                           <button
                             type="button"
                             onClick={handleCancelDeleteVariant}
-                            className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-text-dim hover:text-white text-[0.7rem] cursor-pointer transition-all border-0"
+                            className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-text-dim hover:text-text-main text-[0.7rem] cursor-pointer transition-all border-0"
                           >
                             Cancel
                           </button>

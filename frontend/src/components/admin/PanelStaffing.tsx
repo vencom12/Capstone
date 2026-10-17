@@ -60,6 +60,28 @@ export default function PanelStaffing({
   const onShiftCount = staffUsers.filter((u) => u.shiftStatus === 'clocked_in').length;
   const disabledCount = users.filter((u) => u.isActive === false).length;
 
+  // Segmented counts for active / disabled / all
+  const disabledStaffCount = staffUsers.filter((u) => u.isActive === false).length;
+  const activeStaffCount = staffUsers.filter((u) => u.isActive !== false).length;
+
+  const disabledCustomerCount = customerUsers.filter((u) => u.isActive === false).length;
+  const activeCustomerCount = customerUsers.filter((u) => u.isActive !== false).length;
+
+  // Numbers to display on the tab buttons (Staff & Operators, Customers) based on the active status filter
+  const displayedStaffCount =
+    statusFilter === 'disabled'
+      ? disabledStaffCount
+      : statusFilter === 'active'
+      ? activeStaffCount
+      : staffUsers.length;
+
+  const displayedCustomerCount =
+    statusFilter === 'disabled'
+      ? disabledCustomerCount
+      : statusFilter === 'active'
+      ? activeCustomerCount
+      : customerUsers.length;
+
   // 1. Filter Personnel list based on activeTab, statusFilter, and searchQuery
   const filteredUsers = users.filter((u) => {
     // Tab filter
@@ -399,7 +421,7 @@ export default function PanelStaffing({
             >
               <span>Staff &amp; Operators</span>
               <span className={`px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${activeTab === 'staff' ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary'}`}>
-                {staffUsers.length}
+                {displayedStaffCount}
               </span>
             </button>
             <button
@@ -412,7 +434,7 @@ export default function PanelStaffing({
             >
               <span>Customers</span>
               <span className={`px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${activeTab === 'customers' ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'}`}>
-                {customerUsers.length}
+                {displayedCustomerCount}
               </span>
             </button>
           </div>
@@ -421,11 +443,19 @@ export default function PanelStaffing({
           <div className="flex items-center gap-2 text-xs">
             {activeTab === 'staff' ? (
               <span className="text-success font-semibold text-xs">
-                {onShiftCount} Currently On Shift • {staffUsers.length} Total Personnel
+                {statusFilter === 'disabled'
+                  ? `${disabledStaffCount} Disabled Personnel`
+                  : statusFilter === 'active'
+                  ? `${onShiftCount} Currently On Shift • ${activeStaffCount} Active Personnel`
+                  : `${onShiftCount} Currently On Shift • ${staffUsers.length} Total Personnel`}
               </span>
             ) : (
               <span className="text-text-dim text-xs">
-                {customerUsers.length} Registered Customers
+                {statusFilter === 'disabled'
+                  ? `${disabledCustomerCount} Disabled Customers`
+                  : statusFilter === 'active'
+                  ? `${activeCustomerCount} Active Customers`
+                  : `${customerUsers.length} Registered Customers`}
               </span>
             )}
           </div>
@@ -444,10 +474,7 @@ export default function PanelStaffing({
                   <th className="glass-th text-left min-w-[180px] whitespace-nowrap">{activeTab === 'staff' ? 'Staff & Role' : 'Customer'}</th>
                   <th className="glass-th text-left min-w-[200px] whitespace-nowrap">Contact Info</th>
                   {activeTab === 'staff' ? (
-                    <>
-                      <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Shift Status</th>
-                      <th className="glass-th text-left min-w-[150px] whitespace-nowrap">Assigned Machine</th>
-                    </>
+                    <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Shift Status</th>
                   ) : (
                     <>
                       <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Orders Placed</th>
@@ -516,18 +543,7 @@ export default function PanelStaffing({
                           </span>
                         </td>
                       )}
-                      {activeTab === 'staff' && (
-                        <td className="glass-td text-left text-sm whitespace-nowrap">
-                          {(() => {
-                            const assignedMachine = machines.find((m: any) => m.assignedUserId === (u.id || u._id));
-                            return assignedMachine ? (
-                              <span className="font-mono font-semibold text-text-main text-xs">{assignedMachine.name}</span>
-                            ) : (
-                              <span className="text-text-dim/60 italic text-xs">Unassigned</span>
-                            );
-                          })()}
-                        </td>
-                      )}
+
                       {activeTab === 'customers' && (
                         <td className="glass-td text-left whitespace-nowrap">
                           <div className="font-mono font-bold text-xs text-text-main">
@@ -878,7 +894,7 @@ export default function PanelStaffing({
               <p className="text-xs text-text-dim m-0">
                 {isCustomer(disablingUser)
                   ? 'Login access will be revoked. All orders, receipts, wallet balances, and audit records remain 100% preserved in the database for auditing and accounting compliance.'
-                  : 'Operational portal access and machine assignments will be revoked immediately. Historical audit trail is preserved.'}
+                  : 'Operational portal access will be revoked immediately. Historical audit trail is preserved.'}
               </p>
               <div className="flex flex-col gap-1 mt-1">
                 <label className="text-[0.72rem] font-bold text-text-dim">Reason for Deactivation (Optional):</label>
@@ -1055,7 +1071,7 @@ export default function PanelStaffing({
               <button
                 type="button"
                 onClick={() => setViewingProfileUser(null)}
-                className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs hover:bg-white/15 transition-all cursor-pointer border-none"
+                className="px-4 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-text-main font-bold text-xs hover:bg-white/10 transition-all cursor-pointer"
               >
                 Close
               </button>

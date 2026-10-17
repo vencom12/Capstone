@@ -835,7 +835,7 @@ export default function PanelOverview({
                 <div>
                   <span className="modal-label text-text-dim text-xs">Active Order ID</span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <p className="font-mono font-bold text-white text-sm m-0">{editingOrder.orderId}</p>
+                    <p className="font-mono font-bold text-text-main text-sm m-0">{editingOrder.orderId}</p>
                     {isPickup && (
                       <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">
                         {claimCode}

@@ -197,9 +197,9 @@ function OrderTrackerContent() {
         </div>
 
         <div>
-          <h2 className="text-xl font-black text-white">Track Your Embroidery</h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs">
-            Type your Ticket Number or Claim Code written on your paper stub (e.g. <strong className="text-white font-mono">WI-582B</strong> or <strong className="text-white font-mono">A-582B</strong>).
+          <h2 className="text-xl font-black text-text-main">Track Your Embroidery</h2>
+          <p className="text-xs text-text-dim mt-1 max-w-xs">
+            Type your Ticket Number or Claim Code written on your paper stub (e.g. <strong className="text-text-main font-mono">WI-582B</strong> or <strong className="text-text-main font-mono">A-582B</strong>).
           </p>
         </div>
 
@@ -209,20 +209,20 @@ function OrderTrackerContent() {
             placeholder="e.g. WI-582B or A-582B"
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-            className="w-full bg-slate-900 border border-white/15 px-4 py-3.5 rounded-lg text-center text-base font-mono font-bold tracking-widest text-white outline-none focus:border-red-500 transition shadow-inner"
+            className="w-full bg-bg-surface border border-border-glass px-4 py-3.5 rounded-lg text-center text-base font-mono font-bold tracking-widest text-text-main outline-none focus:border-primary transition shadow-inner"
             required
             autoFocus
           />
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-lg bg-red-600 hover:bg-red-500 active:scale-[0.99] text-white text-xs font-extrabold transition shadow-lg shadow-red-950/50 cursor-pointer"
+            className="w-full py-3.5 rounded-lg bg-primary hover:bg-primary-light active:scale-[0.99] text-white text-xs font-extrabold transition shadow-md shadow-primary/20 cursor-pointer"
           >
             Check Order Status
           </button>
         </form>
 
-        <div className="text-[11px] text-slate-500">
+        <div className="text-[11px] text-text-dim">
           Pacific Mall Lucena ground floor embroidery stall.
         </div>
       </main>
@@ -233,8 +233,8 @@ function OrderTrackerContent() {
   if (isLoading && !order) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-400">Loading order status...</p>
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-text-dim">Loading order status...</p>
       </div>
     );
   }
@@ -243,17 +243,17 @@ function OrderTrackerContent() {
   if (error || !order) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl mb-4">
+        <div className="w-14 h-14 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-2xl mb-4">
           🔍
         </div>
-        <h2 className="text-lg font-bold text-white mb-1">Ticket Not Found</h2>
-        <p className="text-xs text-slate-400 max-w-xs mb-6">
-          We could not find an order matching <strong className="text-white">"{rawId}"</strong>. Please verify the code printed on your thermal claim stub.
+        <h2 className="text-lg font-bold text-text-main mb-1">Ticket Not Found</h2>
+        <p className="text-xs text-text-dim max-w-xs mb-6">
+          We could not find an order matching <strong className="text-text-main">"{rawId}"</strong>. Please verify the code printed on your thermal claim stub.
         </p>
         <button
           type="button"
           onClick={() => router.push('/track')}
-          className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition shadow cursor-pointer"
+          className="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-light text-white text-xs font-bold transition shadow-sm cursor-pointer"
         >
           Enter Different Code
         </button>
@@ -270,26 +270,26 @@ function OrderTrackerContent() {
     <main className="flex-1 p-4 max-w-md w-full mx-auto flex flex-col gap-4 animate-fade">
       {/* HERO STATUS CARD */}
       <div
-        className={`rounded-xl p-6 border-2 shadow-xl transition-all flex flex-col gap-4 ${
+        className={`rounded-xl p-6 border transition-all flex flex-col gap-4 ${
           isReady
-            ? 'bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 border-emerald-500 shadow-emerald-950/50'
+            ? 'bg-bg-card border-emerald-500/60 shadow-lg shadow-emerald-500/10'
             : isStitching
-            ? 'bg-gradient-to-br from-blue-950/70 via-slate-900 to-slate-900 border-blue-500 shadow-blue-950/40'
+            ? 'bg-bg-card border-blue-500/60 shadow-lg shadow-blue-500/10'
             : isCompleted
-            ? 'bg-slate-900 border-white/15'
-            : 'bg-slate-900 border-amber-500/50 shadow-amber-950/30'
+            ? 'bg-bg-card border-border-glass'
+            : 'bg-bg-card border-amber-500/60 shadow-lg shadow-amber-500/10'
         }`}
       >
         {/* Header Row */}
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 block mb-0.5">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-text-dim block mb-0.5">
               Your Anti-Fraud Claim Stub
             </span>
-            <div className="text-3xl font-black font-mono tracking-widest text-white">
+            <div className="text-3xl font-black font-mono tracking-widest text-text-main">
               {order.claimCode}
             </div>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-text-dim font-mono">
               Order #{order.orderId}
             </span>
           </div>
@@ -297,12 +297,12 @@ function OrderTrackerContent() {
           <div
             className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border flex items-center gap-1.5 shadow-sm ${
               isReady
-                ? 'bg-emerald-500 text-black border-emerald-400 animate-pulse'
+                ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
                 : isStitching
-                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
                 : isCompleted
-                ? 'bg-white/10 text-slate-300 border-white/20'
-                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                ? 'bg-white/10 text-text-dim border-border-glass'
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
             }`}
           >
             <span>{isReady ? '🟢' : isStitching ? '🔵' : isCompleted ? '✓' : '🟡'}</span>
@@ -327,13 +327,13 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isQueue || isStitching || isReady || isCompleted
-                  ? 'bg-amber-500 text-black shadow'
-                  : 'bg-slate-800 text-slate-500'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
               1
             </div>
-            <span className="text-[10px] font-bold text-slate-400">Queue</span>
+            <span className="text-[10px] font-bold text-text-dim">Queue</span>
           </div>
 
           {/* Step 2: Stitching */}
@@ -341,13 +341,13 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isStitching || isReady || isCompleted
-                  ? 'bg-blue-500 text-white shadow'
-                  : 'bg-slate-800 text-slate-500'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
               2
             </div>
-            <span className="text-[10px] font-bold text-slate-400">Stitching</span>
+            <span className="text-[10px] font-bold text-text-dim">Stitching</span>
           </div>
 
           {/* Step 3: Ready */}
@@ -355,46 +355,46 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isReady || isCompleted
-                  ? 'bg-emerald-500 text-black shadow'
-                  : 'bg-slate-800 text-slate-500'
+                  ? 'bg-emerald-500 text-white shadow-sm'
+                  : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
               3
             </div>
-            <span className="text-[10px] font-bold text-slate-400">Ready</span>
+            <span className="text-[10px] font-bold text-text-dim">Ready</span>
           </div>
         </div>
 
         {/* Turnaround Status Notice */}
         {isReady ? (
-          <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-xl p-3.5 text-center">
-            <div className="text-sm font-black text-emerald-300">
+          <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-3.5 text-center">
+            <div className="text-sm font-black text-emerald-500 dark:text-emerald-300">
               🎉 Your order is ready for pickup!
             </div>
-            <p className="text-xs text-emerald-100/80 mt-1 leading-relaxed">
+            <p className="text-xs text-text-dim mt-1 leading-relaxed">
               Please proceed to the counter and show your claim code{' '}
-              <strong className="text-white font-mono">{order.claimCode}</strong> to collect your items.
+              <strong className="text-text-main font-mono">{order.claimCode}</strong> to collect your items.
             </p>
           </div>
         ) : isStitching ? (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 text-center">
-            <span className="text-xs text-blue-300 font-bold block">
+            <span className="text-xs text-blue-500 dark:text-blue-300 font-bold block">
               🧵 Currently stitching on the machine
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-text-dim">
               Estimated completion in <strong>~{order.estimatedMinutesLeft} minutes</strong>.
             </span>
           </div>
         ) : isCompleted ? (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center text-xs text-slate-300">
+          <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-center text-xs text-text-dim">
             ✓ Order collected. Thank you for your business!
           </div>
         ) : (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-            <span className="text-xs text-amber-300 font-bold block">
+            <span className="text-xs text-amber-500 dark:text-amber-400 font-bold block">
               ⏳ In machine queue ({order.ordersAhead} orders ahead)
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-text-dim">
               Estimated wait time: <strong>~{order.estimatedMinutesLeft} minutes</strong>.
             </span>
           </div>
@@ -402,40 +402,40 @@ function OrderTrackerContent() {
       </div>
 
       {/* ORDER SUMMARY */}
-      <div className="bg-slate-900 border border-white/10 rounded-xl p-4 flex flex-col gap-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-white/5">
+      <div className="bg-bg-card border border-border-glass rounded-xl p-4 flex flex-col gap-3">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
           Order Details
         </span>
 
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-400">Garment Item:</span>
-          <span className="font-bold text-white text-right">{order.design}</span>
+          <span className="text-text-dim">Garment Item:</span>
+          <span className="font-bold text-text-main text-right">{order.design}</span>
         </div>
 
         {order.monogramText && (
           <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 flex items-center justify-between text-xs">
-            <span className="text-slate-400 text-[11px]">Embroidered Text:</span>
+            <span className="text-text-dim text-[11px]">Embroidered Text:</span>
             <span className="font-mono font-black text-amber-300 text-sm tracking-wider uppercase">
               "{order.monogramText}"
             </span>
           </div>
         )}
 
-        <div className="flex justify-between items-center text-xs pt-1 border-t border-white/5">
-          <span className="text-slate-400">Customer:</span>
-          <span className="font-semibold text-slate-200">{order.client}</span>
+        <div className="flex justify-between items-center text-xs pt-1 border-t border-border-glass">
+          <span className="text-text-dim">Customer:</span>
+          <span className="font-semibold text-text-main">{order.client}</span>
         </div>
 
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-400">Total Paid:</span>
-          <span className="font-mono font-bold text-emerald-400">
+          <span className="text-text-dim">Total Paid:</span>
+          <span className="font-mono font-bold text-emerald-500">
             ₱{order.totalAmount?.toFixed(2)} (PAID)
           </span>
         </div>
       </div>
 
       {/* Customer Mall Tip */}
-      <div className="mt-auto bg-white/[0.03] border border-white/5 rounded-xl p-4 text-xs text-slate-400 text-center leading-relaxed">
+      <div className="mt-auto bg-bg-surface border border-border-glass rounded-xl p-4 text-xs text-text-dim text-center leading-relaxed">
         💡 <strong>Customer Tip:</strong> Feel free to browse around Pacific Mall while you wait. This tracker automatically updates and plays a chime once your order is ready for pickup!
       </div>
     </main>
@@ -444,18 +444,18 @@ function OrderTrackerContent() {
 
 export default function MobileOrderTrackerPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-bg-dark text-text-main flex flex-col font-sans selection:bg-primary selection:text-white">
       {/* Header */}
-      <header className="border-b border-white/10 bg-slate-900/90 backdrop-blur-md px-5 py-3.5 flex items-center justify-between sticky top-0 z-40">
+      <header className="border-b border-border-glass bg-bg-card/90 backdrop-blur-md px-5 py-3.5 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-sm text-white shadow">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center font-black text-sm text-white shadow-sm">
             E
           </div>
           <div>
-            <h1 className="text-xs font-extrabold uppercase tracking-wider text-white">
+            <h1 className="text-xs font-extrabold uppercase tracking-wider text-text-main">
               Eds Towels &amp; Caps
             </h1>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-text-dim">
               Pacific Mall Lucena • Mobile Tracker
             </p>
           </div>
@@ -463,14 +463,14 @@ export default function MobileOrderTrackerPage() {
 
         <Link
           href="/track"
-          className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/5 border border-white/10 text-slate-300 hover:text-white transition"
+          className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/5 border border-border-glass text-text-dim hover:text-text-main transition"
         >
           Search Another
         </Link>
       </header>
 
       <Suspense fallback={
-        <div className="flex-1 flex items-center justify-center p-6 text-xs text-slate-400">
+        <div className="flex-1 flex items-center justify-center p-6 text-xs text-text-dim">
           Loading...
         </div>
       }>

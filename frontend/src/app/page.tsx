@@ -35,6 +35,12 @@ export default function StorefrontPage() {
   const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'employee');
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  useEffect(() => {
     if (isStaff) {
       useUIStore.getState().triggerWelcome(user?.username || 'Staff', user?.role || 'admin');
       if (user?.role === 'admin') router.replace('/admin');

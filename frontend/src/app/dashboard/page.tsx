@@ -26,6 +26,7 @@ import { getOrderStage } from '@/lib/orderStatus';
 import { toggleTheme } from '@/lib/theme';
 import Pagination from '@/components/ui/Pagination';
 import GlassModal from '@/components/ui/GlassModal';
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
@@ -859,6 +861,37 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Security & Password Panel */}
+              <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
+                <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
+                  <h3 className="text-base font-bold text-text-main m-0">Account Security</h3>
+                  <p className="text-xs text-text-dim m-0 mt-0.5">Manage your password and protect your account credentials</p>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between bg-bg-surface p-4 rounded-xl border border-border-glass flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 text-primary flex items-center justify-center shrink-0 border border-border-glass">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Account Password</h4>
+                        <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">Update your password to keep your profile secure</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsChangePasswordOpen(true)}
+                      className="bg-white/5 border border-border-glass px-4 py-2.5 rounded-lg text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95 shadow-sm"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Preferences / Theme Panel */}
               <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-xl overflow-hidden max-w-[600px] shadow-xl flex flex-col mt-6">
                 <div className="px-6 py-4 border-b border-border-glass/50 bg-black/10">
@@ -1086,6 +1119,12 @@ export default function DashboardPage() {
       <AddressBookModal
         isOpen={isAddressBookOpen}
         onClose={() => setIsAddressBookOpen(false)}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
 
       {/* Official Printable Receipt Modal */}

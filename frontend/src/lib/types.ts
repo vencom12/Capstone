@@ -74,6 +74,9 @@ export interface ProductReview {
   orderId?: string | null;
   isVerifiedPurchase: boolean;
   createdAt: string;
+  merchantReply?: string | null;
+  merchantReplyAt?: string | null;
+  isFeatured?: boolean;
 }
 
 export interface ProductReviewsResponse {

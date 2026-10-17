@@ -829,11 +829,19 @@ export default function ProductModal({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[0.65rem] font-bold">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            <span>Verified</span>
+                          <div className="flex items-center gap-1.5">
+                            {review.isFeatured && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[0.65rem] font-bold">
+                                <span>★</span>
+                                <span>Featured</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[0.65rem] font-bold">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <span>Verified</span>
+                            </div>
                           </div>
                         </div>
 
@@ -875,6 +883,28 @@ export default function ProductModal({
                           <p className="text-xs text-text-main/90 leading-relaxed m-0">
                             {cleanMessage}
                           </p>
+                        )}
+
+                        {/* Official Store Response (Merchant Public Reply) */}
+                        {review.merchantReply && (
+                          <div className="mt-2 p-3 rounded-xl bg-primary/10 border border-primary/25 flex flex-col gap-1 text-xs">
+                            <div className="flex items-center gap-1.5 text-primary font-bold text-[0.72rem]">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                              <span>Official Store Response — Eds Towels &amp; Caps</span>
+                              <span className="text-[0.65rem] text-text-dim ml-auto font-normal">
+                                {review.merchantReplyAt
+                                  ? new Date(review.merchantReplyAt).toLocaleDateString(undefined, {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })
+                                  : 'Store Owner'}
+                              </span>
+                            </div>
+                            <p className="m-0 text-text-main text-[0.78rem] leading-relaxed italic">
+                              "{review.merchantReply}"
+                            </p>
+                          </div>
                         )}
                       </div>
                     );

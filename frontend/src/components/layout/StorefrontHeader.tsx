@@ -32,6 +32,21 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     }
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (typeof window !== 'undefined') {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+      window.scrollTo(0, 0);
+      if (window.location.pathname === '/' && !window.location.search && !window.location.hash) {
+        window.location.reload();
+      } else {
+        window.location.href = '/';
+      }
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
     import('@/lib/api').then(({ api }) => {
@@ -72,7 +87,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               </svg>
             </button>
 
-            <Link href="/" className="flex items-center gap-2.5 min-w-0 no-underline cursor-pointer group">
+            <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 min-w-0 no-underline cursor-pointer group">
               {businessLogoUrl ? (
                 <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
               ) : (
@@ -197,7 +212,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           <button
             suppressHydrationWarning
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="text-xs font-bold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
+            className="text-xs font-bold text-text-dim hover:text-text-main px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
           >
             Atelier Story
           </button>

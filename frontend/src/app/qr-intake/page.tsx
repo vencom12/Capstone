@@ -63,7 +63,7 @@ export default function QRIntakePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Your Name</label>
-                <input required type="text" value={client} onChange={e => setClient(e.target.value)} className="bg-black/30 border border-white/10 p-3 rounded-lg text-white outline-none focus:border-primary" />
+                <input required type="text" value={client} onChange={e => setClient(e.target.value)} className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main outline-none focus:border-primary" />
              </div>
 
              <div className="flex flex-col gap-1.5">
@@ -71,14 +71,14 @@ export default function QRIntakePage() {
                    <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Embroidery Text</label>
                    <span className="text-[11px] text-text-dim/80">{text.length}/25</span>
                 </div>
-                <input required type="text" maxLength={25} value={text} onChange={e => setText(e.target.value)} placeholder="e.g. SOPHIA (Max 25 chars)" className="bg-black/30 border border-white/10 p-3 rounded-lg text-white outline-none focus:border-primary text-xl font-bold" />
+                <input required type="text" maxLength={25} value={text} onChange={e => setText(e.target.value)} placeholder="e.g. SOPHIA (Max 25 chars)" className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main outline-none focus:border-primary text-xl font-bold" />
                 <span className="text-[11px] text-text-dim/60">Single-line standard hoop monogram / name (max 25 characters)</span>
              </div>
 
              <div className="grid grid-cols-2 gap-4">
                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Garment Color</label>
-                  <select value={color} onChange={e => setColor(e.target.value)} className="bg-black/30 border border-white/10 p-3 rounded-lg text-white outline-none focus:border-primary">
+                  <select value={color} onChange={e => setColor(e.target.value)} className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main outline-none focus:border-primary">
                     <option value="Navy">Navy</option>
                     <option value="Black">Black</option>
                     <option value="White">White</option>
@@ -88,7 +88,7 @@ export default function QRIntakePage() {
                </div>
                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Font Style</label>
-                  <div className="bg-black/30 border border-white/10 p-3 rounded-lg text-white text-xs flex items-center font-serif italic text-primary">
+                  <div className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main text-xs flex items-center font-serif italic text-primary">
                     Classic Cursive Script
                   </div>
                </div>
@@ -98,20 +98,20 @@ export default function QRIntakePage() {
              {color && suggestions.length > 0 && (
                 <div className="bg-primary/10 border border-primary/20 p-3 rounded-lg mt-2 animate-[fadeIn_0.3s_ease-out]">
                    <span className="text-xs font-bold text-primary block mb-2">Smart Color Suggestor</span>
-                   <p className="text-[0.8rem] text-white">Recommended thread colors for {color}: <br/><b className="text-[#fbbf24]">{suggestions.join(', ')}</b></p>
+                   <p className="text-[0.8rem] text-text-main">Recommended thread colors for {color}: <br/><b className="text-[#fbbf24]">{suggestions.join(', ')}</b></p>
                 </div>
              )}
 
              <div className="flex flex-col gap-2 mt-4 bg-danger/10 border border-danger/30 p-4 rounded-lg">
                 <label className="flex items-start gap-3 cursor-pointer">
                    <input required type="checkbox" checked={waiverSigned} onChange={e => setWaiverSigned(e.target.checked)} className="mt-1 accent-danger w-5 h-5 flex-shrink-0" />
-                   <span className="text-[0.8rem] text-white">
+                   <span className="text-[0.8rem] text-text-main">
                       <b>Machine Damage Waiver:</b> I understand that embroidery involves high-speed machinery. While rare, machinery can malfunction and damage the garment. I agree that StitchMaster is not liable for replacement cost of my personal garment.
                    </span>
                 </label>
              </div>
 
-             <button disabled={isSubmitting || !waiverSigned} type="submit" className="w-full bg-primary text-bg-surface font-extrabold text-lg py-4 rounded-lg mt-4 disabled:opacity-50 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer">
+             <button disabled={isSubmitting || !waiverSigned} type="submit" className="w-full bg-primary text-white font-extrabold text-lg py-4 rounded-lg mt-4 disabled:opacity-50 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer">
                {isSubmitting ? 'Processing...' : 'Generate Intake QR'}
              </button>
           </form>

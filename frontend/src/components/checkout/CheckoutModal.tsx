@@ -492,7 +492,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
                       fulfillmentType === 'delivery'
                         ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                        : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
                     }`}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -509,7 +509,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
                       fulfillmentType === 'pickup'
                         ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-transparent text-text-dim border-transparent hover:text-white hover:bg-white/5'
+                        : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
                     }`}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -600,7 +600,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     </div>
                     <div className="flex flex-col text-left">
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-white text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
+                        <span className="font-extrabold text-text-main text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
                         <span className="text-[0.62rem] px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase">
                           Free Pick-up
                         </span>

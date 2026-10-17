@@ -18,11 +18,10 @@ import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
-import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
-import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
 import Pagination from '@/components/ui/Pagination';
 import { toggleTheme } from '@/lib/theme';
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -98,16 +97,16 @@ export default function EmployeePage() {
   const [orderStatusInput, setOrderStatusInput] = useState('In Queue');
   const [orderProgressInput, setOrderProgressInput] = useState('10');
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
-  const [orderMachineInput, setOrderMachineInput] = useState('');
 
   // Receipt Modal State
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const fetchEmployeeData = async () => {
     if (isLoggingOutRef.current) return;
     const authState = useAuthStore.getState();
-    if (!authState.isAuthenticated || authState.user?.role !== 'employee' || authState.isLoggingOut) {
+    if (!authState.isAuthenticated || (authState.user?.role !== 'employee' && authState.user?.role !== 'admin') || authState.isLoggingOut) {
       return;
     }
 
@@ -139,16 +138,6 @@ export default function EmployeePage() {
     }
   };
 
-  const handleToggleMachineStatus = async (machine: any) => {
-    try {
-      const nextStatus = machine.status === 'Idle' ? 'Running' : machine.status === 'Running' ? 'Maintenance' : 'Idle';
-      await api.put(`/api/machines/${machine.id}`, { status: nextStatus, name: machine.name, type: machine.type });
-      fetchEmployeeData();
-      showToast(`${machine.name} marked as ${nextStatus}`, 'success');
-    } catch (err) {
-      showToast('Failed to toggle machine status', 'error');
-    }
-  };
 
   const handleToggleShift = async () => {
     try {
@@ -165,7 +154,12 @@ export default function EmployeePage() {
   useEffect(() => {
     try {
       const savedTab = sessionStorage.getItem('stitch-employee-tab');
-      if (savedTab) setActiveTab(savedTab);
+      const validTabs = ['workbench', 'orders', 'history', 'support', 'settings'];
+      if (savedTab && validTabs.includes(savedTab)) {
+        setActiveTab(savedTab);
+      } else {
+        setActiveTab('workbench');
+      }
     } catch (e) {}
     setIsHydrated(true);
   }, []);
@@ -189,7 +183,7 @@ export default function EmployeePage() {
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (isAuthenticated && checkAccess('employee')) {
+    if (isAuthenticated && (checkAccess('employee') || checkAccess('admin'))) {
       fetchEmployeeData();
     }
   }, [isAuthenticated, checkAccess, isHydrated]);
@@ -204,7 +198,7 @@ export default function EmployeePage() {
 
   // Trigger fast server-indexed order history query when history tab is active
   useEffect(() => {
-    if (!isHydrated || !isAuthenticated || !checkAccess('employee')) return;
+    if (!isHydrated || !isAuthenticated || (!checkAccess('employee') && !checkAccess('admin'))) return;
     if (activeTab === 'history') {
       const timer = setTimeout(() => {
         fetchArchivedOrders(historySearchQuery, historyDateFilter, 1);
@@ -213,56 +207,6 @@ export default function EmployeePage() {
     }
   }, [activeTab, historySearchQuery, historyDateFilter, isHydrated, isAuthenticated]);
 
-  const autoAllotOrders = async () => {
-    const unassignedOrders = orders.filter(
-      (o: any) => (o.status === 'In Queue' || o.status === 'Preparing Order') && !o.machineId
-    );
-    const myMachines = machines.filter((m: any) => m.assignedUserId === user?.id);
-    const runningMachines = myMachines.filter((m: any) => m.status === 'Running');
-
-    // Find which running machines already have orders assigned in the database
-    const assignedMachineIds = new Set(
-      orders
-        .filter((o: any) => o.machineId && (o.status === 'In Queue' || o.status === 'Preparing Order'))
-        .map((o: any) => o.machineId)
-    );
-
-    const idleRunningMachines = runningMachines.filter((m: any) => !assignedMachineIds.has(m.id));
-
-    if (unassignedOrders.length > 0 && idleRunningMachines.length > 0) {
-      for (let i = 0; i < Math.min(unassignedOrders.length, idleRunningMachines.length); i++) {
-        const order = unassignedOrders[i];
-        const machine = idleRunningMachines[i];
-        const orderId = order.id || order._id;
-        const url = dbType === 'postgres'
-          ? `/api/employee/orders/${orderId}/status`
-          : `/api/employee/orders/${orderId}`;
-
-        const payload = {
-          status: 'Preparing Order',
-          progress: 30,
-          machineId: machine.id
-        };
-
-        try {
-          if (dbType === 'postgres') {
-            await api.patch(url, payload);
-          } else {
-            await api.put(url, payload);
-          }
-        } catch (err) {
-          console.error('Failed to auto-allot order:', err);
-        }
-      }
-      fetchEmployeeData();
-    }
-  };
-
-  useEffect(() => {
-    if (machines.length > 0 && orders.length > 0) {
-      autoAllotOrders();
-    }
-  }, [machines, orders]);
 
   // Real-time Socket.IO Sync Listener
   useEffect(() => {
@@ -342,12 +286,12 @@ export default function EmployeePage() {
     };
   }, []);
 
-  // client-side redirect gate if unauthenticated or not employee
+  // client-side redirect gate if unauthenticated or not staff
   useEffect(() => {
     if (isHydrated) {
       if (!isAuthenticated) {
         router.replace('/?auth=login');
-      } else if (!checkAccess('employee')) {
+      } else if (!checkAccess('employee') && !checkAccess('admin')) {
         showToast('Staff privileges required.', 'error');
         router.replace('/');
       }
@@ -369,21 +313,14 @@ export default function EmployeePage() {
     if (!selectedOrder) return;
     const orderId = selectedOrder.id || selectedOrder._id;
     try {
-      const url = dbType === 'postgres'
-        ? `/api/employee/orders/${orderId}/status`
-        : `/api/employee/orders/${orderId}`;
+      const url = `/api/employee/orders/${orderId}/status`;
 
       const payload = {
         status: orderStatusInput,
-        progress: parseInt(orderProgressInput),
-        machineId: orderMachineInput || null
+        progress: parseInt(orderProgressInput)
       };
 
-      if (dbType === 'postgres') {
-        await api.patch(url, payload);
-      } else {
-        await api.put(url, payload);
-      }
+      await api.patch(url, payload);
 
       showToast('Order status updated successfully', 'success');
       setIsProcessModalOpen(false);
@@ -393,12 +330,10 @@ export default function EmployeePage() {
     }
   };
 
-  const completeMachineTask = async (order: any, nextStatus: string, machineId: string, customProgress?: number) => {
+  const advanceOrderStatus = async (order: any, nextStatus: string, customProgress?: number) => {
     try {
       const orderId = order.id || order._id;
-      const url = dbType === 'postgres'
-        ? `/api/employee/orders/${orderId}/status`
-        : `/api/employee/orders/${orderId}`;
+      const url = `/api/employee/orders/${orderId}/status`;
 
       const progress = customProgress !== undefined 
         ? customProgress 
@@ -406,55 +341,15 @@ export default function EmployeePage() {
 
       const payload = {
         status: nextStatus,
-        progress,
-        machineId: nextStatus === 'Preparing Order' ? machineId : null
+        progress
       };
 
-      if (dbType === 'postgres') {
-        await api.patch(url, payload);
-      } else {
-        await api.put(url, payload);
-      }
+      await api.patch(url, payload);
 
-      showToast(`Order marked as ${nextStatus}`, 'success');
+      showToast(`Order #${order.orderId} marked as ${nextStatus}`, 'success');
       fetchEmployeeData();
     } catch (err) {
-      showToast('Failed to complete task', 'error');
-    }
-  };
-
-  const setMachineStatus = async (machine: any, status: string) => {
-    try {
-      await api.put(`/api/machines/${machine.id}`, { status, name: machine.name, type: machine.type });
-      
-      // If the machine is set to Idle or Maintenance, and there was an active order assigned to it,
-      // we release that order by setting its machineId to null.
-      if (status !== 'Running') {
-        const assignedOrder = orders.find(
-          (o: any) => o.machineId === machine.id && (o.status === 'In Queue' || o.status === 'Preparing Order')
-        );
-        if (assignedOrder) {
-          const orderId = assignedOrder.id || assignedOrder._id;
-          const url = dbType === 'postgres'
-            ? `/api/employee/orders/${orderId}/status`
-            : `/api/employee/orders/${orderId}`;
-          const payload = {
-            status: 'In Queue',
-            progress: 10,
-            machineId: null
-          };
-          if (dbType === 'postgres') {
-            await api.patch(url, payload);
-          } else {
-            await api.put(url, payload);
-          }
-        }
-      }
-      
-      fetchEmployeeData();
-      showToast(`${machine.name} marked as ${status}`, 'success');
-    } catch (err) {
-      showToast('Failed to change machine status', 'error');
+      showToast('Failed to advance order status', 'error');
     }
   };
 
@@ -561,224 +456,289 @@ export default function EmployeePage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'workbench':
+      case 'workbench': {
+        const greeting = (() => {
+          const hour = new Date().getHours();
+          if (hour < 12) return 'Good morning';
+          if (hour < 18) return 'Good afternoon';
+          return 'Good evening';
+        })();
+
+        const pendingOrders = activeOrders.filter(o => o.status === 'In Queue' || o.status === 'Preparing Order');
+        const activeStitchingOrder = pendingOrders.find(o => o.status === 'Preparing Order');
+        const queuedOrders = pendingOrders.filter(o => o.status === 'In Queue');
+
         return (
-          <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col h-full">
-            <header className="mb-6 flex justify-between items-center flex-wrap gap-4">
-              <div className="flex flex-col">
-                <h1 className="text-3xl font-extrabold mb-1">Workbench: Station B</h1>
-                <p className="text-text-dim text-[0.95rem] m-0">Good morning. There are currently {activeOrders.length} active orders pending.</p>
+          <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col gap-6 pb-6">
+            {/* Workshop Header */}
+            <header className="flex justify-between items-center flex-wrap gap-4 pb-2 border-b border-border-glass">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-text-main m-0">
+                  Embroidery Workshop Console
+                </h1>
+                <p className="text-text-dim text-xs sm:text-sm mt-1 m-0">
+                  {greeting}, {user?.username || 'Operator'}. Eds Towels &amp; Caps workshop workstation at Pacific Mall Lucena.
+                </p>
               </div>
               <button
                 onClick={handleToggleShift}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-bold text-[0.85rem] transition-all cursor-pointer border-none ${
+                className={`flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer border ${
                   shiftStatus === 'clocked_in'
-                    ? 'bg-success/20 text-success border border-success/30 hover:bg-success/30'
-                    : 'bg-white/5 text-text-dim border border-border-glass hover:bg-white/10'
+                    ? 'bg-success/20 text-success border-success/30 hover:bg-success/30'
+                    : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
                 }`}
               >
-                <span className={`w-2.5 h-2.5 rounded-full ${shiftStatus === 'clocked_in' ? 'bg-success animate-pulse' : 'bg-text-dim'}`}></span>
+                <span className={`w-2 h-2 rounded-full ${shiftStatus === 'clocked_in' ? 'bg-success animate-pulse' : 'bg-text-dim'}`}></span>
                 {shiftStatus === 'clocked_in' ? 'On Shift — Clock Out' : 'Clock In'}
               </button>
             </header>
-            
-            {/* Machine Workstations Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-4">
-               {(() => {
-                   const myMachines = machines.filter((m: any) => m.assignedUserId === user?.id);
-                   if (myMachines.length === 0) {
-                     return (
-                       <div className="col-span-full py-12 text-center opacity-50 bg-white/5 rounded-xl border border-white/10">
-                         No machines are currently assigned to you.
-                       </div>
-                     );
-                   }
 
-                   const pendingOrders = activeOrders.filter(o => o.status === 'In Queue' || o.status === 'Preparing Order');
-                   const machineOrderMap = new Map();
-                   myMachines.forEach(m => {
-                     const order = pendingOrders.find(o => o.machineId === m.id);
-                     if (order) {
-                       machineOrderMap.set(m.id, order);
-                     }
-                   });
-                   return myMachines.map(m => {
-                      const assignedOrder = machineOrderMap.get(m.id);
-                      const score = assignedOrder?.priorityScore ?? 0;
+            {/* SECTION 1: ACTIVE MACHINE WORKSTATION (CURRENTLY HOOPED) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase font-extrabold tracking-wider text-text-dim flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+                  Active Machine Workstation (Live Stitching)
+                </span>
+                {activeStitchingOrder && (
+                  <span className="text-[11px] font-mono text-primary font-bold bg-primary/10 border border-primary/25 px-2.5 py-0.5 rounded-full">
+                    Claim Ticket #{activeStitchingOrder.claimCode || activeStitchingOrder.orderId}
+                  </span>
+                )}
+              </div>
 
-                      // Dynamic card borders and subtle neon glow based on status
-                      const cardBorderClass = m.status === 'Running'
-                        ? 'border-emerald-500/30 hover:border-emerald-500/50 shadow-sm'
-                        : m.status === 'Idle'
-                        ? 'border-amber-500/20 hover:border-amber-500/40 shadow-sm'
-                        : 'border-rose-500/30 hover:border-rose-500/50 shadow-sm';
+              {activeStitchingOrder ? (() => {
+                const isDelivery = activeStitchingOrder.personalization?.fulfillmentType === 'delivery' ||
+                  (typeof activeStitchingOrder.address === 'string' &&
+                    activeStitchingOrder.address.trim().length > 0 &&
+                    !activeStitchingOrder.address.toLowerCase().includes('pick-up') &&
+                    !activeStitchingOrder.address.toLowerCase().includes('pickup'));
+                const score = activeStitchingOrder.priorityScore ?? 0;
 
-                      return (
-                        <div 
-                          key={m.id} 
-                          className={`glass-card flex flex-col border relative overflow-hidden min-h-[400px] transition-all duration-300 ${cardBorderClass}`}
-                        >
-                           {/* Header: Machine Name & Status & 3 Buttons */}
-                           <div className="flex justify-between items-center mb-6 pb-4 border-b border-border-glass max-[650px]:flex-col max-[650px]:items-start max-[650px]:gap-4">
-                             <div className="flex items-center gap-3">
-                               <div className="w-3.5 h-3.5 rounded-full shrink-0 relative flex items-center justify-center">
-                                 {m.status === 'Running' ? (
-                                   <>
-                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 "></span>
-                                   </>
-                                 ) : m.status === 'Idle' ? (
-                                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 "></span>
-                                 ) : (
-                                   <>
-                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 "></span>
-                                   </>
-                                 )}
-                               </div>
-                               <h3 className="m-0 font-bold text-xl text-text-main">{m.name}</h3>
-                               {m.status === 'Running' && assignedOrder && (
-                                <span className={`text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
-                                  assignedOrder.priorityScore >= 80 ? 'bg-danger/20 border-danger/30 text-danger ' :
-                                  assignedOrder.priorityScore >= 40 ? 'bg-warning/20 border-warning/30 text-warning' :
-                                  'bg-primary/20 border-primary/30 text-primary'
-                                }`}>
-                                  Score: {assignedOrder.priorityScore !== undefined ? assignedOrder.priorityScore.toFixed(0) : '0'}
-                                </span>
-                              )}
-                             </div>
-                             <div className="flex gap-2 max-[650px]:w-full">
-                                <button onClick={() => setMachineStatus(m, 'Idle')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Idle' ? 'bg-warning/20 text-warning border-warning/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Idle</button>
-                                <button onClick={() => setMachineStatus(m, 'Running')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Running' ? 'bg-success/20 text-success border-success/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Running</button>
-                                <button onClick={() => setMachineStatus(m, 'Maintenance')} className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${m.status === 'Maintenance' ? 'bg-danger/20 text-danger border-danger/30 font-extrabold' : 'bg-white/5 text-text-dim border-transparent hover:bg-white/10'}`}>Maintenance</button>
-                             </div>
-                           </div>
-
-                           {/* Task HUD */}
-                           {m.status === 'Running' ? (
-                             assignedOrder ? (
-                               <div className="flex flex-col flex-1">
-                                  <div className="flex justify-between items-start mb-4">
-                                     <div className="flex flex-col text-left">
-                                        <span className="text-[0.7rem] uppercase text-text-dim font-bold mb-0.5">Assigned Tag ID</span>
-                                        <span className="text-2xl font-bold font-mono text-primary">{assignedOrder.orderId}</span>
-                                     </div>
-
-                                     {/* Radial Urgency / Priority Gauge */}
-                                     <div className="flex items-center gap-3">
-                                       <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-                                         <svg className="w-full h-full transform -rotate-90">
-                                           {/* Background track circle */}
-                                           <circle
-                                             cx="28"
-                                             cy="28"
-                                             r="22"
-                                             className="stroke-white/10"
-                                             strokeWidth="4"
-                                             fill="transparent"
-                                           />
-                                           {/* Active progress circle */}
-                                           <circle
-                                             cx="28"
-                                             cy="28"
-                                             r="22"
-                                             className="transition-all duration-500 ease-out"
-                                             style={{
-                                               stroke: score >= 80 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#10b981',
-                                               filter: `drop-shadow(0 0 4px ${score >= 80 ? 'rgba(239,68,68,0.5)' : score >= 40 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'})`
-                                             }}
-                                             strokeWidth="4"
-                                             fill="transparent"
-                                             strokeDasharray={2 * Math.PI * 22}
-                                             strokeDashoffset={2 * Math.PI * 22 - (Math.min(Math.max(score, 0), 100) / 100) * 2 * Math.PI * 22}
-                                             strokeLinecap="round"
-                                           />
-                                         </svg>
-                                         <div className="absolute flex flex-col items-center justify-center">
-                                           <span className="text-[0.8rem] font-black text-white leading-none">{score.toFixed(0)}</span>
-                                           <span className="text-[0.45rem] uppercase text-text-dim font-bold mt-0.5 leading-none">PRI</span>
-                                         </div>
-                                       </div>
-
-                                       <span className="bg-primary/20 text-primary px-3 py-1.5 rounded-full text-xs font-bold border border-primary/30 shrink-0">
-                                         Processing
-                                       </span>
-                                     </div>
-                                  </div>
-
-                                  <div className="flex-1 bg-bg-surface p-6 rounded-xl border border-border-glass mb-6 flex flex-col items-center justify-center text-center shadow-inner">
-                                     <h2 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: assignedOrder.personalization?.font || 'inherit' }}>
-                                        {assignedOrder.personalization?.text || assignedOrder.client}
-                                     </h2>
-                                     <div className="flex items-center gap-4 mt-2">
-                                       <p className="text-sm text-text-dim italic m-0">Font: {assignedOrder.personalization?.font || 'Standard'}</p>
-                                       <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded-md border border-white/10">
-                                          <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: assignedOrder.personalization?.color || '#fbbf24' }}></div>
-                                          <span className="font-bold text-xs text-white">{assignedOrder.personalization?.color || 'Gold'}</span>
-                                       </div>
-                                     </div>
-
-                                     {assignedOrder.items && Array.isArray(assignedOrder.items) && (
-                                        <div className="mt-4 pt-4 border-t border-white/10 w-full flex flex-wrap gap-2 justify-center">
-                                          {assignedOrder.items.map((item: any, idx: number) => (
-                                             <span key={idx} className="bg-white/5 px-2 py-1 rounded text-xs font-medium text-text-dim">
-                                               {item.quantity}x {item.name}
-                                             </span>
-                                          ))}
-                                        </div>
-                                     )}
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  <div className="flex flex-col gap-2 mt-auto">
-                                     {assignedOrder.status === 'In Queue' && (
-                                       <button 
-                                         onClick={() => completeMachineTask(assignedOrder, 'Preparing Order', m.id, 50)}
-                                         className="w-full bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-1.5"
-                                       >
-                                         <span>🪡</span>
-                                         <span>Advance Status: Stitching in Progress (50%)</span>
-                                       </button>
-                                     )}
-                                     <div className="grid grid-cols-2 gap-3">
-                                        <button 
-                                          onClick={() => completeMachineTask(assignedOrder, 'Ready For Pick Up', m.id, 100)}
-                                          className="bg-success/10 border border-success/30 text-success hover:bg-success/20 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                                        >
-                                          Ready for Pick Up
-                                        </button>
-                                        <button 
-                                          onClick={() => completeMachineTask(assignedOrder, 'In Transit', m.id, 75)}
-                                          className="bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                                        >
-                                          In Transit (Online)
-                                        </button>
-                                     </div>
-                                  </div>
-                               </div>
-                             ) : (
-                               <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
-                                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                                  <p className="m-0 text-sm">No pending orders in queue.</p>
-                                  <p className="text-xs mt-1 opacity-60">Machine is idling.</p>
-                               </div>
-                             )
-                           ) : (
-                              <div className="flex-1 flex flex-col items-center justify-center text-text-dim font-medium py-10">
-                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-4 opacity-30"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                 <p className="m-0 text-sm">Machine is {m.status.toLowerCase()}.</p>
-                                 <p className="text-xs mt-1 opacity-60">Switch to Running to auto-assign tasks.</p>
-                              </div>
-                           )}
+                return (
+                  <div className="glass-card p-6 rounded-2xl border-2 border-primary/50 shadow-xl shadow-primary/5 flex flex-col gap-5 text-left relative overflow-hidden">
+                    <div className="flex justify-between items-start gap-4 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-lg border border-primary/30">
+                          🪡
                         </div>
-                      );
-                    });
-                 })()
-               }
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-lg text-text-main">
+                              Order #{activeStitchingOrder.orderId}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white uppercase shadow-sm">
+                              Currently on Machine
+                            </span>
+                          </div>
+                          <span className="text-xs text-text-dim">
+                            Customer: <strong className="text-text-main">{activeStitchingOrder.client}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <span className={`text-xs font-bold px-3 py-1 rounded-xl border flex items-center gap-1.5 ${
+                          isDelivery
+                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        }`}>
+                          <span>{isDelivery ? '🚚 Door Delivery' : '🏪 Pacific Mall Counter Pickup'}</span>
+                        </span>
+                        <span className="text-xs font-mono font-bold bg-white/5 border border-border-glass px-2.5 py-1 rounded-xl text-text-dim">
+                          Priority {score.toFixed(0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Central Embroidery / Item Box */}
+                    {activeStitchingOrder.personalization?.text ? (
+                      <div className="p-5 rounded-xl bg-bg-surface border border-border-glass flex flex-col items-center justify-center text-center shadow-inner">
+                        <span className="text-[10px] uppercase font-bold text-primary tracking-widest mb-1">
+                          Personalized Monogram (Direct Cursive Stitch)
+                        </span>
+                        <h2
+                          className="text-4xl sm:text-5xl font-bold text-text-main my-2 italic tracking-wide select-all"
+                          style={{ fontFamily: "'Dancing Script', 'Brush Script MT', 'Great Vibes', cursive" }}
+                        >
+                          {activeStitchingOrder.personalization.text}
+                        </h2>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap justify-center">
+                          <div className="flex items-center gap-2 bg-bg-card px-3 py-1.5 rounded-lg border border-border-glass shadow-sm">
+                            <div
+                              className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
+                              style={{ backgroundColor: activeStitchingOrder.personalization.color || '#fbbf24' }}
+                            />
+                            <span className="font-bold text-xs text-text-main">
+                              Thread: {activeStitchingOrder.personalization.color || 'Gold'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-text-dim font-semibold bg-white/5 px-3 py-1.5 rounded-lg border border-border-glass">
+                            Item: {activeStitchingOrder.items?.[0]?.name || activeStitchingOrder.design}
+                          </span>
+                          {activeStitchingOrder.estimatedTime && (
+                            <span className="text-xs text-primary font-semibold bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20">
+                              Est: ~{activeStitchingOrder.estimatedTime}m
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-5 rounded-xl bg-bg-surface border border-border-glass flex flex-col items-center justify-center text-center shadow-inner">
+                        <span className="text-[10px] uppercase font-bold text-text-dim tracking-widest mb-1">
+                          Standard Retail Merchandise (No Custom Monogram)
+                        </span>
+                        <h3 className="text-xl sm:text-2xl font-black text-text-main my-1">
+                          {activeStitchingOrder.items?.[0]?.name || activeStitchingOrder.design || 'Ready-to-Wear Merchandise'}
+                        </h3>
+                        <p className="text-xs text-text-dim m-0 max-w-md">
+                          Plain retail inventory. No machine monogramming needed. Verify stock quantity and inspect fabric before marking ready.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Items Breakdown list */}
+                    {activeStitchingOrder.items && Array.isArray(activeStitchingOrder.items) && (
+                      <div className="flex flex-wrap gap-2 items-center text-xs">
+                        <span className="text-text-dim font-bold">Package Contents:</span>
+                        {activeStitchingOrder.items.map((item: any, i: number) => (
+                          <span key={i} className="bg-white/5 border border-border-glass px-2.5 py-1 rounded-lg text-text-main font-medium">
+                            {item.quantity}x {item.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Single Contextual Progression Button */}
+                    <div className="pt-2 border-t border-border-glass">
+                      {isDelivery ? (
+                        <button
+                          onClick={() => advanceOrderStatus(activeStitchingOrder, 'In Transit', 75)}
+                          className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <span>📦</span>
+                          <span>Complete Stitching — Package for Courier Dispatch (75%)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => advanceOrderStatus(activeStitchingOrder, 'Ready For Pick Up', 100)}
+                          className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <span>✅</span>
+                          <span>Complete Stitching — Ready for Counter Pickup (100%)</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="glass-card p-8 rounded-2xl border border-dashed border-border-glass text-center flex flex-col items-center justify-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold border border-primary/20">
+                    🪡
+                  </div>
+                  <h3 className="text-base font-bold text-text-main m-0">Embroidery Machine Available (Idle)</h3>
+                  <p className="text-xs text-text-dim m-0 max-w-md">
+                    Select an order from the queue below and tap "Load to Machine &amp; Start Stitching" to hoop the garment and begin.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2: UPCOMING PRODUCTION QUEUE */}
+            <div className="flex flex-col gap-3 mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase font-extrabold tracking-wider text-text-dim">
+                  Upcoming Production Queue ({queuedOrders.length} orders waiting)
+                </span>
+                <span className="text-[11px] text-text-dim">
+                  Ranked by AI turnaround urgency
+                </span>
+              </div>
+
+              {queuedOrders.length === 0 ? (
+                <div className="p-8 rounded-xl bg-white/[0.02] border border-border-glass text-center text-xs text-text-dim">
+                  No pending orders waiting in queue. Walk-in and online orders will automatically arrive here.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+                  {queuedOrders.map((order, idx) => {
+                    const isDelivery = order.personalization?.fulfillmentType === 'delivery' ||
+                      (typeof order.address === 'string' &&
+                        order.address.trim().length > 0 &&
+                        !order.address.toLowerCase().includes('pick-up') &&
+                        !order.address.toLowerCase().includes('pickup'));
+                    const score = order.priorityScore ?? 0;
+
+                    return (
+                      <div
+                        key={order.id || order._id}
+                        className="glass-card p-4 rounded-xl border border-border-glass flex flex-col justify-between gap-3 shadow-sm hover:border-primary/40 transition-all"
+                      >
+                        <div>
+                          {/* Card Header: Rank + Claim Stub */}
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              #{idx + 1} Next in Queue
+                            </span>
+                            <span className="text-[10px] font-mono font-bold text-text-dim">
+                              Pri: {score.toFixed(0)}
+                            </span>
+                          </div>
+
+                          <div className="mt-2.5">
+                            <h4 className="font-mono font-black text-sm text-text-main m-0">
+                              #{order.orderId}
+                            </h4>
+                            <span className="text-[11px] text-text-dim block mt-0.5">
+                              Client: <strong className="text-text-main">{order.client}</strong>
+                            </span>
+                          </div>
+
+                          {/* Order Details Tag */}
+                          <div className="mt-2.5 p-2.5 rounded-lg bg-bg-surface border border-border-glass text-xs flex flex-col gap-1">
+                            {order.personalization?.text ? (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-serif italic font-bold text-sm text-text-main truncate" style={{ fontFamily: "'Dancing Script', cursive" }}>
+                                  "{order.personalization.text}"
+                                </span>
+                                <span className="text-[10px] font-bold text-primary shrink-0">
+                                  {order.personalization.color || 'Gold'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-text-dim text-[11px] font-medium">
+                                Plain Stock (No Lettering)
+                              </span>
+                            )}
+                            <span className="text-[11px] text-text-dim truncate">
+                              {order.items?.[0]?.name || order.design}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-text-dim mt-2">
+                            <span>{isDelivery ? '🚚 Door Delivery' : '🏪 Counter Pickup'}</span>
+                            {order.estimatedTime && <span>Est: ~{order.estimatedTime}m</span>}
+                          </div>
+                        </div>
+
+                        {/* 1-Tap Load & Start Button */}
+                        <button
+                          onClick={() => advanceOrderStatus(order, 'Preparing Order', 50)}
+                          className="w-full py-2.5 px-3 rounded-xl bg-primary hover:bg-primary-light active:scale-[0.98] text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <span>🪡</span>
+                          <span>Load to Machine &amp; Start Stitching</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </section>
         );
-      
+      }
+
       case 'orders':
         return (
           <section className="animate-[fadeIn_0.3s_ease-out]">
@@ -1081,24 +1041,6 @@ export default function EmployeePage() {
           </section>
         );
 
-      case 'products':
-        return (
-          <PanelManageDesigns
-            products={products}
-            inventory={inventory}
-            isSyncing={isSyncing}
-            refreshData={fetchEmployeeData}
-          />
-        );
-
-      case 'materials':
-        return (
-          <PanelRawMaterials
-            inventory={inventory}
-            isSyncing={isSyncing}
-            refreshData={fetchEmployeeData}
-          />
-        );
 
       case 'history':
         return (
@@ -1311,27 +1253,68 @@ export default function EmployeePage() {
 
       case 'settings':
         return (
-          <section className="animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-8">
-              <h1 className="text-3xl font-extrabold mb-1">Portal Settings</h1>
-              <p className="text-text-dim text-[0.95rem] m-0">Personalize your workspace experience.</p>
+          <section className="animate-[fadeIn_0.3s_ease-out] max-w-[700px]">
+            <header className="mb-6">
+              <h1 className="text-3xl font-extrabold mb-1">Operator Profile &amp; Settings</h1>
+              <p className="text-text-dim text-[0.95rem] m-0">Workshop station credentials and visual interface preferences.</p>
             </header>
-            <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-8 max-w-[600px] flex flex-col gap-5">
-              <h3 className="text-lg font-bold m-0 mb-2">Interface Preferences</h3>
-              
-              <div className="flex items-center justify-between bg-bg-surface p-5 rounded-xl border border-border-glass">
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-6 md:p-8 flex flex-col gap-6">
+              {/* Operator Identity Badge */}
+              <div className="flex items-center gap-4 pb-6 border-b border-border-glass">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xl shrink-0">
+                  {user?.username?.charAt(0).toUpperCase() || 'OP'}
+                </div>
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold m-0 text-text-main">{user?.username || 'Embroidery Operator'}</h3>
+                    <span className="text-[0.65rem] font-extrabold px-2 py-0.5 rounded-full uppercase bg-primary/15 border border-primary/30 text-primary">
+                      {user?.role === 'admin' ? 'Owner / Master Operator' : 'Artisan Operator'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-dim m-0 mt-0.5">
+                    {user?.email || 'Logged in to workshop terminal'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Display Theme */}
+              <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
+                <div className="flex items-center gap-3.5">
+                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
                    </div>
                    <div className="text-left">
-                     <h4 className="m-0 text-[1rem] font-bold">Display Mode</h4>
-                     <p className="m-0 mt-1 text-[0.85rem] text-text-dim">Switch between Light and Dark themes</p>
+                     <h4 className="m-0 text-sm font-bold text-text-main">Display Mode</h4>
+                     <p className="m-0 mt-0.5 text-xs text-text-dim">Switch between high-contrast dark and daytime light mode</p>
                    </div>
                 </div>
-                <button onClick={() => {
-                  toggleTheme();
-                }} className="bg-primary text-white font-bold px-5 py-2.5 rounded-lg text-[0.9rem] hover:shadow-md cursor-pointer transition-all">Toggle Theme</button>
+                <button
+                  type="button"
+                  onClick={() => toggleTheme()}
+                  className="bg-primary text-white font-bold px-4 py-2 rounded-xl text-xs hover:shadow-md cursor-pointer transition-all"
+                >
+                  Toggle Theme
+                </button>
+              </div>
+
+              {/* Security: Change Password */}
+              <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
+                <div className="flex items-center gap-3.5">
+                   <div className="w-10 h-10 rounded-xl bg-white/5 text-text-dim flex items-center justify-center shrink-0">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                   </div>
+                   <div className="text-left">
+                     <h4 className="m-0 text-sm font-bold text-text-main">Account Security</h4>
+                     <p className="m-0 mt-0.5 text-xs text-text-dim">Update your station operator access password</p>
+                   </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(true)}
+                  className="bg-white/5 border border-border-glass text-text-main font-bold px-4 py-2 rounded-xl text-xs hover:bg-white/10 cursor-pointer transition-all"
+                >
+                  Change Password
+                </button>
               </div>
             </div>
           </section>
@@ -1346,11 +1329,18 @@ export default function EmployeePage() {
     <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main relative">
       {/* Mobile Top Bar */}
       <div className="hidden max-[650px]:flex items-center justify-between w-full h-[60px] px-4 border-b border-border-glass bg-bg-header backdrop-blur-md fixed top-0 left-0 z-[1000]">
-         <button onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)} className="bg-transparent border-none text-text-main cursor-pointer p-1">
+         <button onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)} className="bg-transparent border-none text-text-main hover:text-primary cursor-pointer p-1 transition-colors">
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
          </button>
          <div className="font-black text-[1.1rem] text-text-main tracking-tight">Stitch-Opt</div>
-         <div className="w-[32px]"></div> {/* Spacer */}
+         <button
+           type="button"
+           onClick={() => setActiveTab('settings')}
+           className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs cursor-pointer active:scale-95 transition-all"
+           title="Settings"
+         >
+           {user?.username?.charAt(0).toUpperCase() || 'OP'}
+         </button>
       </div>
 
       <div className={`
@@ -1437,21 +1427,6 @@ export default function EmployeePage() {
                 className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
-            {machines.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-text-main">Assign Machine</label>
-                <select
-                  value={orderMachineInput}
-                  onChange={(e) => setOrderMachineInput(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
-                >
-                  <option value="">— No Machine —</option>
-                  {machines.filter(m => m.status !== 'Maintenance' && m.status !== 'Offline').map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.status})</option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div className="flex gap-3 mt-4">
               <button
                 type="submit"
@@ -1487,6 +1462,12 @@ export default function EmployeePage() {
         transaction={viewingReceiptOrder}
         user={viewingReceiptOrder?.user || viewingReceiptOrder?.customer}
         transactionId={viewingReceiptOrder?.transactionID || viewingReceiptOrder?.transactionId || viewingReceiptOrder?.receiptID || viewingReceiptOrder?.receiptId || viewingReceiptOrder?.orderId}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
 
       {/* Persistent AI Assistant */}

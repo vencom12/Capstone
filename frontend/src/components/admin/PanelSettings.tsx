@@ -53,7 +53,7 @@ export default function PanelSettings({
   const [deliveryEnabled, setDeliveryEnabled] = useState(false);
   const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingSettings, setIsFetchingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingBiz, setIsSavingBiz] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -72,7 +72,7 @@ export default function PanelSettings({
   ];
 
   const fetchSettings = async () => {
-    setIsLoading(true);
+    setIsFetchingSettings(true);
     try {
       const res = await api.get<any>('/api/admin/settings');
       if (res) {
@@ -96,7 +96,7 @@ export default function PanelSettings({
       console.error('[Settings] Failed to fetch settings:', e);
       showToast('Failed to load settings', 'error');
     } finally {
-      setIsLoading(false);
+      setIsFetchingSettings(false);
     }
   };
 
@@ -380,45 +380,47 @@ export default function PanelSettings({
   };
 
   return (
-    <section className="animate-[fadeIn_0.3s_ease-out] flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
+    <section className="animate-fade flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
 
       {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center gap-2 p-1.5 bg-white/5 border border-border-glass rounded-xl mb-6 overflow-x-auto scrollbar-none">
-        {navigationTabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer border ${
-                isActive
-                  ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20'
-                  : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-              }`}
-            >
-              <span className={`flex items-center justify-center ${isActive ? 'text-white' : 'text-text-dim'}`}>
-                {tab.icon}
-              </span>
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-white/5 border border-border-glass rounded-xl mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2">
+          {navigationTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer border ${
+                  isActive
+                    ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20'
+                    : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
+                }`}
+              >
+                <span className={`flex items-center justify-center ${isActive ? 'text-white' : 'text-text-dim'}`}>
+                  {tab.icon}
+                </span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {isFetchingSettings && (
+          <div className="hidden sm:flex items-center gap-2 pr-3 text-xs text-text-dim">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-[11px] font-medium">Syncing...</span>
+          </div>
+        )}
       </div>
 
-      {isLoading ? (
-        <div className="py-24 text-center text-text-dim flex flex-col items-center justify-center gap-3">
-          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <span className="text-sm">Loading settings...</span>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
 
-          {/* ========================================================================= */}
-          {/* TAB 1: STORE & BRANDING                                                  */}
-          {/* ========================================================================= */}
-          {activeTab === 'store' && (
-            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col animate-[fadeIn_0.2s_ease-out]">
+        {/* ========================================================================= */}
+        {/* TAB 1: STORE & BRANDING                                                  */}
+        {/* ========================================================================= */}
+        {activeTab === 'store' && (
+          <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
               <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -807,7 +809,7 @@ export default function PanelSettings({
           {/* TAB 3: AI & AUTOMATION                                                   */}
           {/* ========================================================================= */}
           {activeTab === 'ai' && (
-            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col animate-[fadeIn_0.2s_ease-out]">
+            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
               <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -974,7 +976,7 @@ export default function PanelSettings({
                         </span>
                         {pingResult.latency !== undefined && (
                           <span className="ml-auto bg-white/5 px-2 py-0.5 rounded border border-white/5 text-[10px] text-text-dim">
-                            Latency: <strong className="text-white">{pingResult.latency}ms</strong>
+                            Latency: <strong className="text-text-main">{pingResult.latency}ms</strong>
                           </span>
                         )}
                       </div>
@@ -1022,7 +1024,7 @@ export default function PanelSettings({
           {/* TAB 4: THEME & APPEARANCE                                                */}
           {/* ========================================================================= */}
           {activeTab === 'appearance' && (
-            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col animate-[fadeIn_0.2s_ease-out]">
+            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
               <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
                 <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1222,7 +1224,6 @@ export default function PanelSettings({
           )}
 
         </div>
-      )}
     </section>
   );
 }

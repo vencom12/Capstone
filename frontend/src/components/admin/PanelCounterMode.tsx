@@ -669,7 +669,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
                               : isVarSelected
                                 ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
-                                : 'bg-white/5 border-border-glass text-text-dim hover:text-white cursor-pointer'
+                                : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                             }`}
                         >
                           {v.color && (
@@ -879,7 +879,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
                           ? 'bg-primary text-white shadow-sm'
-                          : 'bg-white/5 text-text-dim hover:text-white'
+                          : 'bg-white/5 text-text-dim hover:text-text-main'
                         }`}
                     >
                       {cat}
@@ -950,7 +950,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setQuickPayment('Cash')}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
                       }`}
                   >
                     Cash
@@ -958,7 +958,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setQuickPayment('GCash')}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-white'
+                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
                       }`}
                   >
                     GCash
@@ -1301,7 +1301,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setVerifyingOrderForRelease(null)}
-                    className="text-text-dim hover:text-white text-sm cursor-pointer"
+                    className="text-text-dim hover:text-text-main text-sm cursor-pointer"
                   >
                     ✕
                   </button>

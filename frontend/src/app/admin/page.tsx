@@ -15,6 +15,7 @@ import PanelAnalytics from '@/components/admin/PanelAnalytics';
 import PanelCounterMode from '@/components/admin/PanelCounterMode';
 import PanelSettings from '@/components/admin/PanelSettings';
 import PanelAuditTrail from '@/components/admin/PanelAuditTrail';
+import PanelFeedbackManagement from '@/components/admin/PanelFeedbackManagement';
 
 // Common Components
 import dynamic from 'next/dynamic';
@@ -490,6 +491,8 @@ export default function AdminPage() {
             setUsers={setUsers}
           />
         );
+      case 'reviews':
+        return <PanelFeedbackManagement />;
       case 'analytics':
         return (
           <PanelAnalytics
@@ -732,7 +735,7 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
-              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-white cursor-pointer hover:bg-white/10"
+              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors"
               aria-label="Toggle navigation"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -756,19 +759,24 @@ export default function AdminPage() {
             </div>
 
             <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('settings')}
+                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 -m-1 rounded-xl hover:bg-white/5 transition-all text-left group"
+                title="Account Settings"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 group-hover:scale-105 flex items-center justify-center font-bold text-xs transition-all shrink-0">
                   {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs font-bold text-text-main leading-tight truncate max-w-[120px]">
+                  <span className="text-xs font-bold text-text-main leading-tight truncate max-w-[120px] group-hover:text-primary transition-colors">
                     {user?.username || 'Administrator'}
                   </span>
                   <span className="text-[0.62rem] text-primary font-bold uppercase tracking-wider">
                     {user?.role || 'admin'}
                   </span>
                 </div>
-              </div>
+              </button>
 
               <button
                 onClick={async () => {

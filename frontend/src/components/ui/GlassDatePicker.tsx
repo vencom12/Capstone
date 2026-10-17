@@ -248,7 +248,7 @@ export default function GlassDatePicker({
               className={`
                 w-8.5 h-8.5 flex items-center justify-center text-[0.8rem] rounded-lg transition-all cursor-pointer font-medium
                 ${!item.isCurrentMonth ? 'text-text-dim/30 hover:bg-white/5' : ''}
-                ${item.isCurrentMonth && !isSelected && !isToday ? 'text-text-main hover:bg-white/5 hover:text-white' : ''}
+                ${item.isCurrentMonth && !isSelected && !isToday ? 'text-text-main hover:bg-white/5 hover:text-primary' : ''}
                 ${isToday && !isSelected ? 'border border-primary text-primary font-bold bg-primary/5 shadow-sm' : ''}
                 ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
               `}

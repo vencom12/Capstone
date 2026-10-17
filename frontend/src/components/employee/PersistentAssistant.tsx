@@ -326,11 +326,11 @@ export default function PersistentAssistant() {
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         const inner = part.slice(2, -2);
-        return <strong key={i} className="font-bold text-white">{renderStatusBadges(inner)}</strong>;
+        return <strong key={i} className="font-bold text-text-main">{renderStatusBadges(inner)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
         const inner = part.slice(1, -1);
-        return <em key={i} className="italic text-white/80">{renderStatusBadges(inner)}</em>;
+        return <em key={i} className="italic text-text-main/90">{renderStatusBadges(inner)}</em>;
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         const inner = part.slice(1, -1);
@@ -366,7 +366,7 @@ export default function PersistentAssistant() {
           <div key={`table-${key}`} className="w-full overflow-x-auto my-3 rounded-xl border border-white/10 bg-white/[0.03] shadow-inner">
             <table className="w-full border-collapse text-[0.8rem] text-left">
               <thead>
-                <tr className="border-b border-white/15 bg-white/5 font-semibold text-white/95">
+                <tr className="border-b border-border-glass bg-white/5 font-semibold text-text-main">
                   {headers.map((h, i) => (
                     <th key={i} className="px-4 py-2.5 font-bold">{renderTextInline(h.trim())}</th>
                   ))}
@@ -430,7 +430,7 @@ export default function PersistentAssistant() {
       if (trimmed.startsWith('###')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h4 key={elementKey++} className="text-[0.95rem] font-bold text-white mt-4 mb-2 first:mt-0 tracking-tight">
+          <h4 key={elementKey++} className="text-[0.95rem] font-bold text-text-main mt-4 mb-2 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^###\s*/, ''))}
           </h4>
         );
@@ -438,7 +438,7 @@ export default function PersistentAssistant() {
       } else if (trimmed.startsWith('##')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h3 key={elementKey++} className="text-[1.1rem] font-bold text-white mt-5 mb-2 first:mt-0 tracking-tight">
+          <h3 key={elementKey++} className="text-[1.1rem] font-bold text-text-main mt-5 mb-2 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^##\s*/, ''))}
           </h3>
         );
@@ -446,7 +446,7 @@ export default function PersistentAssistant() {
       } else if (trimmed.startsWith('#')) {
         if (currentList) flushList(elementKey++);
         elements.push(
-          <h2 key={elementKey++} className="text-[1.25rem] font-bold text-white mt-6 mb-3 first:mt-0 tracking-tight">
+          <h2 key={elementKey++} className="text-[1.25rem] font-bold text-text-main mt-6 mb-3 first:mt-0 tracking-tight">
             {renderTextInline(trimmed.replace(/^#\s*/, ''))}
           </h2>
         );
@@ -538,7 +538,7 @@ export default function PersistentAssistant() {
               {/* Toggler Logs Button */}
               <button 
                 onClick={() => setViewMode(viewMode === 'chat' ? 'logs' : 'chat')} 
-                className="text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors text-white"
+                className="text-xs font-bold bg-white/5 border border-border-glass px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors text-text-main hover:bg-white/10"
               >
                 {viewMode === 'chat' ? 'Audit Logs' : 'Chat Assistant'}
               </button>
@@ -547,7 +547,7 @@ export default function PersistentAssistant() {
               {viewMode === 'chat' && (
                 <button 
                   onClick={toggleExpanded} 
-                  className="text-white hover:text-white/20 bg-white/10 border border-white/20 p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center"
+                  className="text-text-main hover:text-primary bg-white/5 border border-border-glass p-1.5 rounded-lg cursor-pointer transition-colors flex items-center justify-center"
                   title={isExpanded ? 'Restore window size' : 'Expand workspace'}
                 >
                   {isExpanded ? (
@@ -562,7 +562,7 @@ export default function PersistentAssistant() {
                 </button>
               )}
 
-              <button onClick={() => setIsOpen(false)} className="text-white hover:text-white/70 bg-transparent border-none cursor-pointer p-1">
+              <button onClick={() => setIsOpen(false)} className="text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer p-1">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
@@ -572,7 +572,7 @@ export default function PersistentAssistant() {
           {viewMode === 'chat' ? (
             <>
               {/* Chat View */}
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-black/20">
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-bg-surface/50">
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`
@@ -597,7 +597,7 @@ export default function PersistentAssistant() {
 
               {/* Input Area */}
               <form onSubmit={handleSend} className="p-3 bg-bg-surface border-t border-border-glass shrink-0">
-                <div className="flex items-center gap-2 bg-black/30 border border-border-glass rounded-lg p-1 pr-2 focus-within:border-primary transition-colors">
+                <div className="flex items-center gap-2 bg-bg-surface border border-border-glass rounded-lg p-1 pr-2 focus-within:border-primary transition-colors">
                   {isClient && SpeechRecognition && (
                     <button
                       onClick={startListening}
@@ -634,7 +634,7 @@ export default function PersistentAssistant() {
             </>
           ) : (
             /* Audit logs view */
-            <div className="flex-1 overflow-y-auto p-4 bg-black/20 flex flex-col gap-3 text-left">
+            <div className="flex-1 overflow-y-auto p-4 bg-bg-surface/50 flex flex-col gap-3 text-left">
               <h4 className="text-sm font-bold text-text-main m-0 mb-1 border-b border-border-glass pb-2">AI Change Registry Audits</h4>
               {logs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center text-text-dim flex-1 gap-2 p-6">

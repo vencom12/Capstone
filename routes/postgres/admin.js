@@ -72,6 +72,13 @@ router.get('/inventory/shopping-list/pdf', staffAuth(), adminController.download
 // Stock count adjustment (+ / -) -> Staff permitted
 router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), adminController.updateInventoryItem);
 
+// Customer Reviews & Storefront Reputation Management (Gold Standard)
+const feedbackController = require('../../controllers/postgres/feedbackController');
+router.get('/feedback', adminAuth(), feedbackController.getFeedbacks);
+router.patch('/feedback/:id', adminAuth(), auditLogger('Feedback', 'ADMIN_UPDATE_FEEDBACK'), feedbackController.updateFeedbackStatus);
+router.post('/feedback/:id/reply', adminAuth(), auditLogger('Feedback', 'MERCHANT_REPLY_FEEDBACK'), feedbackController.replyFeedback);
+router.patch('/feedback/:id/feature', adminAuth(), auditLogger('Feedback', 'TOGGLE_FEATURE_FEEDBACK'), feedbackController.toggleFeatureFeedback);
+
 // Walk-In Counter Mode Order Creation (Staff permitted)
 router.post('/orders/walk-in', staffAuth(), auditLogger('Order', 'CREATE_WALKIN_ORDER'), adminController.createWalkInOrder);
 

@@ -1,7 +1,7 @@
 const prisma = require('../../utils/prisma');
 const { randomUUID } = require('crypto');
 const socketUtil = require('../../utils/socketUtil');
-const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
+const { ACTIONS } = require('../../utils/apiConstants');
 
 // Submit Customer Feedback / Product Review (Guest or Authenticated)
 exports.submitFeedback = async (req, res) => {
@@ -58,14 +58,20 @@ exports.submitFeedback = async (req, res) => {
             }
         }
 
+        // 4★ and 5★ reviews are auto-published as verified storefront social proof.
+        // Only 1★ and 2★ reviews are flagged as 'Pending' Quality Alerts for staff service recovery.
+        const initialStatus = cleanRating >= 3 ? 'Reviewed' : 'Pending';
+
         await prisma.$executeRaw`
             INSERT INTO "Feedback" (
                 "id", "category", "rating", "message", "status",
                 "customerName", "customerEmail", "orderId", "userId", "productId",
+                "isFeatured",
                 "createdAt", "updatedAt"
             ) VALUES (
-                ${id}, ${cleanCategory}, ${cleanRating}, ${cleanMessage}, 'Pending',
+                ${id}, ${cleanCategory}, ${cleanRating}, ${cleanMessage}, ${initialStatus},
                 ${finalName}, ${finalEmail}, ${orderId?.trim() || null}, ${userId}, ${resolvedProductId},
+                false,
                 NOW(), NOW()
             )
         `;
@@ -102,7 +108,7 @@ exports.getProductReviews = async (req, res) => {
             return res.status(400).json({ message: 'Product ID is required' });
         }
 
-        // Fetch all verified feedback matching this productId
+        // Fetch all verified feedback matching this productId, sorted by featured then newest
         const reviews = await prisma.$queryRawUnsafe(`
             SELECT 
                 f.id,
@@ -111,13 +117,16 @@ exports.getProductReviews = async (req, res) => {
                 f."customerName",
                 f."orderId",
                 f."createdAt",
+                f."merchantReply",
+                f."merchantReplyAt",
+                COALESCE(f."isFeatured", false) as "isFeatured",
                 CASE 
                     WHEN f."orderId" IS NOT NULL THEN true 
                     ELSE false 
                 END as "isVerifiedPurchase"
             FROM "Feedback" f
             WHERE f."productId" = $1
-            ORDER BY f."createdAt" DESC
+            ORDER BY COALESCE(f."isFeatured", false) DESC, f."createdAt" DESC
         `, productId);
 
         const totalReviews = reviews.length;
@@ -149,30 +158,63 @@ exports.getProductReviews = async (req, res) => {
 // Get Feedbacks with Filters and Aggregate Metrics (Staff & Admin)
 exports.getFeedbacks = async (req, res) => {
     try {
-        const { status, rating, category, search, page = 1, limit = 10 } = req.query;
+        const { status, rating, category, search, page = 1, limit = 10, isFeatured, hasReply } = req.query;
         const pageNum = Math.max(1, parseInt(page) || 1);
         const limitNum = Math.max(1, Math.min(50, parseInt(limit) || 10));
         const offset = (pageNum - 1) * limitNum;
 
-        // Fetch all to compute accurate metrics & pagination
-        // (Postgres will optimize this efficiently)
+        // Fetch all rows to compute accurate live metrics
         const allRows = await prisma.$queryRaw`
-            SELECT * FROM "Feedback" ORDER BY "createdAt" DESC
+            SELECT * FROM "Feedback" ORDER BY COALESCE("isFeatured", false) DESC, "createdAt" DESC
         `;
 
-        // Compute system-wide feedback metrics
+        // Compute system-wide feedback metrics & distribution
         const totalCount = allRows.length;
-        const pendingCount = allRows.filter(r => r.status === 'Pending').length;
+        const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        let verifiedCount = 0;
+        let merchantRepliedCount = 0;
+        let featuredCount = 0;
+        const highlightCounts = {};
+
+        allRows.forEach(r => {
+            const rInt = Math.max(1, Math.min(5, Math.round(r.rating || 5)));
+            distribution[rInt] = (distribution[rInt] || 0) + 1;
+            if (r.orderId) verifiedCount++;
+            if (r.merchantReply && r.merchantReply.trim()) merchantRepliedCount++;
+            if (r.isFeatured) featuredCount++;
+
+            // Extract sentiment highlights
+            const match = r.message && r.message.match(/\[Highlights:\s*(.+?)\]/i);
+            if (match && match[1]) {
+                const tags = match[1].split(',').map(t => t.trim());
+                tags.forEach(t => {
+                    if (t) highlightCounts[t] = (highlightCounts[t] || 0) + 1;
+                });
+            }
+        });
+
+        // Format highlights into sorted list
+        const sentimentHighlights = Object.entries(highlightCounts)
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count);
+
+        // Quality alerts that require staff resolution (1★ & 2★ not yet resolved)
+        const criticalAlertsCount = allRows.filter(r => r.rating <= 2 && r.status !== 'Resolved').length;
+        const pendingCount = criticalAlertsCount;
         const reviewedCount = allRows.filter(r => r.status === 'Reviewed').length;
         const resolvedCount = allRows.filter(r => r.status === 'Resolved').length;
-        const fiveStarCount = allRows.filter(r => r.rating === 5).length;
-        const positiveCount = allRows.filter(r => r.rating >= 4).length;
+        const fiveStarCount = distribution[5];
+        const fourStarCount = distribution[4];
+        const positiveCount = fiveStarCount + fourStarCount;
         const avgRating = totalCount > 0
             ? (allRows.reduce((acc, r) => acc + (r.rating || 5), 0) / totalCount).toFixed(1)
             : '5.0';
         const sentimentRate = totalCount > 0
             ? Math.round((positiveCount / totalCount) * 100)
             : 100;
+        const responseRate = totalCount > 0
+            ? Math.round((merchantRepliedCount / totalCount) * 100)
+            : 0;
 
         // Apply filters in memory
         let filtered = allRows;
@@ -190,6 +232,16 @@ exports.getFeedbacks = async (req, res) => {
             }
         }
 
+        if (isFeatured === 'true') {
+            filtered = filtered.filter(r => !!r.isFeatured);
+        }
+
+        if (hasReply === 'true') {
+            filtered = filtered.filter(r => !!(r.merchantReply && r.merchantReply.trim()));
+        } else if (hasReply === 'false') {
+            filtered = filtered.filter(r => !(r.merchantReply && r.merchantReply.trim()));
+        }
+
         if (category && category !== 'all') {
             filtered = filtered.filter(r => r.category?.toLowerCase() === category.toLowerCase());
         }
@@ -201,6 +253,7 @@ exports.getFeedbacks = async (req, res) => {
                 (r.customerEmail && r.customerEmail.toLowerCase().includes(query)) ||
                 (r.orderId && r.orderId.toLowerCase().includes(query)) ||
                 (r.message && r.message.toLowerCase().includes(query)) ||
+                (r.merchantReply && r.merchantReply.toLowerCase().includes(query)) ||
                 (r.staffNotes && r.staffNotes.toLowerCase().includes(query))
             );
         }
@@ -220,11 +273,19 @@ exports.getFeedbacks = async (req, res) => {
             metrics: {
                 totalCount,
                 pendingCount,
+                criticalAlertsCount,
                 reviewedCount,
                 resolvedCount,
                 fiveStarCount,
+                fourStarCount,
+                distribution,
+                verifiedCount,
+                merchantRepliedCount,
+                responseRate,
+                featuredCount,
                 averageRating: parseFloat(avgRating),
-                sentimentRate
+                sentimentRate,
+                sentimentHighlights
             }
         });
     } catch (err) {
@@ -233,11 +294,11 @@ exports.getFeedbacks = async (req, res) => {
     }
 };
 
-// Update Feedback Status & Staff Notes (Staff & Admin)
+// Update Feedback Status, Staff Notes, Root Cause & Quality Recovery (Staff & Admin)
 exports.updateFeedbackStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, staffNotes } = req.body;
+        const { status, staffNotes, rootCause, resolutionAction, resolvedBy, merchantReply } = req.body;
 
         const [existing] = await prisma.$queryRaw`
             SELECT * FROM "Feedback" WHERE "id" = ${id}
@@ -250,10 +311,28 @@ exports.updateFeedbackStatus = async (req, res) => {
         const validStatuses = ['Pending', 'Reviewed', 'Resolved'];
         const newStatus = (status && validStatuses.includes(status)) ? status : existing.status;
         const newNotes = staffNotes !== undefined ? staffNotes : existing.staffNotes;
+        const newRootCause = rootCause !== undefined ? rootCause : existing.rootCause;
+        const newResolutionAction = resolutionAction !== undefined ? resolutionAction : existing.resolutionAction;
+        const newResolvedBy = resolvedBy !== undefined ? resolvedBy : (req.user?.username || existing.resolvedBy);
+        
+        let newMerchantReply = existing.merchantReply;
+        let newMerchantReplyAt = existing.merchantReplyAt;
+
+        if (merchantReply !== undefined) {
+            newMerchantReply = merchantReply ? merchantReply.trim() : null;
+            newMerchantReplyAt = newMerchantReply ? new Date() : null;
+        }
 
         await prisma.$executeRaw`
             UPDATE "Feedback"
-            SET "status" = ${newStatus}, "staffNotes" = ${newNotes}, "updatedAt" = NOW()
+            SET "status" = ${newStatus},
+                "staffNotes" = ${newNotes},
+                "rootCause" = ${newRootCause},
+                "resolutionAction" = ${newResolutionAction},
+                "resolvedBy" = ${newResolvedBy},
+                "merchantReply" = ${newMerchantReply},
+                "merchantReplyAt" = ${newMerchantReplyAt},
+                "updatedAt" = NOW()
             WHERE "id" = ${id}
         `;
 
@@ -261,13 +340,111 @@ exports.updateFeedbackStatus = async (req, res) => {
             SELECT * FROM "Feedback" WHERE "id" = ${id}
         `;
 
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, 'FEEDBACK', updated);
+            }
+        } catch (e) {}
+
         res.json({
             success: true,
-            message: `Feedback marked as ${newStatus}`,
+            message: `Feedback updated successfully`,
             feedback: updated
         });
     } catch (err) {
         console.error('Error updating feedback status:', err);
         res.status(500).json({ message: 'Failed to update feedback status' });
+    }
+};
+
+// Post or Edit Official Merchant Reply (Public on Storefront)
+exports.replyFeedback = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reply } = req.body;
+
+        const [existing] = await prisma.$queryRaw`
+            SELECT * FROM "Feedback" WHERE "id" = ${id}
+        `;
+
+        if (!existing) {
+            return res.status(404).json({ message: 'Feedback record not found' });
+        }
+
+        const cleanReply = reply && reply.trim() ? reply.trim() : null;
+        const replyAt = cleanReply ? new Date() : null;
+
+        await prisma.$executeRaw`
+            UPDATE "Feedback"
+            SET "merchantReply" = ${cleanReply},
+                "merchantReplyAt" = ${replyAt},
+                "updatedAt" = NOW()
+            WHERE "id" = ${id}
+        `;
+
+        const [updated] = await prisma.$queryRaw`
+            SELECT * FROM "Feedback" WHERE "id" = ${id}
+        `;
+
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, 'FEEDBACK', updated);
+            }
+        } catch (e) {}
+
+        res.json({
+            success: true,
+            message: cleanReply ? 'Official merchant reply published' : 'Merchant reply removed',
+            feedback: updated
+        });
+    } catch (err) {
+        console.error('Error saving merchant reply:', err);
+        res.status(500).json({ message: 'Failed to save merchant reply' });
+    }
+};
+
+// Toggle Featured Review on Storefront Showcase
+exports.toggleFeatureFeedback = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const [existing] = await prisma.$queryRaw`
+            SELECT * FROM "Feedback" WHERE "id" = ${id}
+        `;
+
+        if (!existing) {
+            return res.status(404).json({ message: 'Feedback record not found' });
+        }
+
+        const nextFeatured = !existing.isFeatured;
+
+        await prisma.$executeRaw`
+            UPDATE "Feedback"
+            SET "isFeatured" = ${nextFeatured},
+                "updatedAt" = NOW()
+            WHERE "id" = ${id}
+        `;
+
+        const [updated] = await prisma.$queryRaw`
+            SELECT * FROM "Feedback" WHERE "id" = ${id}
+        `;
+
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, 'FEEDBACK', updated);
+            }
+        } catch (e) {}
+
+        res.json({
+            success: true,
+            message: nextFeatured ? 'Review pinned to Storefront Showcase' : 'Review unpinned from Showcase',
+            feedback: updated
+        });
+    } catch (err) {
+        console.error('Error toggling featured feedback:', err);
+        res.status(500).json({ message: 'Failed to toggle featured status' });
     }
 };

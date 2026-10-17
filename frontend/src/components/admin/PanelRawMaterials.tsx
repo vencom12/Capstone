@@ -1433,7 +1433,7 @@ export default function PanelRawMaterials({
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                   : isApproved
                                   ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                  : 'bg-white/10 text-gray-300 border border-white/20'
+                                  : 'bg-white/10 text-text-dim border border-border-glass'
                               }`}
                             >
                               {po.status}
@@ -2243,7 +2243,7 @@ export default function PanelRawMaterials({
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-emerald-400">Stockpile Projection:</span>
                   <span className="text-[0.75rem] text-text-dim">
-                    Current: <b className="text-white font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Intake: <b className="text-emerald-400 font-mono text-sm">+{added} = {finalCount}</b> {unit}
+                    Current: <b className="text-text-main font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Intake: <b className="text-emerald-400 font-mono text-sm">+{added} = {finalCount}</b> {unit}
                   </span>
                 </div>
                 <svg className="w-5 h-5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2638,7 +2638,7 @@ export default function PanelRawMaterials({
                 return (
                   <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs text-text-dim">
                     <span>
-                      Stockpile Projection: Current <b className="text-white font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
+                      Stockpile Projection: Current <b className="text-text-main font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
                     </span>
                     <button
                       type="button"

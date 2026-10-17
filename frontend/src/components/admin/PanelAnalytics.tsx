@@ -583,7 +583,7 @@ export default function PanelAnalytics({
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main">3. Machine &amp; Next 7 Days</span>
+                <span className="text-xs font-bold text-text-main">3. Production &amp; Next 7 Days</span>
                 <span className="text-xs font-mono text-text-dim">{threadBatches.length} colors in line</span>
               </div>
               <div className="text-2xl font-black font-mono text-text-main my-2">
@@ -612,7 +612,7 @@ export default function PanelAnalytics({
                 : activeCategory === 'supplies'
                 ? 'Supplies & Stocks Details'
                 : activeCategory === 'machine'
-                ? 'Machine & Next 7 Days Details'
+                ? 'Production & Next 7 Days Details'
                 : 'All Details'}
             </span>
           </div>
