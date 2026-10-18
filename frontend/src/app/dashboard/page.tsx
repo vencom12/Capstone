@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -37,7 +38,7 @@ export default function DashboardPage() {
   const { isBasketOpen, setBasketOpen, toggleBasket, isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
   const activeOrdersCount = (orders || []).filter((o) => getOrderStage(o).isActive).length;
 
-  const [activeTab, setActiveTab] = useState<string>('shop');
+  const [activeTab, setActiveTab] = useState<string>('tracking');
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -219,9 +220,23 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // 1. Handle Hydration & Tab Persistence
-    const savedTab = localStorage.getItem('stitch-dashboard-tab');
-    if (savedTab) setActiveTab(savedTab);
+    // 1. Handle Hydration, URL Query, & Tab Persistence
+    const params = new URLSearchParams(window.location.search);
+    const queryTab = params.get('tab');
+    const validTabs = ['tracking', 'settings', 'history', 'favs', 'basket'];
+
+    if (queryTab && validTabs.includes(queryTab)) {
+      setActiveTab(queryTab);
+      localStorage.setItem('stitch-dashboard-tab', queryTab);
+    } else {
+      const savedTab = localStorage.getItem('stitch-dashboard-tab');
+      if (savedTab && validTabs.includes(savedTab)) {
+        setActiveTab(savedTab);
+      } else {
+        setActiveTab('tracking');
+        localStorage.setItem('stitch-dashboard-tab', 'tracking');
+      }
+    }
     setIsHydrated(true);
   }, []);
 
@@ -313,6 +328,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem('stitch-dashboard-tab', activeTab);
+      if (typeof window !== 'undefined') {
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.get('tab') !== activeTab) {
+          currentUrl.searchParams.set('tab', activeTab);
+          window.history.replaceState(null, '', currentUrl.pathname + currentUrl.search);
+        }
+      }
     }
   }, [activeTab, isHydrated]);
 
@@ -348,7 +370,7 @@ export default function DashboardPage() {
       case 'basket':
         return (
           <BasketView
-            onGoToShop={() => setActiveTab('shop')}
+            onGoToShop={() => router.push('/#products-section')}
             onOpenCheckout={(items, fulfillmentType) => {
               setSelectedCheckoutItems(items);
               if (fulfillmentType) {
@@ -357,80 +379,6 @@ export default function DashboardPage() {
               setIsCheckoutOpen(true);
             }}
           />
-        );
-
-      case 'shop':
-        return (
-          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-            <OrderMilestoneHero
-              orders={orders}
-              onViewDetails={(ord, tab) => {
-                setSelectedOrder(ord);
-                setOrderDetailsTab(tab || 'summary');
-                setIsOrderDetailsOpen(true);
-              }}
-              onViewAll={() => setActiveTab('tracking')}
-            />
-            <header className="mb-4 flex justify-between items-center flex-wrap gap-3 max-md:mb-3">
-              <div className="max-[1100px]:w-full">
-                <h1 className="text-xl font-bold mb-0.5 max-md:text-lg">Design Catalog</h1>
-                <p className="text-text-dim text-[0.85rem] m-0 max-md:text-[0.75rem]">Select a professional design for your next project.</p>
-              </div>
-
-              <div className="flex gap-3 w-full max-w-[400px] max-[1100px]:max-w-none max-[1100px]:order-2">
-                {/* Animated Custom Category Dropdown (Visible on Mobile only) */}
-                <div className="hidden max-md:block shrink-0 relative category-dropdown-container">
-                  <button
-                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                    className="flex items-center gap-2 bg-bg-surface border border-border-glass text-text-main px-4 py-2.5 rounded-xl text-[0.9rem] font-bold outline-none cursor-pointer hover:bg-white/5 transition-all whitespace-nowrap"
-                  >
-                    {selectedCategory === 'All' ? 'All Designs' : selectedCategory}
-                    <svg
-                      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                      className={`transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`}
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </button>
-
-                  <div className={`
-                    absolute top-[calc(100%+8px)] left-0 w-[180px] bg-bg-dark/95 backdrop-blur-xl border border-border-glass rounded-xl overflow-hidden z-[3000] shadow-lg
-                    transition-all duration-300 origin-top-left
-                    ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible'}
-                  `}>
-                    {getCategories().map(c => (
-                      <button
-                        key={c}
-                        onClick={() => {
-                          setSelectedCategory(c);
-                          setIsCategoryOpen(false);
-                        }}
-                        className={`
-                          w-full text-left px-4 py-3 text-sm font-medium transition-all hover:bg-white/10
-                          ${selectedCategory === c ? 'text-primary bg-primary/10' : 'text-text-dim'}
-                        `}
-                      >
-                        {c === 'All' ? 'All Designs' : c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-bg-surface border border-border-glass px-4 py-2.5 rounded-xl flex items-center gap-3 flex-1">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-dim"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                  <input
-                    type="text"
-                    placeholder="Search designs..."
-                    className="bg-transparent border-none text-text-main outline-none w-full text-[0.95rem]"
-                    onChange={(e) => useProductStore.getState().setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-            </header>
-            <div className="flex-1 pr-0 md:pr-2">
-              <ProductGrid onQuickView={handleQuickView} />
-            </div>
-          </section>
         );
 
       case 'tracking': {
@@ -445,6 +393,14 @@ export default function DashboardPage() {
 
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
+            <OrderMilestoneHero
+              orders={orders}
+              onViewDetails={(ord, tab) => {
+                setSelectedOrder(ord);
+                setOrderDetailsTab(tab || 'summary');
+                setIsOrderDetailsOpen(true);
+              }}
+            />
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
               <div className="max-[1100px]:w-full">
                 <h1 className="text-xl font-bold mb-0.5">Order Tracking</h1>
@@ -505,12 +461,12 @@ export default function DashboardPage() {
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 text-primary opacity-60"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                   <p className="text-base font-bold text-text-main m-0">You haven't favorited any designs yet</p>
                   <p className="text-xs text-text-dim mt-1 max-w-xs">Heart any embroidery design from our catalog to save it for quick ordering anytime.</p>
-                  <button
-                    onClick={() => setActiveTab('shop')}
-                    className="mt-4 px-5 py-2.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
+                  <Link
+                    href="/#products-section"
+                    className="mt-4 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer no-underline shadow-sm"
                   >
-                    Explore Catalog →
-                  </button>
+                    Browse Products →
+                  </Link>
                 </div>
               ) : (
                 <ProductGrid products={favorites} onQuickView={handleQuickView} />
@@ -945,19 +901,40 @@ export default function DashboardPage() {
       }
 
       default:
-        return null;
+        return (
+          <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
+            <OrderMilestoneHero
+              orders={orders}
+              onViewDetails={(ord, tab) => {
+                setSelectedOrder(ord);
+                setOrderDetailsTab(tab || 'summary');
+                setIsOrderDetailsOpen(true);
+              }}
+            />
+            <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
+              <div className="max-[1100px]:w-full">
+                <h1 className="text-xl font-bold mb-0.5">Order Tracking</h1>
+                <p className="text-text-dim text-[0.85rem] m-0">Monitor your active and recent projects in real-time.</p>
+              </div>
+            </header>
+            <div className="flex-1 pr-0 md:pr-2">
+              <OrderList
+                orders={orders}
+                onTrack={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('tracking'); setIsOrderDetailsOpen(true); }}
+                onDetails={(ord) => { setSelectedOrder(ord); setOrderDetailsTab('summary'); setIsOrderDetailsOpen(true); }}
+                onReorder={handleReorder}
+              />
+            </div>
+          </section>
+        );
     }
   };
 
   return (
     <div className="min-h-screen min-h-dvh w-full bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* Mobile Top Bar */}
-      <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-3.5 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
-        <button onClick={toggleSidebar} className="bg-transparent border-none text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0" title="Toggle Navigation Menu">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
-
-        <div className="flex items-center gap-2 min-w-0 max-w-[210px] shrink">
+      <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-4 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
+        <Link href="/" className="flex items-center gap-2 min-w-0 max-w-[210px] shrink no-underline cursor-pointer group">
           {businessLogoUrl ? (
             <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
           ) : (
@@ -965,10 +942,19 @@ export default function DashboardPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
             </div>
           )}
-          <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Eds Towels & Caps</span>
-        </div>
+          <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Customer Hub</span>
+        </Link>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/#products-section"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/25 text-primary font-bold text-xs hover:bg-primary/20 active:scale-95 transition-all no-underline"
+            title="Browse Products"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span>Products</span>
+          </Link>
+
           <button
             onClick={() => toggleTheme()}
             className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
@@ -1009,15 +995,6 @@ export default function DashboardPage() {
       >
         {[
           {
-            id: 'shop',
-            label: 'Catalog',
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
-              </svg>
-            ),
-          },
-          {
             id: 'tracking',
             label: 'Tracking',
             badge: activeOrdersCount > 0 ? activeOrdersCount : undefined,
@@ -1029,13 +1006,21 @@ export default function DashboardPage() {
             ),
           },
           {
-            id: 'basket',
-            label: 'Basket',
-            badge: isHydrated && basketCount > 0 ? basketCount : undefined,
-            badgeColor: 'bg-primary text-white',
+            id: 'settings',
+            label: 'Settings',
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'history',
+            label: 'Receipts',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
               </svg>
             ),
           },
@@ -1047,6 +1032,17 @@ export default function DashboardPage() {
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill={activeTab === 'favs' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'basket',
+            label: 'Basket',
+            badge: isHydrated && basketCount > 0 ? basketCount : undefined,
+            badgeColor: 'bg-primary text-white',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
             ),
           },

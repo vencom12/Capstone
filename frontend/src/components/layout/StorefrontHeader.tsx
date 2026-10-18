@@ -20,6 +20,8 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const basketCount = useBasketStore((s) => s.getCount());
   const { isAuthenticated, user, logout } = useAuthStore();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const categories = getCategories();
@@ -56,50 +58,42 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     });
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (isCategoryOpen && !(e.target as HTMLElement).closest('.category-dropdown-container')) {
+      const target = e.target as HTMLElement;
+      if (isCategoryOpen && !target.closest('.category-dropdown-container')) {
         setIsCategoryOpen(false);
+      }
+      if (isUserMenuOpen && !target.closest('.user-menu-container')) {
+        setIsUserMenuOpen(false);
+      }
+      if (isMobileUserMenuOpen && !target.closest('.mobile-user-menu-container')) {
+        setIsMobileUserMenuOpen(false);
       }
     };
     window.addEventListener('mousedown', handleOutsideClick);
     return () => window.removeEventListener('mousedown', handleOutsideClick);
-  }, [isCategoryOpen]);
+  }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen]);
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
-          {/* Brand & Hamburger Area */}
-          <div className="flex items-center gap-2.5 min-w-0 shrink">
-            <button
-              suppressHydrationWarning
-              onClick={() => useUIStore.getState().toggleSidebar()}
-              className="w-9 h-9 rounded-xl bg-white/5 border border-border-glass text-text-main hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex lg:hidden items-center justify-center shrink-0"
-              aria-label="Toggle navigation menu"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-
-            <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 min-w-0 no-underline cursor-pointer group">
-              {businessLogoUrl ? (
-                <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
-              ) : (
-                <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                </div>
-              )}
-              <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
-                Stitch-Opt
-              </h1>
-            </Link>
-          </div>
+          {/* Brand Logo & Title Area */}
+          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 min-w-0 no-underline cursor-pointer group">
+            {businessLogoUrl ? (
+              <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
+            ) : (
+              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              </div>
+            )}
+            <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
+              Stitch-Opt
+            </h1>
+          </Link>
 
           {/* Right Actions on Mobile: Theme, Auth, Basket (Embedded directly into Row 1) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 lg:hidden">
@@ -114,11 +108,101 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             </button>
 
             {isAuthenticated ? (
-              <Link href={user?.role === 'admin' ? '/admin' : user?.role === 'employee' ? '/employee' : '/dashboard'} className="p-0.5 rounded-full border border-primary/30 shrink-0">
-                <span className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </span>
-              </Link>
+              <div className="relative mobile-user-menu-container">
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => setIsMobileUserMenuOpen(!isMobileUserMenuOpen)}
+                  className="p-0.5 rounded-full border border-primary/30 shrink-0 bg-transparent cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+                  aria-label="User account"
+                >
+                  <span className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
+                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </button>
+
+                {/* Mobile Account Dropdown Menu */}
+                <div className={`
+                  absolute top-[calc(100%+8px)] right-0 w-[220px] bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-2 z-[3000] shadow-2xl origin-top-right transition-all duration-200
+                  ${isMobileUserMenuOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
+                `}>
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-border-glass/40 mb-1.5">
+                    <div className="font-bold text-xs text-text-main truncate">{user?.username}</div>
+                    <div className="text-[0.7rem] text-text-dim truncate">{user?.email}</div>
+                  </div>
+
+                  {user?.role === 'admin' ? (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      Admin Panel →
+                    </Link>
+                  ) : user?.role === 'employee' ? (
+                    <Link
+                      href="/employee"
+                      onClick={() => setIsMobileUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      Staff Dashboard →
+                    </Link>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      <Link
+                        href="/dashboard?tab=tracking"
+                        onClick={() => setIsMobileUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /></svg>
+                        Orders & Tracking
+                      </Link>
+
+                      <Link
+                        href="/dashboard?tab=settings"
+                        onClick={() => setIsMobileUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                        Account Settings
+                      </Link>
+
+                      <Link
+                        href="/dashboard?tab=history"
+                        onClick={() => setIsMobileUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Digital Receipts
+                      </Link>
+
+                      <Link
+                        href="/dashboard?tab=favs"
+                        onClick={() => setIsMobileUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                        Saved Favorites
+                      </Link>
+                    </div>
+                  )}
+
+                  <div className="h-[1px] bg-border-glass my-1.5" />
+
+                  <button
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setIsMobileUserMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-danger hover:bg-danger/10 border-none bg-transparent cursor-pointer transition-all"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Log Out
+                  </button>
+                </div>
+              </div>
             ) : (
               <button
                 suppressHydrationWarning
@@ -238,12 +322,112 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </button>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <Link href={user?.role === 'admin' ? '/admin' : user?.role === 'employee' ? '/employee' : '/dashboard'} className="p-1 rounded-full border border-primary/30">
-                <span className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
-                  {user?.username?.charAt(0).toUpperCase()}
+            <div className="relative user-menu-container">
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-border-glass hover:bg-white/10 text-text-main transition-all cursor-pointer group"
+                aria-label="User account menu"
+              >
+                <span className="w-7 h-7 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs">
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
                 </span>
-              </Link>
+                <span className="text-xs font-bold max-w-[120px] truncate">{user?.username}</span>
+                <svg
+                  width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  className={`transition-transform duration-200 text-text-dim group-hover:text-text-main ${isUserMenuOpen ? 'rotate-180' : ''}`}
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+
+              {/* Account Dropdown Menu */}
+              <div className={`
+                absolute top-[calc(100%+8px)] right-0 w-[240px] bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-2 z-[3000] shadow-2xl origin-top-right transition-all duration-200
+                ${isUserMenuOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
+              `}>
+                <div className="p-2.5 rounded-xl bg-white/5 border border-border-glass/40 mb-1.5">
+                  <div className="font-bold text-xs text-text-main truncate">{user?.username}</div>
+                  <div className="text-[0.7rem] text-text-dim truncate">{user?.email}</div>
+                  {user?.role && user.role !== 'customer' && (
+                    <span className="inline-block mt-1 text-[0.62rem] px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase tracking-wider">
+                      {user.role}
+                    </span>
+                  )}
+                </div>
+
+                {user?.role === 'admin' ? (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                  >
+                    Admin Panel →
+                  </Link>
+                ) : user?.role === 'employee' ? (
+                  <Link
+                    href="/employee"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                  >
+                    Staff Dashboard →
+                  </Link>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    <Link
+                      href="/dashboard?tab=tracking"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /></svg>
+                      My Orders & Tracking
+                    </Link>
+
+                    <Link
+                      href="/dashboard?tab=settings"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                      Account Settings
+                    </Link>
+
+                    <Link
+                      href="/dashboard?tab=history"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                      Digital Receipts
+                    </Link>
+
+                    <Link
+                      href="/dashboard?tab=favs"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                      Saved Favorites
+                    </Link>
+                  </div>
+                )}
+
+                <div className="h-[1px] bg-border-glass my-1.5" />
+
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-danger hover:bg-danger/10 border-none bg-transparent cursor-pointer transition-all"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Log Out
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">

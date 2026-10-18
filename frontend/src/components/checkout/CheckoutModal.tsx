@@ -639,7 +639,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                     </label>
                     <input
                       type="tel"
-                      placeholder="09XXXXXXXXX (For SMS)"
+                      placeholder="09XXXXXXXXX (Contact Number)"
                       value={claimantPhone}
                       onChange={(e) => setClaimantPhone(e.target.value)}
                       className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"

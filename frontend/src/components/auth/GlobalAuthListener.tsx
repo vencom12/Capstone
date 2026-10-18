@@ -14,11 +14,6 @@ export default function GlobalAuthListener() {
   const router = useRouter();
 
   useEffect(() => {
-    // If the browser just redirected back from Google OAuth, immediately raise the welcome overlay
-    if (isGoogleAuthPending()) {
-      useUIStore.getState().triggerWelcome('Welcome', 'Signing in...');
-    }
-
     return completeGoogleSignIn((outcome) => {
       if (outcome.status === 'needs-password') {
         useUIStore.getState().closeWelcome();
@@ -37,10 +32,17 @@ export default function GlobalAuthListener() {
         return;
       }
 
-      useUIStore.getState().triggerWelcome(outcome.user.username || 'Customer', outcome.user.role || 'customer');
-      if (outcome.user.role === 'admin') router.replace('/admin');
-      else if (outcome.user.role === 'employee') router.replace('/employee');
-      else router.replace('/');
+      if (outcome.user.role === 'admin') {
+        useUIStore.getState().triggerWelcome(outcome.user.username || 'Staff', outcome.user.role);
+        router.replace('/admin');
+      } else if (outcome.user.role === 'employee') {
+        useUIStore.getState().triggerWelcome(outcome.user.username || 'Staff', outcome.user.role);
+        router.replace('/employee');
+      } else {
+        useUIStore.getState().closeWelcome();
+        showToast(`Welcome back, ${outcome.user.username || 'Customer'}!`, 'success');
+        router.replace('/');
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -62,6 +62,25 @@ exports.register = async (req, res) => {
 
         const token = jwt.sign({ id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
+        // Auto-send verification email via Gmail / free email gateway
+        try {
+            const emailToken = generateVerificationToken();
+            await prisma.emailVerification.create({
+                data: {
+                    userId: user.id,
+                    email: user.email,
+                    token: emailToken,
+                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                }
+            });
+            await sendVerificationEmail(user.email, user.username, emailToken).catch(err => {
+                console.error('[Registration Email Send Catch]', err);
+            });
+            console.log(`[Email Verification] Sent to ${user.email} for user ${user.id}`);
+        } catch (emailErr) {
+            console.error('[Email Verification Send Error]', emailErr);
+        }
+
         res.cookie('customer_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',

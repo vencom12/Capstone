@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import StorefrontHeader from '@/components/layout/StorefrontHeader';
-import Sidebar from '@/components/layout/Sidebar';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner';
@@ -42,7 +41,9 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     if (isStaff) {
-      useUIStore.getState().triggerWelcome(user?.username || 'Staff', user?.role || 'admin');
+      if (!useUIStore.getState().welcomeData?.isOpen) {
+        useUIStore.getState().triggerWelcome(user?.username || 'Staff', user?.role || 'admin');
+      }
       if (user?.role === 'admin') router.replace('/admin');
       else router.replace('/employee');
     }
@@ -119,7 +120,7 @@ export default function StorefrontPage() {
   if (isStaff) {
     return (
       <div
-        className="h-screen w-full flex items-center justify-center select-none"
+        className="fixed inset-0 w-full h-full select-none z-[99990]"
         style={{
           backgroundColor: '#090d16',
           backgroundImage: 'radial-gradient(circle at 50% 48%, rgba(185, 28, 28, 0.22) 0%, rgba(9, 13, 22, 0.92) 58%, rgba(9, 13, 22, 1) 100%)',
@@ -139,8 +140,7 @@ export default function StorefrontPage() {
       {/* Storefront Products Section */}
       <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-transparent scroll-mt-20">
 
-        {/* Main Layout: Mobile Drawer & Full-Width Products Grid */}
-        <Sidebar />
+        {/* Full-Width Products Grid */}
 
         <div className="flex-1 flex w-full min-h-0 min-w-0 flex-col relative pt-4 md:pt-6">
           {/* Main Products Grid - Centered & Spacious */}

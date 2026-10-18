@@ -94,28 +94,28 @@ export default function DashboardSidebar({
   // Primary desktop / wide screen nav items
   const desktopNavItems = [
     {
-      id: 'shop', label: 'Shop Designs', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /><path d="M2 7h20" /><path d="M22 7l-3 5H5l-3-5" /></svg>
-      )
-    },
-    {
-      id: 'basket', label: 'My Basket', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-      )
-    },
-    {
       id: 'tracking', label: 'Order Tracking', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
       )
     },
     {
-      id: 'history', label: 'My Transactions', icon: (
+      id: 'settings', label: 'Account Settings', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+      )
+    },
+    {
+      id: 'history', label: 'Payments & Receipts', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
       )
     },
     {
       id: 'favs', label: 'My Favorites', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      )
+    },
+    {
+      id: 'basket', label: 'My Basket', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
       )
     }
   ];
@@ -170,6 +170,19 @@ export default function DashboardSidebar({
         {/* Curated: Receipts, Saved, Addresses, Help, Policies, Theme, Sign out */}
         {/* ============================================================ */}
         <div className="hidden max-md:flex flex-col flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
+          {/* Return to Products Catalog */}
+          <Link
+            href="/#products-section"
+            onClick={closeMobileDrawer}
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs no-underline active:scale-95 transition-all shadow-sm"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Browse Products</span>
+          </Link>
+
           {/* Quick Account Profile Card */}
           <button
             onClick={() => {
@@ -371,11 +384,23 @@ export default function DashboardSidebar({
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* DESKTOP SIDEBAR NAVIGATION (Rendered on tablet & desktop > 768px) */}
-        {/* ============================================================ */}
         <div className="max-md:hidden flex flex-col flex-1">
-          <ul className="list-none p-0 m-0 mt-4 flex flex-col px-3 gap-1">
+          {/* Return to Products Shop Button */}
+          <div className="px-3 pt-3">
+            <Link
+              href="/#products-section"
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/10 border border-primary/25 hover:bg-primary hover:text-white text-primary font-bold text-xs transition-all no-underline cursor-pointer group max-[1100px]:justify-center max-[1100px]:px-0 shadow-sm"
+              title="Browse Products"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:-translate-x-0.5 shrink-0">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span className="max-[1100px]:hidden whitespace-nowrap">Products</span>
+            </Link>
+          </div>
+
+          <ul className="list-none p-0 m-0 mt-3 flex flex-col px-3 gap-1">
             {desktopNavItems.map((item) => (
               <li key={item.id}>
                 <button

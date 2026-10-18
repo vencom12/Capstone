@@ -59,6 +59,10 @@ export default function WelcomeTransition() {
     const htmlTheme = document.documentElement.getAttribute('data-theme');
     setCurrentTheme(htmlTheme === 'light' ? 'light' : 'dark');
 
+    if (stage === 'present') {
+      return;
+    }
+
     setStage('entering');
     setProgress(25);
     setStatusText('Authorizing session...');

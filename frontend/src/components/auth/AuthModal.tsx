@@ -35,6 +35,7 @@ export default function AuthModal() {
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Alternate views: normal login/register, forgot-password, or first-time Google password setup
   const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
@@ -96,6 +97,8 @@ export default function AuthModal() {
     setGoogleSetupData(null);
     setNewPassword('');
     setConfirmPassword('');
+    setAgreedToTerms(false);
+    setIsTermsOpen(false);
     if (authParam && !shouldSkip && !isAuthenticated) {
       router.replace('/');
     }
@@ -138,6 +141,12 @@ export default function AuthModal() {
       return;
     }
 
+    if (!agreedToTerms) {
+      setFormError('Please agree to the Terms of Service & Studio Policies to create an account.');
+      showToast('Please agree to the Terms of Service & Studio Policies.', 'error');
+      return;
+    }
+
     setIsFormSubmitting(true);
     try {
       const res = await register(
@@ -149,7 +158,7 @@ export default function AuthModal() {
 
       if (res.success) {
         handleClose(true);
-        useUIStore.getState().triggerWelcome(res.user?.username || 'Customer', res.user?.role || 'customer');
+        showToast(`Welcome to Stitch-Opt, ${res.user?.username || 'Customer'}! Account created.`, 'success');
         if (authParam) {
           router.replace('/');
         }
@@ -165,7 +174,7 @@ export default function AuthModal() {
     }
   };
 
-  // Smart Unified Login: Full-screen theme-aware welcome transition, automatic role-based routing
+  // Smart Unified Login: Instant unlock for customers, role-based routing for staff
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -180,8 +189,12 @@ export default function AuthModal() {
       const res = await login(email.trim(), password, rememberMe);
       
       if (res.success) {
+        if (res.user?.role === 'admin' || res.user?.role === 'employee') {
+          useUIStore.getState().triggerWelcome(res.user?.username || 'Staff', res.user?.role);
+        } else {
+          showToast(`Welcome back, ${res.user?.username || 'Customer'}!`, 'success');
+        }
         handleClose(true);
-        useUIStore.getState().triggerWelcome(res.user?.username || 'User', res.user?.role || 'customer');
 
         // Smart Role-Based Routing
         if (res.user?.role === 'admin') {
@@ -345,8 +358,9 @@ export default function AuthModal() {
   }
 
   return (
-    <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]" isDirty={false}>
-      <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
+    <>
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[99999]" isDirty={false}>
+        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
         
         {/* Header & Subtitle */}
         <div className="text-center">
@@ -394,7 +408,7 @@ export default function AuthModal() {
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-[0.75rem] font-bold text-text-dim">Mobile Number</label>
-                <span className="text-[0.65rem] text-primary/80 font-medium">Optional (For SMS updates)</span>
+                <span className="text-[0.65rem] text-text-dim font-medium">Optional (Contact for order pickup)</span>
               </div>
               <input 
                 type="tel" 
@@ -464,17 +478,41 @@ export default function AuthModal() {
           </label>
 
           {mode === 'register' && (
-            <p className="text-[0.72rem] text-text-dim text-left leading-relaxed m-0 px-0.5">
-              By creating an account, you agree to our{' '}
-              <button
-                type="button"
-                onClick={() => setIsTermsOpen(true)}
-                className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer inline text-[0.72rem]"
-              >
-                Terms of Service &amp; Studio Policies
-              </button>
-              , including custom embroidery non-cancellation terms once machine stitching begins.
-            </p>
+            <div className="flex flex-col gap-2.5 pt-1">
+              <div className="flex items-start gap-2.5 ml-1 select-none text-xs text-text-dim bg-white/[0.03] p-2.5 rounded-lg border border-border-glass">
+                <input 
+                  type="checkbox" 
+                  id="register-terms-agree"
+                  checked={agreedToTerms} 
+                  onChange={(e) => {
+                    setAgreedToTerms(e.target.checked);
+                    if (formError) setFormError(null);
+                  }}
+                  className="accent-primary rounded cursor-pointer w-4 h-4 mt-0.5 shrink-0"
+                  required
+                />
+                <label htmlFor="register-terms-agree" className="text-[0.72rem] text-text-dim text-left leading-relaxed cursor-pointer">
+                  I have read and agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsTermsOpen(true);
+                    }}
+                    className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer inline text-[0.72rem]"
+                  >
+                    Terms of Service &amp; Studio Policies
+                  </button>
+                  , including non-cancellation terms once custom machine stitching begins.
+                </label>
+              </div>
+
+              <div className="text-[0.68rem] text-emerald-500/90 font-medium ml-1 flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Order receipts, tracking, &amp; notices are sent directly to your Gmail/Email.</span>
+              </div>
+            </div>
           )}
 
           <GlassButton
@@ -539,8 +577,13 @@ export default function AuthModal() {
         </div>
 
       </div>
-
-      <TermsAndPoliciesModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </GlassModal>
+
+    <TermsAndPoliciesModal 
+      isOpen={isTermsOpen} 
+      onClose={() => setIsTermsOpen(false)} 
+      zIndex="z-[100005]"
+    />
+  </>
   );
 }

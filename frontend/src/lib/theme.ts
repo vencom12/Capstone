@@ -30,6 +30,9 @@ export function applyTheme(theme: Theme): void {
   } catch {
     // Ignore storage errors in restricted iframes / private browsing
   }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+  }
 }
 
 /**

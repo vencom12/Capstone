@@ -34,12 +34,14 @@ interface TermsAndPoliciesModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: 'refunds' | 'pickup' | 'copyright' | 'colors' | 'privacy';
+  zIndex?: string;
 }
 
 export default function TermsAndPoliciesModal({
   isOpen,
   onClose,
   initialTab = 'refunds',
+  zIndex = 'z-[100005]',
 }: TermsAndPoliciesModalProps) {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const cfg = STUDIO_BUSINESS_SAFEGUARDS;
@@ -219,7 +221,7 @@ export default function TermsAndPoliciesModal({
   const currentSection = sections.find((s) => s.id === activeTab) || sections[0];
 
   return (
-    <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[720px]" title="Terms & Customer Policies">
+    <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[720px]" title="Terms & Customer Policies" zIndex={zIndex}>
       <div className="flex flex-col gap-4 font-sans text-left">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border-glass no-scrollbar">
