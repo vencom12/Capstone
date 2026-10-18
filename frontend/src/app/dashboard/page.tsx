@@ -990,7 +990,7 @@ export default function DashboardPage() {
 
       {/* Phone-Centric Bottom Navigation Dock */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-bg-card/95 backdrop-blur-2xl border-t border-border-glass px-2 py-1 flex items-center justify-around shadow-2xl safe-area-bottom"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-bg-card/95 backdrop-blur-2xl border-t border-border-glass px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-bottom min-h-[64px]"
         aria-label="Mobile Navigation"
       >
         {[
@@ -1002,16 +1002,6 @@ export default function DashboardPage() {
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-            ),
-          },
-          {
-            id: 'settings',
-            label: 'Settings',
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             ),
           },
@@ -1046,6 +1036,16 @@ export default function DashboardPage() {
               </svg>
             ),
           },
+          {
+            id: 'settings',
+            label: 'Settings',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            ),
+          },
         ].map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -1056,10 +1056,11 @@ export default function DashboardPage() {
                 const mainEl = document.querySelector('main');
                 if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all duration-200 cursor-pointer border-none bg-transparent ${isActive
-                  ? 'text-primary scale-105'
-                  : 'text-text-dim hover:text-text-main'
-                }`}
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 sm:px-4 rounded-xl transition-all duration-200 cursor-pointer border-none ${
+                isActive
+                  ? 'text-primary bg-primary/10 dark:bg-primary/15 font-bold shadow-sm'
+                  : 'text-text-dim hover:text-text-main bg-transparent active:scale-95'
+              }`}
             >
               <div className="relative">
                 {item.icon}
@@ -1069,12 +1070,9 @@ export default function DashboardPage() {
                   </span>
                 )}
               </div>
-              <span className={`text-[0.66rem] mt-0.5 font-semibold tracking-tight ${isActive ? 'text-primary font-bold' : 'text-text-dim'}`}>
+              <span className={`text-[0.68rem] mt-0.5 tracking-tight ${isActive ? 'text-primary font-bold' : 'text-text-dim font-medium'}`}>
                 {item.label}
               </span>
-              {isActive && (
-                <span className="w-1 h-1 rounded-full bg-primary mt-0.5 shadow-sm" />
-              )}
             </button>
           );
         })}
