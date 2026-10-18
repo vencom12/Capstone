@@ -166,7 +166,7 @@ export default function WelcomeTransition() {
 
   const isDark = currentTheme === 'dark';
   const username = welcomeData.username || 'User';
-  const isGenericLoading = username === 'Welcome' || username === 'Authenticating...';
+  const isGenericLoading = username === 'Welcome' || username === 'Authenticating...' || username === 'Signing in...';
   const role = (welcomeData.role || 'customer').toLowerCase();
   const initial = isGenericLoading ? 'S' : username.charAt(0).toUpperCase();
 
@@ -187,7 +187,7 @@ export default function WelcomeTransition() {
       badgeClass: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
       dotClass: 'bg-sky-400',
     },
-  }[role] || {
+  }[role as 'admin' | 'employee' | 'customer'] || {
     label: 'Customer',
     badgeClass: 'bg-primary/15 text-primary border-primary/30',
     dotClass: 'bg-primary',
@@ -212,7 +212,7 @@ export default function WelcomeTransition() {
         select-none cursor-default
         transition-all duration-400 ease-out
         ${
-          isEntering
+          isEntering && !isGenericLoading
             ? 'opacity-0 scale-[0.98]'
             : isExiting
             ? 'opacity-0 scale-[1.02] blur-sm pointer-events-none'

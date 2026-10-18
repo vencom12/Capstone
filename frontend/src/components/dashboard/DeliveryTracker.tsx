@@ -17,12 +17,9 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
   // Check if personalization has saved tracking number, or derive standard format
   const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization as any : {};
   const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-  const isPickup = personalization.fulfillmentType === 'pickup' ||
-    (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up')) ||
-    (personalization.courier && personalization.courier.toLowerCase().includes('pick-up')) ||
-    (personalization.trackingNumber && personalization.trackingNumber.startsWith('PU-'));
-  const trackingNumber = personalization.trackingNumber || (isPickup ? `PU-LUC-${cleanId}` : null);
-  const courierName = isPickup ? 'IN-STORE PICK-UP' : (personalization.courier || 'Partner Courier / Local Rider');
+  const isPickup = true;
+  const trackingNumber = personalization.trackingNumber || `PU-LUC-${cleanId}`;
+  const courierName = 'IN-STORE PICK-UP';
 
   // Check if genuine recorded status history exists
   const recordedHistory: Array<{ status: string; timestamp: string; actor?: string; hub?: string; note?: string }> = 
@@ -424,8 +421,8 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
           <div className="text-xs leading-relaxed flex-1">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="font-extrabold text-text-main">{order.client || (isPickup ? 'Claimant' : 'Recipient')}</span>
-              <span className="text-text-dim text-[0.7rem]">{isPickup ? '(Store Pick-up Claimant)' : '(Delivery Recipient)'}</span>
+              <span className="font-extrabold text-text-main">{order.client || 'Customer'}</span>
+              <span className="text-text-dim text-[0.7rem]">{isPickup ? '(In-Store Pick-up)' : '(Delivery Recipient)'}</span>
             </div>
             <p className="text-text-dim m-0">
               {order.address?.split('(Landmark:')[0]?.trim() || order.address || (isPickup ? 'Eds Towels & Caps, Ground Floor, Pacific Mall Lucena' : 'Standard Delivery Address')}

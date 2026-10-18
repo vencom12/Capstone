@@ -1,34 +1,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import GlassButton from '@/components/ui/GlassButton';
 import { showToast } from '@/components/ui/Toast';
 
 interface RightPanelProps {
   onCheckout: () => void;
   onCloseMobile?: () => void;
+  onClose?: () => void;
 }
 
-export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProps) {
+export default function RightPanel({ onCheckout, onCloseMobile, onClose }: RightPanelProps) {
+  const router = useRouter();
   const { items, getCount, getTotal, removeItem, updateQuantity } = useBasketStore();
-  const { orders, products } = useProductStore();
+  const { products } = useProductStore();
+  const { isAuthenticated } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleClose = onClose || onCloseMobile;
   const basketCount = getCount();
   const basketTotal = getTotal();
 
   const handleQuantityChange = (productId: string, newQty: number) => {
     if (newQty < 1) return;
-    const product = products.find(p => (p.id || p._id) === productId);
+    const product = products.find((p) => (p.id || p._id) === productId);
     if (product) {
-      const availableStock = product.availableStock !== undefined 
-        ? product.availableStock 
-        : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+      const availableStock =
+        product.availableStock !== undefined
+          ? product.availableStock
+          : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
       if (newQty > availableStock) {
         showToast(`Only ${availableStock} in stock`, 'error');
         return;
@@ -37,119 +46,212 @@ export default function RightPanel({ onCheckout, onCloseMobile }: RightPanelProp
     updateQuantity(productId, newQty);
   };
 
-  // Filter for active orders (not completed/cancelled)
-  const activeOrders = orders.filter((o) => !['Completed', 'Cancelled'].includes(o.status));
+  const handleExploreShop = () => {
+    if (handleClose) handleClose();
+    const el = document.getElementById('products-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      router.push('/#products-section');
+    }
+  };
 
   return (
-    <aside className="w-[320px] h-full bg-bg-sidebar backdrop-blur-[12px] border-l border-border-glass p-6 flex flex-col gap-6 overflow-y-auto max-[1100px]:w-[280px] shrink-0 z-40 relative">
-      {/* Mobile Close Button (only visible when used as drawer) */}
-      {onCloseMobile && (
-        <button
-          onClick={onCloseMobile}
-          className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-bg-surface border border-border-glass text-text-main flex items-center justify-center cursor-pointer transition-all hover:bg-danger/10 hover:text-danger hidden max-[900px]:flex"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-        </button>
-      )}
-
-      {/* Shopping Basket */}
-      <div className="flex flex-col border-b border-border-glass pb-6 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="m-0 text-[1.1rem] font-bold tracking-tight">Your Basket</h3>
-          <span className="bg-primary px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm">
-            {mounted ? basketCount : 0} Items
-          </span>
+    <aside className="w-[380px] max-w-[100vw] h-full bg-bg-sidebar/95 backdrop-blur-2xl border-l border-border-glass flex flex-col shadow-2xl z-40 relative">
+      {/* =========================================================================
+          DRAWER HEADER
+          ========================================================================= */}
+      <div className="px-6 py-5 border-b border-border-glass flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary border border-primary/25 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="m-0 text-[1.05rem] font-bold tracking-tight text-text-main flex items-center gap-2">
+              <span>Your Basket</span>
+              {mounted && basketCount > 0 && (
+                <span className="bg-primary text-white text-[0.7rem] px-2 py-0.5 rounded-full font-bold shadow-sm">
+                  {basketCount}
+                </span>
+              )}
+            </h3>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {!mounted || items.length === 0 ? (
-            <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-              <p className="text-[0.9rem] m-0">Basket is empty</p>
+        {/* Close Button (Universal across Desktop and Mobile) */}
+        {handleClose && (
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all active:scale-95"
+            title="Close Basket"
+            aria-label="Close Basket"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* =========================================================================
+          DRAWER BODY: ITEMS LIST / EMPTY STATE (Scrollable)
+          ========================================================================= */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+        {!mounted || items.length === 0 ? (
+          <div className="h-full min-h-[280px] flex flex-col items-center justify-center text-center px-4 py-8">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-border-glass flex items-center justify-center text-text-dim mb-4 shadow-inner">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
             </div>
-          ) : (
-            items.map((item) => (
-              <div key={item.id} className="flex gap-3 bg-bg-surface p-3 rounded-xl border border-border-glass animate-[fadeIn_0.3s_ease-out]">
-                {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" className="w-12 h-12 rounded-lg object-cover bg-black/20" />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-[0.6rem] font-bold text-text-dim text-center leading-tight">PREVIEW</div>
-                )}
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="font-semibold text-[0.9rem] truncate">{item.name}</span>
+            <h4 className="text-base font-bold text-text-main m-0">Your basket is empty</h4>
+            <p className="text-xs text-text-dim mt-1.5 max-w-[220px] leading-relaxed">
+              Explore our custom embroidery blanks, caps, and heirloom pieces.
+            </p>
+            <button
+              type="button"
+              onClick={handleExploreShop}
+              className="mt-5 px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/25 hover:bg-primary hover:text-white text-primary font-bold text-xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-sm"
+            >
+              <span>Explore Products</span>
+              <span>↓</span>
+            </button>
+          </div>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="flex gap-3 bg-bg-surface/80 hover:bg-bg-surface p-3 rounded-2xl border border-border-glass transition-all duration-200 animate-[fadeIn_0.2s_ease-out]"
+            >
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-16 h-16 rounded-xl object-cover bg-black/20 shrink-0 border border-border-glass/40"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass/40 flex items-center justify-center text-[0.6rem] font-bold text-text-dim shrink-0">
+                  PREVIEW
+                </div>
+              )}
+
+              <div className="flex flex-col flex-1 min-w-0 justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="font-bold text-[0.88rem] text-text-main truncate leading-tight">
+                      {item.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      className="text-text-dim hover:text-danger bg-transparent border-none cursor-pointer p-0.5 transition-colors shrink-0"
+                      title="Remove item"
+                      aria-label="Remove item"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+
                   {item.selectedVariant && (
-                    <span className="text-[0.7rem] text-primary flex items-center gap-1 font-medium -mt-0.5 mb-0.5">
+                    <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold mt-0.5">
                       {item.selectedColor && (
-                        <span className="w-2 h-2 rounded-full inline-block border border-white/20" style={{ backgroundColor: item.selectedColor }} />
+                        <span
+                          className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
+                          style={{ backgroundColor: item.selectedColor }}
+                        />
                       )}
-                      {item.selectedVariant}
+                      <span className="truncate">{item.selectedVariant}</span>
+                      {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
                     </span>
                   )}
-                  <span className="text-primary font-bold text-[0.85rem]">₱{item.price.toFixed(2)}</span>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <div className="flex items-center gap-2 bg-black/20 rounded-md px-1.5 py-0.5">
-                      <button onClick={() => handleQuantityChange(item.id || item.productId, item.quantity - 1)} className="text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer px-1">-</button>
-                      <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
-                      <button onClick={() => handleQuantityChange(item.id || item.productId, item.quantity + 1)} className="text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer px-1">+</button>
-                    </div>
-                    <button onClick={() => removeItem(item.id)} className="text-danger hover:opacity-75 bg-transparent border-none cursor-pointer p-1">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </div>
+
+                <div className="flex items-center justify-between mt-2 pt-1 border-t border-border-glass/30">
+                  <span className="text-text-main font-black text-[0.92rem]">
+                    ₱{(item.price * item.quantity).toFixed(2)}
+                  </span>
+
+                  {/* Quantity Stepper */}
+                  <div className="flex items-center gap-1.5 bg-black/25 border border-border-glass/60 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(item.id || item.productId, item.quantity - 1)}
+                      className="w-6 h-6 rounded flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/10 bg-transparent border-none cursor-pointer transition-all active:scale-95"
+                      aria-label="Decrease quantity"
+                    >
+                      −
+                    </button>
+                    <span className="text-xs font-bold w-5 text-center text-text-main">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(item.id || item.productId, item.quantity + 1)}
+                      className="w-6 h-6 rounded flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/10 bg-transparent border-none cursor-pointer transition-all active:scale-95"
+                      aria-label="Increase quantity"
+                    >
+                      +
                     </button>
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          ))
+        )}
+      </div>
 
-        <div className="mt-5">
-          <div className="flex justify-between items-center mb-4">
-            <span className="font-bold text-[1.1rem]">Total:</span>
-            <span className="font-extrabold text-[1.2rem] text-primary">₱{mounted ? basketTotal.toFixed(2) : '0.00'}</span>
+      {/* =========================================================================
+          DRAWER FOOTER: SUB-TOTAL & STICKY CHECKOUT (Pinned at Bottom)
+          ========================================================================= */}
+      {mounted && items.length > 0 && (
+        <div className="p-5 border-t border-border-glass bg-bg-card/70 backdrop-blur-xl shrink-0 flex flex-col gap-3.5">
+          {/* Pickup Fulfillment Note */}
+          <div className="flex items-center justify-between text-xs text-text-dim bg-white/[0.03] px-3 py-2 rounded-xl border border-border-glass/40">
+            <span className="font-medium text-text-main">
+              Studio Pickup
+            </span>
+            <span className="text-emerald-400 font-bold text-[0.7rem] uppercase tracking-wider">Free</span>
           </div>
+
+          <div className="flex justify-between items-baseline px-0.5">
+            <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Subtotal:</span>
+            <span className="font-black text-xl text-primary">₱{basketTotal.toFixed(2)}</span>
+          </div>
+
           <GlassButton
             variant="primary"
             fullWidth
             onClick={onCheckout}
-            disabled={!mounted || items.length === 0}
+            disabled={items.length === 0}
           >
-            Checkout Now
+            Checkout Now →
           </GlassButton>
-        </div>
-      </div>
 
-      {/* Order Queue */}
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="m-0 text-[1.1rem] font-bold tracking-tight">Order Queue</h3>
-          <span className="text-text-dim text-[0.85rem]">Active Status</span>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {!mounted || activeOrders.length === 0 ? (
-            <div className="py-8 flex flex-col items-center justify-center text-text-dim text-center">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-              <p className="text-[0.9rem] m-0">No active orders</p>
-            </div>
-          ) : (
-            activeOrders.map((order) => (
-              <div key={order.id} className="bg-bg-surface p-3.5 rounded-xl border border-border-glass">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-[0.85rem] text-primary">{order.orderId}</span>
-                  <span className="text-[0.7rem] bg-white/10 px-2 py-0.5 rounded-full">{order.status}</span>
-                </div>
-                <div className="w-full bg-black/30 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div className="bg-primary h-full rounded-full" style={{ width: `${order.progress}%` }}></div>
-                </div>
-                <div className="flex justify-between text-[0.75rem] text-text-dim">
-                  <span>{order.items.length} items</span>
-                  <span>{order.progress}% Complete</span>
-                </div>
-              </div>
-            ))
+          {/* Quick Order Tracking Portal Link for convenience */}
+          {isAuthenticated && (
+            <Link
+              href="/dashboard?tab=tracking"
+              onClick={() => handleClose && handleClose()}
+              className="text-[0.72rem] text-text-dim hover:text-text-main text-center transition-colors no-underline block pt-0.5"
+            >
+              Looking for existing orders? <span className="text-primary font-bold hover:underline">Track orders in Hub →</span>
+            </Link>
           )}
         </div>
-      </div>
+      )}
     </aside>
   );
 }

@@ -19,34 +19,26 @@ export const STEP_LABELS = [
   'Order confirmed',
   'Preparing design',
   'Being embroidered',
-  'With J&T Express / Ready for Pick-up',
-  'Delivered / Claimed',
+  'Ready for Store Pick-up',
+  'Claimed / Completed',
 ];
 
 /** Translates internal order status/progress into plain customer language. */
 export function getOrderStage(order: Order): OrderStage {
   const status = (order.status || '').toLowerCase();
   const progress = order.progress || 0;
-  const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
-  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
 
   if (status.includes('cancel')) {
     return { label: 'Cancelled', hint: 'This order was cancelled.', step: 0, tone: 'cancelled', isActive: false };
   }
   if (status === 'completed' || status === 'order delivered' || progress >= 100) {
-    return isPickup
-      ? { label: 'Claimed', hint: 'Your order was picked up at Pacific Mall Lucena. Enjoy!', step: 5, tone: 'done', isActive: false }
-      : { label: 'Delivered', hint: 'Your order has arrived. Enjoy!', step: 5, tone: 'done', isActive: false };
+    return { label: 'Claimed', hint: 'Your order was picked up at Pacific Mall Lucena. Enjoy!', step: 5, tone: 'done', isActive: false };
   }
-  if (status === 'out for delivery') {
-    return isPickup
-      ? { label: 'Ready for Pick-up', hint: 'Your order is at the counter ready for claiming.', step: 4, tone: 'shipping', isActive: true }
-      : { label: 'Out for delivery', hint: 'The J&T rider is on the way to you.', step: 4, tone: 'shipping', isActive: true };
+  if (status === 'out for delivery' || status.includes('ready')) {
+    return { label: 'Ready for Pick-up', hint: 'Your order is at the counter ready for claiming.', step: 4, tone: 'shipping', isActive: true };
   }
   if (status === 'in transit' || progress >= 75) {
-    return isPickup
-      ? { label: 'Ready for Pick-up', hint: 'Claim at Eds Towels & Caps, Pacific Mall Lucena (10AM-8PM).', step: 4, tone: 'shipping', isActive: true }
-      : { label: 'Handed to J&T Express', hint: 'Your parcel is on its way to you.', step: 4, tone: 'shipping', isActive: true };
+    return { label: 'Ready for Pick-up', hint: 'Claim at Eds Towels & Caps, Pacific Mall Lucena (10AM-8PM).', step: 4, tone: 'shipping', isActive: true };
   }
   if (status.includes('awaiting') || status === 'pending') {
     return { label: 'Confirming your payment', hint: 'We are checking your payment. This usually takes a short while.', step: 1, tone: 'pending', isActive: true };

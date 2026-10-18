@@ -41,12 +41,24 @@ async function refreshCSRFToken(): Promise<string | null> {
   return null;
 }
 
-export async function apiFetch<T = unknown>(
+const inFlightGetRequests = new Map<string, Promise<any>>();
+
+export function apiFetch<T = unknown>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
   const base = getApiBase();
   const fullUrl = url.startsWith('/') ? `${base}${url}` : url;
+  const isGet = (!options.method || options.method === 'GET') && !options.body && !options.signal;
+
+  if (isGet) {
+    const existing = inFlightGetRequests.get(fullUrl);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+  }
+
+  const exec = async (): Promise<T> => {
 
   const headers: Record<string, string> = {
     'X-Requested-With': 'XMLHttpRequest',
@@ -191,7 +203,16 @@ export async function apiFetch<T = unknown>(
         }
       }
 
-      throw new Error(error.message || `HTTP ${response.status}`);
+      const errorMessage =
+        error?.message ||
+        error?.error ||
+        error?.details ||
+        (Array.isArray(error?.errors) ? error.errors.map((e: any) => e.msg || e.message).join(', ') : '') ||
+        (typeof error === 'string' ? error : '') ||
+        response.statusText ||
+        `HTTP ${response.status}`;
+
+      throw new Error(errorMessage);
     }
 
     const text = await response.text();
@@ -204,6 +225,22 @@ export async function apiFetch<T = unknown>(
     clearTimeout(timeout);
     throw e;
   }
+  };
+
+  const reqPromise = exec();
+
+  if (isGet) {
+    inFlightGetRequests.set(fullUrl, reqPromise);
+    // Attach silent rejection handler directly to the promise returned by .finally()
+    // to prevent any unhandled rejection event in Next.js development server
+    reqPromise
+      .finally(() => {
+        inFlightGetRequests.delete(fullUrl);
+      })
+      .catch(() => {});
+  }
+
+  return reqPromise;
 }
 // There is an error here and it needs to fixed, there is a problem with the fetch api, 
 // there is a reason why the system is not switching to the mongodb if the system is opened offline

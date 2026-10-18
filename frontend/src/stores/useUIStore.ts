@@ -16,8 +16,12 @@ interface UIStore {
   authPortal: AuthPortal;
   googleSetupData: GoogleSetupData | null;
   welcomeData: WelcomeTransitionData | null;
+  isHelpOpen: boolean;
+  isTermsOpen: boolean;
   setBasketOpen: (isOpen: boolean) => void;
   setSidebarOpen: (isOpen: boolean) => void;
+  setHelpOpen: (isOpen: boolean) => void;
+  setTermsOpen: (isOpen: boolean) => void;
   setAuthOpen: (isOpen: boolean, mode?: 'login' | 'register', portal?: AuthPortal) => void;
   setGoogleSetupData: (data: GoogleSetupData | null) => void;
   setAuthPortal: (portal: AuthPortal) => void;
@@ -40,6 +44,8 @@ export interface WelcomeTransitionData {
 export const useUIStore = create<UIStore>((set) => ({
   isBasketOpen: false,
   isSidebarOpen: false,
+  isHelpOpen: false,
+  isTermsOpen: false,
   isAuthOpen: false,
   authMode: 'login',
   authPortal: 'customer',
@@ -47,6 +53,8 @@ export const useUIStore = create<UIStore>((set) => ({
   welcomeData: null,
   setBasketOpen: (isOpen) => set({ isBasketOpen: isOpen }),
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+  setHelpOpen: (isOpen) => set({ isHelpOpen: isOpen }),
+  setTermsOpen: (isOpen) => set({ isTermsOpen: isOpen }),
   setAuthOpen: (isOpen, mode = 'login', portal) =>
     set((state) => ({
       isAuthOpen: isOpen,

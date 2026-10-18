@@ -5,7 +5,6 @@ import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
-import WaybillModal from '@/components/dashboard/WaybillModal';
 import ClaimStubModal from '@/components/admin/ClaimStubModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -45,29 +44,8 @@ export default function PanelOverview({
   const [editStatus, setEditStatus] = useState('');
   const [editTrackingNumber, setEditTrackingNumber] = useState('');
   const [editNote, setEditNote] = useState('');
-  const [waybillOrder, setWaybillOrder] = useState<any>(null);
   const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
-  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
-
-  useEffect(() => {
-    api.get<{ deliveryEnabled?: boolean }>('/api/customer/settings')
-      .then(res => {
-        if (res) setDeliveryEnabled(Boolean(res.deliveryEnabled));
-      })
-      .catch(() => { });
-  }, []);
-
-  const isOrderPickup = (o: any) => {
-    if (!deliveryEnabled) return true;
-    if (!o) return false;
-    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
-    return (
-      pers.fulfillmentType === 'pickup' ||
-      (typeof o.orderId === 'string' && o.orderId.startsWith('WI-')) ||
-      (typeof o.address === 'string' && o.address.toLowerCase().includes('pick-up')) ||
-      (typeof pers.courier === 'string' && pers.courier.toLowerCase().includes('pick-up'))
-    );
-  };
+  const isOrderPickup = (_o?: any) => true;
 
   const getOrderClaimCode = (o: any) => {
     if (!o) return '#A-000';
@@ -371,12 +349,7 @@ export default function PanelOverview({
 
     // 2. Dispatch to server in background
     try {
-      const isPickup = isOrderPickup(editingOrder);
-      const hub = isPickup
-        ? 'Eds Towels Pacific Mall Lucena Hub'
-        : (editStatus.includes('Transit') || editStatus.includes('Delivery')
-          ? 'J&T Express South Luzon Sort Hub'
-          : 'Eds Towels Pacific Mall Lucena Hub');
+      const hub = 'Eds Towels Pacific Mall Lucena Hub';
 
       await api.post('/api/admin/orders/batch-status', {
         ids: [orderId],
@@ -384,7 +357,7 @@ export default function PanelOverview({
         trackingNumber: editTrackingNumber.trim() || undefined,
         note: targetNote || undefined,
         hub,
-        courier: isPickup ? 'Store Pick-up' : 'J&T Express'
+        courier: 'Store Pick-up'
       });
       refreshData().catch(() => { });
     } catch (err) {
@@ -512,9 +485,8 @@ export default function PanelOverview({
               options={[
                 { value: '', label: 'Select Status to Apply...' },
                 { value: 'Preparing Order', label: 'Preparing Order' },
-                ...(deliveryEnabled ? [{ value: 'In Transit', label: 'In Transit' }] : []),
                 { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
-                { value: 'Order Delivered', label: deliveryEnabled ? 'Order Delivered' : 'Claimed / Completed' }
+                { value: 'Order Delivered', label: 'Claimed / Completed' }
               ]}
             />
           </div>
@@ -537,24 +509,6 @@ export default function PanelOverview({
                 </svg>
                 <span>Batch Print Labels ({selectedIds.length})</span>
               </button>
-
-              {deliveryEnabled && (
-                <button
-                  type="button"
-                  onClick={() => setIsManifestOpen(true)}
-                  className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                  title="Generate a 1-page courier pickup handover sheet for rider signature"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  <span>Handover Manifest</span>
-                </button>
-              )}
             </div>
           )}
 
@@ -846,48 +800,31 @@ export default function PanelOverview({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isPickup) {
-                      setClaimStubOrder(editingOrder);
-                    } else {
-                      setWaybillOrder(editingOrder);
-                    }
+                    setClaimStubOrder(editingOrder);
                   }}
-                  className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border ${isPickup
-                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
-                      : 'bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary'
-                    }`}
+                  className="font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
                     <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span>{isPickup ? 'Print Claim Slip' : 'Print Waybill'}</span>
+                  <span>Print Claim Slip</span>
                 </button>
               </div>
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-text-main">
-                  {isPickup ? 'Production & Claim Status' : 'Production & Delivery Status'}
+                  Production &amp; Pick-up Status
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(isPickup
-                    ? [
-                      'In Queue',
-                      'Preparing Order',
-                      'Ready For Pick Up',
-                      'Order Delivered'
-                    ]
-                    : [
-                      'In Queue',
-                      'Preparing Order',
-                      'In Transit',
-                      'Ready For Pick Up',
-                      'Out for Delivery',
-                      'Order Delivered'
-                    ]
-                  ).map((status) => {
+                  {[
+                    'In Queue',
+                    'Preparing Order',
+                    'Ready For Pick Up',
+                    'Order Delivered'
+                  ].map((status) => {
                     const isActive = editStatus === status;
-                    const displayLabel = (isPickup && status === 'Order Delivered')
+                    const displayLabel = status === 'Order Delivered'
                       ? 'Claimed / Completed'
                       : status;
                     return (
@@ -992,12 +929,7 @@ export default function PanelOverview({
         })()}
       </GlassModal>
 
-      {/* Single Parcel Waybill Thermal Sticker Modal */}
-      <WaybillModal
-        isOpen={!!waybillOrder}
-        onClose={() => setWaybillOrder(null)}
-        order={waybillOrder}
-      />
+
 
       {/* Single Order Claim Stub (Thermal Receipt Format for Store Pickups) */}
       <ClaimStubModal

@@ -295,7 +295,7 @@ export default function OfficialClaimSlip({
             <div className="bg-zinc-100 border border-zinc-300 text-zinc-900 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
               STATUS: CLAIMED &amp; COMPLETED
               <div className="text-[9.5px] font-normal normal-case text-zinc-600 mt-0.5">
-                Order fulfilled and released at Eds Towels counter. This document serves as your official receipt.
+                Order fulfilled and released at Eds Towels counter. This document serves as your receipt.
               </div>
             </div>
           ) : (
@@ -320,7 +320,7 @@ export default function OfficialClaimSlip({
         {/* Claimant & Stitched Items Block */}
         <div className="text-left flex flex-col gap-1.5 py-2 text-[11px] border-b border-dashed border-zinc-400">
           <div className="flex justify-between items-baseline">
-            <span className="text-zinc-600 shrink-0">Claimant:</span>
+            <span className="text-zinc-600 shrink-0">Customer:</span>
             <span className="font-bold text-black text-right truncate max-w-[190px]">{clientName}</span>
           </div>
           {clientPhone && (

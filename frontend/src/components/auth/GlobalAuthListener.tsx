@@ -14,6 +14,11 @@ export default function GlobalAuthListener() {
   const router = useRouter();
 
   useEffect(() => {
+    // If returning from Google redirect, immediately trigger the welcome transition so the landing page never flashes
+    if (isGoogleAuthPending()) {
+      useUIStore.getState().triggerWelcome('Signing in...', 'authenticating');
+    }
+
     return completeGoogleSignIn((outcome) => {
       if (outcome.status === 'needs-password') {
         useUIStore.getState().closeWelcome();

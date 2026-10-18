@@ -9,10 +9,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
-import AddressSelect from '@/components/ui/AddressSelect';
 import GCashPayment from './GCashPayment';
-import AddressBookModal from '@/components/dashboard/AddressBookModal';
-import type { SavedAddress, BasketItem } from '@/lib/types';
+import type { BasketItem } from '@/lib/types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -46,61 +44,18 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
 
-  // Shopee-Style Delivery Address & Contact Phone management
-  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
-  const [selectedSavedAddress, setSelectedSavedAddress] = useState<SavedAddress | null>(null);
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
-  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('pickup');
-  const [claimantName, setClaimantName] = useState('');
-  const [claimantPhone, setClaimantPhone] = useState('');
+  // Pick-up Fulfillment & Special Instructions
+  const [fulfillmentType] = useState<'pickup'>('pickup');
   const [pickupNote, setPickupNote] = useState('');
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [termsInitialTab, setTermsInitialTab] = useState<'refunds' | 'pickup' | 'copyright' | 'colors' | 'privacy'>('refunds');
 
   useEffect(() => {
-    if (initialFulfillmentType) {
-      if (initialFulfillmentType === 'delivery' && !deliveryEnabled) {
-        setFulfillmentType('pickup');
-      } else {
-        setFulfillmentType(initialFulfillmentType);
-      }
-    }
-  }, [initialFulfillmentType, isOpen, deliveryEnabled]);
-
-  useEffect(() => {
-    if (user && isOpen) {
-      setClaimantName(user.username || '');
-      setClaimantPhone(user.phoneNumber || '');
-    }
-  }, [user, isOpen]);
-
-  useEffect(() => {
-    if (user) {
-      if (user.savedAddresses && user.savedAddresses.length > 0) {
-        const primary = user.savedAddresses.find((a) => a.isDefault) || user.savedAddresses[0];
-        setSelectedSavedAddress(primary);
-        setDeliveryAddress(primary.fullAddress || primary.streetAddress);
-        setDeliveryPhone(primary.phoneNumber || user.phoneNumber || '');
-      } else {
-        setDeliveryAddress(user.address || '');
-        setDeliveryPhone(user.phoneNumber || '');
-      }
-    }
-  }, [user, isOpen]);
-
-  useEffect(() => {
     if (isOpen) {
-      api.get<{gcashQrCodeUrl: string, deliveryEnabled?: boolean}>('/api/customer/settings')
+      api.get<{gcashQrCodeUrl: string}>('/api/customer/settings')
         .then(res => {
           if (res) {
             setGcashQrCodeUrl(res.gcashQrCodeUrl);
-            const isDelivOn = Boolean(res.deliveryEnabled);
-            setDeliveryEnabled(isDelivOn);
-            if (!isDelivOn) {
-              setFulfillmentType('pickup');
-            }
           }
         })
         .catch(console.error);
@@ -121,57 +76,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     }
   };
 
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
-
-  const handleSaveDeliveryInfo = async () => {
-    const cleanAddr = deliveryAddress.trim();
-    if (!cleanAddr) {
-      showToast('Please specify a delivery address.', 'error');
-      return;
-    }
-
-    setIsSavingProfile(true);
-    try {
-      const res = await api.patch<{ message: string; user: any }>('/api/customer/settings', {
-        address: cleanAddr,
-        ...(deliveryPhone.trim() ? { phoneNumber: deliveryPhone.trim() } : {})
-      });
-      if (res && res.user && user) {
-        setUser({ ...user, ...res.user });
-      }
-      setIsEditingAddress(false);
-      showToast('Delivery address saved to your profile!', 'success');
-    } catch {
-      showToast('Saved locally for this order.', 'info');
-      setIsEditingAddress(false);
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
 
-    const isPickup = !deliveryEnabled || fulfillmentType === 'pickup';
-    let currentAddress = '';
-    
-    if (isPickup) {
-      const phone = claimantPhone.trim() || user?.phoneNumber || '';
-      if (!phone) {
-        showToast('Please provide a claimant phone number so our counter team can contact you.', 'error');
-        return;
-      }
-      const name = claimantName.trim() || user?.username || 'Customer';
-      currentAddress = `Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301 (Claimant: ${name}, Phone: ${phone})`;
-    } else {
-      currentAddress = deliveryAddress.trim() || user?.address || '';
-      if (!currentAddress) {
-        showToast('Please enter and confirm your delivery address before uploading payment.', 'error');
-        setIsAddressBookOpen(true);
-        return;
-      }
-    }
+    const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
 
     if (user && !user.isEmailVerified) {
       showToast('Please verify your email address before placing an order.', 'error');
@@ -211,30 +119,20 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
       setReceiptUrl(uploadData.url);
 
-      // Auto-save delivery address if changed
-      if (deliveryAddress.trim() && deliveryAddress.trim() !== user?.address) {
-        try {
-          await api.patch('/api/customer/settings', {
-            address: deliveryAddress.trim(),
-            ...(deliveryPhone.trim() ? { phoneNumber: deliveryPhone.trim() } : {})
-          });
-        } catch {}
-      }
-
       const firstPersonalizedItem = items.find((i) => i.personalization?.text);
       const orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
         address: currentAddress,
-        notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
+        notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         receiptUrl: uploadData.url,
         personalization: {
-          fulfillmentType: isPickup ? 'pickup' : 'delivery',
-          courier: isPickup ? 'Store Pick-up' : 'J&T Express',
-          claimantName: isPickup ? (claimantName.trim() || user?.username) : undefined,
-          claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber) : undefined,
-          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          fulfillmentType: 'pickup',
+          courier: 'Store Pick-up',
+          claimantName: user?.username || 'Customer',
+          claimantPhone: user?.phoneNumber || undefined,
+          pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
@@ -306,25 +204,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       return;
     }
 
-    const isPickup = fulfillmentType === 'pickup';
-    let currentAddress = '';
-    
-    if (isPickup) {
-      const phone = claimantPhone.trim() || user?.phoneNumber || '';
-      if (!phone) {
-        showToast('Please provide a claimant phone number for pick-up.', 'error');
-        return;
-      }
-      const name = claimantName.trim() || user?.username || 'Customer';
-      currentAddress = `Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301 (Claimant: ${name}, Phone: ${phone})`;
-    } else {
-      currentAddress = deliveryAddress.trim() || user?.address || '';
-      if (!currentAddress) {
-        showToast('Please enter and confirm your delivery address before submitting.', 'error');
-        setIsAddressBookOpen(true);
-        return;
-      }
-    }
+    const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
 
     setIsProcessing(true);
     try {
@@ -333,18 +213,18 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         items,
         totalAmount: finalTotal,
         address: currentAddress,
-        notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
+        notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         existingOrderId: pendingOrderId || undefined,
         referenceNumber: cleanRef,
         idempotencyKey: cleanRef ? `ref-${cleanRef}` : `checkout-${user?.id || 'anon'}-${Date.now()}`,
         personalization: {
-          fulfillmentType: isPickup ? 'pickup' : 'delivery',
-          courier: isPickup ? 'Store Pick-up' : 'J&T Express',
+          fulfillmentType: 'pickup',
+          courier: 'Store Pick-up',
           referenceNumber: cleanRef,
-          claimantName: isPickup ? (claimantName.trim() || user?.username) : undefined,
-          claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber) : undefined,
-          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          claimantName: user?.username || 'Customer',
+          claimantPhone: user?.phoneNumber || undefined,
+          pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
@@ -390,16 +270,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       return;
     }
 
-    const isPickup = !deliveryEnabled || fulfillmentType === 'pickup';
-    let currentAddress = '';
-    
-    if (isPickup) {
-      const phone = claimantPhone.trim() || user?.phoneNumber || '09123456789';
-      const name = claimantName.trim() || user?.username || 'Test Customer';
-      currentAddress = `Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301 (Claimant: ${name}, Phone: ${phone})`;
-    } else {
-      currentAddress = deliveryAddress.trim() || user?.address || 'Pacific Mall Lucena, Quezon 4301';
-    }
+    const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
 
     setIsBypassing(true);
     const testRef = `TEST-GCASH-${Date.now().toString().slice(-8)}`;
@@ -410,19 +281,19 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         items,
         totalAmount: finalTotal,
         address: currentAddress,
-        notes: isPickup ? (pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '') : notes,
+        notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         isTestBypass: true,
         referenceNumber: testRef,
         existingOrderId: pendingOrderId || undefined,
         receiptUrl: `https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg?bypass=${testRef}`,
         personalization: {
-          fulfillmentType: isPickup ? 'pickup' : 'delivery',
-          courier: isPickup ? 'Store Pick-up' : 'J&T Express',
+          fulfillmentType: 'pickup',
+          courier: 'Store Pick-up',
           referenceNumber: testRef,
-          claimantName: isPickup ? (claimantName.trim() || user?.username || 'Test Customer') : undefined,
-          claimantPhone: isPickup ? (claimantPhone.trim() || user?.phoneNumber || '09123456789') : undefined,
-          pickupNote: isPickup ? pickupNote.trim() : undefined,
+          claimantName: user?.username || 'Customer',
+          claimantPhone: user?.phoneNumber || undefined,
+          pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
@@ -467,7 +338,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   };
 
   return (
-    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[780px]" noPadding>
+    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[820px]" noPadding>
       <div className="p-6 max-md:p-4 flex flex-col">
         <div className="flex justify-between items-center mb-5 max-md:mb-3">
           <h2 className="text-xl max-md:text-lg font-bold m-0 flex items-center gap-3 max-md:gap-2">
@@ -477,194 +348,61 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         </div>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-md:grid-cols-1 max-md:gap-4">
-          {/* Left: Delivery & Summary */}
+          {/* Left: Store Pick-up & Summary */}
           <div className="flex flex-col gap-5 max-md:gap-3">
-            {/* Fulfillment Method Selector / Policy Header */}
-            {deliveryEnabled && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[0.72rem] font-bold text-text-dim uppercase tracking-wider">
-                  Fulfillment Method
-                </span>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl border border-border-glass">
-                  <button
-                    type="button"
-                    onClick={() => setFulfillmentType('delivery')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
-                      fulfillmentType === 'delivery'
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-                    }`}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <rect x="1" y="3" width="15" height="13" />
-                      <polygon points="16 8 20 8 23 11 23 16 16 16 8" />
-                      <circle cx="5.5" cy="18.5" r="2.5" />
-                      <circle cx="18.5" cy="18.5" r="2.5" />
-                    </svg>
-                    <span>Door Delivery</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFulfillmentType('pickup')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border cursor-pointer ${
-                      fulfillmentType === 'pickup'
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-                    }`}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            {/* Single Streamlined Store Pick-up Card */}
+            <div className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
+              <div className="p-3 bg-white/[0.04] border border-border-glass rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                       <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
-                    <span>Store Pick-up</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Delivery Address Section (When Door Delivery is enabled & selected) */}
-            {deliveryEnabled && fulfillmentType === 'delivery' ? (
-              <div className="flex flex-col gap-2 animate-[fadeIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[0.9rem] font-bold m-0 flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                    Delivery Address
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddressBookOpen(true)}
-                    className="text-xs font-bold text-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-                  >
-                    {deliveryAddress || user?.address ? 'Change' : '+ Add Address'}
-                  </button>
-                </div>
-
-                {/* Shopee-style active address card */}
-                <div
-                  onClick={() => setIsAddressBookOpen(true)}
-                  className="p-3.5 bg-white/[0.04] border border-border-glass hover:border-primary/40 rounded-xl flex flex-col gap-1.5 cursor-pointer transition-all group"
-                >
-                  {deliveryAddress || user?.address ? (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-xs text-text-main">
-                            {selectedSavedAddress?.recipientName || user?.username || 'Customer'}
-                          </span>
-                          <span className="text-xs text-text-dim">
-                            | {deliveryPhone || selectedSavedAddress?.phoneNumber || user?.phoneNumber || 'No phone set'}
-                          </span>
-                          {selectedSavedAddress?.label && (
-                            <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-white/10 text-text-dim border border-border-glass">
-                              {selectedSavedAddress.label}
-                            </span>
-                          )}
-                          {selectedSavedAddress?.isDefault && (
-                            <span className="px-1.5 py-0.5 rounded text-[0.65rem] font-bold uppercase bg-primary/20 text-primary border border-primary/30">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-primary font-bold group-hover:underline">Edit ›</span>
-                      </div>
-                      <p className="text-xs text-text-dim m-0 leading-relaxed group-hover:text-text-main transition-colors">
-                        {deliveryAddress || selectedSavedAddress?.fullAddress || user?.address}
-                      </p>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-between text-xs text-text-dim py-1">
-                      <span>No delivery address specified</span>
-                      <span className="text-primary font-bold">+ Choose Address</span>
-                    </div>
-                  )}
-                </div>
-
-                <textarea 
-                  placeholder="Special notes or landmark instructions for delivery..." 
-                  rows={1}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none focus:border-primary resize-none placeholder:text-text-dim/40"
-                />
-              </div>
-            ) : (
-              /* Single Streamlined Store Pick-up Card */
-              <div className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
-                <div className="p-3 bg-white/[0.04] border border-border-glass rounded-xl flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                      </svg>
-                    </div>
-                    <div className="flex flex-col text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-text-main text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
-                        <span className="text-[0.62rem] px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase">
-                          Free Pick-up
-                        </span>
-                      </div>
-                      <span className="text-text-dim text-[0.72rem]">
-                        Pacific Mall Lucena • 10:00 AM – 8:00 PM Daily
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-text-main text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
+                      <span className="text-[0.62rem] px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase">
+                        Free Pick-up
                       </span>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
-                    className="text-[0.7rem] text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap"
-                  >
-                    Policies ›
-                  </button>
-                </div>
-
-                {/* Claimant Details */}
-                <div className="grid grid-cols-2 max-[500px]:grid-cols-1 gap-2.5">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
-                      Claimant Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Person claiming"
-                      value={claimantName}
-                      onChange={(e) => setClaimantName(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
-                      Claimant Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="09XXXXXXXXX (Contact Number)"
-                      value={claimantPhone}
-                      onChange={(e) => setClaimantPhone(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"
-                    />
+                    <span className="text-text-dim text-[0.72rem]">
+                      Pacific Mall Lucena • 10:00 AM – 8:00 PM Daily
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
-                    Pick-up Instructions or Authorized Representative (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Authorized brother to claim, or weekend pickup"
-                    value={pickupNote}
-                    onChange={(e) => setPickupNote(e.target.value)}
-                    className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
+                  className="text-[0.7rem] text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap"
+                >
+                  Policies ›
+                </button>
               </div>
-            )}
+
+              {/* Pick-up Instructions / Special Notes */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
+                  <span>Pick-up Notes / Special Instructions</span>
+                  <span className="text-[0.62rem] text-text-dim/60 font-normal lowercase">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Authorized brother to claim, weekend pick-up, etc."
+                  value={pickupNote}
+                  onChange={(e) => setPickupNote(e.target.value)}
+                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"
+                />
+                <p className="text-[0.68rem] text-text-dim/70 m-0">
+                  Instant counter pick-up with your official digital Claim Slip &amp; QR code.
+                </p>
+              </div>
+            </div>
 
             <div className="flex flex-col gap-3 border-t border-border-glass pt-4 max-[650px]:pt-3 max-md:gap-2">
               <h3 className="text-[0.9rem] font-bold m-0">Order Summary</h3>
-              <div className="max-h-[180px] max-[650px]:max-h-[120px] overflow-y-auto pr-2 flex flex-col gap-2">
+              <div className="max-h-[140px] max-[650px]:max-h-[110px] overflow-y-auto pr-2 flex flex-col gap-2">
                 {items.map((item) => {
                   const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                   return (
@@ -739,17 +477,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           </div>
         </div>
       </div>
-          {/* Shopee-style Address Book Modal */}
-      <AddressBookModal
-        isOpen={isAddressBookOpen}
-        onClose={() => setIsAddressBookOpen(false)}
-        onSelectAddress={(addr) => {
-          setSelectedSavedAddress(addr);
-          setDeliveryAddress(addr.fullAddress || addr.streetAddress);
-          setDeliveryPhone(addr.phoneNumber);
-        }}
-        selectedAddressId={selectedSavedAddress?.id}
-      />
+
       {/* Terms & Policies Modal */}
       <TermsAndPoliciesModal
         isOpen={isTermsModalOpen}

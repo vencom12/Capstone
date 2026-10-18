@@ -202,7 +202,7 @@ export default function TermsAndPoliciesModal({
               Purpose-Bound Data Collection
             </span>
             <p className="m-0 text-xs">
-              We collect customer mobile numbers, delivery addresses, and payment receipt screenshots solely for order manufacturing, courier fulfillment via J&amp;T Express, and GCash transaction verification.
+              We collect customer mobile numbers and payment receipt screenshots solely for order manufacturing, counter pick-up verification at Pacific Mall Lucena, and GCash transaction verification.
             </p>
           </div>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">

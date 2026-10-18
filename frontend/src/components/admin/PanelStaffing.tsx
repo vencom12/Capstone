@@ -997,14 +997,14 @@ export default function PanelStaffing({
               </div>
             </div>
 
-            {/* Contact & Shipping Details */}
+            {/* Contact Details */}
             <div className="flex flex-col gap-2 p-3 rounded-xl bg-bg-surface border border-border-glass text-xs">
               <div className="flex justify-between">
                 <span className="text-text-dim font-bold">Contact Phone:</span>
                 <span className="font-mono text-text-main font-bold">{viewingProfileUser.phoneNumber || 'Not provided'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-dim font-bold">Primary Delivery Address:</span>
+                <span className="text-text-dim font-bold">Address:</span>
                 <span className="text-text-main font-medium max-w-[260px] text-right truncate">
                   {viewingProfileUser.address || 'Not provided'}
                 </span>

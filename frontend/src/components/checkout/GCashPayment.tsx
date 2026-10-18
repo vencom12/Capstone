@@ -68,103 +68,58 @@ export default function GCashPayment({
 
   return (
     <div className="flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
-      {/* GCash Quick Transfer Info Card */}
-      <div className="bg-[#007df2]/10 border border-[#007df2]/30 p-4 rounded-xl flex flex-col gap-2.5">
+      {/* GCash Quick Transfer Info Card - Compact Side-by-Side Layout */}
+      <div className="bg-[#007df2]/10 border border-[#007df2]/30 p-3.5 rounded-xl flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="bg-[#007df2] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">G</span>
+            <span className="bg-[#007df2] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0">G</span>
             <span className="text-[0.85rem] font-extrabold text-text-main">GCash Express Pay</span>
           </div>
           <button
             type="button"
             onClick={() => copyToClipboard(total.toFixed(2), 'amount')}
-            className="text-[0.72rem] bg-[#007df2]/20 hover:bg-[#007df2]/30 border border-[#007df2]/40 text-[#007df2] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+            className="text-[0.72rem] bg-[#007df2]/20 hover:bg-[#007df2]/30 border border-[#007df2]/40 text-[#007df2] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0"
           >
             {copiedAmount ? '✓ Copied Total' : `Copy ₱${total.toFixed(2)}`}
           </button>
         </div>
-        
-        <p className="text-[0.75rem] text-text-dim m-0 leading-relaxed">
-          Transfer to our official store GCash account & upload your payment screenshot:
-        </p>
 
-        <div className="flex justify-between items-center bg-bg-surface p-2.5 rounded-lg border border-border-glass font-mono text-[0.8rem]">
-          <div className="flex flex-col">
-            <span className="text-[0.7rem] text-text-dim">GCash Number (Payment Transfer Only)</span>
-            <span className="text-[#007df2] font-black text-sm tracking-wide">{displayAccountNo}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => copyToClipboard(accountNo, 'number')}
-            className="bg-primary hover:bg-primary/90 text-white font-bold px-3 py-1.5 rounded-lg text-[0.75rem] transition-all cursor-pointer border border-primary/30 shadow-sm"
-          >
-            {copiedNumber ? '✓ Copied' : 'Copy Number'}
-          </button>
-        </div>
-
-        <div className="flex justify-between items-center bg-bg-surface p-2.5 rounded-lg border border-border-glass font-mono text-[0.8rem]">
-          <span className="text-text-dim">Account Name:</span>
-          <span className="text-text-main font-bold text-[0.8rem]">Eds Towels and Caps Embroidery</span>
-        </div>
-
-        {activeQrCodeUrl && (
-          <div className="mt-1 flex flex-col items-center">
-            <div 
-              onClick={() => setShowQrModal(true)}
-              className="relative group cursor-pointer bg-white p-2 rounded-xl shadow-lg border border-white/20 hover:scale-105 transition-all duration-200"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={activeQrCodeUrl} alt="GCash QR Code" className="max-h-36 object-contain rounded-lg" />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
-                <span className="text-white font-bold text-[0.75rem] bg-black/60 px-3 py-1 rounded-full">Tap to Enlarge</span>
+        {/* Compact 2-column: Account Info on Left, QR Code on Right */}
+        <div className="flex items-center gap-3 bg-bg-surface/80 p-2.5 rounded-xl border border-border-glass">
+          <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+            <div>
+              <span className="text-[0.65rem] text-text-dim block uppercase tracking-wider font-semibold">GCash Number</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[#007df2] font-black text-sm tracking-wide font-mono truncate">{displayAccountNo}</span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(accountNo, 'number')}
+                  className="bg-primary hover:bg-primary/90 text-white font-bold px-2 py-0.5 rounded-md text-[0.68rem] transition-all cursor-pointer border border-primary/30 shadow-sm shrink-0"
+                >
+                  {copiedNumber ? '✓' : 'Copy'}
+                </button>
               </div>
             </div>
-            <span className="text-[0.7rem] text-text-dim mt-1.5">Tap QR image to scan full screen</span>
-          </div>
-        )}
-      </div>
-
-      {/* Developer / Testing Payment Bypass Card */}
-      {onBypassPayment && (
-        <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-xl flex flex-col gap-2 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-500 text-black w-5 h-5 rounded-md flex items-center justify-center font-black text-xs">
-                ⚡
-              </span>
-              <span className="text-xs font-bold text-amber-300">
-                Testing Mode: GCash Payment Bypass
-              </span>
+            <div className="border-t border-border-glass/40 pt-1">
+              <span className="text-[0.65rem] text-text-dim block uppercase tracking-wider font-semibold">Account Name</span>
+              <span className="text-text-main font-bold text-[0.75rem] truncate block">Eds Towels and Caps Embroidery</span>
             </div>
-            <span className="text-[0.65rem] bg-amber-500/20 text-amber-300 font-mono px-2 py-0.5 rounded-full border border-amber-500/30 font-bold uppercase tracking-wider">
-              1-Click Bypass
-            </span>
           </div>
-          <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
-            Need to test checkout? Click below to skip real money transfer and receipt uploading. Instantly generates a verified test reference and places this order directly into the active queue.
-          </p>
-          <button
-            type="button"
-            onClick={onBypassPayment}
-            disabled={isBypassing || analyzing}
-            className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-2 hover:shadow-amber-500/20 active:scale-[0.99]"
-          >
-            {isBypassing ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                <span>Bypassing GCash & Placing Order...</span>
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
-                <span>⚡ Bypass GCash Payment (Instant Auto-Verify)</span>
-              </>
-            )}
-          </button>
+
+          {activeQrCodeUrl && (
+            <div
+              onClick={() => setShowQrModal(true)}
+              className="relative group cursor-pointer bg-white p-1 rounded-lg shadow-md border border-white/20 hover:scale-105 transition-all shrink-0"
+              title="Click to enlarge QR"
+            >
+              <img src={activeQrCodeUrl} alt="GCash QR Code" className="w-20 h-20 sm:w-22 sm:h-22 object-contain rounded" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                <span className="text-white font-bold text-[0.6rem] bg-black/70 px-1.5 py-0.5 rounded">Enlarge</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Upload Zone */}
       <div className="flex flex-col gap-2">
@@ -252,6 +207,28 @@ export default function GCashPayment({
               </div>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {/* Developer / Testing Payment Bypass Link (Subtle, non-intrusive) */}
+      {onBypassPayment && (
+        <div className="flex items-center justify-center pt-2 border-t border-border-glass/40">
+          <button
+            type="button"
+            onClick={onBypassPayment}
+            disabled={isBypassing || analyzing}
+            className="text-[0.72rem] text-amber-400/80 hover:text-amber-300 font-semibold cursor-pointer bg-transparent border-none p-1 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            title="Instant test mode bypass for development"
+          >
+            {isBypassing ? (
+              <>
+                <div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <span>Bypassing GCash &amp; Placing Order...</span>
+              </>
+            ) : (
+              <span>⚡ Test Mode: 1-Click Payment Bypass</span>
+            )}
+          </button>
         </div>
       )}
 

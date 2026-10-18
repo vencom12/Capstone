@@ -50,11 +50,17 @@ function setPending(on: boolean) {
 }
 
 export function isGoogleAuthPending(): boolean {
+  if (isExchanging) return true;
+  if (typeof window === 'undefined') return false;
   try {
-    return sessionStorage.getItem(PENDING_KEY) === 'true';
+    if (sessionStorage.getItem(PENDING_KEY) === 'true') return true;
+    if (window.location.search.includes('apiKey=') || window.location.hash.includes('access_token')) {
+      return true;
+    }
   } catch {
     return false;
   }
+  return false;
 }
 
 function isPending(): boolean {
@@ -114,7 +120,6 @@ function notifyListeners(outcome: GoogleSignInOutcome) {
 async function processUser(user: FirebaseUser) {
   if (finalOutcome || isExchanging) return;
   isExchanging = true;
-  setPending(false);
 
   try {
     console.log('[GoogleAuth] Processing user with backend:', user.email);
@@ -127,6 +132,7 @@ async function processUser(user: FirebaseUser) {
       message: err?.message || 'Failed to complete Google sign-in.',
     });
   } finally {
+    setPending(false);
     isExchanging = false;
   }
 }

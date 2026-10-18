@@ -50,8 +50,6 @@ export default function PanelSettings({
   const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
-  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
-  const [isUpdatingDelivery, setIsUpdatingDelivery] = useState(false);
 
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,7 +88,6 @@ export default function PanelSettings({
         if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
         if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
         if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
-        if (res.deliveryEnabled !== undefined) setDeliveryEnabled(res.deliveryEnabled);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -152,21 +149,6 @@ export default function PanelSettings({
     }
   };
 
-  const handleToggleDelivery = async (enabled: boolean) => {
-    setIsUpdatingDelivery(true);
-    try {
-      await api.put('/api/admin/settings', {
-        deliveryEnabled: enabled
-      });
-      setDeliveryEnabled(enabled);
-      showToast(enabled ? 'Delivery enabled' : 'Pickup only enabled', 'success');
-    } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Failed to update delivery', 'error');
-    } finally {
-      setIsUpdatingDelivery(false);
-    }
-  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -284,13 +266,14 @@ export default function PanelSettings({
     },
     {
       id: 'fulfillment' as SettingsTab,
-      label: 'Fulfillment & Pricing',
+      label: 'Store Add-Ons & Pricing',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="1" y="3" width="15" height="13" />
-          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-          <circle cx="5.5" cy="18.5" r="2.5" />
-          <circle cx="18.5" cy="18.5" r="2.5" />
+          <polyline points="20 12 20 22 4 22 4 12"/>
+          <rect x="2" y="7" width="20" height="5"/>
+          <line x1="12" y1="22" x2="12" y2="7"/>
+          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
         </svg>
       )
     },
@@ -681,75 +664,6 @@ export default function PanelSettings({
           {/* ========================================================================= */}
           {activeTab === 'fulfillment' && (
             <div className="flex flex-col gap-6 animate-[fadeIn_0.2s_ease-out]">
-              {/* Courier Delivery Toggle Card */}
-              <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl">
-                <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="1" y="3" width="15" height="13" />
-                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                      <circle cx="5.5" cy="18.5" r="2.5" />
-                      <circle cx="18.5" cy="18.5" r="2.5" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold m-0 text-text-main">Courier Delivery Service</h3>
-                    <p className="text-xs text-text-dim m-0 mt-0.5">
-                      Enable or disable doorstep courier delivery for customer checkout.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white/5 border border-border-glass p-5 rounded-xl gap-4 mt-4">
-                  <div className="flex flex-col max-w-[500px]">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-text-main">J&amp;T Express Courier Shipping</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                        deliveryEnabled 
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      }`}>
-                        {deliveryEnabled ? 'Active' : 'Disabled (Store Pickup Only)'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-dim mt-1.5 leading-relaxed m-0">
-                      {deliveryEnabled 
-                        ? 'Customers can choose doorstep courier delivery or in-store pickup at checkout. Delivery addresses and tracking waybills are enabled.' 
-                        : 'Courier delivery is turned off. Customers can only order for physical store counter pick-up (Pacific Mall Lucena).'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleDelivery(!deliveryEnabled)}
-                      disabled={isUpdatingDelivery}
-                      className={`flex items-center gap-2 text-xs font-bold px-5 py-2.5 rounded-lg border cursor-pointer transition-all active:scale-95 duration-200 disabled:opacity-50 ${
-                        deliveryEnabled
-                          ? 'text-white bg-emerald-600 border-emerald-500 hover:bg-emerald-500 shadow-md shadow-emerald-600/20'
-                          : 'text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
-                      }`}
-                    >
-                      {isUpdatingDelivery ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                          Updating...
-                        </>
-                      ) : deliveryEnabled ? (
-                        <>
-                          <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                          Courier Enabled
-                        </>
-                      ) : (
-                        <>
-                          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                          Store Pickup Only
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* Gift Packaging Price Card */}
               <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl">

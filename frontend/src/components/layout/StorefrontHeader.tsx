@@ -126,10 +126,33 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   absolute top-[calc(100%+8px)] right-0 w-[220px] bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-2 z-[3000] shadow-2xl origin-top-right transition-all duration-200
                   ${isMobileUserMenuOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
                 `}>
-                  <div className="p-2.5 rounded-xl bg-white/5 border border-border-glass/40 mb-1.5">
-                    <div className="font-bold text-xs text-text-main truncate">{user?.username}</div>
-                    <div className="text-[0.7rem] text-text-dim truncate">{user?.email}</div>
-                  </div>
+                  <Link
+                    href={user?.role === 'admin' ? '/admin?tab=settings' : '/dashboard?tab=settings'}
+                    onClick={() => setIsMobileUserMenuOpen(false)}
+                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass/40 hover:border-primary/40 mb-1.5 flex items-center justify-between gap-2 no-underline transition-all cursor-pointer group/user block"
+                    title="Account Settings"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-text-main truncate group-hover/user:text-primary transition-colors">
+                        {user?.username}
+                      </div>
+                      <div className="text-[0.7rem] text-text-dim truncate mt-0.5">{user?.email}</div>
+                      {user?.role && user.role !== 'customer' && (
+                        <span className="inline-block mt-1 text-[0.62rem] px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase tracking-wider">
+                          {user.role}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-text-dim group-hover/user:text-primary transition-all pr-0.5 flex items-center gap-1 shrink-0">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover/user:rotate-45 transition-transform duration-300">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/user:translate-x-0.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </div>
+                  </Link>
 
                   {user?.role === 'admin' ? (
                     <Link
@@ -155,25 +178,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                         className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
                       >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /></svg>
-                        Orders & Tracking
-                      </Link>
-
-                      <Link
-                        href="/dashboard?tab=settings"
-                        onClick={() => setIsMobileUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-                        Account Settings
-                      </Link>
-
-                      <Link
-                        href="/dashboard?tab=history"
-                        onClick={() => setIsMobileUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Digital Receipts
+                        My Orders
                       </Link>
 
                       <Link
@@ -230,95 +235,123 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </div>
         </div>
 
-        {/* Middle: Search Bar & Category Dropdown */}
-        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative flex items-center gap-2">
-          {/* Animated Custom Category Dropdown */}
-          <div className="shrink-0 relative category-dropdown-container">
-            <button
-              suppressHydrationWarning
-              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 bg-bg-surface border border-border-glass text-text-main px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold outline-none cursor-pointer hover:bg-white/5 active:scale-95 transition-all whitespace-nowrap"
-            >
-              <span className="max-w-[85px] sm:max-w-none truncate">
-                {selectedCategory === 'All' ? 'All Products' : selectedCategory}
-              </span>
-              <svg
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                className={`transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`}
+        {/* Middle: Unified Search Capsule with Integrated Category Selector */}
+        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative">
+          <div className="w-full relative flex items-center bg-bg-surface border border-border-glass rounded-xl shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+            {/* Integrated Category Dropdown Trigger */}
+            <div className="shrink-0 relative category-dropdown-container">
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                className="flex items-center gap-1.5 sm:gap-2 bg-transparent hover:bg-white/5 text-text-main px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-l-xl text-xs sm:text-[0.82rem] font-bold outline-none cursor-pointer active:scale-95 transition-all whitespace-nowrap border-none border-r border-border-glass/60"
+                aria-label="Filter by category"
               >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-
-            {/* Dropdown Options */}
-            <div className={`
-              absolute top-[calc(100%+8px)] left-0 w-[190px] bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-xl p-1.5 z-[3000] shadow-xl max-h-[260px] overflow-y-auto
-              transition-all duration-300 origin-top-left
-              ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
-            `}>
-              {categories.map(c => (
-                <button
-                  key={c}
-                  suppressHydrationWarning
-                  onClick={() => {
-                    setSelectedCategory(c);
-                    setIsCategoryOpen(false);
-                  }}
-                  className={`
-                    w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-all hover:bg-white/10 cursor-pointer border-none bg-transparent block truncate
-                    ${selectedCategory === c ? 'text-white bg-primary font-bold shadow-sm' : 'text-text-main hover:text-primary'}
-                  `}
+                <span className="max-w-[90px] sm:max-w-none truncate">
+                  {selectedCategory === 'All' ? 'All Products' : selectedCategory}
+                </span>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className={`transition-transform duration-200 text-text-dim ${isCategoryOpen ? 'rotate-180 text-primary' : ''}`}
                 >
-                  {c === 'All' ? 'All Products' : c}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
 
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-0">
-            <input
-              suppressHydrationWarning
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-bg-surface border border-border-glass px-4 py-2 sm:py-2.5 pr-9 rounded-lg text-text-main outline-none text-xs sm:text-[0.92rem] transition-all focus:border-primary"
-            />
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+              {/* Category Dropdown Options */}
+              <div
+                className={`
+                  absolute top-[calc(100%+8px)] left-0 w-[190px] bg-bg-card/95 backdrop-blur-[25px] border border-border-glass rounded-xl p-1.5 z-[3000] shadow-2xl max-h-[260px] overflow-y-auto
+                  transition-all duration-200 origin-top-left
+                  ${isCategoryOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
+                `}
+              >
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={() => {
+                      setSelectedCategory(c);
+                      setIsCategoryOpen(false);
+                    }}
+                    className={`
+                      w-full text-left px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer border-none flex items-center justify-between truncate
+                      ${selectedCategory === c
+                        ? 'bg-primary text-white font-bold shadow-sm'
+                        : 'bg-transparent text-text-main hover:bg-primary/10 hover:text-primary font-medium'
+                      }
+                    `}
+                  >
+                    <span className="truncate">{c === 'All' ? 'All Products' : c}</span>
+                    {selectedCategory === c && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 ml-1">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Integrated Search Input Field */}
+            <div className="relative flex-1 min-w-0 flex items-center">
+              <input
+                suppressHydrationWarning
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] text-text-main placeholder:text-text-dim/70 outline-none flex-1 min-w-0 rounded-r-xl"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 mr-1 text-text-dim hover:text-text-main rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent"
+                  title="Clear search"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              )}
+              <div className="pr-3.5 text-text-dim pointer-events-none flex items-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Desktop Actions (Story Link, Products Link, Theme, Auth, Basket) - visible only on lg:flex */}
-        <div className="hidden lg:flex items-center gap-3 justify-end shrink-0 lg:min-w-[220px]">
+        {/* Desktop Actions (Story Link, Theme, Auth, Basket) - visible only on lg:flex */}
+        <div className="hidden lg:flex items-center gap-2.5 justify-end shrink-0 lg:min-w-[220px]">
           <button
+            type="button"
             suppressHydrationWarning
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="text-xs font-bold text-text-dim hover:text-text-main px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer border-none bg-transparent"
+            className="text-xs font-bold text-text-dim hover:text-text-main px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border-none bg-transparent"
           >
             Atelier Story
           </button>
-          <button
-            suppressHydrationWarning
-            onClick={() => {
-              const el = document.getElementById('products-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="text-xs font-bold text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all cursor-pointer"
-          >
-            Products ↓
-          </button>
+
+          <div className="h-4 w-[1px] bg-border-glass/60 shrink-0 mx-0.5" />
 
           <button
+            type="button"
             suppressHydrationWarning
             onClick={() => toggleTheme()}
-            className="w-10 h-10 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent"
+            className="w-9 h-9 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent shrink-0"
             title="Toggle theme"
             aria-label="Toggle theme"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
           </button>
 
           {isAuthenticated ? (
@@ -347,15 +380,33 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 absolute top-[calc(100%+8px)] right-0 w-[240px] bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-2 z-[3000] shadow-2xl origin-top-right transition-all duration-200
                 ${isUserMenuOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}
               `}>
-                <div className="p-2.5 rounded-xl bg-white/5 border border-border-glass/40 mb-1.5">
-                  <div className="font-bold text-xs text-text-main truncate">{user?.username}</div>
-                  <div className="text-[0.7rem] text-text-dim truncate">{user?.email}</div>
-                  {user?.role && user.role !== 'customer' && (
-                    <span className="inline-block mt-1 text-[0.62rem] px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase tracking-wider">
-                      {user.role}
-                    </span>
-                  )}
-                </div>
+                <Link
+                  href={user?.role === 'admin' ? '/admin?tab=settings' : '/dashboard?tab=settings'}
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass/40 hover:border-primary/40 mb-1.5 flex items-center justify-between gap-2 no-underline transition-all cursor-pointer group/user block"
+                  title="Account Settings"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-xs text-text-main truncate group-hover/user:text-primary transition-colors">
+                      {user?.username}
+                    </div>
+                    <div className="text-[0.7rem] text-text-dim truncate mt-0.5">{user?.email}</div>
+                    {user?.role && user.role !== 'customer' && (
+                      <span className="inline-block mt-1 text-[0.62rem] px-2 py-0.5 rounded-md bg-primary/20 text-primary font-bold uppercase tracking-wider">
+                        {user.role}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-text-dim group-hover/user:text-primary transition-all pr-0.5 flex items-center gap-1 shrink-0">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover/user:rotate-45 transition-transform duration-300">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/user:translate-x-0.5">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </div>
+                </Link>
 
                 {user?.role === 'admin' ? (
                   <Link
@@ -381,25 +432,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /></svg>
-                      My Orders & Tracking
-                    </Link>
-
-                    <Link
-                      href="/dashboard?tab=settings"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-                      Account Settings
-                    </Link>
-
-                    <Link
-                      href="/dashboard?tab=history"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-text-main hover:bg-white/10 no-underline transition-all"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                      Digital Receipts
+                      My Orders
                     </Link>
 
                     <Link

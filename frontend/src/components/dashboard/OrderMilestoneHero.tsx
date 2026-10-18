@@ -61,7 +61,7 @@ export default function OrderMilestoneHero({ orders, onViewDetails, onViewAll }:
             onClick={() => onViewDetails(order, 'tracking')}
             className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm"
           >
-            {isPickup ? 'Track Pick-up' : 'Track Delivery'}
+            Track Pick-up
           </button>
         </div>
       </div>

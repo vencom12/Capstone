@@ -946,7 +946,7 @@ export default function PanelFeedbackManagement() {
                 <option value="Bobbin Thread Snagging / Fraying">Bobbin Thread Snagging / Fraying</option>
                 <option value="Water-Soluble Solvy Residue">Water-Soluble Solvy Residue / Hoop Mark</option>
                 <option value="Misspelling / Claim Stub Monogram Error">Misspelling / Claim Stub Monogram Error</option>
-                <option value="Courier Delivery Transit Delay">Courier Delivery Transit Delay</option>
+                <option value="Store Pick-up Counter Queue Delay">Store Pick-up Counter Queue Delay</option>
                 <option value="Fabric Color / Sizing Mismatch">Fabric Color / Sizing Mismatch</option>
               </select>
             </div>

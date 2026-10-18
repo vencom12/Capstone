@@ -10,7 +10,7 @@ import type { BasketItem, ProductVariant } from '@/lib/types';
 
 interface BasketViewProps {
   onGoToShop: () => void;
-  onOpenCheckout: (selectedItems?: BasketItem[], fulfillmentType?: 'delivery' | 'pickup') => void;
+  onOpenCheckout: (selectedItems?: BasketItem[]) => void;
 }
 
 export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewProps) {
@@ -134,13 +134,13 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           </div>
           <h2 className="text-xl font-bold text-text-main mb-2">Your Basket is Empty</h2>
           <p className="text-text-dim text-sm max-w-md mb-6 leading-relaxed">
-            You haven&apos;t added any personalized caps or luxury towels yet. Explore our custom embroidery catalog and customize your design!
+            You haven&apos;t added any personalized caps or luxury towels yet. Explore our custom embroidery products and customize your design!
           </p>
           <button
             onClick={onGoToShop}
             className="px-6 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm transition-all cursor-pointer border-none shadow-md hover:shadow-lg flex items-center gap-2 group"
           >
-            <span>Explore Towels & Caps Catalog</span>
+            <span>Browse Products</span>
             <span className="transition-transform group-hover:translate-x-1">→</span>
           </button>
         </div>
@@ -191,12 +191,12 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                 className="w-4 h-4 rounded accent-primary cursor-pointer"
               />
               <span className="text-xs sm:text-sm font-bold text-text-main">
-                Select All ({items.length} {items.length === 1 ? 'item' : 'items'})
+                Select All ({items.length} {items.length === 1 ? 'product' : 'products'})
               </span>
             </label>
 
             <span className="text-xs text-text-dim">
-              <strong className="text-primary">{selectedItems.length}</strong> of {items.length} selected
+              <strong className="text-primary">{selectedItems.length}</strong> of {items.length} selected ({selectedItemCount} pcs)
             </span>
           </div>
 
@@ -332,18 +332,12 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 </span>
                               </span>
                             )}
-                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.68rem] px-2 py-0.5 rounded-md font-medium flex items-center gap-1.5">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                              </svg>
-                              Digitizing Included
-                            </span>
                           </div>
                         </div>
 
                         {/* Price Breakdown */}
                         <div className="text-right shrink-0">
-                          <span className="text-base sm:text-lg font-mono font-black text-primary block leading-tight">
+                          <span className="text-base sm:text-lg font-mono font-black text-text-main block leading-tight">
                             ₱{(item.price * item.quantity).toFixed(2)}
                           </span>
                           <span className="text-[0.7rem] text-text-dim">
@@ -465,32 +459,25 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               </div>
 
               <div className="flex justify-between items-center text-text-dim">
-                <span>Embroidery Digitizing:</span>
-                <span className="text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                  Included (Free)
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center text-text-dim">
                 <span>Fulfillment Method:</span>
                 <span className="text-text-main font-medium text-xs">
-                  Door Delivery or Store Pick-up
+                  Store Pick-up (Pacific Mall)
                 </span>
               </div>
 
               <div className="flex justify-between items-center text-text-dim">
-                <span>Shipping / Claiming:</span>
-                <span className="text-xs text-text-dim">
-                  Selected at checkout
+                <span>Pick-up Service Fee:</span>
+                <span className="text-emerald-400 font-bold text-xs uppercase">
+                  Free
                 </span>
               </div>
 
               <div className="pt-3 border-t border-white/10 flex justify-between items-center">
                 <div>
-                  <span className="text-sm sm:text-base font-black text-text-main block">Estimated Total</span>
-                  <span className="text-[0.68rem] text-text-dim">Free Pacific Mall Pick-up available</span>
+                  <span className="text-sm sm:text-base font-black text-text-main block">Total Payable</span>
+                  <span className="text-[0.68rem] text-text-dim">Counter pick-up with Claim Slip</span>
                 </div>
-                <span className="text-xl sm:text-2xl font-mono font-black text-primary">
+                <span className="text-xl sm:text-2xl font-mono font-black text-text-main">
                   ₱{selectedTotal.toFixed(2)}
                 </span>
               </div>
@@ -512,7 +499,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              <span>Precision Name & Letter Stitching • Official GCash Checkout</span>
+              <span>Ground Floor Pacific Mall Lucena Pick-up • Official GCash Pay</span>
             </div>
           </div>
         </div>

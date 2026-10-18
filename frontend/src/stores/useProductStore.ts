@@ -68,10 +68,16 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
     }
     try {
       const data = await api.get<DashboardState>('/api/customer/dashboard-state');
+      const current = get();
+      const newFavs = data.favorites || [];
+      const favsChanged =
+        current.favorites.length !== newFavs.length ||
+        current.favorites.some((f, idx) => (f.id || f._id) !== (newFavs[idx]?.id || newFavs[idx]?._id));
+
       set({
         products: data.products || [],
         orders: data.orders || [],
-        favorites: data.favorites || [],
+        favorites: favsChanged ? newFavs : current.favorites,
         transactions: data.transactions || [],
         receipts: data.receipts || [],
         isSyncing: false,
@@ -88,13 +94,15 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
   toggleFavorite: async (productId) => {
     const { favorites, products } = get();
     const isFav = favorites.some((f) => (f.id || f._id) === productId);
+    const prevFavorites = favorites;
 
-    // Optimistic update
+    // Instant optimistic update (0ms latency for seamless responsiveness)
     if (isFav) {
       set({ favorites: favorites.filter((f) => (f.id || f._id) !== productId) });
-      // When removing from favorites, do NOT show a notification as per user requirements
     } else {
-      const product = products.find((p) => (p.id || p._id) === productId);
+      const product =
+        products.find((p) => (p.id || p._id) === productId) ||
+        favorites.find((f) => (f.id || f._id) === productId);
       if (product) {
         set({ favorites: [...favorites, product] });
         showToast(`Saved "${product.name}" to favorites`, 'success');
@@ -107,9 +115,10 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
       } else {
         await api.post(`/api/customer/favorites/${productId}`, {});
       }
-    } catch {
-      // Rollback on error
-      set({ favorites });
+    } catch (err) {
+      console.warn('Favorite sync notice:', err);
+      // Rollback on genuine error
+      set({ favorites: prevFavorites });
     }
   },
 

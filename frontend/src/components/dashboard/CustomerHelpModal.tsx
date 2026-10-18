@@ -18,35 +18,39 @@ const FAQS = [
     a: 'We specialize in direct machine stitching for names, monograms, letters, and custom text onto towels, caps, and garments. You choose your item, type your personalized name or text, pick your thread color and font, and our embroidery machine stitches each letter directly into the fabric with durable, high-quality thread.'
   },
   {
-    q: 'What is the standard production turnaround time?',
-    a: 'Standard personalized name and text stitching orders are completed within 2 to 3 business days. For bulk orders (schools, sports events, giveaways), turnaround depends on quantity. You can monitor your order progress live in your "Tracking" tab.'
+    q: 'What is the production turnaround time?',
+    a: 'Personalized name and text stitching orders are crafted on the same day at our Pacific Mall studio, typically within 15 to 45 minutes depending on the current machine queue. For bulk orders (schools, corporate giveaways, sports events), turnaround depends on item quantity. You can track your real-time queue progress live in your Order Tracking & Details modal.'
   },
   {
     q: 'Where can I pick up my orders in Lucena City?',
     a: 'Store pick-up is available at our Pacific Mall Lucena branch: Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301. We are open daily from 10:00 AM to 8:00 PM (following Pacific Mall hours). Simply show your Order ID or digital claim code from your dashboard upon claiming.'
   },
   {
-    q: 'How does doorstep delivery work?',
-    a: 'We partner with J&T Express for door-to-door delivery across Lucena, Quezon Province, and nationwide. Once your personalized stitching is inspected and packed, your live J&T tracking number will appear in your "Tracking" tab.'
+    q: 'What do I need to present when picking up my order?',
+    a: 'Simply present your digital claim slip, QR code, or Order ID (e.g. #ORD-XXXX) at our counter located on the Ground Floor of Pacific Mall Lucena City. Our counter team will verify your claim code and release your custom-embroidered items.'
   },
   {
     q: 'How do I submit GCash or Maya payments?',
-    a: 'During checkout, select your preferred digital payment method (GCash or Maya) and scan the verified merchant QR code. Upload your payment screenshot or input the transaction reference number. Your official payment receipt will be instantly generated in your dashboard.'
+    a: 'During checkout, select your preferred digital payment method (GCash or Maya) and scan the verified merchant QR code. Upload your payment screenshot or input the transaction reference number. Your receipt will be instantly generated in your dashboard.'
   },
   {
     q: 'How should I care for and wash embroidered towels and caps?',
     a: 'Our industrial embroidery threads are chlorine-resistant and high-tensile. For longest durability: machine wash on cold/gentle cycle with mild detergent, avoid high-heat tumble drying, and do not iron directly on the raised embroidery stitching.'
+  },
+  {
+    q: 'Can I cancel my order? What is the cancellation procedure?',
+    a: 'Because items are custom-embroidered, cancellations follow a two-stage procedure: (1) While In Queue (Step 1): If machine stitching has not yet started, submit a request via the "Contact Workshop" tab with your Order ID, or visit our Pacific Mall Lucena ground floor counter. Our studio staff will verify your GCash payment reference to process your manual refund. (2) In Production (Step 2+): Once garment hooping and machine stitching are underway (Preparing Order), the order can no longer be cancelled.'
   }
 ];
 
-export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: CustomerHelpModalProps) {
+export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, defaultCategory }: CustomerHelpModalProps & { defaultCategory?: string }) {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'faqs' | 'feedback'>('faqs');
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   // Feedback Form State
   const [rating, setRating] = useState<number>(5);
-  const [category, setCategory] = useState<string>('Order Quality');
+  const [category, setCategory] = useState<string>(defaultCategory || 'Order Quality');
   const [message, setMessage] = useState<string>('');
   const [orderId, setOrderId] = useState<string>(defaultOrderId || '');
   const [customerName, setCustomerName] = useState<string>(user?.username || '');
@@ -57,8 +61,9 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
     if (defaultOrderId) {
       setOrderId(defaultOrderId);
       setActiveTab('feedback');
+      if (defaultCategory) setCategory(defaultCategory);
     }
-  }, [defaultOrderId]);
+  }, [defaultOrderId, defaultCategory]);
 
   useEffect(() => {
     if (user) {
@@ -244,7 +249,8 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
                 >
                   <option value="Custom Embroidery Inquiry">Custom Embroidery & Personalization</option>
                   <option value="Rush Production">Rush Production & Turnaround</option>
-                  <option value="Store Pick-up & Delivery">Pacific Mall Pick-up / J&T Delivery</option>
+                  <option value="Store Pick-up">Store Pick-up & Claiming (Pacific Mall)</option>
+                  <option value="Order Cancellation & Refund">Order Cancellation & Refund Request</option>
                   <option value="Order Issue">Order Modification or Issue</option>
                   <option value="General Inquiry">General Workshop Inquiry</option>
                 </select>
@@ -262,32 +268,34 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId }: C
               </div>
             </div>
 
-            {/* Name & Email */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-text-dim">Your Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maria Santos"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
-                />
-              </div>
+            {/* Guest Only: Name & Email inputs (logged-in users are automatically authenticated via session) */}
+            {!user && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-text-dim">Your Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Maria Santos"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
+                  />
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-text-dim">Contact Email or Mobile *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. maria@gmail.com or 0917 123 4567"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-text-dim">Contact Email *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. maria@gmail.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Message Comment */}
             <div className="flex flex-col gap-1">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Product, ProductVariant, ProductReviewsResponse } from '@/lib/types';
 import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -42,6 +42,28 @@ export default function ProductModal({
   const [reviewsData, setReviewsData] = useState<ProductReviewsResponse | null>(null);
   const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(false);
   const [selectedStarFilter, setSelectedStarFilter] = useState<'all' | number>('all');
+  const [isZoomed, setIsZoomed] = useState<boolean>(false);
+  const [imageFit, setImageFit] = useState<'cover' | 'contain'>('cover');
+  const [customActiveImage, setCustomActiveImage] = useState<string | null>(null);
+
+  // Collect distinct gallery photos from product and its variants
+  const galleryItems = useMemo(() => {
+    if (!product) return [];
+    const items: Array<{ imageUrl: string; label: string; variant?: ProductVariant }> = [];
+    if (product.imageUrl) {
+      items.push({ imageUrl: product.imageUrl, label: product.name });
+    }
+    if (product.variants && Array.isArray(product.variants)) {
+      product.variants.forEach((v) => {
+        if (v.imageUrl && !items.some((i) => i.imageUrl === v.imageUrl)) {
+          items.push({ imageUrl: v.imageUrl, label: v.name, variant: v });
+        }
+      });
+    }
+    return items;
+  }, [product]);
+
+  const activeImage = customActiveImage || selectedVariant?.imageUrl || product?.imageUrl || '';
 
   useEffect(() => {
     if (!isOpen || !product?.id) {
@@ -60,7 +82,17 @@ export default function ProductModal({
         }
       })
       .catch((err) => {
-        console.warn('Failed to load product reviews:', err);
+        console.warn('Product reviews notice (using fallback):', err?.message || err);
+        if (isMounted) {
+          setReviewsData({
+            success: true,
+            productId: product.id,
+            averageRating: null,
+            totalReviews: 0,
+            distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            reviews: []
+          });
+        }
       })
       .finally(() => {
         if (isMounted) setIsLoadingReviews(false);
@@ -106,6 +138,9 @@ export default function ProductModal({
       setCustomText('');
       setActionError(null);
       setMonogramError(null);
+      setCustomActiveImage(null);
+      setIsZoomed(false);
+      setImageFit('cover');
       setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         // Automatically select the first IN-STOCK variant; if all are out of stock, select none
@@ -247,39 +282,137 @@ export default function ProductModal({
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
-      <div className="grid grid-cols-[1fr_1.15fr] max-[900px]:grid-cols-1">
-        {/* Image & Preview Section */}
-        <div className="bg-bg-surface/50 flex flex-col items-center justify-center p-6 relative border-r border-border-glass max-[900px]:border-r-0 max-[900px]:border-b max-[900px]:h-[220px] max-[900px]:p-4 max-[650px]:h-[180px]">
-          <div className="w-full max-w-[320px] aspect-square rounded-xl overflow-hidden bg-bg-surface shadow-sm border border-border-glass max-[900px]:max-w-[180px] max-[650px]:max-w-[140px] relative">
-            {(selectedVariant?.imageUrl || product.imageUrl) ? (
+      <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1">
+        {/* Full-Bleed Image & Preview Section */}
+        <div className="relative w-full h-full min-h-[440px] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-black/40 flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
+          {activeImage ? (
+            <div
+              onClick={() => setIsZoomed(!isZoomed)}
+              className="w-full h-full flex items-center justify-center cursor-zoom-in relative overflow-hidden"
+              title={isZoomed ? "Click to zoom out" : "Click to zoom in"}
+            >
               <OptimizedImage
-                src={selectedVariant?.imageUrl || product.imageUrl}
+                src={activeImage}
                 alt={product.name}
-                width={640}
-                quality={85}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                width={800}
+                quality={90}
+                className={`w-full h-full transition-all duration-500 ease-out ${
+                  imageFit === 'contain' ? 'object-contain p-4' : 'object-cover'
+                } ${isZoomed ? 'scale-135' : 'scale-100 group-hover:scale-105'}`}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-text-dim text-xs tracking-wider">
-                STITCH PREVIEW
-              </div>
-            )}
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-text-dim text-xs tracking-wider font-semibold">
+              STITCH PREVIEW
+            </div>
+          )}
 
-            {isOutOfStock && (
-              <span className="absolute top-3 left-3 bg-red-500/90 text-white text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider backdrop-blur-sm">
+          {/* Top-Left Floating Overlay Badge */}
+          <div className="absolute top-3 left-3 pointer-events-none z-10">
+            {isOutOfStock ? (
+              <span className="bg-red-500/90 text-white text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
                 Out of Stock
+              </span>
+            ) : effectiveStock <= 5 ? (
+              <span className="bg-amber-500/90 text-white text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
+                Only {effectiveStock} Left
+              </span>
+            ) : (
+              <span className="bg-black/60 text-text-main border border-white/10 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
+                {product.tag || 'Handcrafted'}
               </span>
             )}
           </div>
+
+          {/* Bottom-Right View Mode & Zoom Control Toggle (Separated from top close button) */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 pointer-events-auto z-20">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageFit(imageFit === 'cover' ? 'contain' : 'cover');
+              }}
+              className="w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 border border-white/20 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-lg"
+              title={imageFit === 'cover' ? 'Fit entire image' : 'Fill frame'}
+              aria-label="Toggle image fit"
+            >
+              {imageFit === 'cover' ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsZoomed(!isZoomed);
+              }}
+              className={`w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 border border-white/20 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-lg ${
+                isZoomed ? 'text-primary border-primary/50 bg-primary/20' : ''
+              }`}
+              title={isZoomed ? 'Reset zoom' : 'Zoom inspection'}
+              aria-label="Zoom photo"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="11" y1="8" x2="11" y2="14" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Bottom-Left Floating Variant Thumbnails Gallery */}
+          {galleryItems.length > 1 && (
+            <div className="absolute bottom-3 left-3 flex items-center gap-1.5 z-20 pointer-events-auto max-w-[calc(100%-85px)] overflow-x-auto no-scrollbar">
+              <div className="bg-black/70 backdrop-blur-md border border-white/15 p-1 rounded-xl shadow-2xl flex items-center gap-1.5">
+                {galleryItems.map((item, idx) => {
+                  const isSelected = activeImage === item.imageUrl;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCustomActiveImage(item.imageUrl);
+                        if (item.variant) {
+                          setSelectedVariant(item.variant);
+                          if (item.variant.color) setSelectedColor(item.variant.color);
+                          if (item.variant.size) setSelectedSize(item.variant.size);
+                        }
+                      }}
+                      className={`relative w-9 h-9 rounded-lg overflow-hidden border transition-all cursor-pointer shrink-0 ${
+                        isSelected
+                          ? 'border-primary ring-2 ring-primary/40 scale-105 opacity-100'
+                          : 'border-white/15 hover:border-white/40 opacity-60 hover:opacity-100'
+                      }`}
+                      title={item.label}
+                    >
+                      <img src={item.imageUrl} alt={item.label} className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Product Customization & Info Section */}
-        <div className="p-6 flex flex-col gap-4 text-left max-[650px]:p-4 max-[650px]:gap-3">
+        <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3">
           <div>
-            <span className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+            <span className="inline-block px-2.5 py-1 bg-primary/10 text-primary rounded-md text-xs font-bold uppercase tracking-wider mb-2">
               {product.tag || 'Design'}
             </span>
-            <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[650px]:text-lg">
+            <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[700px]:text-lg">
               {product.name}
             </h2>
             {((reviewsData?.averageRating ?? (product as any).rating)) ? (
@@ -298,7 +431,7 @@ export default function ProductModal({
                   {((reviewsData?.averageRating ?? (product as any).rating) || 0).toFixed(1)}
                 </span>
                 <span className="text-[0.72rem] text-text-dim hover:text-text-main underline decoration-dotted">
-                  ({reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0} Verified Reviews)
+                  ({reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0} Verified {(reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0) === 1 ? 'Review' : 'Reviews'})
                 </span>
               </button>
             ) : (
@@ -333,7 +466,7 @@ export default function ProductModal({
               }`}
             >
               <span>Ratings & Reviews</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-text-main font-mono">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-text-main font-mono">
                 {reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0}
               </span>
             </button>
@@ -343,38 +476,52 @@ export default function ProductModal({
             <>
 
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-extrabold text-primary font-mono max-[650px]:text-xl">
-              ₱{(effectivePrice * quantity).toFixed(2)}
-              {quantity > 1 && <span className="text-xs text-text-dim font-sans ml-2">(₱{effectivePrice.toFixed(2)} each)</span>}
+            <div className="text-2xl font-extrabold text-primary font-mono max-[700px]:text-xl">
+              ₱{(effectivePrice * (isOutOfStock ? 1 : quantity)).toFixed(2)}
+              {quantity > 1 && !isOutOfStock && <span className="text-xs text-text-dim font-sans ml-2">(₱{effectivePrice.toFixed(2)} each)</span>}
             </div>
-            <span className="text-xs text-text-dim font-medium">Stock: {effectiveStock} available</span>
+            {isOutOfStock ? (
+              <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold text-xs uppercase tracking-wider">
+                Out of Stock
+              </span>
+            ) : (
+              <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                effectiveStock <= 5 
+                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400' 
+                  : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+              }`}>
+                {effectiveStock <= 5 ? `Only ${effectiveStock} left` : `In Stock (${effectiveStock} available)`}
+              </span>
+            )}
           </div>
 
-          <p className="text-text-dim leading-relaxed text-[0.88rem] m-0 max-[650px]:text-[0.8rem] line-clamp-3">
+          <p className="text-text-dim leading-relaxed text-[0.88rem] m-0 max-[700px]:text-[0.8rem] line-clamp-3">
             {product.description || 'Professional embroidery design optimized for high-speed production.'}
           </p>
 
-          {/* Live Shop Wait Time Indicator (Direct, grounded in active machine queue) */}
-          <div className="flex items-center gap-2 text-xs text-text-dim">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>
-              Estimated Wait Time:{' '}
-              <strong className="text-text-main font-semibold">
-                {capacityData ? (
-                  capacityData.estimatedMinutes <= 15
-                    ? '~10–15 mins'
-                    : capacityData.estimatedMinutes >= 60
-                      ? `~${Math.floor(capacityData.estimatedMinutes / 60)}h ${capacityData.estimatedMinutes % 60 > 0 ? `${capacityData.estimatedMinutes % 60}m` : ''}`.trim()
-                      : `~${capacityData.estimatedMinutes} mins`
-                ) : (
-                  'Checking wait time...'
-                )}
-              </strong>
-            </span>
-          </div>
+          {/* Live Shop Wait Time Indicator (Only shown if in stock) */}
+          {!isOutOfStock && (
+            <div className="flex items-center gap-2 text-xs text-text-dim">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>
+                Estimated Wait Time:{' '}
+                <strong className="text-text-main font-semibold">
+                  {capacityData ? (
+                    capacityData.estimatedMinutes <= 15
+                      ? '~10–15 mins'
+                      : capacityData.estimatedMinutes >= 60
+                        ? `~${Math.floor(capacityData.estimatedMinutes / 60)}h ${capacityData.estimatedMinutes % 60 > 0 ? `${capacityData.estimatedMinutes % 60}m` : ''}`.trim()
+                        : `~${capacityData.estimatedMinutes} mins`
+                  ) : (
+                    'Checking wait time...'
+                  )}
+                </strong>
+              </span>
+            </div>
+          )}
 
           {/* Variants & Swatches (Only shown if product has variants) */}
           {hasVariants ? (
@@ -402,6 +549,7 @@ export default function ProductModal({
                       onClick={() => {
                         if (isVarOutOfStock) return;
                         setSelectedVariant(variant);
+                        setCustomActiveImage(null);
                         if (variant.color) setSelectedColor(variant.color);
                         if (variant.size) setSelectedSize(variant.size);
                       }}
@@ -482,14 +630,20 @@ export default function ProductModal({
               </label>
               <button
                 type="button"
-                onClick={() => setIsPersonalized(!isPersonalized)}
-                className={`text-[0.72rem] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                  isPersonalized
-                    ? 'bg-primary/20 border-primary text-primary'
-                    : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main'
+                disabled={isOutOfStock}
+                onClick={() => {
+                  if (isOutOfStock) return;
+                  setIsPersonalized(!isPersonalized);
+                }}
+                className={`text-[0.72rem] font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                  isOutOfStock
+                    ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
+                    : isPersonalized
+                      ? 'bg-primary/20 border-primary text-primary cursor-pointer'
+                      : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                 }`}
               >
-                {isPersonalized ? '✓ Included' : '+ Add Name/Text'}
+                {isOutOfStock ? 'Unavailable' : isPersonalized ? '✓ Included' : '+ Add Name/Text'}
               </button>
             </div>
 
@@ -585,21 +739,23 @@ export default function ProductModal({
           {/* Quantity Stepper */}
           <div className="flex items-center justify-between border-t border-border-glass pt-3">
             <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Quantity / Count</span>
-            <div className="flex items-center gap-3 bg-bg-surface border border-border-glass p-1 rounded-xl">
+            <div className={`flex items-center gap-3 bg-bg-surface border border-border-glass p-1 rounded-xl ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
               <button
                 type="button"
+                disabled={isOutOfStock || quantity <= 1}
                 suppressHydrationWarning
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer transition-all"
+                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 -
               </button>
-              <span className="font-mono font-bold text-sm w-6 text-center">{quantity}</span>
+              <span className="font-mono font-bold text-sm w-6 text-center">{isOutOfStock ? 0 : quantity}</span>
               <button
                 type="button"
+                disabled={isOutOfStock || quantity >= effectiveStock}
                 suppressHydrationWarning
-                onClick={() => setQuantity((q) => Math.min(Math.max(1, effectiveStock), q + 1))}
-                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer transition-all"
+                onClick={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
+                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 +
               </button>
@@ -608,24 +764,33 @@ export default function ProductModal({
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4">
-            <div className="flex gap-3 max-[650px]:gap-2">
+            {isOutOfStock ? (
               <GlassButton
                 variant="secondary"
-                onClick={handleAddToBasket}
-                className="flex-1 py-3"
-                disabled={isOutOfStock}
+                fullWidth
+                disabled
+                className="py-3 font-bold opacity-60 cursor-not-allowed bg-white/5 border-border-glass text-text-dim"
               >
-                {isOutOfStock ? 'Variant Out of Stock' : 'Add to Basket'}
+                Out of Stock
               </GlassButton>
-              <GlassButton
-                variant="primary"
-                onClick={handleBuyNow}
-                className="flex-1 py-3 font-bold shadow-sm"
-                disabled={isOutOfStock}
-              >
-                {isOutOfStock ? 'Variant Out of Stock' : 'Buy Now'}
-              </GlassButton>
-            </div>
+            ) : (
+              <div className="flex gap-3 max-[700px]:gap-2">
+                <GlassButton
+                  variant="secondary"
+                  onClick={handleAddToBasket}
+                  className="flex-1 py-3"
+                >
+                  Add to Basket
+                </GlassButton>
+                <GlassButton
+                  variant="primary"
+                  onClick={handleBuyNow}
+                  className="flex-1 py-3 font-bold shadow-sm"
+                >
+                  Buy Now
+                </GlassButton>
+              </div>
+            )}
             {actionError && (
               <div className="flex flex-col items-center gap-1 mt-1">
                 <InlineError error={actionError} className="w-full text-center" />
@@ -691,18 +856,22 @@ export default function ProductModal({
                     const total = reviewsData?.totalReviews || 0;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                     const isSelected = selectedStarFilter === star;
+                    const hasReviews = count > 0;
 
                     return (
                       <button
                         key={star}
                         type="button"
-                        onClick={() => setSelectedStarFilter(isSelected ? 'all' : star)}
-                        className={`w-full flex items-center gap-2 text-[0.7rem] py-0.5 px-1 rounded transition-colors cursor-pointer border ${
+                        disabled={!hasReviews}
+                        onClick={() => hasReviews && setSelectedStarFilter(isSelected ? 'all' : star)}
+                        className={`w-full flex items-center gap-2 text-[0.7rem] py-0.5 px-1.5 rounded-md transition-all border ${
                           isSelected
-                            ? 'bg-primary/15 border-primary/40 text-text-main'
-                            : 'bg-transparent border-transparent hover:bg-white/5 text-text-dim'
+                            ? 'bg-primary/15 border-primary/40 text-text-main font-bold shadow-sm'
+                            : hasReviews
+                              ? 'bg-transparent border-transparent hover:bg-white/5 text-text-dim hover:text-text-main cursor-pointer'
+                              : 'bg-transparent border-transparent opacity-35 cursor-default text-text-dim'
                         }`}
-                        title={`Filter by ${star} star reviews`}
+                        title={hasReviews ? `Filter by ${star} star reviews (${count})` : `No ${star} star reviews`}
                       >
                         <span className="w-6 font-bold flex items-center gap-0.5 shrink-0">
                           <span>{star}</span>
@@ -723,13 +892,16 @@ export default function ProductModal({
                 </div>
               </div>
 
-              {/* Verified Authenticity Guarantee Banner */}
-              <div className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-[0.72rem] text-emerald-400">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-                <span>
-                  <strong>100% Authentic Feedback:</strong> Ratings can only be submitted by verified customers who completed an order of this embroidery item.
+              {/* Verified Authenticity Guarantee Badge (Compact & Trust-Building) */}
+              <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-[0.68rem] text-emerald-400">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-emerald-400">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span className="truncate"><strong>100% Authentic:</strong> Verified customer purchases only</span>
+                </div>
+                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 shrink-0">
+                  Store Certified
                 </span>
               </div>
 
@@ -864,15 +1036,18 @@ export default function ProductModal({
                           )}
                         </div>
 
-                        {/* Quality Highlight Tags */}
+                        {/* Quality Highlight Tags (Positive Endorsement Badges) */}
                         {highlights.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {highlights.map((h, i) => (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-[0.65rem] font-medium"
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim hover:text-text-main text-[0.68rem] font-medium transition-colors"
                               >
-                                {h}
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-emerald-400 shrink-0">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span>{h}</span>
                               </span>
                             ))}
                           </div>
@@ -912,14 +1087,16 @@ export default function ProductModal({
                 })()}
               </div>
 
-              {/* Return to Order Button */}
+              {/* High-Intent Conversion CTA */}
               <div className="pt-2 border-t border-border-glass">
                 <button
                   type="button"
                   onClick={() => setActiveModalTab('configure')}
-                  className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all"
+                  className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                 >
-                  Return to Customization & Order →
+                  <span>Customize & Order Now</span>
+                  <span className="font-mono opacity-90">• ₱{effectivePrice.toFixed(2)}</span>
+                  <span>→</span>
                 </button>
               </div>
             </>

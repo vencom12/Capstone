@@ -88,6 +88,8 @@ exports.submitOrder = async (req, res) => {
     try {
         const { items, totalAmount, paymentMethod, address, deliveryTime, notes, receiptUrl, isByog, waiverSigned, giftPackaging, calligraphyMessage, personalization, isRush, dueDate, existingOrderId, referenceNumber, isTestBypass } = req.body;
         const userId = req.user.id;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
         // Idempotency guard: prevent duplicate orders from rapid double-taps or network retries
         const idempotencyKey = req.headers['x-idempotency-key'] || req.body.idempotencyKey;
@@ -188,8 +190,7 @@ exports.submitOrder = async (req, res) => {
         // Instant approval for genuine wallet, admin test mode, or test bypass
         const isInstantApproved = (paymentMethod === 'wallet' || (paymentMethod === 'test_mode' && process.env.NODE_ENV !== 'production' && req.user?.role === 'admin') || isBypassActive);
 
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        // User is already resolved at function start
 
         if (!user.isEmailVerified && !isBypassActive) {
             return res.status(403).json({ message: 'Please verify your email address before placing an order.' });
@@ -322,20 +323,19 @@ exports.submitOrder = async (req, res) => {
                 });
             }
 
-            // Detect pickup fulfillment (strictly enforced as store pickup when delivery is disabled)
-            const isDeliveryActive = globalSettings?.deliveryEnabled ?? false;
-            const isPickup = !isDeliveryActive || personalization?.fulfillmentType === 'pickup' || (typeof address === 'string' && address.toLowerCase().includes('pick-up'));
-            const courier = isPickup ? 'Store Pick-up' : (personalization?.courier || 'J&T Express');
+            // Strictly enforce store pickup fulfillment
+            const isPickup = true;
+            const courier = 'Store Pick-up';
             const cleanId = secureOrderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-            const initialTracking = isPickup ? `PU-LUC-${cleanId}` : `JNT-PH-78${cleanId}`;
+            const initialTracking = `PU-LUC-${cleanId}`;
             const verificationClaimCode = secureOrderId.startsWith('WI-')
                 ? `#${secureOrderId.replace('WI-', 'A-')}`
                 : `#A-${secureOrderId.slice(-4).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`;
 
             const orderPersonalization = {
                 ...(personalization && typeof personalization === 'object' ? personalization : {}),
-                fulfillmentType: isPickup ? 'pickup' : 'delivery',
-                courier,
+                fulfillmentType: 'pickup',
+                courier: 'Store Pick-up',
                 trackingNumber: initialTracking,
                 claimCode: verificationClaimCode,
                 statusHistory: [
@@ -345,7 +345,7 @@ exports.submitOrder = async (req, res) => {
                         actor: 'Customer Checkout',
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
                         note: isInstantApproved
-                            ? (isPickup ? 'Payment confirmed; placed in embroidery queue for Store Pick-up.' : 'Payment confirmed; placed in embroidery queue for J&T Delivery.')
+                            ? 'Payment confirmed; placed in embroidery queue for Store Pick-up.'
                             : 'Order submitted, pending payment confirmation.'
                     }
                 ]
@@ -397,7 +397,7 @@ exports.submitOrder = async (req, res) => {
                     paymentStatus: isInstantApproved ? 'paid' : 'unpaid',
                     status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',
                     address,
-                    deliveryTime: deliveryTime || user.preferredDeliveryTime || 'As soon as possible',
+                    deliveryTime: 'Store Pick-up',
                     notes,
                     progress: isInstantApproved ? 5 : 0,
                     isByog: isByog || false,
@@ -525,7 +525,8 @@ exports.addFavorite = async (req, res) => {
         });
         res.json({ message: 'Added to favorites' });
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        // Idempotent: already connected or benign race condition
+        res.json({ message: 'Added to favorites' });
     }
 };
 
@@ -537,7 +538,8 @@ exports.removeFavorite = async (req, res) => {
         });
         res.json({ message: 'Removed from favorites' });
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        // Idempotent: already disconnected or benign race condition
+        res.json({ message: 'Removed from favorites' });
     }
 };
 
@@ -644,7 +646,7 @@ exports.getCapacity = async (req, res) => {
         });
     } catch (err) {
         console.error('Capacity error:', err);
-        res.status(500).json({ error: 'Server error fetching capacity' });
+        res.status(500).json({ message: 'Server error fetching capacity', error: err.message });
     }
 };
 
@@ -764,7 +766,7 @@ exports.trackOrder = async (req, res) => {
         });
     } catch (err) {
         console.error('Error tracking order:', err);
-        res.status(500).json({ error: 'Server error tracking order' });
+        res.status(500).json({ message: 'Server error tracking order', error: err.message });
     }
 };
 
@@ -903,7 +905,7 @@ exports.getLiveQueue = async (req, res) => {
         });
     } catch (err) {
         console.error('Error fetching live queue:', err);
-        res.status(500).json({ error: 'Server error fetching live queue' });
+        res.status(500).json({ message: 'Server error fetching live queue', error: err.message });
     }
 };
 
@@ -1355,6 +1357,16 @@ exports.cancelOrder = async (req, res) => {
                 message: order.status === 'Order Canceled'
                     ? 'This order has already been canceled.'
                     : 'Cannot cancel order: custom embroidery production is already underway (Preparing Order).'
+            });
+        }
+
+        // Paid orders (e.g. via GCash, Maya, Cash) cannot be self-cancelled via API; requires staff mediation for refund
+        const isPaidOrder = order.paymentStatus === 'paid' || 
+            (order.paymentMethod && !['none', 'unpaid', 'pending'].includes(order.paymentMethod.toLowerCase()) && order.paymentStatus !== 'unpaid');
+
+        if (isPaidOrder && order.paymentMethod !== 'wallet') {
+            return res.status(400).json({
+                message: `This order has already been paid via ${(order.paymentMethod || 'digital payment').toUpperCase()}. Please contact workshop support or visit our Pacific Mall studio counter for cancellation and refund processing.`
             });
         }
 

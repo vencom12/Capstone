@@ -3,11 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '@/lib/types';
 import OptimizedImage from '@/components/ui/OptimizedImage';
-import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
-import GlassButton from '@/components/ui/GlassButton';
 
 interface ProductCardProps {
   product: Product;
@@ -16,8 +14,7 @@ interface ProductCardProps {
   isVisible?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView, index = 0, isVisible }: ProductCardProps) {
-  const { items, addItem } = useBasketStore();
+export default function ProductCard({ product, onQuickView, index = 0 }: ProductCardProps) {
   const { favorites, toggleFavorite } = useProductStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -32,14 +29,12 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
       ([entry]) => {
         if (entry.isIntersecting) {
           setHasEntered(true);
-        } else if (entry.boundingClientRect.top > window.innerHeight) {
-          // Reset when scrolled back above into hero
-          setHasEntered(false);
+          observer.disconnect();
         }
       },
       {
-        threshold: 0.12,
-        rootMargin: '0px 0px -20px 0px',
+        threshold: 0.05,
+        rootMargin: '50px 0px 50px 0px',
       }
     );
 
@@ -47,7 +42,7 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
     return () => observer.disconnect();
   }, []);
 
-  const showCard = hasEntered && isVisible !== false;
+  const showCard = hasEntered;
 
   const productId = product.id || product._id || '';
   const isFav = favorites.some((f) => (f.id || f._id) === productId);
@@ -55,33 +50,6 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
   // Available stock calculation
   const availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
   const isOutOfStock = product.isOutOfStock !== undefined ? product.isOutOfStock : availableStock <= 0;
-
-  const handleAddToBasket = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isAuthenticated) {
-      showToast('Please login to add items to your basket', 'info');
-      return;
-    }
-    if (isOutOfStock) {
-      showToast(`${product.name} is out of stock`, 'error');
-      return;
-    }
-
-    const existing = items.find((i) => i.productId === productId);
-    const existingQty = existing ? existing.quantity : 0;
-    if (existingQty + 1 > availableStock) {
-      showToast(`Only ${availableStock} in stock`, 'error');
-      return;
-    }
-
-    addItem({
-      productId,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-    });
-    showToast(`Added ${product.name} to basket`, 'success');
-  };
 
   const handleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -107,7 +75,7 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
     >
       {/* Image */}
       <div
-        className="h-[140px] md:h-[180px] bg-bg-surface flex items-center justify-center relative overflow-hidden"
+        className="h-[160px] sm:h-[190px] md:h-[220px] bg-bg-surface flex items-center justify-center relative overflow-hidden"
       >
         {product.imageUrl ? (
           <OptimizedImage
@@ -115,7 +83,7 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
             alt={product.name}
             width={480}
             quality={80}
-            className="absolute inset-0 w-full h-full object-cover object-center"
+            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
           />
         ) : (
           <span className="text-text-dim text-xs tracking-wider font-semibold z-10 relative">STITCH PREVIEW</span>
@@ -123,14 +91,14 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
         
         {/* Out of Stock badge */}
         {isOutOfStock && (
-          <span className="absolute top-3 left-3 bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">
+          <span className="absolute top-3 left-3 bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">
             Out of Stock
           </span>
         )}
 
         {/* Low Stock badge */}
         {!isOutOfStock && availableStock > 0 && availableStock <= 5 && (
-          <span className="absolute top-3 left-3 bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm backdrop-blur-[2px]">
+          <span className="absolute top-3 left-3 bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm backdrop-blur-[2px]">
             Only {availableStock} left
           </span>
         )}
@@ -139,94 +107,43 @@ export default function ProductCard({ product, onQuickView, index = 0, isVisible
         <button
           suppressHydrationWarning
           onClick={handleFavorite}
-          className={`absolute top-3 right-3 bg-black/30 border-none p-2 rounded-full cursor-pointer backdrop-blur-[4px] transition-all duration-200 ${
+          className={`absolute top-3 right-3 bg-black/40 border border-white/10 p-2 rounded-xl cursor-pointer backdrop-blur-[6px] transition-all duration-200 active:scale-95 z-10 ${
             isFav ? 'text-danger' : 'text-text-dim hover:text-danger'
           }`}
+          title={isFav ? 'Remove from favorites' : 'Add to favorites'}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </button>
+
+        {/* Floating Quick View glass pill on hover */}
+        <div className="absolute inset-x-0 bottom-3 flex justify-center items-center pointer-events-none px-3 z-10">
+          <span className="opacity-0 translate-y-2.5 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out bg-bg-dark/85 hover:bg-primary backdrop-blur-md border border-white/20 hover:border-primary text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5 select-none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>Quick View</span>
+          </span>
+        </div>
       </div>
 
       {/* Details */}
-      <div className="p-3 sm:p-4 md:p-5 flex flex-col flex-1">
-        <span className="inline-block w-fit px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
-          {product.tag || 'Design'}
-        </span>
-        <div className="flex justify-between items-baseline mb-1">
-          <h3 className="font-semibold text-sm md:text-base line-clamp-1">{product.name}</h3>
-          <span className="text-primary font-bold text-sm md:text-lg">₱{product.price.toFixed(2)}</span>
+      <div className="p-3.5 sm:p-4 flex flex-col flex-1 justify-between gap-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-bold uppercase tracking-wider">
+            {product.tag || 'Design'}
+          </span>
+          <span className="text-primary font-bold text-sm sm:text-base">₱{product.price.toFixed(2)}</span>
         </div>
-        {product.rating && (product.reviewCount || 0) > 0 ? (
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <div className="flex items-center text-amber-400 text-[11px] tracking-tight">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} className={i < Math.round(product.rating!) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
-              ))}
-            </div>
-            <span className="text-[10px] font-bold text-text-main font-mono">{product.rating.toFixed(1)}</span>
-            <span className="text-[10px] text-text-dim font-medium">({product.reviewCount})</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[10px] text-primary/80 font-semibold bg-primary/10 px-1.5 py-0.5 rounded">
-              Machine Embroidery
-            </span>
-            <span className="text-[10px] text-text-dim/70 font-medium">· New Release</span>
-          </div>
-        )}
-        <p className="text-text-dim text-[0.75rem] md:text-[0.85rem] leading-relaxed mb-2 line-clamp-2">
-          {product.description || 'Professional embroidery design.'}
-        </p>
-
-        {/* Variant color dots hint */}
-        {product.variants && product.variants.length > 0 && (
-          <div className="flex items-center gap-1.5 my-1.5">
-            <span className="text-[10px] text-text-dim font-bold uppercase tracking-wider mr-1">Options:</span>
-            {product.variants.slice(0, 5).map((v, i) => (
-              <span
-                key={i}
-                className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shadow-sm"
-                style={{ backgroundColor: v.color || '#b91c1c' }}
-                title={v.name}
-              />
-            ))}
-            {product.variants.length > 5 && (
-              <span className="text-[10px] text-text-dim font-bold">+{product.variants.length - 5}</span>
-            )}
-          </div>
-        )}
-        <div className="flex gap-1.5 sm:gap-2 mt-auto pt-2">
-          <GlassButton
-            variant="secondary"
-            fullWidth
-            size="sm"
-            onClick={(e) => {
-              if (product.variants && product.variants.length > 0) {
-                e.stopPropagation();
-                onQuickView(product);
-              } else {
-                handleAddToBasket(e);
-              }
-            }}
-            disabled={isOutOfStock}
-          >
-            <span className="truncate">Add to Bag</span>
-          </GlassButton>
-          <GlassButton
-            variant="primary"
-            fullWidth
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickView(product);
-            }}
-            disabled={isOutOfStock}
-            className="font-bold shadow-sm"
-          >
-            Buy Now
-          </GlassButton>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm sm:text-[0.95rem] text-text-main line-clamp-1 group-hover:text-primary transition-colors m-0">
+            {product.name}
+          </h3>
+          <span className="text-text-dim/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all text-xs shrink-0 select-none">
+            →
+          </span>
         </div>
       </div>
     </div>

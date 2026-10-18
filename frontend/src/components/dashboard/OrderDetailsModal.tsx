@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
-import DeliveryTracker from '@/components/dashboard/DeliveryTracker';
+import WaybillModal from '@/components/dashboard/WaybillModal';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import OrderReviewModal from '@/components/dashboard/OrderReviewModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
 import { useBasketStore } from '@/stores/useBasketStore';
-import { getOrderStage } from '@/lib/orderStatus';
+import { getOrderStage, TOTAL_STEPS } from '@/lib/orderStatus';
 
 interface OrderDetailsModalProps {
   order: Order | null;
@@ -26,34 +26,23 @@ export default function OrderDetailsModal({
   order,
   isOpen,
   onClose,
-  initialTab = 'summary',
   onOrderCancelled,
   onReorder
 }: OrderDetailsModalProps) {
-  const [activeTab, setActiveTab] = useState<'summary' | 'tracking'>(initialTab);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isClaimSlipOpen, setIsClaimSlipOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab, isOpen]);
+  const [helpCategory, setHelpCategory] = useState<string | undefined>(undefined);
 
   if (!order) return null;
 
-  const personalization = (order.personalization && typeof order.personalization === 'object') ? (order.personalization as any) : {};
-  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+  const stage = getOrderStage(order);
+  const percent = Math.min(100, Math.max(10, (stage.step / TOTAL_STEPS) * 100));
 
-  const isCanceled = order.status === 'Order Canceled' || order.status === 'Canceled' || order.status === 'Cancelled';
-  
-  const isCompletedOrDelivered = 
-    order.status === 'Completed' ||
-    order.status === 'Order Delivered' ||
-    order.status === 'Claimed' ||
-    order.status === 'Delivered' ||
-    (order.progress ?? 0) >= 100 ||
-    getOrderStage(order).tone === 'done';
+  const isCanceled = stage.tone === 'cancelled';
+  const isCompletedOrDelivered = stage.tone === 'done';
 
   const isInProduction = [
     'Preparing Order',
@@ -64,8 +53,21 @@ export default function OrderDetailsModal({
     'Out for Delivery'
   ].includes(order.status) && !isCompletedOrDelivered;
 
-  // Can cancel only while still before Preparing Order (e.g. In Queue, Awaiting Payment, Pending Payment)
-  const canCancel = !isCanceled && !isInProduction && !isCompletedOrDelivered;
+  // Option A: Paid orders (GCash, Maya, etc.) require workshop mediation/counter visit for cancellation & refund.
+  // Direct self-service cancel is reserved for unpaid orders before production.
+  const isPaid = order.paymentStatus?.toLowerCase() === 'paid' ||
+    (Boolean(order.paymentMethod) && 
+     !['none', 'unpaid', 'pending'].includes(order.paymentMethod.toLowerCase()) && 
+     order.paymentStatus?.toLowerCase() !== 'unpaid');
+
+  const canCancel = !isCanceled && !isInProduction && !isCompletedOrDelivered && !isPaid;
+
+  const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+  const claimCode = (order.personalization as any)?.claimCode || (
+    order.orderId.startsWith('WI-')
+      ? `#${order.orderId.replace('WI-', 'A-')}`
+      : `#A-${cleanId.slice(-4)}`
+  );
 
   const handleCancelOrder = async () => {
     if (!canCancel || isCancelling) return;
@@ -99,7 +101,7 @@ export default function OrderDetailsModal({
       return;
     }
     if (!order.items || order.items.length === 0) {
-      showToast('No catalog items available to reorder from this order.', 'info');
+      showToast('No items available to reorder from this order.', 'info');
       return;
     }
     const { addItem } = useBasketStore.getState();
@@ -121,256 +123,273 @@ export default function OrderDetailsModal({
     onClose();
   };
 
+  // Tone color styling
+  const statusBadgeStyle = isCanceled
+    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+    : isCompletedOrDelivered
+      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+      : stage.tone === 'shipping'
+        ? 'bg-secondary/15 text-secondary border border-secondary/30'
+        : 'bg-primary/15 text-primary border border-primary/30';
+
+  const statusCardStyle = isCanceled
+    ? 'bg-red-500/10 border-red-500/25'
+    : isCompletedOrDelivered
+      ? 'bg-emerald-500/10 border-emerald-500/25'
+      : stage.tone === 'shipping'
+        ? 'bg-secondary/10 border-secondary/25'
+        : 'bg-amber-500/10 border-amber-500/25';
+
   return (
-    <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[620px]">
-      <div className="modal-stack">
-        {/* Order Header */}
-        <div className="flex justify-between items-start border-b border-border-glass pb-3">
+    <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[560px]">
+      <div className="flex flex-col gap-3 text-left">
+        {/* 1. Header: Order ID + Status + Claim Code (Compact) */}
+        <div className="flex items-center justify-between pb-2.5 border-b border-border-glass">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="modal-title-sm text-primary m-0">{order.orderId}</h3>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                isCanceled
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : isCompletedOrDelivered
-                    ? 'bg-success/20 text-success'
-                    : 'bg-primary/20 text-primary'
-              }`}>
-                {order.status}
+              <span className="font-mono font-black text-primary text-base sm:text-lg">#{order.orderId}</span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusBadgeStyle}`}>
+                {stage.label}
               </span>
             </div>
-            <p className="text-xs text-text-dim mt-1 m-0">
-              Placed on {new Date(order.date).toLocaleString()} • {order.paymentMethod.toUpperCase()}
+            <p className="text-[0.72rem] text-text-dim mt-0.5 m-0">
+              Placed on {new Date(order.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} • Paid via {order.paymentMethod.toUpperCase()}
             </p>
           </div>
+
+          {claimCode && !isCanceled && (
+            <div className="bg-white/5 border border-white/10 px-2.5 py-1 rounded-xl text-right shrink-0">
+              <span className="text-[0.62rem] text-text-dim block uppercase font-bold tracking-wider">Claim Code</span>
+              <span className="font-mono font-black text-xs text-text-main">{claimCode}</span>
+            </div>
+          )}
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-border-glass gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('summary')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-none ${
-              activeTab === 'summary'
-                ? '!border-b-2 !border-primary text-primary'
-                : 'text-text-dim hover:text-text-main'
-            }`}
-          >
-            Order Items & Receipt
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('tracking')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-none flex items-center gap-1.5 ${
-              activeTab === 'tracking'
-                ? '!border-b-2 !border-primary text-primary'
-                : 'text-text-dim hover:text-text-main'
-            }`}
-          >
-            <span>{isPickup ? 'Pick-up & Claim Tracking' : 'Logistics & Shipping Tracking'}</span>
-            {!isCanceled && (
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
-            )}
-          </button>
-        </div>
-
-        {/* Content based on Active Tab */}
-        {activeTab === 'tracking' ? (
-          <div className="pt-2">
-            <DeliveryTracker order={order} />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 pt-1">
-            {/* Items List */}
-            <div className="modal-section">
-              <h4 className="modal-label">Items Ordered</h4>
-              <div className="flex flex-col gap-2">
-                {order.items.map((item, idx) => {
-                  const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
-                  return (
-                    <div key={idx} className="modal-box flex justify-between items-start">
-                      <div className="flex flex-col text-left">
-                        <span className="font-bold text-[0.85rem] text-text-main">{item.name}</span>
-                        <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5 font-medium">
-                          {item.selectedColor && (
-                            <span 
-                              className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0 shadow-sm" 
-                              style={{ backgroundColor: item.selectedColor }} 
-                            />
-                          )}
-                          <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
-                        </div>
-                      </div>
-                      <span className="font-mono font-bold text-[0.85rem] text-text-main">
-                        ₱{(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="bg-bg-surface rounded-xl p-4 border border-border-glass flex flex-col gap-2">
-              <div className="flex justify-between text-[0.8rem]">
-                <span className="text-text-dim">Payment Method</span>
-                <span className="font-bold uppercase">{order.paymentMethod}</span>
-              </div>
-              <div className="flex justify-between text-[0.8rem]">
-                <span className="text-text-dim">{isPickup ? 'Fulfillment Type' : 'Delivery Preferences'}</span>
-                <span className="font-bold">{isPickup ? 'Store Pick-up (Pacific Mall Lucena)' : (order.deliveryTime || 'As soon as possible')}</span>
-              </div>
-              <div className="flex justify-between text-base pt-2 border-t border-border-glass/50">
-                <span className="font-bold">Total Amount</span>
-                <span className="font-extrabold text-primary">₱{order.totalAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-[0.78rem] pt-2 border-t border-border-glass/40">
-                <span className="text-text-dim">Official Receipt</span>
-                <button
-                  type="button"
-                  onClick={() => setIsReceiptModalOpen(true)}
-                  className="text-primary hover:underline font-semibold bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  <span>View Printable Receipt →</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Shipping / Notes */}
-            <div className="modal-section">
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-center">
-                  <span className="modal-label">{isPickup ? 'Store Pick-up Location' : 'Shipping Address'}</span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('tracking')}
-                    className="text-[0.7rem] text-primary hover:underline bg-transparent border-none cursor-pointer font-semibold"
-                  >
-                    {isPickup ? 'Track Pick-up →' : 'Track Delivery →'}
-                  </button>
-                </div>
-                <div className="modal-box text-[0.85rem]">
-                  {(order.address ? order.address.replace(/&amp;/g, '&') : 'No address provided.')}
-                </div>
-              </div>
-              
-              {order.notes && (
-                <div className="flex flex-col gap-1">
-                  <span className="modal-label">Notes to Seller</span>
-                  <div className="modal-box text-[0.85rem] italic text-text-dim">
-                    "{order.notes}"
-                  </div>
-                </div>
+        {/* 2. Compact Status & Store Pick-up Card */}
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${statusCardStyle}`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+              {isCanceled ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-400">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              ) : isCompletedOrDelivered ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 14 14" />
+                </svg>
               )}
             </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-xs text-text-main leading-tight truncate">
+                {isCanceled
+                  ? 'Order Cancelled'
+                  : isCompletedOrDelivered
+                    ? 'Claimed at Pacific Mall Studio'
+                    : 'Crafting at Pacific Mall Studio'}
+              </span>
+              <span className="text-[0.68rem] text-text-dim/80 mt-0.5">
+                Pacific Mall Lucena • Ground Floor
+              </span>
+            </div>
+          </div>
+
+          {!isCanceled && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsClaimSlipOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
+                title="View your digital claim slip & QR code"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span>Claim Slip</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
+                title="View receipt"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <span>Receipt</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Progress Bar (Step X of 5) */}
+        {!isCanceled && (
+          <div className="bg-bg-surface/60 border border-border-glass rounded-xl p-2.5 flex flex-col gap-1.5">
+            <div className="flex justify-between items-center text-[0.68rem]">
+              <span className="text-text-dim font-medium">{stage.hint}</span>
+              <span className="font-bold text-text-main">Step {stage.step} of {TOTAL_STEPS}</span>
+            </div>
+            <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+            </div>
           </div>
         )}
 
-        {/* Informational warning only if active in production */}
-        {isInProduction && !isCanceled && (
-          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <span>
-              <strong>Cancellation locked:</strong> Order is in <em>{order.status}</em> status. Embroidery production is underway and cannot be cancelled.
+        {/* 4. Unified Ordered Items & Payment Card (High-density) */}
+        <div className="bg-bg-surface/80 border border-border-glass rounded-xl p-3 flex flex-col gap-2">
+          <div className="flex justify-between items-center pb-1.5 border-b border-white/5">
+            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">
+              Items Ordered ({order.items?.length || 0})
             </span>
           </div>
-        )}
 
-        {/* Completion status confirmation */}
-        {isCompletedOrDelivered && (
-          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2.5 shadow-sm">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-400">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            <span>
-              <strong>Order Fulfilled:</strong> This order has been successfully claimed & delivered. Thank you!
-            </span>
+          {/* Items rows */}
+          <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+            {order.items && order.items.length > 0 ? (
+              order.items.map((item, idx) => {
+                const variantText = [
+                  item.selectedVariant,
+                  item.selectedSize ? `Size: ${item.selectedSize}` : null
+                ].filter(Boolean).join(' • ');
+
+                const persText = item.personalization?.text || (order.personalization as any)?.text;
+                const persColor = item.personalization?.threadColor || (order.personalization as any)?.threadColor || (order.personalization as any)?.color;
+
+                return (
+                  <div key={idx} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {item.imageUrl && (
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.name} 
+                          className="w-8 h-8 rounded-lg object-cover bg-black/40 border border-white/10 shrink-0" 
+                        />
+                      )}
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-text-main truncate text-xs leading-tight">{item.name}</span>
+                        <div className="flex items-center gap-1 text-[0.68rem] text-text-dim flex-wrap">
+                          <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                          {persText && (
+                            <span className="text-primary font-semibold">
+                              • Stitch: &ldquo;{persText}&rdquo; ({persColor || 'Gold'})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-xs text-text-main shrink-0 ml-2">
+                      ₱{(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-xs text-text-dim italic">Custom embroidery stitch order</div>
+            )}
+          </div>
+
+          {/* Total row */}
+          <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
+            <span className="text-text-dim">Paid via {order.paymentMethod.toUpperCase()}:</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-black text-sm text-text-main">₱{order.totalAmount.toFixed(2)}</span>
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(true)}
+                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-text-dim hover:text-text-main border border-border-glass text-[0.68rem] font-medium transition-all cursor-pointer flex items-center gap-1"
+                title="View receipt"
+              >
+                <span>Receipt</span>
+                <span className="opacity-60">↗</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Notes / Instructions (if any) */}
+        {order.notes && (
+          <div className="px-3 py-2 bg-white/[0.02] border border-border-glass rounded-xl text-[0.72rem] text-text-dim flex items-center gap-2">
+            <span className="font-bold text-text-main shrink-0">Note:</span>
+            <span className="italic truncate">&ldquo;{order.notes}&rdquo;</span>
           </div>
         )}
 
-        {/* Footer Actions */}
-        <div className="modal-footer pt-3 border-t border-border-glass flex flex-wrap items-center gap-2">
+        {/* Paid Order modification notice */}
+        {isPaid && !isCanceled && !isCompletedOrDelivered && (
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/5 text-[0.68rem] text-text-dim">
+            <span>Need changes or cancellation?</span>
+            <button
+              type="button"
+              onClick={() => {
+                setHelpCategory('Order Cancellation & Refund');
+                setIsHelpModalOpen(true);
+              }}
+              className="text-primary hover:underline font-semibold bg-transparent border-none p-0 cursor-pointer"
+            >
+              Contact Workshop Studio →
+            </button>
+          </div>
+        )}
+
+        {/* 6. Action Buttons Bar */}
+        <div className="pt-2 border-t border-border-glass flex items-center gap-2">
           <button 
             type="button"
             onClick={onClose}
-            className="flex-1 min-w-[85px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 hover:bg-white/10 border border-border-glass transition-all cursor-pointer text-text-main flex items-center justify-center active:scale-[0.98]"
+            className="flex-1 h-9 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 border border-border-glass transition-all cursor-pointer text-text-main flex items-center justify-center active:scale-[0.98]"
           >
             Close
           </button>
 
-          {!isCanceled && !isCompletedOrDelivered && (
+          {!isCanceled && !isCompletedOrDelivered && canCancel && (
             <button
               type="button"
               onClick={handleCancelOrder}
-              disabled={!canCancel || isCancelling}
-              title={
-                !canCancel 
-                  ? "Orders in 'Preparing Order' or later cannot be cancelled because custom production has begun." 
-                  : "Cancel this order"
-              }
-              className={`flex-1 min-w-[120px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 ${
-                canCancel
-                  ? 'bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 cursor-pointer active:scale-[0.98]'
-                  : 'bg-white/5 border border-white/10 text-text-muted/40 opacity-40 grayscale cursor-not-allowed'
-              }`}
+              disabled={isCancelling}
+              className="flex-1 h-9 rounded-xl font-bold text-xs bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 transition-all cursor-pointer flex items-center justify-center active:scale-[0.98]"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-              <span>{isCancelling ? 'Cancelling...' : 'Cancel Order'}</span>
+              {isCancelling ? 'Cancelling...' : 'Cancel Order'}
             </button>
           )}
 
           {isCompletedOrDelivered ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsReviewModalOpen(true)}
-                className="flex-[1.2] min-w-[130px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap bg-gradient-to-r from-amber-500/20 via-amber-400/15 to-amber-500/20 hover:from-amber-500/30 hover:via-amber-400/25 hover:to-amber-500/30 text-amber-200 border border-amber-400/40 hover:border-amber-400/60 shadow-[0_2px_12px_rgba(245,158,11,0.15)] hover:shadow-[0_4px_16px_rgba(245,158,11,0.25)] active:scale-[0.98]"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 shrink-0">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                <span>{order.myReview ? `Rated ${order.myReview.rating}★ · Edit Review` : 'Rate Order'}</span>
-              </button>
-              <button 
-                type="button"
-                onClick={handleReorderAction}
-                className="flex-1 min-w-[105px] h-10 px-4 rounded-xl font-bold text-xs sm:text-sm bg-primary hover:bg-primary/90 text-white shadow-[0_2px_10px_rgba(99,102,241,0.25)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.35)] transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M3 2v6h6" />
-                  <path d="M21 12A9 9 0 0 0 6 5.3L3 8" />
-                  <path d="M21 22v-6h-6" />
-                  <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
-                </svg>
-                <span>Buy Again</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setIsReviewModalOpen(true)}
+              className="flex-1 h-9 rounded-xl font-bold text-xs bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            >
+              <span>★</span>
+              <span>{order.myReview ? 'Edit Review' : 'Rate Order'}</span>
+            </button>
           ) : (
             <button
               type="button"
-              onClick={() => setIsHelpModalOpen(true)}
-              className="flex-1 min-w-[130px] h-10 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+              onClick={() => {
+                setHelpCategory(undefined);
+                setIsHelpModalOpen(true);
+              }}
+              className={`flex-1 h-9 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                isPaid
+                  ? 'bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary'
+                  : 'bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main font-semibold'
+              }`}
+              title={isPaid ? 'Need changes, cancellation, or workshop help? Contact our studio' : 'Workshop Help & FAQs'}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              <span>Workshop Support</span>
+              <span>Workshop Help</span>
             </button>
           )}
         </div>
@@ -380,6 +399,7 @@ export default function OrderDetailsModal({
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
         defaultOrderId={order.orderId}
+        defaultCategory={helpCategory}
       />
 
       <OrderReviewModal
@@ -400,6 +420,12 @@ export default function OrderDetailsModal({
         order={order}
         isOpen={isReceiptModalOpen}
         onClose={() => setIsReceiptModalOpen(false)}
+      />
+
+      <WaybillModal
+        order={order}
+        isOpen={isClaimSlipOpen}
+        onClose={() => setIsClaimSlipOpen(false)}
       />
     </GlassModal>
   );

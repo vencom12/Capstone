@@ -32,6 +32,22 @@ export default function StorefrontPage() {
 
   // Computed staff check: immediately true if logged in as staff, false otherwise
   const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'employee');
+  const [isPendingAuth, setIsPendingAuth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return isGoogleAuthPending();
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (!isPendingAuth) return;
+    const interval = setInterval(() => {
+      if (!isGoogleAuthPending()) {
+        setIsPendingAuth(false);
+      }
+    }, 150);
+    return () => clearInterval(interval);
+  }, [isPendingAuth]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
@@ -50,7 +66,7 @@ export default function StorefrontPage() {
   }, [isStaff, user?.role, user?.username, router]);
 
   useEffect(() => {
-    if (isStaff) return;
+    if (isStaff || isPendingAuth) return;
 
     if (isAuthenticated) {
       fetchDashboardState()
@@ -117,7 +133,7 @@ export default function StorefrontPage() {
     setIsModalOpen(true);
   };
 
-  if (isStaff) {
+  if (isStaff || isPendingAuth) {
     return (
       <div
         className="fixed inset-0 w-full h-full select-none z-[99990]"

@@ -15,24 +15,20 @@ interface DashboardSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onMobileToggle?: () => void;
-  onOpenAddressBook?: () => void;
 }
 
 export default function DashboardSidebar({ 
   activeTab, 
   setActiveTab, 
-  onMobileToggle,
-  onOpenAddressBook 
+  onMobileToggle
 }: DashboardSidebarProps) {
   const { user, logout } = useAuthStore();
-  const { isSidebarOpen, setSidebarOpen } = useUIStore();
+  const { isSidebarOpen, setSidebarOpen, isHelpOpen, setHelpOpen, isTermsOpen, setTermsOpen } = useUIStore();
   const basketCount = useBasketStore((s) => s.getCount());
   const [mounted, setMounted] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
-  const [isTermsOpen, setIsTermsOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
 
@@ -91,57 +87,33 @@ export default function DashboardSidebar({
     }
   };
 
-  // Primary desktop / wide screen nav items
+  // Primary desktop / wide screen nav items (Orders hub includes active tracking & past receipts)
   const desktopNavItems = [
-    {
-      id: 'tracking', label: 'Order Tracking', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-      )
-    },
-    {
-      id: 'history', label: 'Payments & Receipts', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-      )
-    },
-    {
-      id: 'favs', label: 'My Favorites', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-      )
-    },
     {
       id: 'basket', label: 'My Basket', icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
       )
     },
     {
-      id: 'settings', label: 'Account Settings', icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+      id: 'tracking', label: 'My Orders', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      )
+    },
+    {
+      id: 'favs', label: 'My Favorites', icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
       )
     }
   ];
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[1999] hidden max-md:block backdrop-blur-sm transition-opacity"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
       <aside
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        className={`
-        h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 shrink-0 z-[2000]
-        w-[260px] max-[1100px]:w-[80px] max-md:w-[290px]
-        max-md:fixed max-md:left-0 max-md:top-0
-        ${isSidebarOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full'}
-      `}>
+        className="hidden md:flex flex-col h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass transition-all duration-300 shrink-0 z-[2000] w-[260px] max-[1100px]:w-[80px]"
+      >
         {/* Header / Logo */}
         <div className="p-4 pt-5 pb-3 border-b border-border-glass/40 flex items-center justify-between shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer min-w-0 max-[1100px]:justify-center max-md:justify-start">
+          <Link href="/" className="flex items-center gap-2.5 no-underline cursor-pointer min-w-0 max-[1100px]:justify-center">
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
@@ -149,242 +121,13 @@ export default function DashboardSidebar({
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               </div>
             )}
-            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-md:inline truncate">
+            <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden truncate">
               Stitch-Opt
             </span>
           </Link>
-
-          {/* Close button for mobile drawer */}
-          <button
-            suppressHydrationWarning
-            onClick={() => setSidebarOpen(false)}
-            className="w-8 h-8 rounded-full bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 hidden max-md:flex items-center justify-center cursor-pointer transition-all shrink-0"
-            aria-label="Close navigation"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
         </div>
 
-        {/* ============================================================ */}
-        {/* MOBILE DRAWER CONTENT (Only rendered on mobile view <= 768px) */}
-        {/* Curated: Receipts, Saved, Addresses, Help, Policies, Theme, Sign out */}
-        {/* ============================================================ */}
-        <div className="hidden max-md:flex flex-col flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
-          {/* Return to Products Catalog */}
-          <Link
-            href="/#products-section"
-            onClick={closeMobileDrawer}
-            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs no-underline active:scale-95 transition-all shadow-sm"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Browse Products</span>
-          </Link>
-
-          {/* Quick Account Profile Card */}
-          <button
-            onClick={() => {
-              setActiveTab('settings');
-              closeMobileDrawer();
-            }}
-            className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left cursor-pointer transition-all ${
-              activeTab === 'settings'
-                ? 'bg-primary/15 border-primary text-text-main shadow-sm'
-                : 'bg-white/[0.04] border-border-glass hover:bg-white/10 text-text-main'
-            }`}
-            title="Open Account Settings"
-          >
-            <div className="w-11 h-11 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-base shrink-0">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm text-text-main truncate">{user?.username || 'Customer'}</span>
-                {user?.isEmailVerified && (
-                  <span className="text-[0.65rem] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">
-                    Verified
-                  </span>
-                )}
-              </div>
-              <p className="text-[0.75rem] text-text-dim truncate m-0">{user?.email || 'Customer Account'}</p>
-            </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim opacity-70 shrink-0">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-
-          {/* Drawer Section 1: Customer Activity & Shortcuts */}
-          <div>
-            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim/70 px-2 block mb-1.5">
-              Activity & Records
-            </span>
-            <div className="flex flex-col gap-1">
-              {/* Receipts / Transactions */}
-              <button
-                onClick={() => {
-                  setActiveTab('history');
-                  closeMobileDrawer();
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer text-left transition-all ${
-                  activeTab === 'history'
-                    ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
-                    : 'bg-transparent text-text-main border-transparent hover:bg-white/5'
-                }`}
-              >
-                <div className="shrink-0 text-current">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Payments & Receipts</div>
-                  <div className={`text-[0.72rem] ${activeTab === 'history' ? 'text-white/80' : 'text-text-dim'}`}>Orders archive & official receipts</div>
-                </div>
-                <span className="text-xs opacity-60">→</span>
-              </button>
-
-              {/* Saved / Favorites */}
-              <button
-                onClick={() => {
-                  setActiveTab('favs');
-                  closeMobileDrawer();
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer text-left transition-all ${
-                  activeTab === 'favs'
-                    ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
-                    : 'bg-transparent text-text-main border-transparent hover:bg-white/5'
-                }`}
-              >
-                <div className="shrink-0 text-current">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Saved Favorites</div>
-                  <div className={`text-[0.72rem] ${activeTab === 'favs' ? 'text-white/80' : 'text-text-dim'}`}>Your curated designs</div>
-                </div>
-                <span className="text-xs opacity-60">→</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Drawer Section 2: Support & Studio Policies */}
-          <div>
-            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim/70 px-2 block mb-1.5">
-              Support & Guidelines
-            </span>
-            <div className="flex flex-col gap-1">
-              {/* In-Dashboard Help & FAQs Modal Trigger */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsHelpOpen(true);
-                  closeMobileDrawer();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-transparent text-text-main hover:bg-white/5 cursor-pointer text-left transition-all"
-              >
-                <div className="shrink-0 text-text-dim">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><path d="9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Help & FAQs</div>
-                  <div className="text-[0.72rem] text-text-dim">Ordering guide, digitizing & support</div>
-                </div>
-                <span className="text-xs opacity-60">→</span>
-              </button>
-
-              {/* Store Policies & Terms */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsTermsOpen(true);
-                  closeMobileDrawer();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-transparent text-text-main hover:bg-white/5 cursor-pointer text-left transition-all"
-              >
-                <div className="shrink-0 text-text-dim">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[0.9rem] font-medium leading-tight">Store Policies</div>
-                  <div className="text-[0.72rem] text-text-dim">Terms of service & privacy</div>
-                </div>
-                <span className="text-xs opacity-60">→</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Drawer Section 3: Preferences & Session */}
-          <div className="pt-2 border-t border-border-glass/60 flex flex-col gap-1.5">
-            {/* Push Notifications Toggle Button */}
-            <button
-              onClick={handleTogglePush}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border-glass/40 bg-white/[0.02] hover:bg-white/5 cursor-pointer transition-all text-text-main"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-text-dim">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                  </svg>
-                </div>
-                <span className="text-[0.88rem] font-medium">Order Push Alerts</span>
-              </div>
-              <span className={`text-[0.68rem] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider ${
-                pushStatus === 'granted'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-white/10 text-text-dim'
-              }`}>
-                {pushStatus === 'granted' ? 'Active' : 'Enable'}
-              </span>
-            </button>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border-glass/40 bg-white/[0.02] hover:bg-white/5 cursor-pointer transition-all text-text-main"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-text-dim">
-                  {currentTheme === 'light' ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                  )}
-                </div>
-                <span className="text-[0.88rem] font-medium">Theme</span>
-              </div>
-              <span className="text-xs px-2.5 py-1 rounded-lg bg-white/10 font-bold uppercase tracking-wider text-text-dim">
-                {currentTheme === 'light' ? 'Light' : 'Dark'}
-              </span>
-            </button>
-
-
-            {/* Logout / Sign out */}
-            <button
-              onClick={() => {
-                closeMobileDrawer();
-                logout();
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-danger/20 text-danger hover:bg-danger/10 cursor-pointer transition-all text-left"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              <span className="text-[0.9rem] font-semibold">Sign Out</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="max-md:hidden flex flex-col flex-1">
+        <div className="flex flex-col flex-1">
           {/* Return to Products Shop Button */}
           <div className="px-3 pt-3">
             <Link
@@ -417,7 +160,7 @@ export default function DashboardSidebar({
                   <div className="shrink-0 relative">
                     {item.icon}
                     {item.id === 'basket' && mounted && basketCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-primary text-[0.6rem] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold border border-bg-sidebar shadow-sm">
+                      <span className="absolute -top-1.5 -right-1.5 bg-primary text-[0.6rem] text-white w-4 h-4 rounded-full flex items-center justify-center font-bold border border-bg-sidebar shadow-sm max-[1100px]:flex hidden">
                         {basketCount}
                       </span>
                     )}
@@ -464,7 +207,7 @@ export default function DashboardSidebar({
             </button>
 
             <button
-              onClick={() => setIsHelpOpen(true)}
+              onClick={() => setHelpOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
               title="Help & FAQs"
             >
@@ -475,7 +218,7 @@ export default function DashboardSidebar({
             </button>
 
             <button
-              onClick={() => setIsTermsOpen(true)}
+              onClick={() => setTermsOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"
               title="Terms & Store Policies"
             >
@@ -499,12 +242,12 @@ export default function DashboardSidebar({
 
       <TermsAndPoliciesModal
         isOpen={isTermsOpen}
-        onClose={() => setIsTermsOpen(false)}
+        onClose={() => setTermsOpen(false)}
       />
 
       <CustomerHelpModal
         isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
+        onClose={() => setHelpOpen(false)}
       />
 
     </>
