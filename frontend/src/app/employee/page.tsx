@@ -19,6 +19,7 @@ import { showToast } from '@/components/ui/Toast';
 import GlassDatePicker from '@/components/ui/GlassDatePicker';
 import GlassSelect from '@/components/ui/GlassSelect';
 import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
+import PanelCounterMode from '@/components/admin/PanelCounterMode';
 import Pagination from '@/components/ui/Pagination';
 import { toggleTheme } from '@/lib/theme';
 import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
@@ -36,6 +37,7 @@ export default function EmployeePage() {
   const tabTitles: Record<string, string> = {
     workbench: 'My Workbench',
     orders: 'Order Queue',
+    counter: 'Walk-In Counter',
     history: 'Order History',
     support: 'Workshop Quality (QA)',
     settings: 'Settings'
@@ -162,7 +164,7 @@ export default function EmployeePage() {
   useEffect(() => {
     try {
       const savedTab = sessionStorage.getItem('stitch-employee-tab');
-      const validTabs = ['workbench', 'orders', 'history', 'support', 'settings'];
+      const validTabs = ['workbench', 'orders', 'counter', 'history', 'support', 'settings'];
       if (savedTab && validTabs.includes(savedTab)) {
         setActiveTab(savedTab);
       } else {
@@ -1023,6 +1025,17 @@ export default function EmployeePage() {
           </section>
         );
 
+      case 'counter':
+        return (
+          <section className="animate-[fadeIn_0.3s_ease-out]">
+            <PanelCounterMode
+              orders={orders}
+              refreshData={fetchEmployeeData}
+              isSyncing={isSyncing}
+              setOrders={setOrders}
+            />
+          </section>
+        );
 
       case 'history':
         return (

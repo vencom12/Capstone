@@ -12,7 +12,6 @@ import PanelManageDesigns from '@/components/admin/PanelManageDesigns';
 import PanelRawMaterials from '@/components/admin/PanelRawMaterials';
 import PanelStaffing from '@/components/admin/PanelStaffing';
 import PanelAnalytics from '@/components/admin/PanelAnalytics';
-import PanelCounterMode from '@/components/admin/PanelCounterMode';
 import PanelSettings from '@/components/admin/PanelSettings';
 import PanelAuditTrail from '@/components/admin/PanelAuditTrail';
 import PanelFeedbackManagement from '@/components/admin/PanelFeedbackManagement';
@@ -45,7 +44,6 @@ export default function AdminPage() {
 
   const tabTitles: Record<string, string> = {
     overview: 'Overview',
-    counter: 'Walk-In Counter',
     products: 'Products',
     materials: 'Materials',
     staffing: 'Personnel',
@@ -450,15 +448,6 @@ export default function AdminPage() {
             isSyncing={isSyncing}
             refreshData={fetchAdminData}
             dbType={dbType}
-            setOrders={setOrders}
-          />
-        );
-      case 'counter':
-        return (
-          <PanelCounterMode
-            orders={orders}
-            refreshData={fetchAdminData}
-            isSyncing={isSyncing}
             setOrders={setOrders}
           />
         );

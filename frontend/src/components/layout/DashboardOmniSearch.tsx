@@ -98,7 +98,6 @@ export default function DashboardOmniSearch({
     if (role === 'admin') {
       return [
         { id: 'overview', title: 'Dashboard Overview', desc: 'KPIs, stats, and real-time operations', category: 'Navigation' },
-        { id: 'counter', title: 'Walk-In Counter Mode', desc: 'POS tickets, claim slips, and on-site payments', category: 'Navigation' },
         { id: 'products', title: 'Product Catalog', desc: 'Manage base fans, bags, aprons, and pricing', category: 'Navigation' },
         { id: 'materials', title: 'Raw Materials & Spools', desc: 'Stock levels, spools, fabrics, and reorder alerts', category: 'Navigation' },
         { id: 'staffing', title: 'Personnel & Operators', desc: 'Staff shifts, roles, and machine assignments', category: 'Navigation' },
@@ -111,6 +110,7 @@ export default function DashboardOmniSearch({
       return [
         { id: 'workbench', title: 'My Workbench', desc: 'Active tickets assigned to this machine', category: 'Navigation' },
         { id: 'orders', title: 'Order Queue', desc: 'Workshop live embroidery and sewing queue', category: 'Navigation' },
+        { id: 'counter', title: 'Walk-In Counter Mode', desc: 'POS tickets, claim slips, and on-site payments', category: 'Navigation' },
         { id: 'history', title: 'Order History', desc: 'Review completed tickets and claim stubs', category: 'Navigation' },
         { id: 'support', title: 'Workshop Quality (QA)', desc: 'Quality control, customer reviews, and feedback', category: 'Navigation' },
         { id: 'settings', title: 'Operator Settings', desc: 'Shift clock-in, password, and preferences', category: 'Navigation' }
@@ -186,7 +186,7 @@ export default function DashboardOmniSearch({
     } else if (setActiveTab) {
       // Default to orders or workbench tab
       if (role === 'admin') {
-        setActiveTab('counter');
+        setActiveTab('overview');
       } else {
         setActiveTab('orders');
       }
