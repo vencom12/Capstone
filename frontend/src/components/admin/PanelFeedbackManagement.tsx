@@ -415,7 +415,7 @@ export default function PanelFeedbackManagement() {
                   onClick={() => setFilterTab(isSelected ? 'all' : star.toString())}
                   className={`w-full flex items-center gap-2 p-1.5 rounded-lg border text-xs cursor-pointer transition-all bg-transparent ${
                     isSelected
-                      ? 'border-primary bg-primary/10 shadow-sm'
+                      ? 'border-indigo-500 bg-indigo-500/15 shadow-sm'
                       : 'border-transparent hover:bg-white/5'
                   }`}
                 >
@@ -423,7 +423,7 @@ export default function PanelFeedbackManagement() {
                   <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden relative">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        star >= 4 ? 'bg-amber-400' : star === 3 ? 'bg-amber-500/70' : 'bg-danger'
+                        star >= 4 ? 'bg-amber-400' : star === 3 ? 'bg-amber-500/70' : 'bg-rose-500/80'
                       }`}
                       style={{ width: `${percent}%` }}
                     />
@@ -451,7 +451,7 @@ export default function PanelFeedbackManagement() {
               <h3 className="text-xs font-bold text-text-dim uppercase tracking-wider m-0">
                 Voice of Customer (Top Praised Highlights)
               </h3>
-              <span className="text-[10px] text-primary font-mono font-bold">
+              <span className="text-[10px] text-indigo-400 font-mono font-semibold">
                 Natural Language Intelligence
               </span>
             </div>
@@ -465,10 +465,10 @@ export default function PanelFeedbackManagement() {
               metrics.sentimentHighlights.map((sh, idx) => (
                 <div
                   key={idx}
-                  className="px-3 py-1.5 rounded-xl bg-bg-surface border border-border-glass flex items-center gap-2 shadow-sm"
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-cyan-500/20 hover:border-cyan-500/40 flex items-center gap-2 shadow-xs transition-colors"
                 >
-                  <span className="text-primary font-bold text-xs">{sh.tag}</span>
-                  <span className="px-2 py-0.2 rounded-full bg-primary/15 text-primary text-[10px] font-mono font-black">
+                  <span className="text-cyan-300 font-semibold text-xs">{sh.tag}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-200 text-[10px] font-mono font-bold">
                     {sh.count}
                   </span>
                 </div>
@@ -515,8 +515,8 @@ export default function PanelFeedbackManagement() {
                   onClick={() => setFilterTab(tab.id)}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border whitespace-nowrap ${
                     isActive
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                   }`}
                 >
                   {tab.label}
@@ -599,7 +599,7 @@ export default function PanelFeedbackManagement() {
                     {/* Header: Customer Info + Badges */}
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center shrink-0 border border-primary/30">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 font-bold text-xs flex items-center justify-center shrink-0 border border-indigo-500/30">
                           {f.customerName ? f.customerName.charAt(0).toUpperCase() : 'C'}
                         </div>
                         <div className="min-w-0">
@@ -651,7 +651,7 @@ export default function PanelFeedbackManagement() {
                         {f.category}
                       </span>
                       {f.orderId && (
-                        <span className="text-[0.68rem] px-2 py-0.5 rounded bg-primary/10 text-primary font-mono font-bold border border-primary/20 flex items-center gap-1">
+                        <span className="text-[0.68rem] px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-mono font-bold border border-sky-500/20 flex items-center gap-1">
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                           Order #{f.orderId}
                         </span>
@@ -671,7 +671,7 @@ export default function PanelFeedbackManagement() {
                         {highlights.map((h, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-[0.65rem] font-medium"
+                            className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[0.65rem] font-medium"
                           >
                             ✨ {h}
                           </span>
@@ -686,8 +686,8 @@ export default function PanelFeedbackManagement() {
 
                     {/* Official Merchant Reply Box */}
                     {f.merchantReply && (
-                      <div className="p-3 rounded-xl bg-primary/10 border border-primary/25 flex flex-col gap-1 text-xs">
-                        <div className="flex items-center gap-1.5 text-primary font-bold text-[0.72rem]">
+                      <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col gap-1 text-xs">
+                        <div className="flex items-center gap-1.5 text-indigo-300 font-bold text-[0.72rem]">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                           </svg>
@@ -736,7 +736,7 @@ export default function PanelFeedbackManagement() {
                         setMerchantReplyText(f.merchantReply || '');
                         setIsPinningFeatured(!!f.isFeatured);
                       }}
-                      className="flex-1 py-1.5 rounded-lg bg-primary/15 hover:bg-primary text-primary hover:text-white border border-primary/30 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      className="flex-1 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -810,7 +810,7 @@ export default function PanelFeedbackManagement() {
                 {renderStars(replyTarget.rating)}
               </div>
               {replyTarget.orderId && (
-                <span className="text-primary font-mono font-bold text-[0.7rem]">
+                <span className="text-sky-300 font-mono font-bold text-[0.7rem]">
                   Verified Order #{replyTarget.orderId}
                 </span>
               )}
@@ -870,7 +870,7 @@ export default function PanelFeedbackManagement() {
                 placeholder="Write an official merchant reply from Eds Towels & Caps..."
                 value={merchantReplyText}
                 onChange={(e) => setMerchantReplyText(e.target.value)}
-                className="w-full bg-bg-surface border border-border-glass p-3 rounded-xl text-xs text-text-main outline-none focus:border-primary resize-none placeholder:text-text-dim/60 leading-relaxed"
+                className="w-full bg-bg-surface border border-border-glass p-3 rounded-xl text-xs text-text-main outline-none focus:border-indigo-500 resize-none placeholder:text-text-dim/60 leading-relaxed"
               />
               <span className="text-[0.68rem] text-text-dim">
                 This official reply will be publicly displayed on the product catalog beneath the reviewer's comment.
@@ -883,7 +883,7 @@ export default function PanelFeedbackManagement() {
                 type="checkbox"
                 checked={isPinningFeatured}
                 onChange={(e) => setIsPinningFeatured(e.target.checked)}
-                className="w-4 h-4 accent-primary cursor-pointer"
+                className="w-4 h-4 accent-indigo-500 cursor-pointer"
               />
               <div className="flex flex-col">
                 <span className="font-bold text-text-main">Feature as Top Showcase Review</span>
@@ -904,7 +904,7 @@ export default function PanelFeedbackManagement() {
               <button
                 type="submit"
                 disabled={isSubmittingReply || !merchantReplyText.trim()}
-                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-all border-none shadow-sm"
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-all border-none shadow-sm"
               >
                 {isSubmittingReply ? 'Publishing...' : 'Publish Official Reply'}
               </button>

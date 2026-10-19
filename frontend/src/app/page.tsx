@@ -6,11 +6,6 @@ import StorefrontHeader from '@/components/layout/StorefrontHeader';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductModal from '@/components/products/ProductModal';
 import EmailVerificationBanner from '@/components/auth/EmailVerificationBanner';
-import dynamic from 'next/dynamic';
-
-const AiAttendant = dynamic(() => import('@/components/products/AiAttendant'), {
-  ssr: false,
-});
 import FullScreenStitchExperience from '@/components/landing/FullScreenStitchExperience';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -208,9 +203,6 @@ export default function StorefrontPage() {
           router.push('/dashboard');
         }}
       />
-
-      {/* AI Store Attendant Chatbot */}
-      <AiAttendant />
     </div>
   );
 }

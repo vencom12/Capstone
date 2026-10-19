@@ -22,16 +22,24 @@ import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
 import Pagination from '@/components/ui/Pagination';
 import { toggleTheme } from '@/lib/theme';
 import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
+import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 
 export default function EmployeePage() {
   const router = useRouter();
-  const { user, isAuthenticated, checkAccess } = useAuthStore();
+  const { user, isAuthenticated, checkAccess, logout } = useAuthStore();
   const { fetchProducts } = useProductStore();
   const isLoggingOutRef = useRef(false);
 
   const [activeTab, setActiveTab] = useState('workbench');
   const [isHydrated, setIsHydrated] = useState(false);
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const tabTitles: Record<string, string> = {
+    workbench: 'My Workbench',
+    orders: 'Order Queue',
+    history: 'Order History',
+    support: 'Workshop Quality (QA)',
+    settings: 'Settings'
+  };
 
   // --- Live DB State ---
   const [orders, setOrders] = useState<any[]>([]);
@@ -1327,22 +1335,7 @@ export default function EmployeePage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main relative">
-      {/* Mobile Top Bar */}
-      <div className="hidden max-[650px]:flex items-center justify-between w-full h-[60px] px-4 border-b border-border-glass bg-bg-header backdrop-blur-md fixed top-0 left-0 z-[1000]">
-         <button onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)} className="bg-transparent border-none text-text-main hover:text-primary cursor-pointer p-1 transition-colors">
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-         </button>
-         <div className="font-black text-[1.1rem] text-text-main tracking-tight">Stitch-Opt</div>
-         <button
-           type="button"
-           onClick={() => setActiveTab('settings')}
-           className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-xs cursor-pointer active:scale-95 transition-all"
-           title="Settings"
-         >
-           {user?.username?.charAt(0).toUpperCase() || 'OP'}
-         </button>
-      </div>
-
+      {/* Dynamic sliding drawer sidebar */}
       <div className={`
         max-[650px]:fixed max-[650px]:top-0 max-[650px]:left-0 max-[650px]:h-full max-[650px]:z-[2000] max-[650px]:transition-transform max-[650px]:duration-300
         ${isMobilePanelOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
@@ -1358,9 +1351,104 @@ export default function EmployeePage() {
         />
       )}
       
-      <main className="flex-1 h-full overflow-y-auto p-8 max-[650px]:p-4 max-[650px]:pt-[80px] scrollbar-thin">
-        {renderTabContent()}
-      </main>
+      {/* Main Viewport */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full">
+        {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
+        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)}
+              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors"
+              aria-label="Toggle navigation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleAIAssistant'))}
+              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+              title="Ask AI Copilot"
+              aria-label="Ask AI Copilot"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+                <path d="M19 4v4m2-2h-4" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Employee</span>
+              <span className="text-text-dim/40 hidden sm:inline">/</span>
+              <span className="font-bold text-text-main text-base tracking-tight">
+                {tabTitles[activeTab] || 'Workbench'}
+              </span>
+            </div>
+          </div>
+
+          {/* Omni Search & AI Copilot Trigger Bar */}
+          <div className="hidden sm:flex flex-1 max-w-[460px] mx-auto justify-center">
+            <DashboardOmniSearch
+              orders={orders}
+              inventory={inventory}
+              products={products}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              onSelectOrder={(order) => {
+                setSelectedOrder(order);
+                setOrderStatusInput(order.status || 'In Queue');
+                setOrderProgressInput(String((order as any).progress || '10'));
+                setIsProcessModalOpen(true);
+              }}
+              role="employee"
+            />
+          </div>
+
+          {/* Top-Right User Profile & Quick Actions */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
+              <span className={`w-2 h-2 rounded-full ${shiftStatus === 'online' ? 'bg-success animate-pulse' : 'bg-amber-400'}`}></span>
+              <span className="font-medium capitalize">Shift: {shiftStatus}</span>
+            </div>
+
+            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
+              <button
+                type="button"
+                onClick={() => setActiveTab('settings')}
+                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 -m-1 rounded-xl hover:bg-white/5 transition-all text-left group"
+                title="Account Settings"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 group-hover:scale-105 flex items-center justify-center font-bold text-xs transition-all shrink-0">
+                  {user?.username?.substring(0, 2).toUpperCase() || 'OP'}
+                </div>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-xs font-bold text-text-main leading-tight truncate max-w-[120px] group-hover:text-primary transition-colors">
+                    {user?.username || 'Operator'}
+                  </span>
+                  <span className="text-[0.62rem] text-primary font-bold uppercase tracking-wider">
+                    {user?.role || 'employee'}
+                  </span>
+                </div>
+              </button>
+
+              <button
+                onClick={async () => {
+                  isLoggingOutRef.current = true;
+                  router.replace('/');
+                  await logout();
+                }}
+                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
+                title="Log out of session"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span className="hidden sm:inline text-[0.75rem]">Logout</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-[1500px] w-full mx-auto p-8 max-[650px]:p-4 pb-24 scrollbar-thin">
+          {renderTabContent()}
+        </main>
+      </div>
 
       {/* Modals */}
 

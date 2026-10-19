@@ -915,6 +915,10 @@ exports.getPublicSettings = async (req, res) => {
         res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
+            businessName: settings?.businessName || 'EDS TOWELS & CAPS',
+            businessAddress: settings?.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
+            businessContact: settings?.businessContact || '0928 810 3928',
+            receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
         });

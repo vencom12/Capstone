@@ -18,10 +18,16 @@ interface UIStore {
   welcomeData: WelcomeTransitionData | null;
   isHelpOpen: boolean;
   isTermsOpen: boolean;
+  isAiOpen: boolean;
+  initialAiQuery: string;
   setBasketOpen: (isOpen: boolean) => void;
   setSidebarOpen: (isOpen: boolean) => void;
   setHelpOpen: (isOpen: boolean) => void;
   setTermsOpen: (isOpen: boolean) => void;
+  setAiOpen: (isOpen: boolean) => void;
+  openAiWithQuery: (query: string) => void;
+  clearInitialAiQuery: () => void;
+  toggleAi: () => void;
   setAuthOpen: (isOpen: boolean, mode?: 'login' | 'register', portal?: AuthPortal) => void;
   setGoogleSetupData: (data: GoogleSetupData | null) => void;
   setAuthPortal: (portal: AuthPortal) => void;
@@ -46,6 +52,8 @@ export const useUIStore = create<UIStore>((set) => ({
   isSidebarOpen: false,
   isHelpOpen: false,
   isTermsOpen: false,
+  isAiOpen: false,
+  initialAiQuery: '',
   isAuthOpen: false,
   authMode: 'login',
   authPortal: 'customer',
@@ -55,6 +63,10 @@ export const useUIStore = create<UIStore>((set) => ({
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   setHelpOpen: (isOpen) => set({ isHelpOpen: isOpen }),
   setTermsOpen: (isOpen) => set({ isTermsOpen: isOpen }),
+  setAiOpen: (isOpen) => set({ isAiOpen: isOpen }),
+  openAiWithQuery: (query) => set({ isAiOpen: true, initialAiQuery: query }),
+  clearInitialAiQuery: () => set({ initialAiQuery: '' }),
+  toggleAi: () => set((state) => ({ isAiOpen: !state.isAiOpen })),
   setAuthOpen: (isOpen, mode = 'login', portal) =>
     set((state) => ({
       isAuthOpen: isOpen,

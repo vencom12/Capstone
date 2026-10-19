@@ -5,11 +5,12 @@ import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useUIStore } from '@/stores/useUIStore';
 import { showToast } from '@/components/ui/Toast';
 import type { Product } from '@/lib/types';
 
 interface ChatMessage {
-  id: number;
+  id: string;
   role: 'user' | 'assistant';
   text: string;
   suggestedProducts?: Product[];
@@ -21,7 +22,7 @@ interface StorefrontChatResponse {
   suggestedProducts: Product[];
 }
 
-let messageId = 0;
+const createMsgId = () => `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 // Type declarations for Web Speech API
 const SpeechRecognition = typeof window !== 'undefined'
@@ -29,14 +30,26 @@ const SpeechRecognition = typeof window !== 'undefined'
   : null;
 
 export default function AiAttendant() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isAiOpen, setAiOpen, initialAiQuery, clearInitialAiQuery } = useUIStore();
+  const isOpen = isAiOpen;
+  const setIsOpen = setAiOpen;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
 
+  // Keep a ref of messages to prevent sendQueryText from re-creating on every message change
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  const isProcessingInitialQuery = useRef(false);
+
   // Hydration safety mount check
   const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -68,6 +81,7 @@ export default function AiAttendant() {
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
     if (isExpanded) return; // Prevent dragging while expanded
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return; // Disable dragging on mobile to prevent clipping
     setIsDragging(true);
     const initX = position ? position.x : window.innerWidth - 404; // 380 width + 24 padding
     const initY = position ? position.y : window.innerHeight - 664; // 580 height + 84 padding
@@ -83,6 +97,7 @@ export default function AiAttendant() {
   const handleTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('input')) return;
     if (isExpanded) return; // Prevent dragging while expanded
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return; // Disable dragging on mobile to prevent clipping
     setIsDragging(true);
     const touch = e.touches[0];
     const initX = position ? position.x : window.innerWidth - 404;
@@ -219,30 +234,34 @@ export default function AiAttendant() {
     }
   }, [isOpen]);
 
-  // Show greeting on first open
-  useEffect(() => {
-    if (isOpen && !hasGreeted) {
-      setHasGreeted(true);
-      setMessages([{
-        id: ++messageId,
-        role: 'assistant',
-        text: "Hi there! 👋 I'm your **Stitch-Opt** virtual store attendant. I can help you find the perfect embroidery design — just tell me what you're looking for!",
-      }]);
-    }
-  }, [isOpen, hasGreeted]);
-
-  const sendMessage = useCallback(async () => {
-    const trimmed = input.trim();
+  // Send query helper used by both direct typing and search bar trigger
+  const sendQueryText = useCallback(async (queryText: string) => {
+    const trimmed = queryText.trim();
     if (!trimmed || isLoading) return;
 
-    const userMsg: ChatMessage = { id: ++messageId, role: 'user', text: trimmed };
+    const alphaOnly = trimmed.replace(/[^a-zA-Z0-9]/g, '');
+
+    // Zero-Token Client Gatekeeper: if user typed just "?", "!", ".", or pure symbols, do NOT call the backend!
+    if (alphaOnly.length < 2) {
+      const userMsg: ChatMessage = { id: createMsgId(), role: 'user', text: trimmed };
+      const cannedAiMsg: ChatMessage = {
+        id: createMsgId(),
+        role: 'assistant',
+        text: "Please enter a question or let me know what product you're looking for (e.g. *'Do you customize caps?'* or *'What are your store hours?'*).",
+      };
+      setMessages(prev => [...prev, userMsg, cannedAiMsg]);
+      setInput('');
+      return;
+    }
+
+    const userMsg: ChatMessage = { id: createMsgId(), role: 'user', text: trimmed };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
     try {
-      // Build history for context (exclude suggestedProducts to keep payload small)
-      const history = messages.map(m => ({ role: m.role, text: m.text }));
+      // Build history for context from ref (exclude suggestedProducts to keep payload small)
+      const history = messagesRef.current.map(m => ({ role: m.role, text: m.text }));
 
       const data = await api.post<StorefrontChatResponse>('/api/ai/storefront-chat', {
         message: trimmed,
@@ -250,24 +269,59 @@ export default function AiAttendant() {
         context: { selectedCategory, searchQuery },
       });
 
+      const rawReply = (data.reply || '').replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
       const aiMsg: ChatMessage = {
-        id: ++messageId,
+        id: createMsgId(),
         role: 'assistant',
-        text: data.reply || "I couldn't come up with a response. Try asking differently!",
+        text: rawReply || "Hello! I'm here to help you find in-stock items (like our Regular Fans), check custom embroidery pricing, or answer questions about our store at Pacific Mall Lucena! 🧵✨",
         suggestedProducts: data.suggestedProducts || [],
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       const aiMsg: ChatMessage = {
-        id: ++messageId,
+        id: createMsgId(),
         role: 'assistant',
-        text: "Sorry, I'm having trouble connecting right now. Please try again in a moment! 🔧",
+        text: "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
       };
       setMessages(prev => [...prev, aiMsg]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, selectedCategory, searchQuery]);
+  }, [isLoading, selectedCategory, searchQuery]);
+
+  const sendMessage = useCallback(() => {
+    sendQueryText(input);
+  }, [input, sendQueryText]);
+
+  // Handle incoming query passed directly from Search Bar
+  useEffect(() => {
+    if (isOpen && initialAiQuery && initialAiQuery.trim() && !isProcessingInitialQuery.current) {
+      const query = initialAiQuery.trim();
+      isProcessingInitialQuery.current = true;
+      clearInitialAiQuery();
+      const alphaOnly = query.replace(/[^a-zA-Z0-9]/g, '');
+      if (alphaOnly.length >= 2) {
+        setHasGreeted(true);
+        sendQueryText(query).finally(() => {
+          isProcessingInitialQuery.current = false;
+        });
+      } else {
+        isProcessingInitialQuery.current = false;
+      }
+    }
+  }, [isOpen, initialAiQuery, clearInitialAiQuery, sendQueryText]);
+
+  // Show greeting on first open (only if no direct query is being processed)
+  useEffect(() => {
+    if (isOpen && !hasGreeted && !initialAiQuery) {
+      setHasGreeted(true);
+      setMessages([{
+        id: createMsgId(),
+        role: 'assistant',
+        text: "Hi there! I'm your **Stitch-Opt** virtual store attendant. I can help you find products, answer questions about custom embroidery, orders, or store policies — just ask!",
+      }]);
+    }
+  }, [isOpen, hasGreeted, initialAiQuery]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -339,7 +393,7 @@ export default function AiAttendant() {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Canceled</span>;
     }
     if (upper === 'PENDING PAYMENT') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">⏱ Pending Pay</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Pending Pay</span>;
     }
     
     return text;
@@ -368,8 +422,10 @@ export default function AiAttendant() {
   // Main Markdown list & table parsing engine
   const renderMessageContent = (text: string) => {
     if (!text) return null;
+    const cleanText = text.replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
+    if (!cleanText) return null;
 
-    const lines = text.split('\n');
+    const lines = cleanText.split('\n');
     const elements: React.ReactNode[] = [];
     let currentTable: string[][] = [];
     let isInsideTable = false;
@@ -519,43 +575,15 @@ export default function AiAttendant() {
     return elements;
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
-      {/* Floating Chat Bubble */}
-      <button
-        id="ai-attendant-trigger"
-        suppressHydrationWarning
-        onClick={() => setIsOpen(!isOpen)}
-        className={`
-          fixed bottom-6 right-6 z-[2500] w-14 h-14 rounded-full
-          flex items-center justify-center cursor-pointer
-          border-none outline-none
-          transition-all duration-300 ease-out
-          shadow-lg
-          ${isOpen
-            ? 'bg-white/10 backdrop-blur-xl border border-border-glass rotate-0 scale-95'
-            : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-primary/25 hover:scale-105'
-          }
-        `}
-        aria-label="Toggle AI Store Attendant"
-      >
-        {isOpen ? (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <circle cx="9" cy="10" r="1" fill="white" />
-            <circle cx="12" cy="10" r="1" fill="white" />
-            <circle cx="15" cy="10" r="1" fill="white" />
-          </svg>
-        )}
-        {/* Pulse ring when closed */}
-        {!isOpen && (
-          <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
-        )}
-      </button>
+      {/* Backdrop (Click outside to close) */}
+      <div
+        onClick={() => setIsOpen(false)}
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[2399] transition-opacity animate-[fadeIn_0.2s_ease-out]"
+      />
 
       {/* Chat Panel */}
       <div
@@ -565,19 +593,16 @@ export default function AiAttendant() {
         }}
         className={`
           fixed z-[2400] transition-all duration-300 ease-in-out
-          ${isOpen
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-4 pointer-events-none'
-          }
+          opacity-100 translate-y-0 pointer-events-auto
           
           ${isExpanded 
-            ? 'bottom-24 right-6 w-[800px] max-w-[95vw] h-[750px] max-h-[85vh]' 
-            : 'bottom-24 right-4 w-[380px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-8rem)]'
+            ? 'bottom-20 right-6 w-[800px] max-w-[95vw] h-[750px] max-h-[85vh]' 
+            : 'bottom-20 right-4 w-[390px] max-w-[calc(100vw-2rem)] h-[590px] max-h-[calc(100vh-6rem)]'
           }
 
           max-[500px]:bottom-0 max-[500px]:right-0 max-[500px]:left-0
           max-[500px]:w-full max-[500px]:max-w-none
-          max-[500px]:h-[calc(100vh-5rem)] max-[500px]:max-h-none
+          max-[500px]:h-[100dvh] max-[500px]:max-h-none
           max-[500px]:rounded-none
         `}
       >
@@ -587,11 +612,12 @@ export default function AiAttendant() {
           <div 
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-bg-surface cursor-grab select-none"
+            className="flex items-center gap-3 px-5 py-4 border-b border-border-glass shrink-0 bg-bg-surface select-none cursor-grab active:cursor-grabbing max-[768px]:cursor-default"
           >
-            <div className="w-9 h-9 rounded-lg bg-primary/20 text-primary border border-primary/30 flex items-center justify-center shrink-0 font-bold">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+            <div className="w-9 h-9 rounded-lg bg-white/10 text-text-main border border-border-glass flex items-center justify-center shrink-0 select-none">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+                <path d="M19 4v4m2-2h-4" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
@@ -599,12 +625,12 @@ export default function AiAttendant() {
               <p className="text-[0.7rem] text-text-dim m-0">AI-powered shopping assistant</p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse" title="Online" />
+              <div className="w-2 h-2 rounded-full bg-text-dim/60 animate-pulse" title="Online" />
               
-              {/* Maximize Button */}
+              {/* Maximize Button (Desktop only) */}
               <button 
                 onClick={toggleExpanded}
-                className="text-text-main hover:text-text-main/70 bg-transparent border-none cursor-pointer p-1 flex items-center justify-center"
+                className="hidden sm:flex text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer p-1 items-center justify-center"
                 title={isExpanded ? 'Restore window size' : 'Expand workspace'}
               >
                 {isExpanded ? (
@@ -621,8 +647,9 @@ export default function AiAttendant() {
               <button 
                 suppressHydrationWarning
                 onClick={() => setIsOpen(false)} 
-                className="text-text-main hover:text-text-main/70 bg-transparent border-none cursor-pointer p-1 flex items-center justify-center"
+                className="text-text-dim hover:text-text-main bg-white/5 hover:bg-white/10 rounded-lg border border-border-glass cursor-pointer p-1.5 flex items-center justify-center transition-all"
                 aria-label="Close assistant"
+                title="Close"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -634,13 +661,13 @@ export default function AiAttendant() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3" id="ai-attendant-messages">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            {messages.map((msg, mIdx) => (
+              <div key={msg.id ? `msg-${msg.id}` : `msg-${mIdx}-${Date.now()}`} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                 {/* Message Bubble */}
                 <div className={`
                   max-w-[85%] px-4 py-2.5 text-[0.85rem] leading-relaxed
                   ${msg.role === 'user'
-                    ? 'bg-primary text-white rounded-xl rounded-br-md whitespace-pre-wrap'
+                    ? 'bg-white/10 text-text-main border border-border-glass rounded-xl rounded-br-md whitespace-pre-wrap font-medium shadow-sm'
                     : 'bg-white/[0.06] border border-border-glass text-text-main rounded-xl rounded-bl-md'
                   }
                 `}>
@@ -654,15 +681,15 @@ export default function AiAttendant() {
                 {/* Product Suggestion Cards */}
                 {msg.suggestedProducts && msg.suggestedProducts.length > 0 && (
                   <div className="w-full flex flex-col gap-2 mt-1">
-                    {msg.suggestedProducts.map((product) => {
-                      const pId = product.id || (product as any)._id || '';
+                    {msg.suggestedProducts.map((product, pIdx) => {
+                      const pId = product.id || (product as any)._id || pIdx;
                       const avail = product.availableStock !== undefined
                         ? product.availableStock
                         : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
                       const oos = product.isOutOfStock || avail <= 0;
 
                       return (
-                        <div key={pId} className="flex items-center gap-3 p-3 bg-white/[0.04] border border-border-glass rounded-xl hover:border-primary/30 transition-all group">
+                        <div key={`${msg.id}-prod-${pId}-${pIdx}`} className="flex items-center gap-3 p-3 bg-white/[0.04] border border-border-glass rounded-xl hover:border-border-glass/80 transition-all group">
                           {/* Product Thumbnail */}
                           <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
                             {product.imageUrl ? (
@@ -676,8 +703,8 @@ export default function AiAttendant() {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-text-main m-0 truncate">{product.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-primary font-bold text-xs">₱{product.price.toFixed(2)}</span>
-                              <span className="text-[0.6rem] text-text-dim px-1.5 py-0.5 bg-primary/10 rounded-full">{product.tag}</span>
+                              <span className="text-text-main font-bold text-xs">₱{product.price.toFixed(2)}</span>
+                              <span className="text-[0.6rem] text-text-dim px-1.5 py-0.5 bg-white/5 border border-border-glass rounded-full">{product.tag}</span>
                             </div>
                           </div>
 
@@ -688,14 +715,14 @@ export default function AiAttendant() {
                             disabled={oos}
                             className={`
                               shrink-0 px-3 py-1.5 rounded-lg text-[0.7rem] font-bold
-                              border-none cursor-pointer transition-all duration-200
+                              border cursor-pointer transition-all duration-200
                               ${oos
-                                ? 'bg-white/5 text-text-dim cursor-not-allowed'
-                                : 'bg-primary text-white hover:bg-[#991b1b] hover:shadow-md active:scale-95'
+                                ? 'bg-white/5 text-text-dim border-border-glass cursor-not-allowed'
+                                : 'bg-white/10 hover:bg-white/20 text-text-main border-border-glass active:scale-95 shadow-xs'
                               }
                             `}
                           >
-                            {oos ? 'Out' : '+ Add'}
+                            {oos ? 'Out' : '🛍️ Add'}
                           </button>
                         </div>
                       );
@@ -730,7 +757,7 @@ export default function AiAttendant() {
                   className={`
                     w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 shrink-0 cursor-pointer
                     ${isListening 
-                      ? 'bg-danger/20 border-danger/40 text-danger  animate-pulse'
+                      ? 'bg-white/20 border-white/40 text-text-main animate-pulse'
                       : 'bg-white/[0.05] border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
                     }
                   `}
@@ -748,18 +775,18 @@ export default function AiAttendant() {
                 suppressHydrationWarning
                 ref={inputRef}
                 type="text"
-                placeholder="Ask me anything about our designs..."
+                placeholder="Ask me anything about our products or services..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
-                className="flex-1 bg-white/[0.05] border border-border-glass text-text-main px-4 py-2.5 rounded-lg text-[0.85rem] outline-none transition-all focus:border-primary placeholder:text-text-dim/50 disabled:opacity-50"
+                className="flex-1 bg-white/[0.05] border border-border-glass text-text-main px-4 py-2.5 rounded-lg text-[0.85rem] outline-none transition-all focus:border-border-glass/80 placeholder:text-text-dim/50 disabled:opacity-50"
               />
               <button
                 suppressHydrationWarning
                 onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-                className="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center border-none cursor-pointer transition-all hover:bg-[#991b1b] disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
+                className="w-10 h-10 rounded-lg bg-text-main text-bg-surface flex items-center justify-center border-none cursor-pointer transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed shrink-0 active:scale-95"
                 aria-label="Send message"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

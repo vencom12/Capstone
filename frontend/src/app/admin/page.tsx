@@ -23,6 +23,7 @@ import dynamic from 'next/dynamic';
 const PersistentAssistant = dynamic(() => import('@/components/employee/PersistentAssistant'), {
   ssr: false,
 });
+import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { getStoredTheme, applyTheme } from '@/lib/theme';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -731,14 +732,26 @@ export default function AdminPage() {
       {/* Main viewport */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full">
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
-        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
               className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors"
               aria-label="Toggle navigation"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleAIAssistant'))}
+              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+              title="Ask AI Copilot"
+              aria-label="Ask AI Copilot"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+                <path d="M19 4v4m2-2h-4" />
+              </svg>
             </button>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Admin</span>
@@ -749,8 +762,20 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Omni Search & AI Copilot Trigger Bar */}
+          <div className="hidden sm:flex flex-1 max-w-[460px] mx-auto justify-center">
+            <DashboardOmniSearch
+              orders={orders}
+              inventory={inventory}
+              products={products}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              role="admin"
+            />
+          </div>
+
           {/* Top-Right User Profile & Quick Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
               <span className="font-medium capitalize">

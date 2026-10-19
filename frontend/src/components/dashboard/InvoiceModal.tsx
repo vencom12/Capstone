@@ -35,10 +35,14 @@ export default function InvoiceModal({
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res) {
+          const cleanPhone = (res.businessContact || '0928 810 3928')
+            .replace(/\s*[•|,/-]?\s*0912[\s\d]*/gi, '')
+            .trim() || '0928 810 3928';
+
           setBusinessSettings({
             businessName: res.businessName || 'EDS TOWELS & CAPS',
             businessAddress: res.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
-            businessContact: res.businessContact || '0928 810 3928 • 0912 345 6789',
+            businessContact: cleanPhone,
             businessLogoUrl: res.businessLogoUrl || '',
             receiptTagline: res.receiptTagline || 'Custom Embroidery & Apparel Workshop'
           });
@@ -79,6 +83,7 @@ export default function InvoiceModal({
   const receiptTime = isNaN(dateObj.getTime())
     ? new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
     : dateObj.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+  const receiptDateTime = `${receiptDate} • ${receiptTime}`;
 
   const totalAmount = parseFloat(String(order?.totalAmount ?? fetchedData?.amount ?? transaction?.amount ?? 0));
   const vatRate = 0.12;
@@ -104,7 +109,7 @@ export default function InvoiceModal({
   // Helper to generate simulated authentic Code-128 barcode bars
   const renderBarcodeSvg = (code: string) => {
     const pattern = [2, 1, 3, 1, 2, 2, 1, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 1, 1, 2, 1, 3, 2, 2, 1, 2, 1, 3, 1, 2];
-    let currentX = 8;
+    let currentX = 6;
     const bars: { x: number; w: number }[] = [];
 
     for (let i = 0; i < pattern.length; i++) {
@@ -116,18 +121,18 @@ export default function InvoiceModal({
     }
 
     return (
-      <div style={{ textAlign: 'center', margin: '10px 0 6px' }}>
+      <div style={{ textAlign: 'center', margin: '4px 0 2px' }}>
         <svg
-          viewBox={`0 0 ${currentX + 8} 34`}
-          style={{ width: '190px', height: '32px', display: 'block', margin: '0 auto' }}
+          viewBox={`0 0 ${currentX + 6} 22`}
+          style={{ width: '160px', height: '22px', display: 'block', margin: '0 auto' }}
           fill="#000000"
           xmlns="http://www.w3.org/2000/svg"
         >
           {bars.map((bar, idx) => (
-            <rect key={idx} x={bar.x} y="0" width={bar.w} height="34" />
+            <rect key={idx} x={bar.x} y="0" width={bar.w} height="22" />
           ))}
         </svg>
-        <div style={{ fontSize: '9px', fontFamily: 'monospace', letterSpacing: '2.5px', color: '#52525b', marginTop: '3px', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: '8px', fontFamily: 'monospace', letterSpacing: '2px', color: '#000000', marginTop: '2px', textTransform: 'uppercase' }}>
           *{code}*
         </div>
       </div>
@@ -166,7 +171,7 @@ export default function InvoiceModal({
           <style>
             @page {
               size: 80mm auto;
-              margin: 4mm auto;
+              margin: 2mm auto;
             }
             * {
               box-sizing: border-box;
@@ -184,16 +189,16 @@ export default function InvoiceModal({
               display: flex;
               justify-content: center;
               align-items: flex-start;
-              font-size: 11px;
-              line-height: 1.35;
-              padding: 10px 0;
+              font-size: 10px;
+              line-height: 1.25;
+              padding: 0;
             }
             .receipt-slip {
-              width: 74mm;
+              width: 72mm;
               max-width: 100%;
               background: #fff;
               color: #000;
-              padding: 4px 2px;
+              padding: 1mm 0;
             }
             table {
               width: 100%;
@@ -202,12 +207,7 @@ export default function InvoiceModal({
             hr.dashed {
               border: none;
               border-top: 1px dashed #71717a;
-              margin: 8px 0;
-            }
-            hr.double {
-              border: none;
-              border-top: 2px dashed #000;
-              margin: 6px 0;
+              margin: 5px 0;
             }
             @media print {
               body {
@@ -215,8 +215,8 @@ export default function InvoiceModal({
                 padding: 0 !important;
               }
               .receipt-slip {
-                width: 74mm !important;
-                padding: 2px 0 !important;
+                width: 72mm !important;
+                padding: 1mm 0 !important;
               }
             }
           </style>
@@ -259,78 +259,74 @@ export default function InvoiceModal({
             {/* The Actual White Long Store Thermal Receipt Slip */}
             <div
               id="store-thermal-receipt-slip"
-              className="w-full max-w-[340px] sm:max-w-[360px] bg-white text-zinc-950 font-sans text-xs rounded shadow-2xl p-6 sm:p-7 border border-zinc-300 text-left"
+              className="w-full max-w-[340px] sm:max-w-[360px] bg-white text-zinc-950 font-sans text-xs rounded shadow-2xl p-4 sm:p-5 border border-zinc-300 text-left"
               style={{
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                lineHeight: '1.35',
+                lineHeight: '1.25',
                 color: '#000000',
                 backgroundColor: '#ffffff'
               }}
             >
               {/* Store Header */}
-              <div style={{ textAlign: 'center', paddingBottom: '4px' }}>
-                <div style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '0.8px', color: '#000000', textTransform: 'uppercase', lineHeight: '1.2' }}>
+              <div style={{ textAlign: 'center', paddingBottom: '2px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#000000', textTransform: 'uppercase', lineHeight: '1.2' }}>
                   {businessSettings.businessName || 'EDS TOWELS & CAPS'}
                 </div>
-                <div style={{ fontSize: '9px', fontWeight: '700', letterSpacing: '1.2px', color: '#52525b', textTransform: 'uppercase', marginTop: '2px' }}>
+                <div style={{ fontSize: '8.5px', fontWeight: '700', letterSpacing: '1px', color: '#52525b', textTransform: 'uppercase', marginTop: '1px' }}>
                   {businessSettings.receiptTagline || 'Custom Embroidery & Apparel Workshop'}
                 </div>
-                <div style={{ fontSize: '9.5px', color: '#52525b', marginTop: '4px', lineHeight: '1.3' }}>
+                <div style={{ fontSize: '9px', color: '#52525b', marginTop: '3px', lineHeight: '1.25' }}>
                   {businessSettings.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301'}
                 </div>
-                <div style={{ fontSize: '9px', color: '#71717a', marginTop: '2px' }}>
-                  Tel: {businessSettings.businessContact || '0928 810 3928 • 0912 345 6789'}
+                <div style={{ fontSize: '9px', fontWeight: '600', color: '#000000', marginTop: '2px' }}>
+                  Tel: {businessSettings.businessContact || '0928 810 3928'}
                 </div>
-                <div style={{ display: 'inline-block', marginTop: '6px', padding: '2px 8px', background: '#000000', color: '#ffffff', fontSize: '8px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', borderRadius: '3px' }}>
-                  Receipt
+                <div style={{ display: 'inline-block', marginTop: '4px', padding: '1px 7px', border: '1px solid #000000', color: '#000000', fontSize: '8px', fontWeight: '800', letterSpacing: '0.8px', textTransform: 'uppercase', borderRadius: '2px', background: 'transparent' }}>
+                  Official Receipt
                 </div>
               </div>
 
               {/* Dividing Line */}
-              <hr style={{ border: 'none', borderTop: '1px dashed #71717a', margin: '8px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px dashed #71717a', margin: '5px 0' }} />
 
               {/* Transaction & Customer Details (Clean 2-Column Table) */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', margin: '4px 0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', margin: '2px 0' }}>
                 <tbody>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a', width: '38%' }}>RECEIPT #:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '800', color: '#000000', width: '62%', fontFamily: 'monospace' }}>{receiptNo}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', width: '36%' }}>RECEIPT #:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', width: '64%', fontFamily: 'monospace' }}>{receiptNo}</td>
                   </tr>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a' }}>ORDER #:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '800', color: '#000000', fontFamily: 'monospace' }}>#{effectiveOrderId}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>ORDER #:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontFamily: 'monospace' }}>#{effectiveOrderId}</td>
                   </tr>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a' }}>DATE:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', color: '#000000' }}>{receiptDate}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>DATE &amp; TIME:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', color: '#000000', fontWeight: '500' }}>{receiptDateTime}</td>
                   </tr>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a' }}>TIME:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', color: '#000000' }}>{receiptTime}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a' }}>CUSTOMER:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '700', color: '#000000' }}>{clientName}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>CUSTOMER:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000' }}>{clientName}</td>
                   </tr>
                   {clientPhone && (
                     <tr>
-                      <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a' }}>PHONE:</td>
-                      <td style={{ textAlign: 'right', padding: '2px 0', color: '#000000', fontFamily: 'monospace' }}>{clientPhone}</td>
+                      <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>PHONE:</td>
+                      <td style={{ textAlign: 'right', padding: '1.5px 0', color: '#000000', fontFamily: 'monospace' }}>{clientPhone}</td>
                     </tr>
                   )}
                 </tbody>
               </table>
 
               {/* Dividing Line */}
-              <hr style={{ border: 'none', borderTop: '1px dashed #71717a', margin: '8px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px dashed #71717a', margin: '5px 0' }} />
 
               {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', margin: '6px 0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', margin: '3px 0' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000000' }}>
-                    <th style={{ textAlign: 'left', padding: '4px 0', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: '#52525b', width: '55%' }}>ITEM</th>
-                    <th style={{ textAlign: 'center', padding: '4px 0', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: '#52525b', width: '15%' }}>QTY</th>
-                    <th style={{ textAlign: 'right', padding: '4px 0', fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: '#52525b', width: '30%' }}>PRICE</th>
+                    <th style={{ textAlign: 'left', padding: '2.5px 0', fontSize: '8.5px', fontWeight: '800', textTransform: 'uppercase', color: '#000000', width: '55%' }}>ITEM</th>
+                    <th style={{ textAlign: 'center', padding: '2.5px 0', fontSize: '8.5px', fontWeight: '800', textTransform: 'uppercase', color: '#000000', width: '15%' }}>QTY</th>
+                    <th style={{ textAlign: 'right', padding: '2.5px 0', fontSize: '8.5px', fontWeight: '800', textTransform: 'uppercase', color: '#000000', width: '30%' }}>PRICE</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,25 +343,25 @@ export default function InvoiceModal({
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px dotted #e4e4e7' }}>
-                          <td style={{ textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
-                            <strong style={{ color: '#000000', display: 'block', fontSize: '11px', lineHeight: '1.25' }}>
+                          <td style={{ textAlign: 'left', padding: '3px 0', verticalAlign: 'top' }}>
+                            <strong style={{ color: '#000000', display: 'block', fontSize: '10.5px', lineHeight: '1.2' }}>
                               {item.name || order?.design || 'Stitched Item'}
                             </strong>
                             {variantDetails && (
-                              <span style={{ color: '#71717a', fontSize: '9px', display: 'block', marginTop: '2px' }}>
+                              <span style={{ color: '#52525b', fontSize: '8.5px', display: 'block', marginTop: '1px' }}>
                                 {variantDetails}
                               </span>
                             )}
                             {persText && (
-                              <span style={{ color: '#09090b', fontSize: '9px', display: 'block', marginTop: '2px', fontStyle: 'italic' }}>
+                              <span style={{ color: '#000000', fontSize: '8.5px', display: 'block', marginTop: '1px', fontStyle: 'italic' }}>
                                 Stitched: &ldquo;{persText}&rdquo; {persColor ? `(${persColor})` : ''}
                               </span>
                             )}
                           </td>
-                          <td style={{ textAlign: 'center', padding: '6px 0', verticalAlign: 'top', fontWeight: '600', color: '#27272a', fontFamily: 'monospace' }}>
+                          <td style={{ textAlign: 'center', padding: '3px 0', verticalAlign: 'top', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>
                             {item.quantity || 1}
                           </td>
-                          <td style={{ textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>
+                          <td style={{ textAlign: 'right', padding: '3px 0', verticalAlign: 'top', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>
                             ₱{linePrice.toFixed(2)}
                           </td>
                         </tr>
@@ -373,13 +369,13 @@ export default function InvoiceModal({
                     })
                   ) : (
                     <tr style={{ borderBottom: '1px dotted #e4e4e7' }}>
-                      <td style={{ textAlign: 'left', padding: '6px 0', verticalAlign: 'top' }}>
-                        <strong style={{ color: '#000000', display: 'block' }}>Custom Embroidery Order</strong>
+                      <td style={{ textAlign: 'left', padding: '3px 0', verticalAlign: 'top' }}>
+                        <strong style={{ color: '#000000', display: 'block', fontSize: '10.5px' }}>Custom Embroidery Order</strong>
                       </td>
-                      <td style={{ textAlign: 'center', padding: '6px 0', verticalAlign: 'top', fontWeight: '600', color: '#27272a', fontFamily: 'monospace' }}>
+                      <td style={{ textAlign: 'center', padding: '3px 0', verticalAlign: 'top', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>
                         1
                       </td>
-                      <td style={{ textAlign: 'right', padding: '6px 0', verticalAlign: 'top', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>
+                      <td style={{ textAlign: 'right', padding: '3px 0', verticalAlign: 'top', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>
                         ₱{totalAmount.toFixed(2)}
                       </td>
                     </tr>
@@ -388,38 +384,38 @@ export default function InvoiceModal({
               </table>
 
               {/* Financial Totals Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px', marginTop: '6px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', marginTop: '3px' }}>
                 <tbody>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#52525b' }}>SUBTOTAL / VATABLE:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>₱{vatableSales.toFixed(2)}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>SUBTOTAL / VATABLE:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>₱{vatableSales.toFixed(2)}</td>
                   </tr>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#52525b' }}>VAT (12%):</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>₱{vatAmount.toFixed(2)}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>VAT (12%):</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>₱{vatAmount.toFixed(2)}</td>
                   </tr>
                   <tr>
-                    <td colSpan={2} style={{ padding: '3px 0' }}>
-                      <hr style={{ border: 'none', borderTop: '2px dashed #000000', margin: '4px 0' }} />
+                    <td colSpan={2} style={{ padding: '2px 0' }}>
+                      <hr style={{ border: 'none', borderTop: '1px dashed #000000', margin: '3px 0' }} />
                     </td>
                   </tr>
-                  <tr style={{ fontSize: '14px', fontWeight: '900' }}>
-                    <td style={{ textAlign: 'left', padding: '4px 0', color: '#000000' }}>TOTAL PAID:</td>
-                    <td style={{ textAlign: 'right', padding: '4px 0', color: '#000000', fontSize: '15px', fontFamily: 'monospace' }}>₱{totalAmount.toFixed(2)}</td>
+                  <tr style={{ fontSize: '13px', fontWeight: '900' }}>
+                    <td style={{ textAlign: 'left', padding: '3px 0', color: '#000000' }}>TOTAL PAID:</td>
+                    <td style={{ textAlign: 'right', padding: '3px 0', color: '#000000', fontSize: '14px', fontFamily: 'monospace' }}>₱{totalAmount.toFixed(2)}</td>
                   </tr>
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a', fontSize: '9.5px' }}>PAYMENT METHOD:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '700', color: '#000000', fontSize: '9.5px' }}>{paymentMethod}</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px' }}>{paymentMethod}</td>
                   </tr>
                   {(transaction?.transactionID || targetTxId) && (
                     <tr>
-                      <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a', fontSize: '9.5px' }}>PAYMENT REF:</td>
-                      <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '700', color: '#000000', fontSize: '9.5px', fontFamily: 'monospace' }}>{transaction?.transactionID || targetTxId}</td>
+                      <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
+                      <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>{transaction?.transactionID || targetTxId}</td>
                     </tr>
                   )}
                   <tr>
-                    <td style={{ textAlign: 'left', padding: '2px 0', color: '#71717a', fontSize: '9.5px' }}>PAYMENT STATUS:</td>
-                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: '800', color: '#047857', fontSize: '9.5px' }}>PAID &amp; VERIFIED ✓</td>
+                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT STATUS:</td>
+                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontSize: '9px' }}>PAID &amp; VERIFIED ✓</td>
                   </tr>
                 </tbody>
               </table>
@@ -427,21 +423,21 @@ export default function InvoiceModal({
               {/* Store Pick-up Claim Code Box */}
               {isPickup && claimCode && (
                 <div style={{
-                  margin: '12px 0',
-                  padding: '9px 8px',
-                  border: '1.5px dashed #000000',
-                  backgroundColor: '#fafafa',
+                  margin: '5px 0',
+                  padding: '5px 6px',
+                  border: '1px dashed #000000',
+                  backgroundColor: '#ffffff',
                   textAlign: 'center',
-                  borderRadius: '4px'
+                  borderRadius: '3px'
                 }}>
-                  <div style={{ fontSize: '8.5px', fontWeight: '800', letterSpacing: '1.5px', color: '#52525b', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '8px', fontWeight: '800', letterSpacing: '1px', color: '#000000', textTransform: 'uppercase' }}>
                     STORE PICK-UP CLAIM CODE
                   </div>
-                  <div style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '2px', color: '#000000', fontFamily: 'monospace', margin: '3px 0' }}>
+                  <div style={{ fontSize: '17px', fontWeight: '900', letterSpacing: '2px', color: '#000000', fontFamily: 'monospace', margin: '2px 0' }}>
                     {claimCode}
                   </div>
-                  <div style={{ fontSize: '8.5px', color: '#71717a' }}>
-                    Present this claim code at the Pacific Mall Lucena counter for pickup
+                  <div style={{ fontSize: '8px', color: '#52525b' }}>
+                    Present this code at the Pacific Mall Lucena counter for pickup
                   </div>
                 </div>
               )}
@@ -450,14 +446,12 @@ export default function InvoiceModal({
               {renderBarcodeSvg(cleanOrderCode)}
 
               {/* Thermal Receipt Footer */}
-              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #71717a', textAlign: 'center' }}>
-                <div style={{ fontSize: '9.5px', fontWeight: '800', color: '#000000', letterSpacing: '0.5px' }}>
+              <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px dashed #71717a', textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', fontWeight: '800', color: '#000000', letterSpacing: '0.5px' }}>
                   *** THANK YOU FOR YOUR PURCHASE! ***
                 </div>
-                <div style={{ fontSize: '8.5px', color: '#52525b', marginTop: '3px', lineHeight: '1.35' }}>
+                <div style={{ fontSize: '8px', color: '#52525b', marginTop: '2px', lineHeight: '1.25' }}>
                   Receipt • Valid for Warranty &amp; Counter Pickup
-                  <br />
-                  Eds Towels &amp; Caps • Pacific Mall Lucena
                 </div>
               </div>
             </div>

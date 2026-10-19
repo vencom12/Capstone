@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Product } from '@/lib/types';
 import { useProductStore } from '@/stores/useProductStore';
+import { matchesProductSearch } from '@/lib/searchUtils';
 import ProductCard from './ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import Pagination from '@/components/ui/Pagination';
@@ -57,10 +58,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const filteredProducts = useMemo(() => {
     return baseProducts.filter((p) => {
-      const matchesSearch =
-        !searchQuery ||
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = matchesProductSearch(p, searchQuery);
       const pTagFormatted = p.tag ? p.tag.trim().replace(/\b\w/g, (c) => c.toUpperCase()) : 'General';
       const matchesCategory =
         selectedCategory === 'All' ||

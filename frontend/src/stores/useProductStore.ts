@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { matchesProductSearch } from '@/lib/searchUtils';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
 
 const formatCategoryName = (str?: string) => {
@@ -134,10 +135,7 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
   getFilteredProducts: () => {
     const { products, searchQuery, selectedCategory } = get();
     return products.filter((p) => {
-      const matchesSearch =
-        !searchQuery ||
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = matchesProductSearch(p, searchQuery);
       const pTagFormatted = formatCategoryName(p.tag);
       const matchesCategory = selectedCategory === 'All' || pTagFormatted === selectedCategory || p.tag === selectedCategory;
       return matchesSearch && matchesCategory;

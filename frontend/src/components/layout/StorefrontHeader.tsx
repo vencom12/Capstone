@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProductStore } from '@/stores/useProductStore';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { api } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
+import type { Product } from '@/lib/types';
+import { isConversationalQuestion } from '@/lib/searchUtils';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toggleTheme } from '@/lib/theme';
@@ -22,9 +26,19 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const categories = getCategories();
+
+  // Spotlight Inline AI State
+  const [isSearchAiOpen, setIsSearchAiOpen] = useState(false);
+  const [isSearchAiLoading, setIsSearchAiLoading] = useState(false);
+  const [searchAiResult, setSearchAiResult] = useState<{
+    query: string;
+    reply: string;
+    suggestedProducts: Product[];
+  } | null>(null);
 
   const handleBasketClick = () => {
     if (pathname === '/') {
@@ -49,6 +63,125 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     }
   };
 
+  const fetchSearchAi = async (queryToAsk: string) => {
+    const q = queryToAsk.trim();
+    if (!q) return;
+
+    setIsSearchFocused(false);
+    setIsSearchAiOpen(true);
+    setIsSearchAiLoading(true);
+
+    try {
+      const data = await api.post<{ success: boolean; reply: string; suggestedProducts: Product[] }>(
+        '/api/ai/storefront-chat',
+        {
+          message: q,
+          history: [],
+          context: { selectedCategory, searchQuery: q }
+        }
+      );
+
+      const rawReply = (data?.reply || '').replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
+      setSearchAiResult({
+        query: q,
+        reply: rawReply || "Hello! I'm here to help you check in-stock products (like our Regular Fans), custom embroidery pricing, or store details at Pacific Mall Lucena! 🧵✨",
+        suggestedProducts: data?.suggestedProducts || []
+      });
+    } catch (err) {
+      setSearchAiResult({
+        query: q,
+        reply: "Sorry, I'm having trouble connecting right now. Please try asking again in a moment! 🧵",
+        suggestedProducts: []
+      });
+    } finally {
+      setIsSearchAiLoading(false);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    // Pure local product search on Enter / Magnifying glass: 0 tokens, 0 AI calls, 0 network requests!
+    setIsSearchFocused(false);
+    setIsSearchAiOpen(false);
+    setSearchAiResult(null);
+
+    // Smooth scroll to product catalog on storefront
+    const catalogEl = document.getElementById('products-section') || document.getElementById('product-catalog');
+    if (catalogEl) {
+      catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleAiButtonClick = () => {
+    const query = searchQuery.trim();
+    if (query) {
+      fetchSearchAi(query);
+    } else {
+      if (selectedCategory && selectedCategory !== 'All') {
+        fetchSearchAi(`What ${selectedCategory} products and variants are available in stock?`);
+      } else {
+        fetchSearchAi("What products and variants are available in stock?");
+      }
+    }
+  };
+
+  const handleAddToBasket = (product: Product) => {
+    if (!isAuthenticated) {
+      showToast('Please login to add items to your basket', 'info');
+      return;
+    }
+
+    const productId = product.id || (product as any)._id || '';
+    const availableStock = product.availableStock !== undefined
+      ? product.availableStock
+      : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+    const isOutOfStock = product.isOutOfStock || availableStock <= 0;
+
+    if (isOutOfStock) {
+      showToast(`${product.name} is out of stock`, 'error');
+      return;
+    }
+
+    const inStockVar = product.variants?.find(v => !v.isOutOfStock && (v.availableStock ?? 0) > 0);
+
+    useBasketStore.getState().addItem({
+      productId,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      selectedVariant: inStockVar ? inStockVar.name : undefined,
+      selectedColor: inStockVar ? inStockVar.color : undefined,
+    });
+    showToast(`Added ${product.name}${inStockVar ? ` (${inStockVar.name})` : ''} to basket`, 'success');
+  };
+
+  const renderAiReplyText = (text: string) => {
+    const clean = text.replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
+    const paragraphs = clean.split('\n\n');
+    return paragraphs.map((para, pIdx) => {
+      const lines = para.split('\n');
+      return (
+        <div key={pIdx} className="mb-2 last:mb-0">
+          {lines.map((line, lIdx) => {
+            const parts = line.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+            return (
+              <p key={lIdx} className="text-xs sm:text-[0.82rem] leading-relaxed text-text-main/90 m-0 my-0.5">
+                {parts.map((part, i) => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={i} className="font-bold text-text-main">{part.slice(2, -2)}</strong>;
+                  }
+                  if (part.startsWith('*') && part.endsWith('*')) {
+                    return <em key={i} className="italic text-text-main">{part.slice(1, -1)}</em>;
+                  }
+                  return part;
+                })}
+              </p>
+            );
+          })}
+        </div>
+      );
+    });
+  };
+
   useEffect(() => {
     setMounted(true);
     import('@/lib/api').then(({ api }) => {
@@ -71,10 +204,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       if (isMobileUserMenuOpen && !target.closest('.mobile-user-menu-container')) {
         setIsMobileUserMenuOpen(false);
       }
+      if (!target.closest('.search-container')) {
+        setIsSearchFocused(false);
+        setIsSearchAiOpen(false);
+      }
     };
     window.addEventListener('mousedown', handleOutsideClick);
     return () => window.removeEventListener('mousedown', handleOutsideClick);
-  }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen]);
+  }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen, isSearchFocused, isSearchAiOpen]);
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
@@ -235,9 +372,9 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           </div>
         </div>
 
-        {/* Middle: Unified Search Capsule with Integrated Category Selector */}
-        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative">
-          <div className="w-full relative flex items-center bg-bg-surface border border-border-glass rounded-xl shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+        {/* Middle: Unified Search Capsule with Integrated Category Selector & AI Search */}
+        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative search-container">
+          <div className="w-full relative flex items-center bg-bg-surface border border-border-glass rounded-xl shadow-sm focus-within:border-border-glass/80 focus-within:ring-2 focus-within:ring-white/5 transition-all">
             {/* Integrated Category Dropdown Trigger */}
             <div className="shrink-0 relative category-dropdown-container">
               <button
@@ -257,7 +394,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.5"
-                  className={`transition-transform duration-200 text-text-dim ${isCategoryOpen ? 'rotate-180 text-primary' : ''}`}
+                  className={`transition-transform duration-200 text-text-dim ${isCategoryOpen ? 'rotate-180 text-text-main' : ''}`}
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -304,30 +441,202 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <input
                 suppressHydrationWarning
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search products or ask a question..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] text-text-main placeholder:text-text-dim/70 outline-none flex-1 min-w-0 rounded-r-xl"
+                onFocus={() => setIsSearchFocused(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchFocused(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearchSubmit();
+                  } else if (e.key === 'Escape') {
+                    setIsSearchFocused(false);
+                  }
+                }}
+                className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] text-text-main placeholder:text-text-dim/70 outline-none flex-1 min-w-0"
               />
+              {/* Clear search query button */}
               {searchQuery && (
                 <button
                   type="button"
                   suppressHydrationWarning
-                  onClick={() => setSearchQuery('')}
-                  className="p-1 mr-1 text-text-dim hover:text-text-main rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsSearchAiOpen(false);
+                    setSearchAiResult(null);
+                  }}
+                  className="p-1 mr-1 text-text-dim hover:text-text-main rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
                   title="Clear search"
+                  aria-label="Clear search"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
               )}
-              <div className="pr-3.5 text-text-dim pointer-events-none flex items-center">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+
+              {/* Permanent AI Store Attendant Trigger (Clean monochrome Sparkles) */}
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={handleAiButtonClick}
+                className="p-1.5 mr-1 text-text-dim hover:text-text-main hover:bg-white/10 rounded-lg border border-border-glass/60 hover:border-border-glass cursor-pointer flex items-center justify-center shrink-0 transition-all active:scale-95"
+                title={searchQuery.trim() ? `Ask AI about "${searchQuery.trim()}"` : "Ask AI Store Attendant"}
+                aria-label="Ask AI Store Attendant"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+                  <path d="M19 4v4m2-2h-4" />
+                </svg>
+              </button>
+
+              {/* Standard Search Submit Button (0 tokens) */}
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={handleSearchSubmit}
+                className="p-1.5 mr-2 text-text-dim hover:text-text-main hover:bg-white/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center shrink-0 active:scale-95"
+                title="Search products (0 tokens)"
+                aria-label="Search products"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-              </div>
+              </button>
             </div>
           </div>
+
+          {/* Spotlight Inline AI Answer Dropdown (Perplexity/Spotlight style) */}
+          {isSearchAiOpen && (
+            <div className="absolute top-[calc(100%+8px)] inset-x-0 bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-3.5 sm:p-4 shadow-2xl z-[3000] max-h-[75vh] overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border-glass">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-md bg-white/10 border border-border-glass flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-main">
+                      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+                      <path d="M19 4v4m2-2h-4" />
+                    </svg>
+                  </span>
+                  <span className="text-xs font-bold text-text-main">AI Store Attendant</span>
+                  <span className="text-[0.62rem] text-text-dim px-2 py-0.5 rounded-full bg-white/5 border border-border-glass">
+                    Instant Answer
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchAiOpen(false)}
+                  className="p-1 rounded-md text-text-dim hover:text-text-main hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
+                  title="Close (Esc)"
+                  aria-label="Close answer"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Body: Loading Shimmer or Result */}
+              {isSearchAiLoading ? (
+                <div className="py-4 px-2 flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2 text-xs text-text-dim animate-pulse">
+                    <span className="animate-spin">🧵</span>
+                    <span>Checking live workshop inventory & embroidery specs...</span>
+                  </div>
+                  <div className="h-3 w-4/5 bg-white/10 rounded animate-pulse" />
+                  <div className="h-3 w-3/5 bg-white/10 rounded animate-pulse" />
+                </div>
+              ) : searchAiResult ? (
+                <div className="flex flex-col gap-3">
+                  {/* AI Response Text */}
+                  <div className="p-3 rounded-xl bg-white/[0.04] border border-border-glass">
+                    {renderAiReplyText(searchAiResult.reply)}
+                  </div>
+
+                  {/* Matching Products Grid */}
+                  {searchAiResult.suggestedProducts && searchAiResult.suggestedProducts.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
+                        {selectedCategory && selectedCategory !== 'All' && searchAiResult.suggestedProducts.some(p => p.tag && !p.tag.toLowerCase().includes(selectedCategory.toLowerCase()))
+                          ? 'Available Workshop Alternatives'
+                          : 'In-Stock Recommendations'}
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {searchAiResult.suggestedProducts.map((p, pIdx) => {
+                          const avail = p.availableStock !== undefined 
+                            ? p.availableStock 
+                            : Math.max(0, (p.count ?? 0) - (p.reservedCount ?? 0));
+                          const oos = p.isOutOfStock || avail <= 0;
+                          return (
+                            <div 
+                              key={p.id ? `search-prod-${p.id}-${pIdx}` : `search-prod-idx-${pIdx}`} 
+                              className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-border-glass hover:border-border-glass/80 transition-all"
+                            >
+                              <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                                {p.imageUrl ? (
+                                  <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-text-dim text-[0.6rem]">IMG</div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-text-main m-0 truncate">{p.name}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-text-main font-bold text-xs">₱{p.price.toFixed(2)}</span>
+                                  <span className="text-[0.6rem] text-text-dim">{avail} in stock</span>
+                                </div>
+                                {p.variants && p.variants.length > 0 && (
+                                  <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                    {p.variants.filter(v => !v.isOutOfStock && (v.availableStock ?? 0) > 0).map((v, vIdx) => (
+                                      <span 
+                                        key={vIdx} 
+                                        className="text-[0.62rem] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 leading-none"
+                                        title={`${v.name}: ${v.availableStock} in stock`}
+                                      >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                                        {v.name}: {v.availableStock}
+                                      </span>
+                                    ))}
+                                    {p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).length > 0 && (
+                                      <span 
+                                        className="text-[0.58rem] text-text-dim/80 px-1.5 py-0.5 rounded bg-white/5 border border-border-glass leading-none"
+                                        title={`Out of stock: ${p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).map(v => v.name).join(', ')}`}
+                                      >
+                                        +{p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).length} out of stock
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAddToBasket(p)}
+                                disabled={oos}
+                                className="shrink-0 px-2.5 py-1 rounded-lg text-[0.68rem] font-bold border border-border-glass bg-white/10 hover:bg-white/20 text-text-main cursor-pointer active:scale-95 transition-all"
+                              >
+                                {oos ? 'Out' : '🛍️ Add'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dropdown Footer */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border-glass/40 text-[0.7rem] text-text-dim">
+                    <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[0.62rem] border border-border-glass">Esc</kbd> to close</span>
+                    <span className="flex items-center gap-1.5 text-[0.68rem] text-text-dim">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>Live Stock Verified</span>
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Desktop Actions (Story Link, Theme, Auth, Basket) - visible only on lg:flex */}

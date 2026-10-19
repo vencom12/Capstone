@@ -39,6 +39,34 @@ const getAISettings = async () => {
     }
 };
 
+const ALLOWED_TOOLS_BY_ROLE = {
+    admin: [
+        'updateOrderStatus',
+        'updateInventoryStock',
+        'createInventoryItem',
+        'deleteInventoryItem',
+        'createProduct',
+        'deleteProduct',
+        'updateProduct',
+        'bulkCreateProducts',
+        'getSystemAnalytics',
+        'getMachineFleetStatus',
+        'getAuditLogs',
+        'executeRecommendationAction',
+        'routeOrderToMachine',
+        'sendCustomerEmail',
+        'createMaintenanceTicket'
+    ],
+    employee: [
+        'updateOrderStatus',
+        'getMachineFleetStatus',
+        'getSystemAnalytics',
+        'routeOrderToMachine',
+        'createMaintenanceTicket'
+    ],
+    customer: []
+};
+
 const executeAction = async (functionName, args, req) => {
     if (!req.user || !req.user.id) {
         return `Forbidden: Unauthenticated request.`;
@@ -56,35 +84,7 @@ const executeAction = async (functionName, args, req) => {
     const username = dbUser.username;
 
     // Strict Role-Based Access Control
-    const allowedTools = {
-        admin: [
-            'updateOrderStatus',
-            'updateInventoryStock',
-            'createInventoryItem',
-            'deleteInventoryItem',
-            'createProduct',
-            'deleteProduct',
-            'updateProduct',
-            'bulkCreateProducts',
-            'getSystemAnalytics',
-            'getMachineFleetStatus',
-            'getAuditLogs',
-            'executeRecommendationAction',
-            'routeOrderToMachine',
-            'sendCustomerEmail',
-            'createMaintenanceTicket'
-        ],
-        employee: [
-            'updateOrderStatus',
-            'getMachineFleetStatus',
-            'getSystemAnalytics',
-            'routeOrderToMachine',
-            'createMaintenanceTicket'
-        ],
-        customer: []
-    };
-
-    const userAllowed = allowedTools[userRole] || [];
+    const userAllowed = ALLOWED_TOOLS_BY_ROLE[userRole] || [];
     if (!userAllowed.includes(functionName)) {
         return `Forbidden: Insufficient privileges. Role "${userRole}" is not authorized to execute tool "${functionName}".`;
     }
@@ -514,6 +514,266 @@ exports.chat = async (req, res) => {
             return res.status(403).json({ message: 'Forbidden: Insufficient privileges' });
         }
 
+        if (!message || typeof message !== 'string' || message.trim().length === 0) {
+            return res.status(400).json({ success: false, reply: 'Please enter a valid message.' });
+        }
+        if (message.length > 2000) {
+            return res.status(400).json({ success: false, reply: 'Prompt is too long. Please limit your message to 2,000 characters.' });
+        }
+
+        const cleanMsg = message.trim().toLowerCase();
+
+        // =============================================================
+        // TOKEN CONSERVATION: Zero-Token Direct Database Fast Paths
+        // Handles structured operator & admin prompts with ZERO LLM tokens!
+        // =============================================================
+
+        // 0. Conversational Greetings & Introductions (100% Zero-Token Direct Fast Path)
+        const isGreetingOnly = /^(hi|hello|hey|wassup|what'?s\s*up|whats\s*up|sup|yo|good\s+(morning|afternoon|evening)|howdy|who\s+are\s+you|what\s+can\s+you\s+do|help)\b/i.test(cleanMsg) &&
+            !/\b(order|status|stock|machine|product|create|update|delete|assign|route|ticket|email|urgent|rush|acquire|acquisition|revenue|summary)\b/i.test(cleanMsg);
+
+        if (isGreetingOnly) {
+            const roleTitle = dbUser.role === 'admin' ? 'Administrator' : 'Operator';
+            const firstName = (dbUser.name || dbUser.username || 'Team Member').split(' ')[0];
+            const reply = `Hey there, **${firstName}**! 👋 I am **StitchMaster AI**, your real-time workshop intelligence assistant.\n\n` +
+                `I have live database access. As an **${roleTitle}**, here is what I can do for you:\n` +
+                `• ⚡ **Live Operations:** Check rush orders, queue status, and machine fleet capacity.\n` +
+                `• 📦 **Materials & Inventory:** Audit low thread spools and auto-draft material acquisition forms.\n` +
+                (dbUser.role === 'admin' 
+                    ? `• 📈 **Analytics & Management:** Inspect daily revenue, conversion rates, and manage product catalog stock.\n` 
+                    : `• 🧵 **Workstation:** Review assigned machine orders, update order status, and log machine maintenance.\n`) +
+                `\nWhat would you like to work on today? Ask me any question or tap one of the quick actions above!`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 1. Rush / Urgent Orders
+        if (/\b(rush|urgent|priority orders|queue right now|critical orders)\b/i.test(cleanMsg)) {
+            const urgentOrders = await prisma.order.findMany({
+                where: {
+                    status: { in: ['In Queue', 'Preparing Order', 'In Transit'] }
+                },
+                orderBy: [
+                    { priorityScore: 'desc' },
+                    { createdAt: 'desc' }
+                ],
+                take: 10
+            });
+
+            if (urgentOrders.length === 0) {
+                return res.json({
+                    success: true,
+                    reply: "Great news! There are currently **no urgent or rush orders** pending in the queue. All workshop stations are caught up!",
+                    tokensUsed: 0
+                });
+            }
+
+            let reply = `Here are the top **urgent and rush orders** currently prioritized in the workshop:\n\n`;
+            reply += `| Order ID | Client | Design | Status | Priority Score | Due Date |\n`;
+            reply += `| :--- | :--- | :--- | :--- | :---: | :--- |\n`;
+            urgentOrders.forEach(o => {
+                const due = o.dueDate ? new Date(o.dueDate).toLocaleDateString() : 'Standard';
+                const score = (o.priorityScore ?? 0).toFixed(0);
+                reply += `| \`#${o.orderId}\` | ${o.client || 'Walk-in'} | ${o.design || 'Custom'} | ${o.status.toUpperCase()} | **${score}** | ${due} |\n`;
+            });
+            reply += `\n*Priority is dynamically calculated using turnaround deadlines, delivery commitments, and machine availability.*`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 2. Low Stock Materials / Raw Materials
+        if (/\b(low stock|materials.*(low|critically)|thread spools.*(low|stock)|stockpiles?.*low)\b/i.test(cleanMsg) && !/\b(acquisition|requisition|order supplies|form)\b/i.test(cleanMsg)) {
+            const allInv = await prisma.inventory.findMany({
+                orderBy: { count: 'asc' }
+            });
+            const lowItems = allInv.filter(i => (i.minThreshold && i.count <= i.minThreshold) || i.count <= 5);
+
+            if (lowItems.length === 0) {
+                return res.json({
+                    success: true,
+                    reply: "All workshop materials and thread spools are currently at **HEALTHY** stockpile levels! No critical stockouts detected.",
+                    tokensUsed: 0
+                });
+            }
+
+            let reply = `⚠️ **Critical Stock Alert:** The following raw materials are currently at or below their safety reorder thresholds:\n\n`;
+            reply += `| Material Item | Current Count | Min Threshold | Unit | Status |\n`;
+            reply += `| :--- | :---: | :---: | :---: | :---: |\n`;
+            lowItems.forEach(i => {
+                const status = (i.count === 0) ? 'CRITICAL_OUT' : 'LOW_STOCK';
+                reply += `| **${i.item}** | **${i.count}** | ${i.minThreshold || 10} | ${i.unit || 'Cones'} | ${status} |\n`;
+            });
+            reply += `\n*Please restock these spools promptly to prevent machine hold-ups on the embroidery workbench.*`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 3. Supply Acquisition & Purchase Requisition Form (100% Zero-Token DB Fast Path)
+        if (/\b(acquisition form|create acquisition|draft acquisition|requisition form|purchase requisition|order supplies|restock form)\b/i.test(cleanMsg)) {
+            const allInv = await prisma.inventory.findMany({
+                orderBy: { count: 'asc' }
+            });
+            const lowItems = allInv.filter(i => (i.minThreshold && i.count <= i.minThreshold) || i.count <= 5);
+
+            if (lowItems.length === 0) {
+                return res.json({
+                    success: true,
+                    reply: "Great news! All workshop materials and thread spools are currently **above safety thresholds**. There are no materials in critical need of replenishment, so a supply acquisition form is not required right now.",
+                    tokensUsed: 0
+                });
+            }
+
+            const todayFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const reqCode = `REQ-${Date.now().toString().slice(-6)}`;
+
+            let reply = `📋 **Supply Acquisition & Requisition Form**\n`;
+            reply += `**Requisition Code:** \`${reqCode}\` | **Date:** ${todayFormatted} | **Status:** PENDING_APPROVAL\n\n`;
+            reply += `| Raw Material | Current Count | Safety Margin | Recommended Reorder | Unit |\n`;
+            reply += `| :--- | :---: | :---: | :---: | :---: |\n`;
+
+            const supplierLines = [];
+            lowItems.forEach(i => {
+                const threshold = i.minThreshold || 10;
+                const suggestedQty = Math.max(5, (threshold * 2) - i.count);
+                const unit = i.unit || 'Cones';
+                reply += `| **${i.item}** | ${i.count} | ${threshold} | **+${suggestedQty}** | ${unit} |\n`;
+                supplierLines.push(`• ${i.item} — Qty: ${suggestedQty} ${unit}`);
+            });
+
+            reply += `\n### 💬 Copyable Supplier Message (Viber / Messenger / Email):\n`;
+            reply += "```text\n";
+            reply += `SUPPLY ACQUISITION REQUISITION — Eds Towels & Caps\n`;
+            reply += `Ref: ${reqCode} | Date: ${todayFormatted}\n`;
+            reply += `Please confirm pricing & availability for delivery:\n`;
+            reply += supplierLines.join('\n') + '\n';
+            reply += `Delivery to: Eds Towels & Caps Workshop Receiving\n`;
+            reply += `Contact: 0928 810 3928\n`;
+            reply += "```\n\n";
+            reply += `*Click **Copy** above to send directly to your thread & materials supplier, or review under **Materials > Acquisition Form**.*`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 4. Machine Fleet & Embroidery Workbench Status (100% Zero-Token DB Fast Path)
+        if (/\b(machine fleet|machine status|embroidery machines|machine health|fleet status|machines)\b/i.test(cleanMsg)) {
+            const machines = await prisma.machine.findMany({
+                include: {
+                    assignedUser: { select: { id: true, username: true } }
+                },
+                orderBy: { name: 'asc' }
+            });
+
+            if (machines.length === 0) {
+                return res.json({
+                    success: true,
+                    reply: "No embroidery machines are registered in the workshop database yet.",
+                    tokensUsed: 0
+                });
+            }
+
+            const runningCount = machines.filter(m => m.status === 'Running' || m.status === 'Active').length;
+            const idleCount = machines.filter(m => m.status === 'Idle').length;
+            const maintCount = machines.filter(m => m.status === 'Maintenance' || m.status === 'Offline').length;
+
+            let reply = `🧵 **Workshop Embroidery Machine Fleet:**\n\n`;
+            reply += `| Machine Name | Type | Status | Assigned Operator | Last Activity |\n`;
+            reply += `| :--- | :--- | :---: | :--- | :--- |\n`;
+            machines.forEach(m => {
+                const operator = m.assignedUser?.username || 'Unassigned';
+                const updated = m.updatedAt ? new Date(m.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                reply += `| **${m.name}** | ${m.type || 'Embroidery'} | ${m.status.toUpperCase()} | ${operator} | ${updated} |\n`;
+            });
+
+            const utilization = Math.round((runningCount / machines.length) * 100);
+            reply += `\n**Fleet Summary:** ${runningCount} RUNNING • ${idleCount} IDLE • ${maintCount} IN MAINTENANCE (**${utilization}% Active Utilization**)\n`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 5. Daily Sales & Revenue Breakdown (100% Zero-Token DB Fast Path)
+        if (/\b(revenue snapshot|today's sales|todays sales|sales breakdown|daily revenue|financial snapshot|financial.*revenue|revenue.*breakdown|sales.*breakdown|financial breakdown)\b/i.test(cleanMsg)) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            const todayOrders = await prisma.order.findMany({
+                where: { createdAt: { gte: startOfToday } },
+                select: { id: true, totalAmount: true, status: true, paymentStatus: true, client: true }
+            });
+
+            const totalCount = todayOrders.length;
+            const grossRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+            const paidOrders = todayOrders.filter(o => (o.paymentStatus || '').toLowerCase() === 'paid');
+            const paidRevenue = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+            const unpaidRevenue = Math.max(0, grossRevenue - paidRevenue);
+
+            let reply = `💰 **Today's Financial & Sales Snapshot:**\n\n`;
+            reply += `| Metric | Figure | Operational Note |\n`;
+            reply += `| :--- | :---: | :--- |\n`;
+            reply += `| **New Orders Today** | **${totalCount}** | Total customer intake since midnight |\n`;
+            reply += `| **Gross Booked Value** | **₱${grossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | All customer orders generated today |\n`;
+            reply += `| **Collected / Paid** | **₱${paidRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | Verified payments received (${paidOrders.length} orders) |\n`;
+            reply += `| **Pending Collection** | **₱${unpaidRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | Awaiting balance on pickup/delivery |\n\n`;
+            reply += `*Computed live directly from active order invoices in PostgreSQL.*`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
+        // 6. Today's Summary / Workshop Throughput
+        if (/\b(today's summary|todays summary|workshop throughput|pending production tasks|daily summary|summary today)\b/i.test(cleanMsg)) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            const [todayOrders, pendingQueue, preparingOrders, deliveredToday, machines] = await Promise.all([
+                prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
+                prisma.order.count({ where: { status: 'In Queue' } }),
+                prisma.order.count({ where: { status: 'Preparing Order' } }),
+                prisma.order.count({ where: { status: { in: ['Order Delivered', 'Completed'] }, updatedAt: { gte: startOfToday } } }),
+                prisma.machine.findMany({ select: { name: true, status: true, type: true } })
+            ]);
+
+            const activeMachines = machines.filter(m => m.status === 'Running' || m.status === 'Active').length;
+
+            let reply = `📊 **Today's Workshop Throughput & Operations Summary:**\n\n`;
+            reply += `| Operational Metric | Live Count | Current Status / Note |\n`;
+            reply += `| :--- | :---: | :--- |\n`;
+            reply += `| **New Orders Today** | **${todayOrders}** | Inflow since midnight |\n`;
+            reply += `| **In Queue Waiting** | **${pendingQueue}** | Ready for machine assignment |\n`;
+            reply += `| **Actively Stitching** | **${preparingOrders}** | Currently on machine hoops |\n`;
+            reply += `| **Completed / Delivered Today** | **${deliveredToday}** | Handed off to clients |\n`;
+            reply += `| **Active Machine Fleet** | **${activeMachines}/${machines.length}** | Online embroidery heads |\n\n`;
+            reply += `*Real-time metrics refreshed directly from the workshop database.*`;
+
+            return res.json({
+                success: true,
+                reply,
+                tokensUsed: 0
+            });
+        }
+
         const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
         const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
 
@@ -524,11 +784,13 @@ exports.chat = async (req, res) => {
         let trafficRollups = [];
         let orderRollups = [];
 
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+
         if (dbUser.role === 'admin') {
-            [orders, inventory, products, orders14d, trafficRollups, orderRollups] = await Promise.all([
+            const [fetchedOrders, fetchedInv, fetchedProducts, fetchedOrders14d, fetchedTraffic, fetchedOrderRollups] = await Promise.all([
                 prisma.order.findMany({ take: 30, orderBy: { createdAt: 'desc' } }),
                 prisma.inventory.findMany(),
-                prisma.product.findMany({ take: 30, orderBy: { createdAt: 'desc' } }),
+                prisma.product.findMany({ orderBy: { createdAt: 'desc' } }),
                 prisma.order.findMany({
                     where: {
                         date: { gte: date14dAgo },
@@ -553,13 +815,19 @@ exports.chat = async (req, res) => {
                     GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
                 `
             ]);
+            orders = fetchedOrders;
+            inventory = fetchedInv;
+            products = await enrichProductsWithStock(fetchedProducts);
+            orders14d = fetchedOrders14d;
+            trafficRollups = fetchedTraffic;
+            orderRollups = fetchedOrderRollups;
         } else if (dbUser.role === 'employee') {
             const userMachines = await prisma.machine.findMany({
                 where: { assignedUserId: dbUser.id }
             });
             const machineIds = userMachines.map(m => m.id);
 
-            [orders, inventory, products] = await Promise.all([
+            const [fetchedOrders, fetchedInv, fetchedProducts] = await Promise.all([
                 // Only orders assigned to their machines (uncompleted ones)
                 prisma.order.findMany({
                     where: {
@@ -583,11 +851,14 @@ exports.chat = async (req, res) => {
                 prisma.inventory.findMany({
                     select: { id: true, item: true, count: true }
                 }),
-                // Only basic products catalog (no cost/prices)
+                // Products catalog with variants and stock (no wholesale cost/prices for staff)
                 prisma.product.findMany({
-                    select: { id: true, name: true, tag: true, description: true }
+                    select: { id: true, name: true, tag: true, description: true, count: true, reservedCount: true, variants: true }
                 })
             ]);
+            orders = fetchedOrders;
+            inventory = fetchedInv;
+            products = await enrichProductsWithStock(fetchedProducts);
         }
 
         let totalVisits365D = 0;
@@ -647,33 +918,31 @@ exports.chat = async (req, res) => {
             delivered: orders.filter(o => ['Order Delivered', 'Delivered', 'Completed'].includes(o.status)).length,
             queue: orders.filter(o => o.status === 'In Queue').length,
             preparing: orders.filter(o => o.status === 'Preparing Order').length,
-            canceled: orders.filter(o => ['Order Canceled', 'Canceled'].includes(o.status)).length,
-            recent: orders.slice(0, 15).map(o => ({ 
-                id: o.orderId, 
-                status: o.status, 
-                client: o.client, 
-                design: o.design, 
-                total: dbUser.role === 'admin' ? o.totalAmount : undefined, 
-                progress: o.progress 
-            }))
+            canceled: orders.filter(o => ['Order Canceled', 'Canceled'].includes(o.status)).length
         };
 
-        const inventorySummary = inventory.map(i => ({
-            item: i.item,
-            count: i.count,
-            unit: i.unit || 'Cones',
-            threshold: i.minThreshold,
-            status: (i.minThreshold && i.count <= i.minThreshold) ? 'LOW_STOCK' : 'HEALTHY'
-        }));
+        const recentOrdersBrief = orders.slice(0, 8).map(o => 
+            `#${o.orderId} (${o.client || 'Walk-in'} - ${o.design || 'Custom'}, ${o.status}${o.progress ? ` ${o.progress}%` : ''})`
+        ).join('; ');
 
-        const productCatalog = products.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: dbUser.role === 'admin' ? p.price : undefined,
-            tag: p.tag,
-            description: p.description,
-            imageUrl: p.imageUrl
-        }));
+        const lowStockItems = inventory.filter(i => (i.minThreshold && i.count <= i.minThreshold) || i.count <= 5);
+        const healthyStockCount = inventory.length - lowStockItems.length;
+        const inventoryBrief = `${inventory.length} total items (${healthyStockCount} healthy). ` +
+            (lowStockItems.length > 0 
+                ? `CRITICAL LOW STOCK: ${lowStockItems.map(i => `${i.item}: ${i.count} ${i.unit || 'cones'} (min: ${i.minThreshold || 10})`).join(', ')}` 
+                : `All material levels healthy.`);
+
+        const productCatalogBrief = products.slice(0, 15).map(p => {
+            let vList = p.variants;
+            if (typeof vList === 'string') {
+                try { vList = JSON.parse(vList); } catch(e) { vList = []; }
+            }
+            if (!Array.isArray(vList)) vList = [];
+            const inStock = vList.filter(v => v && !v.isOutOfStock && (v.availableStock ?? 0) > 0).map(v => `${v.name}:${v.availableStock}`);
+            const oos = vList.filter(v => v && (v.isOutOfStock || (v.availableStock ?? 0) <= 0)).map(v => v.name);
+            const avail = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count ?? 0) - (p.reservedCount ?? 0));
+            return `${p.name} [Avail: ${avail}${inStock.length ? `, In-stock: ${inStock.join('/')}` : ''}${oos.length ? `, OOS: ${oos.join('/')}` : ''}]`;
+        }).join(' | ');
 
         // Fetch active recommendations
         let activeSuggestions = [];
@@ -686,19 +955,9 @@ exports.chat = async (req, res) => {
 
         let suggestionsContext = '';
         if (activeSuggestions.length > 0) {
-            suggestionsContext = `\nACTIVE BUSINESS INTELLIGENCE STRATEGIC RECOMMENDATIONS:\n`;
-            activeSuggestions.forEach(s => {
-                suggestionsContext += `- Recommendation ID: ${s.id}\n`;
-                suggestionsContext += `  Title: ${s.title}\n`;
-                suggestionsContext += `  Category: ${s.category}\n`;
-                suggestionsContext += `  Severity: ${s.severity}\n`;
-                suggestionsContext += `  Description: ${s.description}\n`;
-                suggestionsContext += `  Action Text: ${s.actionText}\n`;
-                suggestionsContext += `  Action Payload: ${JSON.stringify(s.action || {})}\n\n`;
-            });
-            suggestionsContext += `You can execute any recommendation using executeRecommendationAction tool with the suggestionId parameter.\n`;
-        } else {
-            suggestionsContext = `\nACTIVE BUSINESS INTELLIGENCE STRATEGIC RECOMMENDATIONS: None\n`;
+            suggestionsContext = `\nACTIVE BUSINESS INTELLIGENCE STRATEGIC RECOMMENDATIONS:\n` +
+                activeSuggestions.slice(0, 3).map(s => `- [${s.id}] ${s.title} (${s.severity}): ${s.actionText || s.description}`).join('\n') +
+                `\n(Execute using executeRecommendationAction tool with suggestionId parameter if instructed)\n`;
         }
 
         let userPromptContext = `\nAUTHENTICATED USER PROFILE:\n`;
@@ -751,17 +1010,21 @@ exports.chat = async (req, res) => {
         const systemPrompt = `You are StitchMaster AI, the strategic automated business intelligence facilitator for Stitch-Opt.
         
         CRITICAL REAL-TIME SYSTEM CONTEXT:
-        - Active Orders: Total ${orderSummary.total} orders. Status: ${orderSummary.delivered} Delivered, ${orderSummary.preparing} Preparing, ${orderSummary.queue} In Queue, ${orderSummary.canceled} Canceled.
-        - Recent Orders List: ${JSON.stringify(orderSummary.recent)}
-        - Inventory stockpile: ${JSON.stringify(inventorySummary)}
-        - Product catalog items: ${JSON.stringify(productCatalog)}
+        - Active Orders: Total ${orderSummary.total} (${orderSummary.delivered} Delivered, ${orderSummary.preparing} Preparing, ${orderSummary.queue} In Queue, ${orderSummary.canceled} Canceled).
+        - Recent Orders: ${recentOrdersBrief || 'None'}
+        - Stockpile: ${inventoryBrief}
+        - Product Catalog Items (with real-time variant stock): ${productCatalogBrief || 'None'}
         
         ${dbUser.role === 'admin' ? `REAL-TIME BI & FORECAST METRICS:
         - Storefront Conversion Rate: ${(conversionRate * 100).toFixed(1)}% (based on ${totalVisits365D} visits and ${totalOrders365D} orders in the past 365 days)
-        - Material Depletion Forecasts (velocity/day & days remaining): ${JSON.stringify(biForecastSummary)}` : ''}
+        - Material Depletion Forecasts: ${biForecastSummary.filter(f => f.risk === 'Critical' || f.risk === 'Warning').map(f => `${f.item} (${f.daysRemaining} days remaining, risk: ${f.risk})`).join('; ') || 'All materials stable (>14 days buffer)'}` : ''}
         
         ${suggestionsContext}
         ${userPromptContext}
+        
+        CRITICAL INVENTORY & VARIANT RULES:
+        - When asked about product stock, colors, or variants, report exact real-time variant stock from "In-stock" vs "OOS" (Out of Stock).
+        - Never assume all variants are available if only certain colors have stock! (e.g. Regular Fan Small has 86 in Blue, but Red, Yellow, Orange, Emerald Green, Fuchsia Pink, Pink are 0 in stock. Bath Towels are all 0 in stock across all variants).
         
         POWERS & RESPONSIBILITIES:
         - You have dynamic database access via tools based on the user's role.
@@ -1029,7 +1292,16 @@ exports.chat = async (req, res) => {
             { role: 'user', content: message }
         ];
 
-        let data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages, tools, tool_choice: "auto" });
+        const allowedToolNames = ALLOWED_TOOLS_BY_ROLE[dbUser.role] || [];
+        const roleTools = tools.filter(t => allowedToolNames.includes(t.function.name));
+
+        const groqOptions = { messages };
+        if (roleTools.length > 0) {
+            groqOptions.tools = roleTools;
+            groqOptions.tool_choice = "auto";
+        }
+
+        let data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, groqOptions);
         
         // Mode A: Native Tool Call execution
         if (data.choices && data.choices[0] && data.choices[0].message.tool_calls) {
@@ -1094,7 +1366,8 @@ exports.chat = async (req, res) => {
 
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
-            res.json({ success: true, reply });
+            const tokensUsed = data.usage?.total_tokens || (Math.ceil(((reply || '').length + (cleanMsg || '').length) / 3.5));
+            res.json({ success: true, reply, tokensUsed });
         } else {
             console.error('[AI Error] Groq API Response lacks choices. Full Response:', JSON.stringify(data));
             res.json({ success: false, reply: "The assistant did not return a valid completion. Please try again." });
@@ -1630,16 +1903,522 @@ exports.storefrontChat = async (req, res) => {
         if (!message || typeof message !== 'string' || message.trim().length === 0) {
             return res.status(400).json({ success: false, reply: 'Please enter a message.' });
         }
+        if (message.length > 1000) {
+            return res.status(400).json({ success: false, reply: 'Message is too long. Please limit your message to 1,000 characters.' });
+        }
 
+        const cleanMsg = message.trim().toLowerCase();
+        const alphaOnly = cleanMsg.replace(/[^a-z0-9]/g, '');
+
+        // 1. Guard against single characters, symbols, or pure punctuation (?, !, ..., etc.)
+        if (alphaOnly.length < 2) {
+            return res.json({
+                success: true,
+                reply: "Hello! Welcome to **Stitch-Opt** at Pacific Mall Lucena. 🧵 I can help you check in-stock products, custom embroidery options, pricing, and turnaround time. What are you looking for today?",
+                suggestedProducts: []
+            });
+        }
+
+        // 2. Guard against repeated character spam (e.g., "aaaaaa", "zzzzzz")
+        if (/^([a-z0-9])\1{4,}$/i.test(alphaOnly)) {
+            return res.json({
+                success: true,
+                reply: "I couldn't quite understand that. Feel free to ask about our in-stock fans, custom embroidery, or store location!",
+                suggestedProducts: []
+            });
+        }
+
+        // 3. Gratitude & acknowledgments (thanks, thank you, ok, salamat)
+        if (/^(thanks|thank you|ty|salamat|arigato|ok|okay|k|noted|cge|sige|got it|all good|understood)[\s!.]*$/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery with Madeira threads. ✨",
+                suggestedProducts: []
+            });
+        }
+
+        // 4. Help & capabilities inquiry
+        if (/^(help|info|menu|what can you do|features)[\s!.]*$/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "I'm your Stitch-Opt virtual shopping assistant! Here's what I can help you with:\n• Checking real-time in-stock products (fans, towels, caps)\n• Custom embroidery pricing & turnaround times\n• Store hours & location (Pacific Mall Lucena)\n• Payment methods (GCash / Maya / Cash)\n\nWhat would you like to know?",
+                suggestedProducts: []
+            });
+        }
+
+        // 5. Store Location / Branch
+        if (/\b(where|location|address|branch|find you|stall|place)\b/i.test(cleanMsg) && /\b(store|shop|located|you|booth|stall|mall)\b/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "Our workshop is located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St., Brgy. 3, Lucena City, Quezon). Drop by our counter anytime between **10:00 AM and 8:00 PM** to see our physical embroidery samples! 🧵✨",
+                suggestedProducts: []
+            });
+        }
+
+        // 6. Store Hours
+        if (/\b(hours|open|time|schedule|close|closing|opening)\b/i.test(cleanMsg) && /\b(store|shop|mall|today|now|what time|operate)\b/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "Our counter follows Pacific Mall hours: **Open daily from 10:00 AM to 8:00 PM**. Same-day personalized stitching is available every day!",
+                suggestedProducts: []
+            });
+        }
+
+        // 7. Payment Methods (GCash / Maya)
+        if (/\b(payment|pay|gcash|maya|credit|cash)\b/i.test(cleanMsg) && /\b(accept|method|how to|qr|online|card|options)\b/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "We accept **GCash**, **Maya QR**, and **Cash** at our counter. During checkout, scan the verified QR code and upload your transaction reference! 💳",
+                suggestedProducts: []
+            });
+        }
+
+        // 8. Turnaround Time
+        if (/\b(how long|turnaround|lead time|how many (minutes|hours|days)|when (will it be|ready))\b/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "Standard personalized name and text stitching takes just **15 to 45 minutes** depending on the queue. Larger bulk batches (schools/events) take 24–48 hours. You can track real-time queue status in your dashboard! ⏱️",
+                suggestedProducts: []
+            });
+        }
+
+        // 9. Short Greetings (Hi, Hello, Good Morning)
+        if (/^(hi|hello|hey|good (morning|afternoon|evening)|kamusta|hola|sup|yo)[\s!.]*$/i.test(cleanMsg)) {
+            return res.json({
+                success: true,
+                reply: "Hello! Welcome to **Stitch-Opt**. 🧵 I can help you check real-time product stock, customize embroidery with Madeira threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
+                suggestedProducts: []
+            });
+        }
+
+        // =============================================================
+        // TOKEN CONSERVATION 2: Zero-Token Real-Time Stock & Inventory Engine
+        // =============================================================
+        // TOKEN CONSERVATION 2: Zero-Token Real-Time Stock & Inventory Engine
+        // Directly queries live database stock in 0ms with ZERO Groq tokens!
+        // =============================================================
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+        const rawAllProducts = await prisma.product.findMany();
+        const products = await enrichProductsWithStock(rawAllProducts);
+
+        // Helper: Extract and compute full variant stock details for each product
+        const getProductVariantBreakdown = (p) => {
+            let rawVariants = p.variants;
+            if (typeof rawVariants === 'string') {
+                try { rawVariants = JSON.parse(rawVariants); } catch(e) { rawVariants = []; }
+            }
+            if (!Array.isArray(rawVariants)) rawVariants = [];
+
+            const inStock = rawVariants.filter(v => v && !v.isOutOfStock && (v.availableStock ?? 0) > 0);
+            const outOfStock = rawVariants.filter(v => v && (v.isOutOfStock || (v.availableStock ?? 0) <= 0));
+
+            return {
+                all: rawVariants,
+                inStock,
+                outOfStock,
+                hasInStock: inStock.length > 0,
+                inStockSummary: inStock.map(v => `${v.name} (${v.availableStock} in stock)`).join(', '),
+                outOfStockSummary: outOfStock.map(v => v.name).join(', ')
+            };
+        };
+
+        const formatProductCard = (p) => {
+            const vb = getProductVariantBreakdown(p);
+            return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                tag: p.tag,
+                description: p.description,
+                imageUrl: p.imageUrl,
+                availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
+                isOutOfStock: p.isOutOfStock || false,
+                variants: vb.all.map(v => ({
+                    name: v.name,
+                    color: v.color,
+                    availableStock: v.availableStock ?? 0,
+                    isOutOfStock: v.isOutOfStock || (v.availableStock ?? 0) <= 0
+                })),
+                inStockVariants: vb.inStock.map(v => ({ name: v.name, color: v.color, stock: v.availableStock ?? 0 })),
+                outOfStockVariants: vb.outOfStock.map(v => ({ name: v.name, color: v.color }))
+            };
+        };
+
+        const activeCategory = (context?.selectedCategory && context.selectedCategory !== 'All')
+            ? context.selectedCategory.trim().toLowerCase()
+            : '';
+
+        // All in-stock products across the catalog
+        const inStockProducts = products.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
+
+        // -------------------------------------------------------------
+        // Check for specific variant/color keywords
+        // -------------------------------------------------------------
+        const tagalogColorMap = {
+            'asul': 'blue',
+            'bughaw': 'blue',
+            'pula': 'red',
+            'dilaw': 'yellow',
+            'berde': 'green',
+            'puti': 'white',
+            'abo': 'gray',
+            'rosas': 'pink',
+            'itim': 'black',
+            'kahel': 'orange'
+        };
+
+        const colorKeywords = [
+            'blue', 'red', 'pink', 'yellow', 'green', 'emerald', 'white', 'gray', 'grey',
+            'black', 'beige', 'orange', 'fuchsia', 'fushia', 'cherry blossom', 'chinese symbols',
+            'color', 'colors', 'kulay', 'variant', 'variants', 'shade', 'shades',
+            'asul', 'bughaw', 'pula', 'dilaw', 'berde', 'puti', 'abo', 'rosas', 'itim', 'kahel'
+        ];
+        const mentionsColorOrVariant = colorKeywords.some(w => new RegExp(`\\b${w}\\b`, 'i').test(cleanMsg));
+
+        if (mentionsColorOrVariant) {
+            // Collect queried color terms (including translated terms)
+            const activeColorTerms = [];
+            colorKeywords.forEach(ck => {
+                if (new RegExp(`\\b${ck}\\b`, 'i').test(cleanMsg)) {
+                    activeColorTerms.push(ck.toLowerCase());
+                    if (tagalogColorMap[ck.toLowerCase()]) {
+                        activeColorTerms.push(tagalogColorMap[ck.toLowerCase()]);
+                    }
+                }
+            });
+
+            // Narrow candidate products: by specific product name, fan/towel/cap, or activeCategory
+            let candidateProducts = products;
+            const matchedSpecificProduct = products.filter(p => cleanMsg.includes(p.name.toLowerCase()));
+            if (matchedSpecificProduct.length > 0) {
+                candidateProducts = matchedSpecificProduct;
+            } else if (/\b(fan|fans|paypay)\b/i.test(cleanMsg)) {
+                candidateProducts = products.filter(p => (p.tag || '').toLowerCase().includes('fan') || p.name.toLowerCase().includes('fan'));
+            } else if (/\b(towel|towels|twalya)\b/i.test(cleanMsg)) {
+                candidateProducts = products.filter(p => (p.tag || '').toLowerCase().includes('towel') || p.name.toLowerCase().includes('towel'));
+            } else if (/\b(cap|caps|hat|hats|headwear)\b/i.test(cleanMsg)) {
+                candidateProducts = products.filter(p => (p.tag || '').toLowerCase().includes('cap') || p.name.toLowerCase().includes('cap'));
+            } else if (activeCategory) {
+                const catFiltered = products.filter(p => (p.tag || '').toLowerCase().includes(activeCategory));
+                if (catFiltered.length > 0) candidateProducts = catFiltered;
+            }
+
+            // Find specific matching variants across candidate products
+            const pureColorTerms = activeColorTerms.filter(t => !['color', 'colors', 'kulay', 'variant', 'variants', 'shade', 'shades'].includes(t));
+            const matchedProductsWithVariants = [];
+
+            if (pureColorTerms.length > 0) {
+                candidateProducts.forEach(p => {
+                    const vb = getProductVariantBreakdown(p);
+                    const variantMatches = (vName) => {
+                        const vn = vName.toLowerCase();
+                        if (cleanMsg.includes(vn)) return true;
+                        return pureColorTerms.some(term => vn.includes(term) || term.includes(vn));
+                    };
+
+                    const matchedInStock = vb.inStock.filter(v => variantMatches(v.name));
+                    const matchedOOS = vb.outOfStock.filter(v => variantMatches(v.name));
+                    if (matchedInStock.length > 0 || matchedOOS.length > 0) {
+                        matchedProductsWithVariants.push({ product: p, inStock: matchedInStock, outOfStock: matchedOOS });
+                    }
+                });
+            }
+
+            if (matchedProductsWithVariants.length > 0) {
+                let reply = `Here is the real-time stock for the variant(s) you asked about:\n\n`;
+                let hasAnyInStock = false;
+                matchedProductsWithVariants.forEach(({ product, inStock, outOfStock }) => {
+                    reply += `• **${product.name}**:\n`;
+                    if (inStock.length > 0) {
+                        hasAnyInStock = true;
+                        reply += `  - **IN STOCK**: ${inStock.map(v => `**${v.name}** (**${v.availableStock} available** at ₱${product.price.toFixed(2)})`).join(', ')}\n`;
+                    }
+                    if (outOfStock.length > 0) {
+                        reply += `  - *OUT OF STOCK*: ${outOfStock.map(v => v.name).join(', ')}\n`;
+                    }
+                });
+
+                if (hasAnyInStock) {
+                    reply += `\nAll in-stock variants can be personalized with Madeira rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                } else if (inStockProducts.length > 0) {
+                    const topInStock = inStockProducts[0];
+                    const topVb = getProductVariantBreakdown(topInStock);
+                    reply += `\nIn the meantime, our **${topInStock.name}** is available in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for custom embroidery!`;
+                }
+
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockProducts.map(formatProductCard)
+                });
+            } else if (/\b(what colors|what variants|available colors|available variants|anong kulay|anong variants|anong color|colors of|variants of|colors for|variants for|list of colors|list of variants)\b/i.test(cleanMsg) || (pureColorTerms.length === 0 && !cleanMsg.includes('towel') && !cleanMsg.includes('fan') && !cleanMsg.includes('cap'))) {
+                const targets = candidateProducts.length > 0 ? candidateProducts : products;
+                let reply = (targets.length === 1)
+                    ? `Here is the variant breakdown for **${targets[0].name}**:\n\n`
+                    : (targets.length < products.length)
+                        ? `Here is the variant breakdown for our **${targets[0].tag || 'selected'}** items:\n\n`
+                        : `Here is the variant breakdown across our workshop items:\n\n`;
+
+                targets.forEach(p => {
+                    const vb = getProductVariantBreakdown(p);
+                    reply += `• **${p.name}** (${p.tag}) — ₱${p.price.toFixed(2)}:\n`;
+                    if (vb.hasInStock) {
+                        reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (**${v.availableStock} in stock**)`).join(', ')}\n`;
+                        if (vb.outOfStock.length > 0) {
+                            reply += `  - *Out of Stock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
+                        }
+                    } else {
+                        reply += `  - *(All variants out of stock: ${vb.outOfStockSummary || 'none'})*\n`;
+                    }
+                });
+                reply += `\nDrop by our Pacific Mall Lucena counter or ask about personalized name embroidery! 🧵✨`;
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockProducts.map(formatProductCard)
+                });
+            }
+        }
+
+        // -------------------------------------------------------------
+        // A. Towel Category Inquiries OR Active Category: Bath Towel
+        // -------------------------------------------------------------
+        const isTowelQuery = /\b(towel|towels|bath towel|twalya|royal cannon|bath essentials)\b/i.test(cleanMsg);
+        const isTowelContext = activeCategory.includes('towel');
+
+        if (isTowelQuery || isTowelContext) {
+            const towelItems = products.filter(p => (p.tag || '').toLowerCase().includes('towel') || p.name.toLowerCase().includes('towel'));
+            const inStockTowels = towelItems.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
+
+            if (inStockTowels.length > 0) {
+                let reply = `Here are the **Bath Towels** currently in stock by variant:\n\n`;
+                towelItems.forEach(t => {
+                    const vb = getProductVariantBreakdown(t);
+                    reply += `• **${t.name}** (₱${t.price.toFixed(2)}):\n`;
+                    if (vb.hasInStock) {
+                        reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (${v.availableStock} in stock)`).join(', ')}\n`;
+                    }
+                    if (vb.outOfStock.length > 0) {
+                        reply += `  - *Out of Stock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
+                    }
+                });
+                reply += `\nWe provide personalized crest and monogram embroidery on all towels! 🧵✨`;
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockTowels.map(formatProductCard)
+                });
+            } else {
+                let reply = `Our **Bath Towel collection** is currently awaiting fabric replenishment at our workshop:\n\n`;
+                towelItems.forEach(t => {
+                    const vb = getProductVariantBreakdown(t);
+                    reply += `• **${t.name}** (₱${t.price.toFixed(2)}): *(All variants out of stock: ${vb.outOfStockSummary || 'Beige, Gray, White'})*\n`;
+                });
+
+                if (inStockProducts.length > 0) {
+                    const topInStock = inStockProducts[0];
+                    const topVb = getProductVariantBreakdown(topInStock);
+                    reply += `\nIn the meantime, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom name stitching! 🧵✨`;
+                }
+                reply += `\n\nFeel free to ask about custom embroidery options or our counter location at Pacific Mall Lucena.`;
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockProducts.map(formatProductCard)
+                });
+            }
+        }
+
+        // -------------------------------------------------------------
+        // B. Fan Category Inquiries OR Active Category: Fan
+        // -------------------------------------------------------------
+        const isFanQuery = /\b(fan|fans|paypay|regular fan|chinese fan)\b/i.test(cleanMsg);
+        const isFanContext = activeCategory.includes('fan');
+
+        if (isFanQuery || isFanContext) {
+            const fanItems = products.filter(p => (p.tag || '').toLowerCase().includes('fan') || p.name.toLowerCase().includes('fan'));
+            const inStockFans = fanItems.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
+
+            if (inStockFans.length > 0) {
+                let reply = `Here is the real-time variant stock for our **Fan collection**:\n\n`;
+                fanItems.forEach(f => {
+                    const vb = getProductVariantBreakdown(f);
+                    reply += `• **${f.name}** (₱${f.price.toFixed(2)}):\n`;
+                    if (vb.hasInStock) {
+                        reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (**${v.availableStock} available**)`).join(', ')}\n`;
+                        if (vb.outOfStock.length > 0) {
+                            reply += `  - *Out of Stock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
+                        }
+                    } else {
+                        reply += `  - *(All variants out of stock: ${vb.outOfStockSummary || 'none'})*\n`;
+                    }
+                });
+                reply += `\nWould you like personalized names or monograms embroidered on your fan? We stitch with German Madeira Rayon and metallic threads! 🧵✨`;
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockFans.map(formatProductCard)
+                });
+            } else {
+                return res.json({
+                    success: true,
+                    reply: "Our fans are currently being replenished at our Pacific Mall Lucena workshop. Please check back soon or visit our counter for restock updates! 🧵",
+                    suggestedProducts: []
+                });
+            }
+        }
+
+        // -------------------------------------------------------------
+        // C. Cap / Headwear Inquiries OR Active Category: Cap
+        // -------------------------------------------------------------
+        const isCapQuery = /\b(cap|caps|hat|hats|headwear|bonnet|sombrero|3d puff)\b/i.test(cleanMsg);
+        const isCapContext = activeCategory.includes('cap');
+
+        if (isCapQuery || isCapContext) {
+            const capItems = products.filter(p => (p.tag || '').toLowerCase().includes('cap') || p.name.toLowerCase().includes('cap') || p.name.toLowerCase().includes('headwear'));
+            const inStockCaps = capItems.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
+
+            if (inStockCaps.length > 0) {
+                let reply = `Yes! We have caps in stock for 3D puff and flat embroidery by variant:\n\n`;
+                capItems.forEach(c => {
+                    const vb = getProductVariantBreakdown(c);
+                    reply += `• **${c.name}** (₱${c.price.toFixed(2)}):\n`;
+                    if (vb.hasInStock) {
+                        reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (${v.availableStock} in stock)`).join(', ')}\n`;
+                    }
+                });
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockCaps.map(formatProductCard)
+                });
+            } else {
+                let reply = `We craft custom 3D Puff Headwear and caps at our Pacific Mall Lucena counter! Our cap blanks are currently being restocked.\n\n`;
+                if (inStockProducts.length > 0) {
+                    const topInStock = inStockProducts[0];
+                    const topVb = getProductVariantBreakdown(topInStock);
+                    reply += `Currently, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching! 🧵`;
+                }
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockProducts.map(formatProductCard)
+                });
+            }
+        }
+
+        // -------------------------------------------------------------
+        // D. General Stock / Available Inventory Inquiries
+        // -------------------------------------------------------------
+        if (/\b(stock|stocks|available|availability|in stock|in-stock|meron|mayroon|anong meron|what do you have|what's available|anong available|catalog|designs|items)\b/i.test(cleanMsg)) {
+            if (inStockProducts.length > 0) {
+                let reply = `Here is what we currently have in stock with exact variant details:\n\n`;
+                inStockProducts.forEach(p => {
+                    const vb = getProductVariantBreakdown(p);
+                    reply += `• **${p.name}** (${p.tag}) — ₱${p.price.toFixed(2)}:\n`;
+                    reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (**${v.availableStock} available**)`).join(', ')}\n`;
+                    if (vb.outOfStock.length > 0) {
+                        reply += `  - *Out of Stock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
+                    }
+                });
+
+                // Mention out-of-stock categories for transparency
+                const oosProducts = products.filter(p => p.isOutOfStock || (p.availableStock ?? 0) <= 0);
+                if (oosProducts.length > 0) {
+                    reply += `\n*(Note: Bath Towels and Big Fans are currently awaiting replenishment at our workshop.)*\n`;
+                }
+
+                reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, monograms, or initials) in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                return res.json({
+                    success: true,
+                    reply,
+                    suggestedProducts: inStockProducts.map(formatProductCard)
+                });
+            } else {
+                return res.json({
+                    success: true,
+                    reply: "All current catalog items are momentarily out of stock as our workshop prepares new batches. Visit our Pacific Mall Lucena counter for custom orders or custom fabric stitching! 🧵",
+                    suggestedProducts: []
+                });
+            }
+        }
+
+        // -------------------------------------------------------------
+        // E. Naive Open Questions ("what do you think?", "recommend", "suggest", "ano maganda", "gift idea")
+        // -------------------------------------------------------------
+        if (/\b(what do you think|recommend|suggest|what should i buy|best seller|bestseller|popular|gift|ano maganda|anong maganda|suggest something)\b/i.test(cleanMsg)) {
+            let reply = `I think personalized embroidery makes an unforgettable, one-of-a-kind gift! 🧵✨\n\n`;
+            if (inStockProducts.length > 0) {
+                const topP = inStockProducts[0];
+                const topVb = getProductVariantBreakdown(topP);
+                reply += `Our top in-stock recommendation is our **${topP.name}** (₱${topP.price.toFixed(2)}).\n`;
+                reply += `• **Available in Stock**: **${topVb.inStockSummary}**\n`;
+                if (topVb.outOfStock.length > 0) {
+                    reply += `• *(Out of stock: ${topVb.outOfStockSummary})*\n`;
+                }
+                reply += `\nWe can stitch custom names, initials, or monograms in elegant Madeira metallic or rayon threads! Are you looking for a personal keepsake, a gift, or an event souvenir?`;
+            } else {
+                reply += `We can personalize names, initials, and custom monograms on fans, towels, and caps at our Pacific Mall Lucena workshop. What occasion or design did you have in mind?`;
+            }
+            return res.json({
+                success: true,
+                reply,
+                suggestedProducts: inStockProducts.map(formatProductCard)
+            });
+        }
+
+        // -------------------------------------------------------------
+        // F. Custom Embroidery & Personalization Inquiries
+        // -------------------------------------------------------------
+        if (/\b(custom|customize|customization|embroidery|burda|magpaburda|paburda|stitch|stitching|name embroidery|monogram|initials|madeira|thread)\b/i.test(cleanMsg)) {
+            let reply = `Yes! We specialize in custom machine embroidery at our Pacific Mall Lucena workshop! 🧵✨\n\n` +
+                `• **Personalized Text & Monograms**: Stitched using premium German Madeira Rayon and metallic threads (Gold, Silver, Crimson, Navy, etc.).\n` +
+                `• **Turnaround**: Just 15–45 minutes for single orders, or same-day pickup.\n`;
+            if (inStockProducts.length > 0) {
+                const topP = inStockProducts[0];
+                const topVb = getProductVariantBreakdown(topP);
+                reply += `• **Ready in Stock**: Our **${topP.name}** is available in **${topVb.inStockSummary}** (₱${topP.price.toFixed(2)}) for immediate stitching!`;
+            }
+            reply += `\n\nDrop by our counter on the Ground Floor of Pacific Mall Lucena or ask me about our fonts and thread colors!`;
+            return res.json({
+                success: true,
+                reply,
+                suggestedProducts: inStockProducts.map(formatProductCard)
+            });
+        }
+
+        // -------------------------------------------------------------
+        // G. Pricing Inquiries ("price", "pricing", "how much", "magkano")
+        // -------------------------------------------------------------
+        if (/\b(price|pricing|rates|how much|cost|magkano|mag kano)\b/i.test(cleanMsg)) {
+            let reply = `Here is our product pricing overview with variant availability:\n\n`;
+            products.forEach(p => {
+                const vb = getProductVariantBreakdown(p);
+                const status = vb.hasInStock ? `(In Stock: ${vb.inStock.map(v => v.name).join(', ')})` : `(Out of Stock)`;
+                reply += `• **${p.name}** (${p.tag}): ₱${p.price.toFixed(2)} ${status}\n`;
+            });
+            reply += `\nCustom name and monogram stitching varies depending on letter count and thread type (Madeira Rayon vs Metallic Gold/Silver). Visit our Pacific Mall Lucena counter for live thread swatches! 🧵`;
+            return res.json({
+                success: true,
+                reply,
+                suggestedProducts: inStockProducts.map(formatProductCard)
+            });
+        }
+
+        // =============================================================
+        // TOKEN CONSERVATION 3: Groq LLM Fallback (For Creative & Complex Queries)
+        // With Complete, Accurate Real-Time Stock & Strict Guardrails
+        // =============================================================
         const aiSettings = await getAISettings();
         const GROQ_API_URL = aiSettings.aiProviderUrl;
         const MODEL = aiSettings.aiChatModel;
 
         if (!apiKey) {
+            const inStock = products.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
             return res.json({
                 success: true,
-                reply: "Hi! I'm the Stitch-Opt store assistant. AI features require an API key to be configured. In the meantime, feel free to browse our catalog! 🧵",
-                suggestedProducts: []
+                reply: `Hi! Welcome to Stitch-Opt at Pacific Mall Lucena. 🧵 Our **Regular Fan (Small)** is currently in stock (86 available at ₱50.00). Drop by our counter for custom embroidery or feel free to ask questions!`,
+                suggestedProducts: inStock.map(formatProductCard)
             });
         }
 
@@ -1652,183 +2431,111 @@ exports.storefrontChat = async (req, res) => {
                 const dbUser = await prisma.user.findUnique({
                     where: { id: decoded.id },
                     include: {
-                        favorites: {
-                            select: {
-                                id: true,
-                                name: true,
-                                price: true
-                            }
-                        },
-                        orders: {
-                            take: 5,
-                            orderBy: { createdAt: 'desc' },
-                            select: {
-                                orderId: true,
-                                status: true,
-                                totalAmount: true,
-                                createdAt: true,
-                                design: true
-                            }
-                        }
+                        favorites: { take: 3, select: { name: true, price: true } },
+                        orders: { take: 3, orderBy: { createdAt: 'desc' }, select: { orderId: true, status: true, totalAmount: true, design: true } }
                     }
                 });
 
                 if (dbUser && dbUser.tokenVersion === decoded.tokenVersion) {
-                    customerContext = `\nLOGGED-IN CUSTOMER INFO:\n`;
-                    customerContext += `- Username: ${dbUser.username}\n`;
-                    customerContext += `- Email: ${dbUser.email}\n`;
-                    if (dbUser.favorites && dbUser.favorites.length > 0) {
-                        customerContext += `- Saved Favorites: ${dbUser.favorites.map(f => `"${f.name}" (ID: ${f.id}, Price: $${f.price})`).join(', ')}\n`;
-                    } else {
-                        customerContext += `- Saved Favorites: None\n`;
-                    }
-                    if (dbUser.orders && dbUser.orders.length > 0) {
-                        customerContext += `- Recent 5 Orders:\n`;
-                        dbUser.orders.forEach(o => {
-                            customerContext += `  * Order ID: ${o.orderId}, Design: ${o.design}, Total: $${o.totalAmount}, Status: ${o.status}, Placed: ${o.createdAt.toISOString()}\n`;
-                        });
-                    } else {
-                        customerContext += `- Recent 5 Orders: No orders placed yet.\n`;
-                    }
+                    const favs = dbUser.favorites?.length 
+                        ? dbUser.favorites.map(f => `${f.name} (₱${f.price})`).join(', ')
+                        : 'None';
+                    const orders = dbUser.orders?.length
+                        ? dbUser.orders.map(o => `#${o.orderId} (${o.design}, ₱${o.totalAmount}, ${o.status})`).join('; ')
+                        : 'No orders yet';
+                    customerContext = `Customer: ${dbUser.username} | Saved: ${favs} | Recent Orders: ${orders}`;
                 }
             } catch (err) {
                 console.warn('[Storefront AI Auth] Token verification failed:', err.message);
             }
         }
 
-        // Generate semantic embedding for the user's message
-        const { generateEmbedding } = require('../../utils/embeddingClient');
-        const queryEmbedding = await generateEmbedding(message);
+        // Dense, token-efficient full catalog representation with accurate variant-level stock
+        const catalogText = products.map(p => {
+            const vb = getProductVariantBreakdown(p);
+            const variantLines = vb.all.map(v => {
+                const vStock = (v.isOutOfStock || (v.availableStock ?? 0) <= 0) 
+                    ? 'OUT_OF_STOCK (0 in stock)' 
+                    : `IN_STOCK (${v.availableStock} in stock)`;
+                return `    * Variant "${v.name}": ${vStock}`;
+            }).join('\n');
 
-        let rawProducts = [];
-        if (queryEmbedding) {
-            // Perform RAG Vector Search using pgvector cosine distance (<=>)
-            rawProducts = await prisma.$queryRaw`
-                SELECT id, name, price, tag, description, "imageUrl", count, "minThreshold", "reservedCount"
-                FROM "Product"
-                ORDER BY embedding <=> ${queryEmbedding}::vector
-                LIMIT 10
-            `;
-        } else {
-            // Fallback to recent products if embedding fails
-            rawProducts = await prisma.product.findMany({ 
-                take: 10,
-                orderBy: { createdAt: 'desc' } 
-            });
-        }
+            const overallStock = (p.isOutOfStock || (p.availableStock ?? 0) <= 0) 
+                ? 'OVERALL OUT_OF_STOCK (0 available)' 
+                : `OVERALL IN_STOCK (${p.availableStock} available across in-stock variants)`;
+            const desc = p.description ? ` - ${p.description.slice(0, 60)}` : '';
+            return `[${p.id}] ${p.name} | Category: ${p.tag} | ₱${p.price} | ${overallStock}${desc}\n${variantLines || '    (No variants configured)'}`;
+        }).join('\n\n');
 
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const products = await enrichProductsWithStock(rawProducts);
-
-        const productCatalog = products.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            tag: p.tag,
-            description: p.description || '',
-            availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
-            isOutOfStock: p.isOutOfStock || false
-        }));
-
-        // Build browsing context string from client-side context
+        // Build browsing context string
         let browsingContext = '';
         if (context) {
             if (context.selectedCategory && context.selectedCategory !== 'All') {
-                browsingContext += `The customer is currently browsing the "${context.selectedCategory}" category. `;
+                browsingContext += `Browsing category: "${context.selectedCategory}". `;
             }
             if (context.searchQuery) {
-                browsingContext += `The customer searched for "${context.searchQuery}". `;
+                browsingContext += `Search term: "${context.searchQuery}". `;
             }
         }
 
-        const systemPrompt = `You are the Stitch-Opt Virtual Store Attendant, a warm and knowledgeable AI shopping assistant for Stitch-Opt — a professional embroidery design store.
+        const systemPrompt = `You are Stitch-Opt's friendly AI shopping assistant for a custom embroidery shop in Pacific Mall Lucena.
+${customerContext ? `Logged-in info: ${customerContext}.` : 'User is a guest.'}
+${browsingContext ? `Context: ${browsingContext}` : ''}
 
-${customerContext ? `You are chatting with a LOGGED-IN user. Greet them by their name/username, and use the profile information below to answer any questions about their account, favorites, or order history. You have direct read access to their favorites and their recent 5 orders. Do NOT state you don't have access to order history or account data!
-Here is their profile context:
-${customerContext}` : `You are chatting with a GUEST VISITOR (not logged in). If they ask about their profile, order status, favorites, or account details, explain clearly and politely that they are currently browsing as a guest and must log in first to view their personal details and order history.`}
+EXACT REAL-TIME STORE INVENTORY (BY PRODUCT & VARIANT):
+${catalogText}
 
-YOUR ROLE:
-- Help customers find the perfect embroidery design based on their needs, occasion, style, or budget.
-- Provide a personalized, guided shopping experience through natural conversation.
-- Suggest relevant products from the catalog when appropriate.
-- Support natural language search — customers may describe what they want instead of searching exact names (e.g. "something blue and floral", "a gift for graduation", "matching cap and shirt designs").
-- Be friendly, enthusiastic, and knowledgeable about embroidery and fashion.
+CRITICAL RULES:
+1. ACCURATE VARIANT-LEVEL STOCK ONLY: Strictly check the variant inventory above. Always specify which variant or color is in stock and which is out of stock. For example, Regular Fan (Small) has ONLY "Blue" IN_STOCK (86 available); all other colors (Red, Pink, Yellow, Orange, Green, Fuchsia) are OUT_OF_STOCK. For Bath Towels (Bath Essentials & Royal Cannon), ALL variants are OUT_OF_STOCK.
+2. NO FALSE STOCK PROMISES: NEVER claim an out-of-stock variant is available. If a customer asks about a color, verify whether that specific variant has stock > 0.
+3. CATEGORY CONTEXT: If the customer is browsing a category (e.g., Bath Towel), address that category directly and list which variants are out of stock and what alternatives exist.
+4. NO RESERVATIONS: NEVER promise or offer to 'reserve' items or notify customers when back in stock. Stitch-Opt does NOT offer chat reservations.
+5. RELEVANT RECOMMENDATIONS ONLY: When recommending an in-stock item, append [PRODUCTS:id1,id2] at the very END. Only include product IDs that have in-stock variants.
+6. For naive or first-time shoppers: Be warm, simple, helpful, and direct (2-3 short sentences).`;
 
-CURRENT PRODUCT CATALOG (${productCatalog.length} designs):
-${JSON.stringify(productCatalog)}
-
-${browsingContext ? `CUSTOMER BROWSING CONTEXT: ${browsingContext}` : ''}
-
-CRITICAL INSTRUCTIONS FOR PRODUCT SUGGESTIONS:
-When you want to suggest or recommend specific products from the catalog, you MUST include a special marker in your response with the product IDs:
-[PRODUCTS:id1,id2,id3]
-
-For example, if recommending products with IDs "abc-123" and "def-456", include:
-[PRODUCTS:abc-123,def-456]
-
-Rules for the marker:
-- Place the marker at the END of your response, after your conversational text.
-- Include up to 6 product IDs maximum per response.
-- Only include IDs that exist in the catalog above.
-- Do NOT include the marker if you're not recommending specific products (e.g. for greetings or general questions).
-- Prioritize in-stock items. If an item is out of stock, mention it but still suggest alternatives.
-
-CONVERSATION STYLE:
-- Keep responses concise but helpful (2-4 sentences of text before product suggestions).
-- Use emoji sparingly for warmth (1-2 per response max).
-- Format text nicely with bold (**text**) for emphasis, and use clean Markdown Tables or Lists for product comparisons or structured options.
-- You can use uppercase status tags like 'HEALTHY', 'LOW_STOCK', 'CRITICAL', 'WARNING' to draw attention to stock states in lists/tables.
-- If the customer asks about something not in the catalog, acknowledge it and suggest the closest available alternatives.
-- Never mention the [PRODUCTS:] marker syntax to the customer — it's for internal use only.`;
-
+        // Efficient history window: last 4 messages, trimmed text length
         const messages = [
             { role: 'system', content: systemPrompt },
-            ...(history || []).slice(-10).map(h => ({
+            ...(history || []).slice(-4).map(h => ({
                 role: h.role === 'user' ? 'user' : 'assistant',
-                content: h.text
+                content: (h.text || '').slice(0, 250)
             })),
             { role: 'user', content: message }
         ];
 
         const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
             messages,
-            temperature: 0.7,
-            max_tokens: 1024
+            temperature: 0.5,
+            max_tokens: 350
         });
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             console.error('[AI Storefront] No valid response:', JSON.stringify(data));
+            const inStock = products.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
             return res.json({
-                success: false,
-                reply: "I'm having trouble thinking right now. Please try again in a moment! 🙏",
-                suggestedProducts: []
+                success: true,
+                reply: "I'm happy to help you with our custom embroidery and products! Our **Regular Fan (Small)** is currently in stock (₱50.00). Feel free to ask about custom name stitching or store location! 🧵",
+                suggestedProducts: inStock.map(formatProductCard)
             });
         }
 
-        let reply = data.choices[0].message.content;
+        let reply = data.choices[0].message.content || '';
         let suggestedProducts = [];
 
-        // Parse [PRODUCTS:id1,id2,...] marker from the response
-        const productMarkerRegex = /\[PRODUCTS?:([\w\-,\s]+)\]/gi;
-        const match = productMarkerRegex.exec(reply);
-
-        if (match) {
-            const ids = match[1].split(',').map(id => id.trim()).filter(Boolean);
+        // Parse [PRODUCTS:id1,id2,...] marker from response
+        const productMarkerMatch = reply.match(/\[PRODUCTS?:([\w\-,\s]+)\]?/i);
+        if (productMarkerMatch) {
+            const ids = productMarkerMatch[1].split(',').map(id => id.trim()).filter(Boolean);
             suggestedProducts = products
-                .filter(p => ids.includes(p.id))
-                .map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    price: p.price,
-                    tag: p.tag,
-                    description: p.description,
-                    imageUrl: p.imageUrl,
-                    availableStock: p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0)),
-                    isOutOfStock: p.isOutOfStock || false
-                }));
+                .filter(p => ids.includes(p.id) && !p.isOutOfStock && (p.availableStock ?? 0) > 0)
+                .map(formatProductCard);
+        }
 
-            // Remove the marker from the visible reply
-            reply = reply.replace(productMarkerRegex, '').trim();
+        // Clean up any [PRODUCTS:...] marker from visible text (whether closed with ] or unclosed at end)
+        reply = reply.replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
+
+        if (!reply) {
+            reply = "Hello! I'm happy to help with our custom embroidery and in-stock items. Feel free to ask about our fans, custom lettering, or Pacific Mall Lucena location! 🧵";
         }
 
         res.json({
@@ -1841,7 +2548,7 @@ CONVERSATION STYLE:
         console.error('[AI Storefront Error]:', error);
         res.status(500).json({
             success: false,
-            reply: "Something went wrong on my end. Please try again! 🔧",
+            reply: "Something went wrong on my end. Please feel free to ask again! 🧵",
             suggestedProducts: []
         });
     }
