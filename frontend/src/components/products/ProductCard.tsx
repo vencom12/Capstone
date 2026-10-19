@@ -107,7 +107,7 @@ export default function ProductCard({ product, onQuickView, index = 0 }: Product
         <button
           suppressHydrationWarning
           onClick={handleFavorite}
-          className={`absolute top-3 right-3 bg-black/40 border border-white/10 p-2 rounded-xl cursor-pointer backdrop-blur-[6px] transition-all duration-200 active:scale-95 z-10 ${
+          className={`absolute top-3 right-3 bg-bg-card/85 hover:bg-bg-card border border-border-glass p-2 rounded-xl cursor-pointer backdrop-blur-md shadow-sm transition-all duration-200 active:scale-95 z-10 ${
             isFav ? 'text-danger' : 'text-text-dim hover:text-danger'
           }`}
           title={isFav ? 'Remove from favorites' : 'Add to favorites'}
@@ -119,8 +119,8 @@ export default function ProductCard({ product, onQuickView, index = 0 }: Product
 
         {/* Floating Quick View glass pill on hover */}
         <div className="absolute inset-x-0 bottom-3 flex justify-center items-center pointer-events-none px-3 z-10">
-          <span className="opacity-0 translate-y-2.5 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out bg-bg-dark/85 hover:bg-primary backdrop-blur-md border border-white/20 hover:border-primary text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5 select-none">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <span className="opacity-0 translate-y-2.5 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out bg-bg-card/95 hover:bg-primary text-text-main hover:text-white border border-border-glass hover:border-primary text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-lg backdrop-blur-md flex items-center gap-1.5 select-none pointer-events-auto cursor-pointer group/pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-primary group-hover/pill:text-white transition-colors">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>

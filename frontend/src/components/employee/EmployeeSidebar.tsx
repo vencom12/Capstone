@@ -136,11 +136,11 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
                 transition-all duration-300 border font-medium text-[0.95rem]
                 max-[1100px]:justify-center max-[1100px]:px-0 min-[1101px]:group-hover:justify-start min-[1101px]:group-hover:px-3 max-[650px]:justify-start max-[650px]:px-3
                 ${activeTab === item.id
-                    ? 'bg-primary text-white border-primary/40 font-semibold shadow-sm'
+                    ? 'bg-bg-surface/90 text-text-main border-primary/50 font-semibold shadow-sm'
                     : 'bg-transparent text-text-dim border-transparent hover:bg-white/5 hover:text-text-main'}
               `}
               >
-                <div className="shrink-0">{item.icon}</div>
+                <div className={`shrink-0 ${activeTab === item.id ? 'text-primary' : ''}`}>{item.icon}</div>
                 <span className="max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block whitespace-nowrap">{item.label}</span>
               </button>
             </li>
@@ -149,7 +149,23 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
 
         {/* User Actions */}
         <div className="mt-auto p-3 pb-8 border-t border-border-glass flex flex-col gap-1">
-
+          {user?.role === 'admin' && (
+            <Link
+              href="/admin"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 mb-1.5 rounded-xl border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 transition-all font-semibold text-[0.82rem] max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start cursor-pointer no-underline"
+              title="Return to Admin Management Suite"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span className="max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block whitespace-nowrap truncate">
+                Admin Suite ↗
+              </span>
+            </Link>
+          )}
 
           <button
             onClick={logout}

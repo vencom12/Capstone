@@ -343,11 +343,8 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     if (extraData.trackingNumber) {
         personalization.trackingNumber = extraData.trackingNumber;
     }
-    if (extraData.courier) {
-        personalization.courier = extraData.courier;
-    } else if (!personalization.courier) {
-        personalization.courier = 'J&T Express';
-    }
+    personalization.courier = extraData.courier || personalization.courier || 'Store Pick-up';
+    personalization.fulfillmentType = 'pickup';
 
     const updatedOrder = await tx.order.update({
         where: { id: orderId },

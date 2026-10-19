@@ -311,7 +311,7 @@ export default function EmployeePage() {
     setQueuePage(1);
   }, [ordersSearchQuery, ordersDateFilter, ordersQueueTab]);
 
-  if (!isHydrated || !isAuthenticated || !checkAccess('employee')) {
+  if (!isHydrated || !isAuthenticated || (!checkAccess('employee') && !checkAccess('admin'))) {
     return <div className="h-screen w-full bg-bg-dark" />;
   }
 
@@ -516,11 +516,6 @@ export default function EmployeePage() {
               </div>
 
               {activeStitchingOrder ? (() => {
-                const isDelivery = activeStitchingOrder.personalization?.fulfillmentType === 'delivery' ||
-                  (typeof activeStitchingOrder.address === 'string' &&
-                    activeStitchingOrder.address.trim().length > 0 &&
-                    !activeStitchingOrder.address.toLowerCase().includes('pick-up') &&
-                    !activeStitchingOrder.address.toLowerCase().includes('pickup'));
                 const score = activeStitchingOrder.priorityScore ?? 0;
 
                 return (
@@ -535,7 +530,7 @@ export default function EmployeePage() {
                             <span className="font-mono font-black text-lg text-text-main">
                               Order #{activeStitchingOrder.orderId}
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white uppercase shadow-sm">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/15 text-primary border border-primary/30 uppercase tracking-wide">
                               Currently on Machine
                             </span>
                           </div>
@@ -546,12 +541,8 @@ export default function EmployeePage() {
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <span className={`text-xs font-bold px-3 py-1 rounded-xl border flex items-center gap-1.5 ${
-                          isDelivery
-                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                        }`}>
-                          <span>{isDelivery ? '🚚 Door Delivery' : '🏪 Pacific Mall Counter Pickup'}</span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-xl border flex items-center gap-1.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                          <span>🏪 Pacific Mall Counter Pickup</span>
                         </span>
                         <span className="text-xs font-mono font-bold bg-white/5 border border-border-glass px-2.5 py-1 rounded-xl text-text-dim">
                           Priority {score.toFixed(0)}
@@ -619,23 +610,13 @@ export default function EmployeePage() {
 
                     {/* Single Contextual Progression Button */}
                     <div className="pt-2 border-t border-border-glass">
-                      {isDelivery ? (
-                        <button
-                          onClick={() => advanceOrderStatus(activeStitchingOrder, 'In Transit', 75)}
-                          className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <span>📦</span>
-                          <span>Complete Stitching — Package for Courier Dispatch (75%)</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => advanceOrderStatus(activeStitchingOrder, 'Ready For Pick Up', 100)}
-                          className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <span>✅</span>
-                          <span>Complete Stitching — Ready for Counter Pickup (100%)</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => advanceOrderStatus(activeStitchingOrder, 'Ready For Pick Up', 100)}
+                        className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <span>✅</span>
+                        <span>Complete Stitching — Ready for Counter Pickup (100%)</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -670,11 +651,6 @@ export default function EmployeePage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
                   {queuedOrders.map((order, idx) => {
-                    const isDelivery = order.personalization?.fulfillmentType === 'delivery' ||
-                      (typeof order.address === 'string' &&
-                        order.address.trim().length > 0 &&
-                        !order.address.toLowerCase().includes('pick-up') &&
-                        !order.address.toLowerCase().includes('pickup'));
                     const score = order.priorityScore ?? 0;
 
                     return (
@@ -724,7 +700,7 @@ export default function EmployeePage() {
                           </div>
 
                           <div className="flex items-center justify-between text-[11px] text-text-dim mt-2">
-                            <span>{isDelivery ? '🚚 Door Delivery' : '🏪 Counter Pickup'}</span>
+                            <span className="text-emerald-400/90 font-medium">🏪 Counter Pickup</span>
                             {order.estimatedTime && <span>Est: ~{order.estimatedTime}m</span>}
                           </div>
                         </div>
@@ -732,9 +708,9 @@ export default function EmployeePage() {
                         {/* 1-Tap Load & Start Button */}
                         <button
                           onClick={() => advanceOrderStatus(order, 'Preparing Order', 50)}
-                          className="w-full py-2.5 px-3 rounded-xl bg-primary hover:bg-primary-light active:scale-[0.98] text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5"
+                          className="w-full py-2.5 px-3 rounded-xl bg-bg-surface/90 hover:bg-bg-surface border border-primary/50 hover:border-primary active:scale-[0.98] text-text-main hover:text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
                         >
-                          <span>🪡</span>
+                          <span className="text-primary text-sm group-hover/btn:scale-110 transition-transform">🪡</span>
                           <span>Load to Machine &amp; Start Stitching</span>
                         </button>
                       </div>
@@ -773,7 +749,7 @@ export default function EmployeePage() {
 
             {/* Status Tab Navigation */}
             {(() => {
-              const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
+              const ALL_STATUSES = ['In Queue', 'Preparing Order', 'Ready For Pick Up'];
               const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
               const tabs = [
                 { key: 'all', label: 'All Active', count: allActiveOrders.length },
@@ -787,13 +763,13 @@ export default function EmployeePage() {
                       onClick={() => setOrdersQueueTab(tab.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                         ordersQueueTab === tab.key
-                          ? 'bg-primary text-white border-primary shadow-sm'
+                          ? 'bg-bg-surface text-text-main border-primary/60 shadow-sm'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                       }`}
                     >
                       {tab.label}
                       <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
-                        ordersQueueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+                        ordersQueueTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-white/10 text-text-dim'
                       }`}>
                         {tab.count}
                       </span>
@@ -833,7 +809,6 @@ export default function EmployeePage() {
                                  <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
                                  <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
                                    ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                     o.status === 'In Transit' ? 'bg-warning/20 text-warning border border-warning/30' :
                                      o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
                                      'bg-white/10 text-text-dim border border-white/20'
                                    }
@@ -946,7 +921,6 @@ export default function EmployeePage() {
                           {/* Status Badge */}
                           <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
                             ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                              o.status === 'In Transit' ? 'bg-warning/20 text-warning border border-warning/30' :
                               o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
                               'bg-white/10 text-text-dim border border-white/20'
                             }
@@ -1299,7 +1273,7 @@ export default function EmployeePage() {
                 <button
                   type="button"
                   onClick={() => toggleTheme()}
-                  className="bg-primary text-white font-bold px-4 py-2 rounded-xl text-xs hover:shadow-md cursor-pointer transition-all"
+                  className="bg-bg-surface hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main font-bold px-4 py-2 rounded-xl text-xs cursor-pointer transition-all"
                 >
                   Toggle Theme
                 </button>
@@ -1478,11 +1452,9 @@ export default function EmployeePage() {
                   setOrderStatusInput(status);
                   // Map status to dynamic defaults
                   const progressMap: Record<string, string> = {
-                    'In Queue': '10',
-                    'Preparing Order': '30',
-                    'In Transit': '70',
+                    'In Queue': '15',
+                    'Preparing Order': '50',
                     'Ready For Pick Up': '90',
-                    'Order Delivered': '100',
                     'Completed': '100',
                     'Order Canceled': '0'
                   };
@@ -1493,7 +1465,6 @@ export default function EmployeePage() {
                 options={[
                   'In Queue',
                   'Preparing Order',
-                  'In Transit',
                   'Ready For Pick Up',
                   'Completed',
                   'Order Canceled'
@@ -1518,7 +1489,7 @@ export default function EmployeePage() {
             <div className="flex gap-3 mt-4">
               <button
                 type="submit"
-                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:shadow-md transition-all cursor-pointer text-sm"
+                className="flex-1 bg-bg-surface hover:bg-primary/15 border border-primary/50 hover:border-primary text-text-main hover:text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
               >
                 Update Ticket
               </button>

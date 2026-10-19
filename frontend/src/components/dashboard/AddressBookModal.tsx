@@ -99,7 +99,7 @@ export default function AddressBookModal({
       return;
     }
     if (!phoneNumber.trim()) {
-      showToast('Phone number is required for delivery couriers', 'error');
+      showToast('Phone number is required for order notifications', 'error');
       return;
     }
     if (!streetAddress.trim()) {

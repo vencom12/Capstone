@@ -499,30 +499,6 @@ export default function ProductModal({
             {product.description || 'Professional embroidery design optimized for high-speed production.'}
           </p>
 
-          {/* Live Shop Wait Time Indicator (Only shown if in stock) */}
-          {!isOutOfStock && (
-            <div className="flex items-center gap-2 text-xs text-text-dim">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span>
-                Estimated Wait Time:{' '}
-                <strong className="text-text-main font-semibold">
-                  {capacityData ? (
-                    capacityData.estimatedMinutes <= 15
-                      ? '~10–15 mins'
-                      : capacityData.estimatedMinutes >= 60
-                        ? `~${Math.floor(capacityData.estimatedMinutes / 60)}h ${capacityData.estimatedMinutes % 60 > 0 ? `${capacityData.estimatedMinutes % 60}m` : ''}`.trim()
-                        : `~${capacityData.estimatedMinutes} mins`
-                  ) : (
-                    'Checking wait time...'
-                  )}
-                </strong>
-              </span>
-            </div>
-          )}
-
           {/* Variants & Swatches (Only shown if product has variants) */}
           {hasVariants ? (
             <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
@@ -649,6 +625,30 @@ export default function ProductModal({
 
             {isPersonalized && (
               <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
+                {/* Estimated Stitching Time (Applies only when personalizing) */}
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[0.72rem] text-emerald-300 font-medium">
+                      Estimated stitching time:
+                    </span>
+                  </div>
+                  <strong className="text-emerald-200 font-mono text-xs font-bold">
+                    {capacityData ? (
+                      capacityData.estimatedMinutes <= 15
+                        ? '~10–15 mins'
+                        : capacityData.estimatedMinutes >= 60
+                          ? `~${Math.floor(capacityData.estimatedMinutes / 60)}h ${capacityData.estimatedMinutes % 60 > 0 ? `${capacityData.estimatedMinutes % 60}m` : ''}`.trim()
+                          : `~${capacityData.estimatedMinutes} mins`
+                    ) : (
+                      'Checking time...'
+                    )}
+                  </strong>
+                </div>
+
                 {/* Text input */}
                 <div className="flex flex-col gap-1">
                   <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
@@ -819,8 +819,8 @@ export default function ProductModal({
             </div>
           ) : (
             <>
-              {/* Rating Breakdown Header Card */}
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col sm:flex-row gap-4 items-center sm:items-start justify-between">
+              {/* Shopee-Style Rating Breakdown Header Card */}
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div className="flex flex-col items-center sm:items-start gap-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-extrabold text-text-main font-mono">
@@ -844,104 +844,90 @@ export default function ProductModal({
                   </div>
                   <span className="text-[0.72rem] text-text-dim">
                     {reviewsData?.totalReviews
-                      ? `Based on ${reviewsData.totalReviews} verified purchase${reviewsData.totalReviews > 1 ? 's' : ''}`
+                      ? `${reviewsData.totalReviews} verified rating${reviewsData.totalReviews > 1 ? 's' : ''}`
                       : 'No reviews yet'}
                   </span>
                 </div>
 
-                {/* Amazon/Shopee Star Histogram */}
-                <div className="flex-1 w-full max-w-[240px] flex flex-col gap-1">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const count = reviewsData?.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0;
-                    const total = reviewsData?.totalReviews || 0;
-                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const isSelected = selectedStarFilter === star;
-                    const hasReviews = count > 0;
-
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        disabled={!hasReviews}
-                        onClick={() => hasReviews && setSelectedStarFilter(isSelected ? 'all' : star)}
-                        className={`w-full flex items-center gap-2 text-[0.7rem] py-0.5 px-1.5 rounded-md transition-all border ${
-                          isSelected
-                            ? 'bg-primary/15 border-primary/40 text-text-main font-bold shadow-sm'
-                            : hasReviews
-                              ? 'bg-transparent border-transparent hover:bg-white/5 text-text-dim hover:text-text-main cursor-pointer'
-                              : 'bg-transparent border-transparent opacity-35 cursor-default text-text-dim'
-                        }`}
-                        title={hasReviews ? `Filter by ${star} star reviews (${count})` : `No ${star} star reviews`}
-                      >
-                        <span className="w-6 font-bold flex items-center gap-0.5 shrink-0">
-                          <span>{star}</span>
-                          <span className="text-amber-400 text-[10px]">★</span>
-                        </span>
-                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                          <div
-                            className="h-full bg-amber-400 rounded-full transition-all duration-300"
-                            style={{ width: `${pct}%` }}
-                          />
+                {/* Shopee-Style Satisfaction Metric / Trust Meter */}
+                {reviewsData && reviewsData.totalReviews > 0 && (
+                  <div className="flex-1 w-full max-w-[280px] flex flex-col gap-2">
+                    {(() => {
+                      const fiveStar = reviewsData.distribution?.[5] || 0;
+                      const fourStar = reviewsData.distribution?.[4] || 0;
+                      const positiveCount = fiveStar + fourStar;
+                      const positivePct = Math.round((positiveCount / reviewsData.totalReviews) * 100);
+                      
+                      return (
+                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-text-dim flex items-center gap-1.5 font-medium text-[0.72rem]">
+                              <span className="text-emerald-400">👍</span>
+                              <span>Positive Reviews</span>
+                            </span>
+                            <span className="font-mono font-bold text-emerald-400 text-xs">{positivePct}%</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-500"
+                              style={{ width: `${positivePct}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[0.65rem] text-text-dim/80 pt-0.5">
+                            <span>Verified Orders</span>
+                            <span>Quality Stitching</span>
+                          </div>
                         </div>
-                        <span className="w-12 text-right font-mono text-[0.65rem] shrink-0 text-text-dim">
-                          {count} ({pct}%)
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
-              {/* Verified Authenticity Guarantee Badge (Compact & Trust-Building) */}
-              <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-[0.68rem] text-emerald-400">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-emerald-400">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                  <span className="truncate"><strong>100% Authentic:</strong> Verified customer purchases only</span>
-                </div>
-                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 shrink-0">
-                  Store Certified
-                </span>
-              </div>
+              {/* Star Filter Pills (Shown only when there are multiple rating tiers to filter) */}
+              {(() => {
+                if (!reviewsData || reviewsData.totalReviews <= 1) return null;
+                const distinctTiers = [5, 4, 3, 2, 1].filter(
+                  (star) => (reviewsData.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0) > 0
+                );
+                if (distinctTiers.length <= 1) return null;
 
-              {/* Star Filter Pills */}
-              {reviewsData && reviewsData.totalReviews > 0 && (
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider mr-1">
-                    Filter:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStarFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
-                      selectedStarFilter === 'all'
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
-                    }`}
-                  >
-                    All ({reviewsData.totalReviews})
-                  </button>
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const count = reviewsData.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0;
-                    if (count === 0 && selectedStarFilter !== star) return null;
-                    return (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
-                        className={`px-2 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
-                          selectedStarFilter === star
-                            ? 'bg-primary text-white border-primary shadow-sm'
-                            : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
-                        }`}
-                      >
-                        {star} ★ ({count})
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                return (
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider mr-1">
+                      Filter:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStarFilter('all')}
+                      className={`px-2.5 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
+                        selectedStarFilter === 'all'
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                      }`}
+                    >
+                      All ({reviewsData.totalReviews})
+                    </button>
+                    {distinctTiers.map((star) => {
+                      const count = reviewsData.distribution?.[star as 1 | 2 | 3 | 4 | 5] || 0;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
+                          className={`px-2 py-1 rounded-lg text-[0.7rem] font-bold border cursor-pointer transition-all ${
+                            selectedStarFilter === star
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                          }`}
+                        >
+                          {star} ★ ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Reviews List Feed */}
               <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">
@@ -978,48 +964,54 @@ export default function ProductModal({
                     return (
                       <div
                         key={review.id}
-                        className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2"
+                        className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2.5 transition-all hover:border-white/20"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold text-xs flex items-center justify-center">
+                        {/* Top Line: Avatar + Customer Name + Verified Badge + Stars */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold text-xs flex items-center justify-center shrink-0">
                               {initial}
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-text-main">
-                                {review.customerName || 'Verified Customer'}
-                              </span>
-                              <span className="text-[0.65rem] text-text-dim">
-                                {review.createdAt
-                                  ? new Date(review.createdAt).toLocaleDateString(undefined, {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
-                                  : 'Verified Purchase'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            {review.isFeatured && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[0.65rem] font-bold">
-                                <span>★</span>
-                                <span>Featured</span>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-text-main truncate">
+                                  {review.customerName || 'Verified Customer'}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-bold leading-none shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Verified</span>
+                                </span>
+                                {review.isFeatured && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-bold leading-none shrink-0">
+                                    <span>★</span>
+                                    <span>Featured</span>
+                                  </span>
+                                )}
                               </div>
-                            )}
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[0.65rem] font-bold">
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              <span>Verified</span>
+                              <div className="flex items-center gap-1.5 text-[0.65rem] text-text-dim mt-0.5">
+                                <span>
+                                  {review.createdAt
+                                    ? new Date(review.createdAt).toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })
+                                    : 'Verified Purchase'}
+                                </span>
+                                {review.orderId && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono text-text-dim/80">#{review.orderId}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Stars & Order Tag */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center text-amber-400 text-xs">
+                          {/* Stars */}
+                          <div className="flex items-center text-amber-400 text-xs shrink-0">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <span
                                 key={i}
@@ -1029,35 +1021,40 @@ export default function ProductModal({
                               </span>
                             ))}
                           </div>
-                          {review.orderId && (
-                            <span className="text-[0.65rem] font-mono text-text-dim">
-                              Order #{review.orderId}
-                            </span>
-                          )}
                         </div>
 
-                        {/* Quality Highlight Tags (Positive Endorsement Badges) */}
+                        {/* Customer Quote / Review Content */}
+                        {cleanMessage && (
+                          <div className="pl-2.5 border-l-2 border-primary/40 py-0.5">
+                            <p className="text-xs text-text-main leading-relaxed m-0 italic">
+                              "{cleanMessage}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Quality Highlight Tags (Option B: Compact Top 3 with +Count) */}
                         {highlights.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {highlights.map((h, i) => (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                            {highlights.slice(0, 3).map((h, i) => (
                               <span
                                 key={i}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim hover:text-text-main text-[0.68rem] font-medium transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim hover:text-text-main text-[0.65rem] font-medium transition-colors"
                               >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-emerald-400 shrink-0">
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-emerald-400 shrink-0">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                                 <span>{h}</span>
                               </span>
                             ))}
+                            {highlights.length > 3 && (
+                              <span
+                                className="text-[0.62rem] text-text-dim/70 px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/5 cursor-default"
+                                title={highlights.slice(3).join(', ')}
+                              >
+                                +{highlights.length - 3} more
+                              </span>
+                            )}
                           </div>
-                        )}
-
-                        {/* Review Content */}
-                        {cleanMessage && (
-                          <p className="text-xs text-text-main/90 leading-relaxed m-0">
-                            {cleanMessage}
-                          </p>
                         )}
 
                         {/* Official Store Response (Merchant Public Reply) */}
@@ -1071,7 +1068,7 @@ export default function ProductModal({
                                   ? new Date(review.merchantReplyAt).toLocaleDateString(undefined, {
                                       year: 'numeric',
                                       month: 'short',
-                                      day: 'numeric'
+                                      day: 'numeric',
                                     })
                                   : 'Store Owner'}
                               </span>
@@ -1087,14 +1084,14 @@ export default function ProductModal({
                 })()}
               </div>
 
-              {/* High-Intent Conversion CTA */}
+              {/* Clear High-Intent CTA from Reviews Tab */}
               <div className="pt-2 border-t border-border-glass">
                 <button
                   type="button"
                   onClick={() => setActiveModalTab('configure')}
                   className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs cursor-pointer border-none shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                 >
-                  <span>Customize & Order Now</span>
+                  <span>Choose Color &amp; Preview Embroidery</span>
                   <span className="font-mono opacity-90">• ₱{effectivePrice.toFixed(2)}</span>
                   <span>→</span>
                 </button>

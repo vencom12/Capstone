@@ -134,7 +134,7 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   personalization?: {
-    fulfillmentType?: 'pickup' | 'delivery' | string;
+    fulfillmentType?: 'pickup' | string;
     courier?: string;
     trackingNumber?: string;
     referenceNumber?: string;

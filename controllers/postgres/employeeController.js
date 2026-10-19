@@ -95,8 +95,8 @@ exports.updateOrderStatus = async (req, res) => {
             });
         });
 
-        // Send ready for pick up / in transit email notification asynchronously
-        if (['ready for pick up', 'ready for pickup', 'in transit', 'out for delivery'].includes(status?.toLowerCase())) {
+        // Send ready for pick up email notification asynchronously
+        if (['ready for pick up', 'ready for pickup'].includes(status?.toLowerCase())) {
             prisma.user.findUnique({ where: { id: updatedOrder.userId } }).then(cust => {
                 if (cust && cust.email) {
                     const { sendOrderStatusReadyEmail } = require('../../utils/emailService');
@@ -146,6 +146,11 @@ exports.toggleShift = async (req, res) => {
             where: { id: userId },
             data: { shiftStatus: newStatus }
         });
+
+        const io = req.app.get('io');
+        if (io) {
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.USER, { id: userId, shiftStatus: newStatus });
+        }
 
         res.json({ shiftStatus: newStatus });
     } catch (err) {

@@ -206,29 +206,25 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
           </div>
         </div>
 
-        {/* Waybill / Dispatch Label Button */}
+        {/* Claim Slip / Receipt Button */}
         {isCanceled ? (
           <span className="px-3 py-1.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-            <span>{isPickup ? 'Claim Slip Voided' : 'Parcel Label Voided'}</span>
+            <span>Claim Slip Voided</span>
           </span>
         ) : (
           <button
             onClick={() => setIsWaybillOpen(true)}
             className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
             title={
-              isPickup
-                ? (isReadyForPickup
-                    ? 'View and print store claim slip to claim order at Pacific Mall'
-                    : isClaimed
-                      ? 'View completed order receipt and transaction record'
-                      : 'View order intake ticket and estimated pick-up schedule')
-                : (isDelivered
-                    ? 'View delivered parcel label and tracking proof'
-                    : 'View and print parcel dispatch label')
+              isReadyForPickup
+                ? 'View and print store claim slip to claim order at Pacific Mall'
+                : isClaimed
+                  ? 'View completed order receipt and transaction record'
+                  : 'View order intake ticket and estimated pick-up schedule'
             }
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -236,15 +232,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               <polyline points="14 2 14 8 20 8" />
             </svg>
             <span>
-              {isPickup
-                ? (isReadyForPickup
-                    ? 'Claim Slip (Ready)'
-                    : isClaimed
-                      ? 'Receipt (Claimed)'
-                      : 'Order Ticket & Receipt')
-                : (isDelivered
-                    ? 'Parcel Label (Delivered)'
-                    : 'Parcel Label')}
+              {isReadyForPickup
+                ? 'Claim Slip (Ready)'
+                : isClaimed
+                  ? 'Receipt (Claimed)'
+                  : 'Order Ticket & Receipt'}
             </span>
           </button>
         )}
@@ -263,11 +255,11 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
                 <span>ORDER CANCELLED</span>
               </div>
               <div>
-                <span className="text-xs font-bold text-text-main block">{isPickup ? 'Pick-up Inactive' : 'Delivery Cancelled'}</span>
+                <span className="text-xs font-bold text-text-main block">Pick-up Cancelled</span>
                 <span className="text-[0.7rem] text-text-dim">No physical pickup required</span>
               </div>
             </>
-          ) : isPickup ? (
+          ) : (
             <>
               <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -280,33 +272,16 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
                 <span className="text-[0.7rem] text-text-dim">Pacific Mall Lucena Studio</span>
               </div>
             </>
-          ) : (
-            <>
-              {/* Courier Delivery Indicator */}
-              <div className="flex items-center gap-1.5 bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="1" y="3" width="15" height="13" />
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 8" />
-                  <circle cx="5.5" cy="18.5" r="2.5" />
-                  <circle cx="18.5" cy="18.5" r="2.5" />
-                </svg>
-                <span>PARCEL DELIVERY</span>
-              </div>
-              <div>
-                <span className="text-xs font-bold text-text-main block">{courierName}</span>
-                <span className="text-[0.7rem] text-text-dim">Standard Courier Logistics</span>
-              </div>
-            </>
           )}
         </div>
 
-        {/* Tracking Number with Copy & Official Courier Portal link */}
+        {/* Tracking Number with Copy */}
         {trackingNumber ? (
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 bg-bg-dark/60 border border-border-glass px-3 py-1.5 rounded-xl">
               <div className="text-right">
                 <span className="text-[0.62rem] text-text-dim block uppercase font-bold">
-                  {isPickup ? 'Claim Reference' : 'Tracking No.'}
+                  Claim Reference
                 </span>
                 <span className={`font-mono text-xs font-bold ${isCanceled ? 'line-through text-text-dim' : 'text-primary'}`}>
                   {trackingNumber} {isCanceled ? '(VOID)' : ''}
@@ -321,27 +296,10 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
                 </button>
               )}
             </div>
-
-            {!isPickup && trackingNumber.startsWith('JNT') && (
-              <a
-                href={`https://www.jtexpress.ph/trajectoryQuery?bills=${trackingNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-[0.72rem] font-bold no-underline inline-flex items-center gap-1.5 transition-all shadow-sm"
-                title="Verify tracking on carrier portal"
-              >
-                <span>Track Online</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-            )}
           </div>
         ) : (
           <div className="text-right">
-            <span className="text-[0.68rem] text-text-dim italic">Tracking number assigned upon courier pickup</span>
+            <span className="text-[0.68rem] text-text-dim italic">Claim code assigned upon counter intake</span>
           </div>
         )}
       </div>

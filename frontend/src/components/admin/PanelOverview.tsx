@@ -846,51 +846,26 @@ export default function PanelOverview({
                 </div>
               </div>
 
-              {/* In-Store Counter Claim Code OR J&T Tracking Number */}
-              {isPickup ? (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      Anti-Fraud Counter Claim Code
-                    </label>
-                    <span className="text-[0.7rem] text-emerald-400 font-mono font-bold">{claimCode}</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={editTrackingNumber || claimCode}
-                    onChange={(e) => setEditTrackingNumber(e.target.value)}
-                    placeholder="e.g. #A-9632"
-                    className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
-                  />
-                  <span className="text-[0.68rem] text-text-dim">
-                    Customer presents this claim code at Pacific Mall Lucena counter to collect items.
-                  </span>
+              {/* In-Store Counter Claim Code */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Anti-Fraud Counter Claim Code
+                  </label>
+                  <span className="text-[0.7rem] text-emerald-400 font-mono font-bold">{claimCode}</span>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#e11d48]"></span>
-                      J&T Express Tracking Number
-                    </label>
-                    <button
-                      type="button"
-                      onClick={generateTrackingCode}
-                      className="text-[0.7rem] text-primary hover:underline font-bold cursor-pointer bg-transparent border-none p-0"
-                    >
-                      Generate J&T Code
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={editTrackingNumber}
-                    onChange={(e) => setEditTrackingNumber(e.target.value)}
-                    placeholder="e.g. JNT-PH-78..."
-                    className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono text-text-main focus:outline-none focus:border-primary transition-all"
-                  />
-                </div>
-              )}
+                <input
+                  type="text"
+                  value={editTrackingNumber || claimCode}
+                  onChange={(e) => setEditTrackingNumber(e.target.value)}
+                  placeholder="e.g. #A-9632"
+                  className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
+                />
+                <span className="text-[0.68rem] text-text-dim">
+                  Customer presents this claim code at Pacific Mall Lucena counter to collect items.
+                </span>
+              </div>
 
               {/* Milestone Note */}
               <div className="flex flex-col gap-1.5">
@@ -899,11 +874,7 @@ export default function PanelOverview({
                   type="text"
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
-                  placeholder={
-                    isPickup
-                      ? 'e.g. Stitched and placed on Shelf A ready for counter pick-up'
-                      : 'e.g. Scanned at Pacific Mall Lucena, handed over to J&T Courier'
-                  }
+                  placeholder="e.g. Stitched and placed on Shelf A ready for counter pick-up"
                   className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-primary transition-all"
                 />
               </div>

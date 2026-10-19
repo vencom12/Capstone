@@ -372,16 +372,16 @@ async function sendOrderStatusReadyEmail(recipientEmail, recipientName, order, n
 
   const orderId = order.orderId || order.id || 'N/A';
   const personalization = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
-  const isPickup = personalization.fulfillmentType === 'pickup' || (typeof order.address === 'string' && order.address.toLowerCase().includes('pick-up'));
+  const isPickup = true;
   const getVerificationCode = (id) => {
     if (!id) return '#A-000';
     if (id.startsWith('WI-')) return `#${id.replace('WI-', 'A-')}`;
     const suffix = id.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
     return `#A-${suffix.toUpperCase()}`;
   };
-  const claimCode = personalization.claimCode || (isPickup ? getVerificationCode(orderId) : (personalization.trackingNumber || `JNT-${orderId.slice(-6).toUpperCase()}`));
+  const claimCode = personalization.claimCode || getVerificationCode(orderId);
 
-  const isReadyForPickup = newStatus ? (newStatus.toLowerCase().includes('pick') || isPickup) : isPickup;
+  const isReadyForPickup = true;
 
   // 1. Order Placed Date
   const orderDateRaw = order.date || order.createdAt;
@@ -562,7 +562,7 @@ async function sendOrderStatusReadyEmail(recipientEmail, recipientName, order, n
 
   return dispatchEmail({
     to: recipientEmail,
-    subject: `${isReadyForPickup ? '🎉 Ready for Pick-Up' : '🚚 In Transit'}: Order #${orderId} — ${businessName}`,
+    subject: `🎉 Ready for Pick-Up: Order #${orderId} — ${businessName}`,
     html: htmlContent,
     simulationInfo: { tag: 'ORDER READY NOTIFICATION', url: trackingUrl }
   });

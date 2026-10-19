@@ -22,7 +22,7 @@ const STUDIO_BUSINESS_SAFEGUARDS = {
   maxArchiveStorageDays: 60,
   errorGuaranteeDays: 7,
   threadStandards: 'Madeira Polyneon & Isacord 40wt Industrial Thread',
-  courierPartner: 'J&T Express',
+  storeFulfillment: 'In-Store Counter Pickup (Pacific Mall Lucena)',
   governingLaws: {
     consumerAct: 'Republic Act No. 7394 (Consumer Act of the Philippines)',
     dataPrivacy: 'Republic Act No. 10173 (Data Privacy Act of 2012)',

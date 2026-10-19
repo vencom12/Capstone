@@ -471,7 +471,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
                  onClick={handlePlaceOrder}
                  className="shadow-sm hover:shadow-md"
                >
-                 Confirm & Dispatch Order
+                 Confirm & Place Order
                </GlassButton>
              )}
           </div>

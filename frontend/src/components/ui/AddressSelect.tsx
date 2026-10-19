@@ -246,10 +246,10 @@ export default function AddressSelect({
         />
       </div>
 
-      {/* Field 3: Dedicated Landmark / House Description for Courier */}
+      {/* Field 3: Dedicated Landmark / Location Guide */}
       <div className="flex flex-col gap-1">
         <label className="text-[0.72rem] font-bold text-text-dim flex items-center justify-between">
-          <span>Landmark / House Guide for Rider</span>
+          <span>Landmark / Location Guide</span>
           <span className="text-[0.65rem] text-text-dim/60 font-normal">Optional (e.g. gate color, nearby store)</span>
         </label>
         <input

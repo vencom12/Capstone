@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 // Type declarations for Web Speech API
 const SpeechRecognition = typeof window !== 'undefined'
@@ -46,7 +47,7 @@ const quickPrompts: QuickPrompt[] = [
   {
     id: 'low-stock',
     label: 'Low Stock',
-    prompt: 'Which materials and thread spools are critically low on stock?',
+    prompt: 'Check all low stock products, depleted variants, and raw material stockpiles.',
     icon: (
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
@@ -56,9 +57,19 @@ const quickPrompts: QuickPrompt[] = [
     )
   },
   {
+    id: 'variant-stock',
+    label: 'Variant Stock',
+    prompt: 'Show real-time stock and available variants for all catalog products.',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    )
+  },
+  {
     id: 'acquisition',
     label: 'Acquisition Form',
-    prompt: 'Create acquisition form for all low stock materials.',
+    prompt: 'Create acquisition and purchase requisition form for all low stock items and materials.',
     icon: (
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -106,13 +117,16 @@ const quickPrompts: QuickPrompt[] = [
 ];
 
 export default function PersistentAssistant() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'chat' | 'logs'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createMsgId(),
       sender: 'ai',
-      text: 'Hello operator! I am **StitchMaster AI**. I have live conversational access to the database. I can analyze recent sales, provide operational strategies, prioritize queues, and audit material stockpiles. How can I help you today?'
+      text: 'Hello! I am **StitchMaster AI**. I have live conversational access to the workshop database. I can audit product variant stock, track low materials, analyze sales, prioritize queues, and manage machine throughput. How can I help you today?'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -410,7 +424,7 @@ export default function PersistentAssistant() {
     const trimmed = text.trim();
     const upper = trimmed.toUpperCase();
 
-    if (upper === 'LOW_STOCK' || upper === 'LOW STOCK') {
+    if (upper === 'LOW_STOCK' || upper === 'LOW STOCK' || upper === 'PARTIAL_STOCK' || upper === 'PARTIAL STOCK' || upper === 'DEPLETED') {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE') {
@@ -813,7 +827,7 @@ export default function PersistentAssistant() {
                   onScroll={checkChipsScroll}
                   className="flex items-center gap-1.5 overflow-x-auto scrollbar-none scroll-smooth flex-1 min-w-0 py-0.5"
                 >
-                  {quickPrompts.map((qp) => (
+                  {quickPrompts.filter(qp => qp.id !== 'revenue' || isAdmin).map((qp) => (
                     <button
                       key={qp.id}
                       type="button"

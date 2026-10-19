@@ -117,9 +117,9 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       fetchSearchAi(query);
     } else {
       if (selectedCategory && selectedCategory !== 'All') {
-        fetchSearchAi(`What ${selectedCategory} products and variants are available in stock?`);
+        fetchSearchAi(`What ${selectedCategory} products are available in stock?`);
       } else {
-        fetchSearchAi("What products and variants are available in stock?");
+        fetchSearchAi("What products are currently available in stock?");
       }
     }
   };

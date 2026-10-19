@@ -328,7 +328,7 @@ export default function AdminPage() {
             showToast('New Custom storefront catalog published!', 'success');
           }
           scheduleFetchAdminData();
-        } else if (['INVENTORY', 'INVENTORY_LOG', 'MACHINE'].includes(data.entity)) {
+        } else if (['INVENTORY', 'INVENTORY_LOG', 'MACHINE', 'USER'].includes(data.entity)) {
           scheduleFetchAdminData();
         }
       });
