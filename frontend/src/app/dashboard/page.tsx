@@ -392,9 +392,13 @@ export default function DashboardPage() {
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
             <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
-              <div className="max-[1100px]:w-full">
-                <h1 className="text-xl font-bold mb-0.5">My Orders</h1>
-                <p className="text-text-dim text-[0.85rem] m-0">Monitor your active jobs, completed history, and receipts in real-time.</p>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg sm:text-xl font-bold m-0 text-text-main tracking-tight">My Orders</h1>
+                {filteredOrders.length > 0 && (
+                  <span className="text-xs bg-white/10 text-text-dim px-2.5 py-0.5 rounded-full font-medium">
+                    {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
+                  </span>
+                )}
               </div>
               <div className="shrink-0 flex items-center gap-2 max-md:w-full">
                 <span className="text-[0.8rem] text-text-dim font-medium mr-1 max-md:hidden">Filter by date:</span>
@@ -440,9 +444,15 @@ export default function DashboardPage() {
       case 'favs':
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-4">
-              <h1 className="text-xl font-bold mb-0.5">My Favorites</h1>
-              <p className="text-text-dim text-[0.85rem] m-0">Designs you've saved for later.</p>
+            <header className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg sm:text-xl font-bold m-0 text-text-main tracking-tight">My Favorites</h1>
+                {favorites.length > 0 && (
+                  <span className="text-xs bg-white/10 text-text-dim px-2.5 py-0.5 rounded-full font-medium">
+                    {favorites.length} {favorites.length === 1 ? 'saved item' : 'saved items'}
+                  </span>
+                )}
+              </div>
             </header>
             <div className="flex-1 pr-0 md:pr-2">
               {isSyncing && favorites.length === 0 ? (
@@ -479,9 +489,8 @@ export default function DashboardPage() {
 
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-6">
-              <h1 className="text-xl font-bold mb-1">Account Settings</h1>
-              <p className="text-text-dim text-[0.85rem] m-0">Manage your personal profile and account settings.</p>
+            <header className="mb-4 flex items-center justify-between">
+              <h1 className="text-lg sm:text-xl font-bold m-0 text-text-main tracking-tight">Account Settings</h1>
             </header>
 
             <div className="flex-1 pr-0 md:pr-2 pb-12 overflow-y-auto flex flex-col gap-8 max-w-4xl">
@@ -755,10 +764,14 @@ export default function DashboardPage() {
       default:
         return (
           <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
-              <div className="max-[1100px]:w-full">
-                <h1 className="text-xl font-bold mb-0.5">My Orders</h1>
-                <p className="text-text-dim text-[0.85rem] m-0">Monitor your active jobs, completed history, and receipts in real-time.</p>
+            <header className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg sm:text-xl font-bold m-0 text-text-main tracking-tight">My Orders</h1>
+                {orders.length > 0 && (
+                  <span className="text-xs bg-white/10 text-text-dim px-2.5 py-0.5 rounded-full font-medium">
+                    {orders.length} {orders.length === 1 ? 'order' : 'orders'}
+                  </span>
+                )}
               </div>
             </header>
             <div className="flex-1 pr-0 md:pr-2">

@@ -103,16 +103,15 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   if (items.length === 0) {
     return (
       <section className="flex flex-col min-h-full animate-[fadeIn_0.3s_ease-out]">
-        <header className="mb-6">
-          <h1 className="text-2xl font-black text-text-main m-0 tracking-tight flex items-center gap-3">
-            <span>My Embroidery Basket</span>
-            <span className="text-xs bg-white/10 text-text-dim px-3 py-1 rounded-full font-normal">
-              0 Items
+        <header className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-bold text-text-main m-0 tracking-tight">
+              My Basket
+            </h1>
+            <span className="text-xs bg-white/10 text-text-dim px-2.5 py-0.5 rounded-full font-medium">
+              0 items
             </span>
-          </h1>
-          <p className="text-text-dim text-[0.85rem] mt-1 m-0">
-            Review your customized towels, caps, and garments before placing your order.
-          </p>
+          </div>
         </header>
 
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[420px] bg-white/[0.02] border-2 border-dashed border-border-glass rounded-xl">
@@ -152,26 +151,21 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   return (
     <section className="flex flex-col min-h-full md:h-full animate-[fadeIn_0.3s_ease-out]">
       {/* Header */}
-      <header className="mb-5 flex justify-between items-end flex-wrap gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-black text-text-main m-0 tracking-tight">
-              My Embroidery Basket
-            </h1>
-            <span className="text-xs bg-primary/20 border border-primary/30 text-primary px-2.5 py-0.5 rounded-full font-bold">
-              {totalItemCount} {totalItemCount === 1 ? 'Item' : 'Items'}
-            </span>
-          </div>
-          <p className="text-text-dim text-xs mt-1 m-0">
-            Review custom colors, garment options, and quantities before proceeding to checkout.
-          </p>
+      <header className="mb-4 flex justify-between items-center flex-wrap gap-3">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg sm:text-xl font-bold text-text-main m-0 tracking-tight">
+            My Basket
+          </h1>
+          <span className="text-xs bg-primary/15 border border-primary/25 text-primary px-2.5 py-0.5 rounded-full font-semibold">
+            {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
+          </span>
         </div>
 
         {/* Clear All CTA */}
         <button
           type="button"
           onClick={() => setShowClearConfirm(true)}
-          className="text-text-dim hover:text-danger text-xs font-semibold px-3 py-1.5 rounded-lg border border-border-glass hover:border-danger/30 transition-all cursor-pointer bg-white/[0.03]"
+          className="text-text-dim hover:text-danger text-xs font-semibold px-3 py-1.5 rounded-lg border border-border-glass hover:border-danger/30 transition-all cursor-pointer bg-white/[0.03] hover:bg-danger/10"
         >
           Clear Basket
         </button>

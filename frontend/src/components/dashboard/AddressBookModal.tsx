@@ -297,9 +297,8 @@ export default function AddressBookModal({
             {/* Top Action Bar */}
             <div className="flex justify-between items-center bg-bg-surface/80 p-3.5 rounded-xl border border-border-glass">
               <div>
-                <p className="text-xs text-text-dim m-0">Shopee-Style Fast Courier Addressing</p>
                 <p className="text-sm font-bold m-0 text-text-main">
-                  {addresses.length} {addresses.length === 1 ? 'Saved Location' : 'Saved Locations'}
+                  {addresses.length} {addresses.length === 1 ? 'Saved Address' : 'Saved Addresses'}
                 </p>
               </div>
               <button
