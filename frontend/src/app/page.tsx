@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import RightPanel from '@/components/dashboard/RightPanel';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
+import AiAttendant from '@/components/products/AiAttendant';
 import { API_BASE } from '@/lib/api';
 import type { Product } from '@/lib/types';
 import { isGoogleAuthPending } from '@/lib/googleAuth';
@@ -203,6 +204,9 @@ export default function StorefrontPage() {
           router.push('/dashboard');
         }}
       />
+
+      {/* Floating Customer AI Store Assistant */}
+      <AiAttendant />
     </div>
   );
 }

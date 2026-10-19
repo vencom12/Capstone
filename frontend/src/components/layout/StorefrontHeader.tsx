@@ -31,15 +31,6 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const categories = getCategories();
 
-  // Spotlight Inline AI State
-  const [isSearchAiOpen, setIsSearchAiOpen] = useState(false);
-  const [isSearchAiLoading, setIsSearchAiLoading] = useState(false);
-  const [searchAiResult, setSearchAiResult] = useState<{
-    query: string;
-    reply: string;
-    suggestedProducts: Product[];
-  } | null>(null);
-
   const handleBasketClick = () => {
     if (pathname === '/') {
       useUIStore.getState().toggleBasket();
@@ -63,67 +54,35 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     }
   };
 
-  const fetchSearchAi = async (queryToAsk: string) => {
-    const q = queryToAsk.trim();
-    if (!q) return;
-
-    setIsSearchFocused(false);
-    setIsSearchAiOpen(true);
-    setIsSearchAiLoading(true);
-
-    try {
-      const data = await api.post<{ success: boolean; reply: string; suggestedProducts: Product[] }>(
-        '/api/ai/storefront-chat',
-        {
-          message: q,
-          history: [],
-          context: { selectedCategory, searchQuery: q }
-        }
-      );
-
-      const rawReply = (data?.reply || '').replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
-      setSearchAiResult({
-        query: q,
-        reply: rawReply || "Hello! I'm here to help you check in-stock products (like our Regular Fans), custom embroidery pricing, or store details at Pacific Mall Lucena! 🧵✨",
-        suggestedProducts: data?.suggestedProducts || []
-      });
-    } catch (err) {
-      setSearchAiResult({
-        query: q,
-        reply: "Sorry, I'm having trouble connecting right now. Please try asking again in a moment! 🧵",
-        suggestedProducts: []
-      });
-    } finally {
-      setIsSearchAiLoading(false);
-    }
+  // Helper to distinguish product search keywords from conversational questions
+  const isQuestionQuery = (query: string): boolean => {
+    const q = query.trim().toLowerCase();
+    if (!q) return false;
+    if (q.includes('?')) return true;
+    const questionStarters = [
+      'how', 'what', 'where', 'when', 'why', 'who',
+      'can i', 'can we', 'do you', 'is there', 'are there', 'will you',
+      'how much', 'how long', 'how many', 'price of', 'cost of',
+      'tell me', 'help me', 'hours', 'location', 'address'
+    ];
+    return questionStarters.some(w => q.startsWith(w) || q.includes(' ' + w + ' '));
   };
 
   const handleSearchSubmit = () => {
-    // Pure local product search on Enter / Magnifying glass: 0 tokens, 0 AI calls, 0 network requests!
     setIsSearchFocused(false);
-    setIsSearchAiOpen(false);
-    setSearchAiResult(null);
+    const q = searchQuery.trim();
+    if (!q) return;
 
-    // Smooth scroll to product catalog on storefront
+    // If customer entered a question, seamlessly launch the AI Store Assistant!
+    if (isQuestionQuery(q)) {
+      useUIStore.getState().openAiWithQuery(q);
+      return;
+    }
+
+    // Pure local product search on Enter / Magnifying glass: 0 tokens, 0 AI calls, 0 network requests!
     const catalogEl = document.getElementById('products-section') || document.getElementById('product-catalog');
     if (catalogEl) {
       catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const handleAiButtonClick = () => {
-    const query = searchQuery.trim();
-    if (query) {
-      fetchSearchAi(query);
-    } else {
-      setIsSearchFocused(false);
-      setIsSearchAiLoading(false);
-      setIsSearchAiOpen(true);
-      setSearchAiResult({
-        query: '',
-        reply: "Hello! Welcome to Stitch Art.\n\nHow can I help you today? Feel free to ask any question about our products, custom embroidery services, live stock, pricing, or workshop details.",
-        suggestedProducts: []
-      });
     }
   };
 
@@ -157,33 +116,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     showToast(`Added ${product.name}${inStockVar ? ` (${inStockVar.name})` : ''} to basket`, 'success');
   };
 
-  const renderAiReplyText = (text: string) => {
-    const clean = text.replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
-    const paragraphs = clean.split('\n\n');
-    return paragraphs.map((para, pIdx) => {
-      const lines = para.split('\n');
-      return (
-        <div key={pIdx} className="mb-2 last:mb-0">
-          {lines.map((line, lIdx) => {
-            const parts = line.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-            return (
-              <p key={lIdx} className="text-xs sm:text-[0.82rem] leading-relaxed text-text-main/90 m-0 my-0.5">
-                {parts.map((part, i) => {
-                  if (part.startsWith('**') && part.endsWith('**')) {
-                    return <strong key={i} className="font-bold text-text-main">{part.slice(2, -2)}</strong>;
-                  }
-                  if (part.startsWith('*') && part.endsWith('*')) {
-                    return <em key={i} className="italic text-text-main">{part.slice(1, -1)}</em>;
-                  }
-                  return part;
-                })}
-              </p>
-            );
-          })}
-        </div>
-      );
-    });
-  };
+
 
   useEffect(() => {
     setMounted(true);
@@ -209,12 +142,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       }
       if (!target.closest('.search-container')) {
         setIsSearchFocused(false);
-        setIsSearchAiOpen(false);
       }
     };
     window.addEventListener('mousedown', handleOutsideClick);
     return () => window.removeEventListener('mousedown', handleOutsideClick);
-  }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen, isSearchFocused, isSearchAiOpen]);
+  }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen, isSearchFocused]);
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
@@ -444,7 +376,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <input
                 suppressHydrationWarning
                 type="text"
-                placeholder="Search products or ask a question..."
+                placeholder="Search products by name, category, or color..."
                 value={searchQuery}
                 onFocus={() => setIsSearchFocused(true)}
                 onChange={(e) => {
@@ -468,8 +400,6 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   suppressHydrationWarning
                   onClick={() => {
                     setSearchQuery('');
-                    setIsSearchAiOpen(false);
-                    setSearchAiResult(null);
                   }}
                   className="p-1 mr-1 text-text-dim hover:text-text-main rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
                   title="Clear search"
@@ -479,28 +409,13 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 </button>
               )}
 
-              {/* Permanent AI Store Attendant Trigger (Clean monochrome Sparkles) */}
-              <button
-                type="button"
-                suppressHydrationWarning
-                onClick={handleAiButtonClick}
-                className="p-1.5 mr-1 text-text-dim hover:text-text-main hover:bg-white/10 rounded-lg border border-border-glass/60 hover:border-border-glass cursor-pointer flex items-center justify-center shrink-0 transition-all active:scale-95"
-                title={searchQuery.trim() ? `Ask AI about "${searchQuery.trim()}"` : "Ask AI Store Attendant"}
-                aria-label="Ask AI Store Attendant"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
-                  <path d="M19 4v4m2-2h-4" />
-                </svg>
-              </button>
-
-              {/* Standard Search Submit Button (0 tokens) */}
+              {/* Standard Search Submit Button */}
               <button
                 type="button"
                 suppressHydrationWarning
                 onClick={handleSearchSubmit}
                 className="p-1.5 mr-2 text-text-dim hover:text-text-main hover:bg-white/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center shrink-0 active:scale-95"
-                title="Search products (0 tokens)"
+                title="Search products"
                 aria-label="Search products"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -510,211 +425,6 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               </button>
             </div>
           </div>
-
-          {/* Spotlight Inline AI Answer Dropdown (Perplexity/Spotlight style) */}
-          {isSearchAiOpen && (
-            <div className="absolute top-[calc(100%+8px)] inset-x-0 bg-bg-card/95 backdrop-blur-2xl border border-border-glass rounded-2xl p-3.5 sm:p-4 shadow-2xl z-[3000] max-h-[75vh] overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
-              {/* Header */}
-              <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border-glass">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-md bg-white/10 border border-border-glass flex items-center justify-center">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-main">
-                      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
-                      <path d="M19 4v4m2-2h-4" />
-                    </svg>
-                  </span>
-                  <span className="text-xs font-bold text-text-main">AI Store Attendant</span>
-                  <span className="text-[0.62rem] text-text-dim px-2 py-0.5 rounded-full bg-white/5 border border-border-glass">
-                    {searchAiResult?.query ? 'Instant Answer' : 'Virtual Concierge'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsSearchAiOpen(false)}
-                  className="p-1 rounded-md text-text-dim hover:text-text-main hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
-                  title="Close (Esc)"
-                  aria-label="Close answer"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Body: Loading Shimmer or Result */}
-              {isSearchAiLoading ? (
-                <div className="py-4 px-2 flex flex-col gap-2.5">
-                  <div className="flex items-center gap-2 text-xs text-text-dim animate-pulse">
-                    <span className="animate-spin">🧵</span>
-                    <span>Checking live workshop inventory & embroidery specs...</span>
-                  </div>
-                  <div className="h-3 w-4/5 bg-white/10 rounded animate-pulse" />
-                  <div className="h-3 w-3/5 bg-white/10 rounded animate-pulse" />
-                </div>
-              ) : searchAiResult ? (
-                <div className="flex flex-col gap-3">
-                  {/* AI Response Text */}
-                  <div className="p-3 rounded-xl bg-white/[0.04] border border-border-glass">
-                    {renderAiReplyText(searchAiResult.reply)}
-                  </div>
-
-                  {/* Suggested Question Chips (shown when opening AI or asking what to help with) */}
-                  {(!searchAiResult.query || searchAiResult.query === '') && (
-                    <div className="flex flex-col gap-2 pt-0.5">
-                      <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
-                        Suggested Questions
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          {
-                            label: "Check in-stock products",
-                            query: "What products are currently available in stock?",
-                            icon: (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                              </svg>
-                            )
-                          },
-                          {
-                            label: "How long does embroidery take?",
-                            query: "How long does custom embroidery take?",
-                            icon: (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                              </svg>
-                            )
-                          },
-                          {
-                            label: "Can I bring my own garments?",
-                            query: "Can I bring my own garments for custom embroidery (BYOG)?",
-                            icon: (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
-                                <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
-                              </svg>
-                            )
-                          },
-                          {
-                            label: "Custom embroidery pricing",
-                            query: "How much does custom embroidery cost?",
-                            icon: (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
-                                <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
-                                <circle cx="7" cy="7" r="1.5" />
-                              </svg>
-                            )
-                          },
-                          {
-                            label: "Store location & workshop hours",
-                            query: "Where is your workshop located and what are your store hours?",
-                            icon: (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
-                                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
-                            )
-                          }
-                        ].map((chip, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setSearchQuery(chip.query);
-                              fetchSearchAi(chip.query);
-                            }}
-                            className="text-[0.75rem] px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-border-glass text-text-main font-medium transition-all active:scale-95 cursor-pointer text-left flex items-center gap-2 shadow-xs group"
-                          >
-                            {chip.icon}
-                            <span>{chip.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Matching Products Grid */}
-                  {searchAiResult.suggestedProducts && searchAiResult.suggestedProducts.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
-                        {selectedCategory && selectedCategory !== 'All' && searchAiResult.suggestedProducts.some(p => p.tag && !p.tag.toLowerCase().includes(selectedCategory.toLowerCase()))
-                          ? 'Available Workshop Alternatives'
-                          : 'In-Stock Recommendations'}
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {searchAiResult.suggestedProducts.map((p, pIdx) => {
-                          const avail = p.availableStock !== undefined 
-                            ? p.availableStock 
-                            : Math.max(0, (p.count ?? 0) - (p.reservedCount ?? 0));
-                          const oos = p.isOutOfStock || avail <= 0;
-                          return (
-                            <div 
-                              key={p.id ? `search-prod-${p.id}-${pIdx}` : `search-prod-idx-${pIdx}`} 
-                              className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-border-glass hover:border-border-glass/80 transition-all"
-                            >
-                              <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                                {p.imageUrl ? (
-                                  <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-text-dim text-[0.6rem]">IMG</div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-text-main m-0 truncate">{p.name}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-text-main font-bold text-xs">₱{p.price.toFixed(2)}</span>
-                                  <span className="text-[0.6rem] text-text-dim">{avail} in stock</span>
-                                </div>
-                                {p.variants && p.variants.length > 0 && (
-                                  <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {p.variants.filter(v => !v.isOutOfStock && (v.availableStock ?? 0) > 0).map((v, vIdx) => (
-                                      <span 
-                                        key={vIdx} 
-                                        className="text-[0.62rem] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 leading-none"
-                                        title={`${v.name}: ${v.availableStock} in stock`}
-                                      >
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                                        {v.name}: {v.availableStock}
-                                      </span>
-                                    ))}
-                                    {p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).length > 0 && (
-                                      <span 
-                                        className="text-[0.58rem] text-text-dim/80 px-1.5 py-0.5 rounded bg-white/5 border border-border-glass leading-none"
-                                        title={`Out of stock: ${p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).map(v => v.name).join(', ')}`}
-                                      >
-                                        +{p.variants.filter(v => v.isOutOfStock || (v.availableStock ?? 0) <= 0).length} out of stock
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleAddToBasket(p)}
-                                disabled={oos}
-                                className="shrink-0 px-2.5 py-1 rounded-lg text-[0.68rem] font-bold border border-border-glass bg-white/10 hover:bg-white/20 text-text-main cursor-pointer active:scale-95 transition-all"
-                              >
-                                {oos ? 'Out' : '🛍️ Add'}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Dropdown Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border-glass/40 text-[0.7rem] text-text-dim">
-                    <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[0.62rem] border border-border-glass">Esc</kbd> to close</span>
-                    <span className="flex items-center gap-1.5 text-[0.68rem] text-text-dim">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span>{searchAiResult.query ? 'Live Stock Verified' : 'AI Assistant Ready'}</span>
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
         </div>
 
         {/* Desktop Actions (Story Link, Theme, Auth, Basket) - visible only on lg:flex */}

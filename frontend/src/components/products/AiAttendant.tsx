@@ -30,7 +30,7 @@ const SpeechRecognition = typeof window !== 'undefined'
   : null;
 
 export default function AiAttendant() {
-  const { isAiOpen, setAiOpen, initialAiQuery, clearInitialAiQuery } = useUIStore();
+  const { isAiOpen, setAiOpen, initialAiQuery, clearInitialAiQuery, isBasketOpen } = useUIStore();
   const isOpen = isAiOpen;
   const setIsOpen = setAiOpen;
 
@@ -58,7 +58,7 @@ export default function AiAttendant() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { selectedCategory, searchQuery } = useProductStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { items: basketItems, addItem } = useBasketStore();
 
   // Voice Typing States
@@ -575,15 +575,38 @@ export default function AiAttendant() {
     return elements;
   };
 
-  if (!isOpen) return null;
+  // Staff roles manage the store and workshop floors, not customer chat
+  if (user?.role === 'admin' || user?.role === 'employee') return null;
 
   return (
     <>
-      {/* Backdrop (Click outside to close) */}
-      <div
-        onClick={() => setIsOpen(false)}
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[2399] transition-opacity animate-[fadeIn_0.2s_ease-out]"
-      />
+      {/* Floating Launcher Button (when closed and basket drawer not open) */}
+      {!isOpen && !isBasketOpen && (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-[2200] flex items-center gap-2.5 px-4 py-3 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 group"
+          title="Ask AI Store Attendant"
+          aria-label="Ask AI Store Attendant"
+        >
+          <span className="p-1 rounded-full bg-white/20 flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
+              <path d="M19 4v4m2-2h-4" />
+            </svg>
+          </span>
+          <span className="font-bold tracking-wide">Ask Assistant</span>
+        </button>
+      )}
+
+      {/* Chat Panel & Backdrop (when open) */}
+      {isOpen && (
+        <>
+          {/* Backdrop (Click outside to close) */}
+          <div
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[2399] transition-opacity animate-[fadeIn_0.2s_ease-out]"
+          />
 
       {/* Chat Panel */}
       <div
@@ -866,10 +889,12 @@ export default function AiAttendant() {
                 </svg>
               </button>
             </div>
-            <p className="text-[0.6rem] text-text-dim/40 text-center mt-2 m-0">Powered by Stitch-Opt AI</p>
+            <p className="text-[0.6rem] text-text-dim/40 text-center mt-2 m-0">Powered by Stitch Art AI</p>
           </div>
         </div>
       </div>
+        </>
+      )}
     </>
   );
 }
