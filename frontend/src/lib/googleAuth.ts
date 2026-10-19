@@ -181,49 +181,44 @@ export function resetGoogleAuthState(): void {
 
 /**
  * Step 1: Trigger Google Sign-In.
- * Automatically chooses the optimal, browser-secure strategy based on environment:
- * - Production (HTTPS): Full-window redirect (signInWithRedirect) via same-origin reverse proxy.
- * - Local Dev (HTTP localhost): In-memory popup (signInWithPopup) to avoid Chrome's cross-origin iframe storage blocks.
+ * Uses in-memory popup (signInWithPopup) across all environments to guarantee
+ * zero reliance on partitioned sessionStorage or cross-site redirect state.
+ * Gracefully falls back to signInWithRedirect only if popup is blocked by the browser.
  */
 export async function startGoogleSignIn(): Promise<{ ok: false; message: string } | void> {
   resetGoogleAuthState();
-  const isLocalDev =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.protocol === 'http:');
 
-  if (isLocalDev) {
-    try {
-      console.log('[GoogleAuth] Local environment detected: launching in-memory Google authentication...');
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result?.user) {
-        await processUser(result.user);
-      }
-    } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
-        return;
-      }
-      console.error('[GoogleAuth] Local authentication error:', err);
-      const outcome: GoogleSignInOutcome = {
-        status: 'error',
-        message: describeFirebaseError(err),
-      };
-      notifyListeners(outcome);
-      return { ok: false, message: outcome.message };
+  try {
+    console.log('[GoogleAuth] Launching in-memory Google authentication popup...');
+    const result = await signInWithPopup(auth, googleProvider);
+    if (result?.user) {
+      await processUser(result.user);
     }
     return;
-  }
-
-  // Production full-window redirect
-  setPending(true);
-  try {
-    console.log('[GoogleAuth] Production environment detected: initiating full-window redirect...');
-    await signInWithRedirect(auth, googleProvider);
-  } catch (err) {
-    setPending(false);
-    console.error('[GoogleAuth] Redirect start failed:', err);
-    return { ok: false, message: describeFirebaseError(err) };
+  } catch (err: any) {
+    if (err?.code === 'auth/popup-closed-by-user') {
+      return;
+    }
+    // If the browser strictly blocked the popup, fall back to redirect
+    if (err?.code === 'auth/popup-blocked') {
+      console.warn('[GoogleAuth] Popup blocked by browser policy, falling back to full-window redirect...');
+      setPending(true);
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectErr) {
+        setPending(false);
+        console.error('[GoogleAuth] Redirect start failed:', redirectErr);
+        return { ok: false, message: describeFirebaseError(redirectErr) };
+      }
+      return;
+    }
+    console.error('[GoogleAuth] Authentication error:', err);
+    const outcome: GoogleSignInOutcome = {
+      status: 'error',
+      message: describeFirebaseError(err),
+    };
+    notifyListeners(outcome);
+    return { ok: false, message: outcome.message };
   }
 }
 

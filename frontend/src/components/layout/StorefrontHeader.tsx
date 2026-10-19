@@ -116,11 +116,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     if (query) {
       fetchSearchAi(query);
     } else {
-      if (selectedCategory && selectedCategory !== 'All') {
-        fetchSearchAi(`What ${selectedCategory} products are available in stock?`);
-      } else {
-        fetchSearchAi("What products are currently available in stock?");
-      }
+      setIsSearchFocused(false);
+      setIsSearchAiLoading(false);
+      setIsSearchAiOpen(true);
+      setSearchAiResult({
+        query: '',
+        reply: "Hello! Welcome to Stitch Art! 👋✨\n\nHow can I help you today? Feel free to ask any question about our products, custom embroidery services, live stock, pricing, or workshop details.",
+        suggestedProducts: []
+      });
     }
   };
 
@@ -522,7 +525,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   </span>
                   <span className="text-xs font-bold text-text-main">AI Store Attendant</span>
                   <span className="text-[0.62rem] text-text-dim px-2 py-0.5 rounded-full bg-white/5 border border-border-glass">
-                    Instant Answer
+                    {searchAiResult?.query ? 'Instant Answer' : 'Virtual Concierge'}
                   </span>
                 </div>
                 <button
@@ -554,6 +557,36 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   <div className="p-3 rounded-xl bg-white/[0.04] border border-border-glass">
                     {renderAiReplyText(searchAiResult.reply)}
                   </div>
+
+                  {/* Suggested Question Chips (shown when opening AI or asking what to help with) */}
+                  {(!searchAiResult.query || searchAiResult.query === '') && (
+                    <div className="flex flex-col gap-2 pt-0.5">
+                      <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
+                        Suggested Questions
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: "🔍 Check in-stock products", query: "What products are currently available in stock?" },
+                          { label: "⏱️ How long does embroidery take?", query: "How long does custom embroidery take?" },
+                          { label: "🧵 Can I bring my own garments?", query: "Can I bring my own garments for custom embroidery (BYOG)?" },
+                          { label: "💰 Custom embroidery pricing", query: "How much does custom embroidery cost?" },
+                          { label: "📍 Store location & workshop hours", query: "Where is your workshop located and what are your store hours?" }
+                        ].map((chip, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSearchQuery(chip.query);
+                              fetchSearchAi(chip.query);
+                            }}
+                            className="text-[0.75rem] px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-border-glass text-text-main font-medium transition-all active:scale-95 cursor-pointer text-left flex items-center gap-1.5 shadow-xs"
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Matching Products Grid */}
                   {searchAiResult.suggestedProducts && searchAiResult.suggestedProducts.length > 0 && (
@@ -629,8 +662,8 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   <div className="flex items-center justify-between pt-2 border-t border-border-glass/40 text-[0.7rem] text-text-dim">
                     <span>Press <kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[0.62rem] border border-border-glass">Esc</kbd> to close</span>
                     <span className="flex items-center gap-1.5 text-[0.68rem] text-text-dim">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span>Live Stock Verified</span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${searchAiResult.query ? 'bg-emerald-400' : 'bg-primary'}`}></span>
+                      <span>{searchAiResult.query ? 'Live Stock Verified' : 'AI Assistant Ready'}</span>
                     </span>
                   </div>
                 </div>

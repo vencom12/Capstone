@@ -318,7 +318,7 @@ export default function AiAttendant() {
       setMessages([{
         id: createMsgId(),
         role: 'assistant',
-        text: "Hi there! I'm your **Stitch-Opt** virtual store attendant. I can help you find products, answer questions about custom embroidery, orders, or store policies — just ask!",
+        text: "Hi there! Welcome to **Stitch Art**! 👋✨ How can I help you today? Ask me anything about our products, custom embroidery, rush orders, or workshop policies.",
       }]);
     }
   }, [isOpen, hasGreeted, initialAiQuery]);
@@ -731,6 +731,33 @@ export default function AiAttendant() {
                 )}
               </div>
             ))}
+
+            {/* Quick Suggested Questions Tray on first greeting */}
+            {messages.length === 1 && messages[0].role === 'assistant' && !isLoading && (
+              <div className="flex flex-col gap-1.5 pl-1 my-1 animate-[fadeIn_0.2s_ease-out]">
+                <span className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider">
+                  Quick Questions
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: "🔍 What's in stock?", query: "What products are currently available in stock?" },
+                    { label: "⏱️ How long does embroidery take?", query: "How long does custom embroidery take?" },
+                    { label: "🧵 Can I bring my own garments?", query: "Can I bring my own garments for custom embroidery (BYOG)?" },
+                    { label: "💰 Embroidery pricing", query: "How much does custom embroidery cost?" },
+                    { label: "📍 Store location & hours", query: "Where is your workshop located and what are your store hours?" }
+                  ].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => sendQueryText(chip.query)}
+                      className="text-[0.72rem] px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-border-glass text-text-main font-medium transition-all active:scale-95 cursor-pointer text-left"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Typing Indicator */}
             {isLoading && (
