@@ -740,19 +740,64 @@ export default function AiAttendant() {
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { label: "🔍 What's in stock?", query: "What products are currently available in stock?" },
-                    { label: "⏱️ How long does embroidery take?", query: "How long does custom embroidery take?" },
-                    { label: "🧵 Can I bring my own garments?", query: "Can I bring my own garments for custom embroidery (BYOG)?" },
-                    { label: "💰 Embroidery pricing", query: "How much does custom embroidery cost?" },
-                    { label: "📍 Store location & hours", query: "Where is your workshop located and what are your store hours?" }
+                    {
+                      label: "What's in stock?",
+                      query: "What products are currently available in stock?",
+                      icon: (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                      )
+                    },
+                    {
+                      label: "How long does embroidery take?",
+                      query: "How long does custom embroidery take?",
+                      icon: (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      )
+                    },
+                    {
+                      label: "Can I bring my own garments?",
+                      query: "Can I bring my own garments for custom embroidery (BYOG)?",
+                      icon: (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                          <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+                        </svg>
+                      )
+                    },
+                    {
+                      label: "Embroidery pricing",
+                      query: "How much does custom embroidery cost?",
+                      icon: (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+                          <circle cx="7" cy="7" r="1.5" />
+                        </svg>
+                      )
+                    },
+                    {
+                      label: "Store location & hours",
+                      query: "Where is your workshop located and what are your store hours?",
+                      icon: (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                      )
+                    }
                   ].map((chip, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => sendQueryText(chip.query)}
-                      className="text-[0.72rem] px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-border-glass text-text-main font-medium transition-all active:scale-95 cursor-pointer text-left"
+                      className="text-[0.72rem] px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-border-glass text-text-main font-medium transition-all active:scale-95 cursor-pointer text-left flex items-center gap-1.5 shadow-xs group"
                     >
-                      {chip.label}
+                      {chip.icon}
+                      <span>{chip.label}</span>
                     </button>
                   ))}
                 </div>
