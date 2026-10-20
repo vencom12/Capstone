@@ -24,6 +24,8 @@ import Pagination from '@/components/ui/Pagination';
 import { toggleTheme } from '@/lib/theme';
 import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
+import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
+import { printBagSlip } from '@/lib/printBagSlip';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -39,7 +41,7 @@ export default function EmployeePage() {
     orders: 'Order Queue',
     counter: 'Walk-In Counter',
     history: 'Order History',
-    support: 'Workshop Quality (QA)',
+    support: 'Customer Reviews',
     settings: 'Settings'
   };
 
@@ -52,6 +54,25 @@ export default function EmployeePage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
   const [shiftStatus, setShiftStatus] = useState('offline');
+  const [isChimeActive, setIsChimeActive] = useState(true);
+  const prevOrdersCountRef = useRef<number>(0);
+
+  // Initialize audio chime preference from localStorage
+  useEffect(() => {
+    setIsChimeActive(isChimeEnabled());
+  }, []);
+
+  const handleToggleChime = () => {
+    const next = !isChimeActive;
+    setIsChimeActive(next);
+    setChimeEnabled(next);
+    if (next) {
+      playOrderChime();
+      showToast('New order chime enabled (sample sound played)', 'info');
+    } else {
+      showToast('New order chime muted', 'info');
+    }
+  };
 
   // Search & Filters State
   const [ordersSearchQuery, setOrdersSearchQuery] = useState('');
@@ -125,7 +146,12 @@ export default function EmployeePage() {
       const data = await api.get<any>('/api/employee/dashboard-state');
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (data) {
-        setOrders(data.orders || []);
+        const nextOrders = data.orders || [];
+        if (hasInitialDataLoaded && prevOrdersCountRef.current > 0 && nextOrders.length > prevOrdersCountRef.current) {
+          playOrderChime();
+        }
+        prevOrdersCountRef.current = nextOrders.length;
+        setOrders(nextOrders);
         setInventory(data.inventory || data.rawMaterials || []);
         setProducts(data.products || []);
         setMachines(data.machines || []);
@@ -267,6 +293,7 @@ export default function EmployeePage() {
         if (data.entity === 'ORDER') {
           if (data.action === 'CREATE') {
             fetchEmployeeData();
+            playOrderChime();
             showToast('New customer order ticket received!', 'info');
           } else if (data.action === 'UPDATE' && data.data) {
             handleInPlaceOrderUpdate(data.data);
@@ -610,14 +637,24 @@ export default function EmployeePage() {
                       </div>
                     )}
 
-                    {/* Single Contextual Progression Button */}
-                    <div className="pt-2 border-t border-border-glass">
+                    {/* Action Buttons: Progression + 1-Click Bag Slip */}
+                    <div className="pt-2 border-t border-border-glass flex flex-wrap sm:flex-nowrap gap-2.5">
                       <button
                         onClick={() => advanceOrderStatus(activeStitchingOrder, 'Ready For Pick Up', 100)}
-                        className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                       >
                         <span>✅</span>
                         <span>Complete Stitching — Ready for Counter Pickup (100%)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => printBagSlip(activeStitchingOrder)}
+                        title="Print 80mm thermal slip to attach to garment bag"
+                        className="py-3.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-border-glass active:scale-[0.99] text-text-main font-bold text-xs sm:text-sm transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                      >
+                        <span>🏷️</span>
+                        <span>Print Bag Slip</span>
                       </button>
                     </div>
                   </div>
@@ -883,6 +920,15 @@ export default function EmployeePage() {
                              </td>
                              <td className="glass-td text-right">
                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => printBagSlip(o)}
+                                    title="Print 80mm thermal slip to attach to garment bag"
+                                    className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                                  >
+                                    <span>🏷️</span>
+                                    <span>Bag Slip</span>
+                                  </button>
                                  <button
                                    onClick={() => {
                                      setSelectedOrder(o);
@@ -997,17 +1043,28 @@ export default function EmployeePage() {
                       </div>
 
                       {/* Underneath Button */}
-                      <button
-                        onClick={() => {
-                          setSelectedOrder(o);
-                          setOrderStatusInput(o.status || 'In Queue');
-                          setOrderProgressInput((o.progress || 10).toString());
-                          setIsProcessModalOpen(true);
-                        }}
-                        className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
-                      >
-                        Process Ticket
-                      </button>
+                      <div className="flex gap-2 mt-auto w-full">
+                        <button
+                          type="button"
+                          onClick={() => printBagSlip(o)}
+                          title="Print 80mm thermal slip for garment bag"
+                          className="bg-white/5 border border-border-glass text-text-main py-2.5 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center shrink-0 flex items-center justify-center gap-1"
+                        >
+                          <span>🏷️</span>
+                          <span>Bag Slip</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(o);
+                            setOrderStatusInput(o.status || 'In Queue');
+                            setOrderProgressInput((o.progress || 10).toString());
+                            setIsProcessModalOpen(true);
+                          }}
+                          className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
+                        >
+                          Process Ticket
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -1391,6 +1448,20 @@ export default function EmployeePage() {
 
           {/* Top-Right User Profile & Quick Actions */}
           <div className="flex items-center gap-3 shrink-0">
+            {/* Chime Audio Alert Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleChime}
+              title={isChimeActive ? "New order chime active (click to mute)" : "New order chime muted (click to enable)"}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                isChimeActive
+                  ? 'bg-primary/15 text-primary border-primary/30 hover:bg-primary/25 shadow-sm'
+                  : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+              }`}
+            >
+              <span>{isChimeActive ? '🔔' : '🔕'}</span>
+              <span className="hidden lg:inline">{isChimeActive ? 'Chime Alert On' : 'Chime Muted'}</span>
+            </button>
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
               <span className={`w-2 h-2 rounded-full ${shiftStatus === 'online' ? 'bg-success animate-pulse' : 'bg-amber-400'}`}></span>
               <span className="font-medium capitalize">Shift: {shiftStatus}</span>

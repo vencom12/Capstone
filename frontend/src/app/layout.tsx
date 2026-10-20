@@ -64,6 +64,7 @@ export default function RootLayout({
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <script
+          id="theme-initializer"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('stitch_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
           }}

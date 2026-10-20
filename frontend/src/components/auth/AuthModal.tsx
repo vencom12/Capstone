@@ -22,7 +22,6 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -152,8 +151,7 @@ export default function AuthModal() {
       const res = await register(
         username.trim(),
         email.trim().toLowerCase(),
-        password,
-        phoneNumber.trim() || undefined
+        password
       );
 
       if (res.success) {
@@ -403,23 +401,6 @@ export default function AuthModal() {
               className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
             />
           </div>
-
-          {mode === 'register' && (
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-[0.75rem] font-bold text-text-dim">Mobile Number</label>
-                <span className="text-[0.65rem] text-text-dim font-medium">Optional (Contact for order pickup)</span>
-              </div>
-              <input 
-                type="tel" 
-                maxLength={13}
-                placeholder="0917 123 4567"
-                value={phoneNumber}
-                onChange={(e) => { setPhoneNumber(e.target.value.replace(/[^\d+]/g, '')); if (formError) setFormError(null); }}
-                className="w-full bg-bg-surface border border-border-glass px-4 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-dim/40"
-              />
-            </div>
-          )}
 
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-center ml-1">

@@ -112,7 +112,7 @@ export default function DashboardOmniSearch({
         { id: 'orders', title: 'Order Queue', desc: 'Workshop live embroidery and sewing queue', category: 'Navigation' },
         { id: 'counter', title: 'Walk-In Counter Mode', desc: 'POS tickets, claim slips, and on-site payments', category: 'Navigation' },
         { id: 'history', title: 'Order History', desc: 'Review completed tickets and claim stubs', category: 'Navigation' },
-        { id: 'support', title: 'Workshop Quality (QA)', desc: 'Quality control, customer reviews, and feedback', category: 'Navigation' },
+        { id: 'support', title: 'Customer Reviews', desc: 'Customer ratings, order reviews, and feedback', category: 'Navigation' },
         { id: 'settings', title: 'Operator Settings', desc: 'Shift clock-in, password, and preferences', category: 'Navigation' }
       ];
     }

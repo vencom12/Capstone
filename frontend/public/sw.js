@@ -1,5 +1,5 @@
 // Stitch-Opt Lightweight Service Worker
-const CACHE_NAME = 'stitch-opt-v1';
+const CACHE_NAME = 'stitch-opt-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -73,10 +73,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML Pages: Network-First with Cache fallback
+  // HTML Pages: Network-First with Cache fallback & dynamic cache update
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
         return networkResponse;
       })
       .catch(() => {
