@@ -222,6 +222,7 @@ model SystemSettings {
   inventoryAuditLog  Boolean @default(true)
   giftPackagingPrice Float   @default(5.00)
   deliveryEnabled    Boolean @default(false)
+  autoReplyReviews   Boolean @default(true)
 
   // Dynamic AI Configuration (Phase 1: AI Sustainability)
   aiChatModel        String @default("llama-3.3-70b-versatile")
@@ -323,9 +324,15 @@ model Feedback {
   customerEmail String?
   orderId       String?
   userId        String?
-  productId     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  productId        String?
+  merchantReply    String?
+  merchantReplyAt  DateTime?
+  isFeatured       Boolean   @default(false)
+  rootCause        String?
+  resolutionAction String?
+  resolvedBy       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
 
   @@index([userId])
   @@index([status])

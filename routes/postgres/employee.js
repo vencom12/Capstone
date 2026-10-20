@@ -12,7 +12,9 @@ router.put('/shift', staffAuth(), employeeController.toggleShift);
 // Customer Support & Feedbacks
 const feedbackController = require('../../controllers/postgres/feedbackController');
 router.get('/feedback', staffAuth(), feedbackController.getFeedbacks);
+router.get('/feedback/templates', staffAuth(), feedbackController.getFeedbackTemplates);
 router.patch('/feedback/:id', staffAuth(), auditLogger('Feedback', 'UPDATE_FEEDBACK_STATUS'), feedbackController.updateFeedbackStatus);
+router.post('/feedback/:id/reply', staffAuth(), auditLogger('Feedback', 'STAFF_REPLY_FEEDBACK'), feedbackController.replyFeedback);
 
 // Equipment Incident & Maintenance Tickets
 const maintenanceController = require('../../controllers/postgres/maintenanceController');

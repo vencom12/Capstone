@@ -75,6 +75,7 @@ router.patch('/inventory/:id', staffAuth(), auditLogger('Inventory', 'UPDATE_INV
 // Customer Reviews & Storefront Reputation Management (Gold Standard)
 const feedbackController = require('../../controllers/postgres/feedbackController');
 router.get('/feedback', adminAuth(), feedbackController.getFeedbacks);
+router.get('/feedback/templates', adminAuth(), feedbackController.getFeedbackTemplates);
 router.patch('/feedback/:id', adminAuth(), auditLogger('Feedback', 'ADMIN_UPDATE_FEEDBACK'), feedbackController.updateFeedbackStatus);
 router.post('/feedback/:id/reply', adminAuth(), auditLogger('Feedback', 'MERCHANT_REPLY_FEEDBACK'), feedbackController.replyFeedback);
 router.patch('/feedback/:id/feature', adminAuth(), auditLogger('Feedback', 'TOGGLE_FEATURE_FEEDBACK'), feedbackController.toggleFeatureFeedback);

@@ -50,6 +50,70 @@ interface FeedbackMetrics {
   sentimentHighlights: SentimentHighlight[];
 }
 
+// Smart Star-Calibrated Merchant Reply Templates
+const SMART_TEMPLATES_BY_RATING: Record<number, { label: string; text: string }[]> = {
+  5: [
+    {
+      label: '5★ Craftsmanship & Gratitude',
+      text: "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece. We take immense pride in every stitch and look forward to creating your next order!"
+    },
+    {
+      label: '5★ Textile Detailing Appreciation',
+      text: "Thank you for choosing Stitch-Opt! We're delighted that our embroidery quality and detailing met your expectations. Enjoy your custom textile!"
+    },
+    {
+      label: '5★ High-Tensile Rayon Stitching',
+      text: "We truly appreciate your glowing review! Knowing that our high-tensile stitching and fabric quality impressed you motivates our atelier team every day."
+    }
+  ],
+  4: [
+    {
+      label: '4★ Warm Appreciation & Striving for 5★',
+      text: "Thank you for the wonderful 4-star feedback! We're glad you enjoyed your custom order and are committed to continuous refinement to make your next experience a full 5 stars."
+    },
+    {
+      label: '4★ Turnaround & Detailing',
+      text: "Thank you for your valuable feedback and support! Our production team appreciates your review, and we're always working to deliver top-tier embroidery with rapid turnaround."
+    }
+  ],
+  3: [
+    {
+      label: '3★ Constructive Quality Review',
+      text: "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality and production team to ensure even higher stitch precision."
+    },
+    {
+      label: '3★ Process Refinement',
+      text: "Thank you for your feedback! We strive for excellence on every order and appreciate your input as we work on perfecting our turnaround times and custom detailing."
+    }
+  ],
+  2: [
+    {
+      label: '2★ Quality Investigation Notice',
+      text: "We sincerely apologize that your custom order did not meet your expectations. Quality and craftsmanship are our highest priorities. Our quality assurance team has been notified to investigate and ensure this standard is corrected."
+    },
+    {
+      label: '2★ Service Recovery & Re-stitch',
+      text: "We are truly sorry that you were not completely satisfied with your piece. Our support and management team has recorded your review for quality recovery."
+    }
+  ],
+  1: [
+    {
+      label: '1★ Urgent Management Apology',
+      text: "We are deeply sorry for your disappointing experience. This falls far short of our embroidery standards. A management alert has been triggered so our team can review this order and improve our process."
+    },
+    {
+      label: '1★ Remake & Full Resolution',
+      text: "Please accept our sincere apologies for your experience. We take quality defects and customer dissatisfaction very seriously. Our team has flagged this order for immediate review."
+    }
+  ]
+};
+
+const getPrimaryTemplateForRating = (rating: number): string => {
+  const r = Math.max(1, Math.min(5, Math.round(rating || 5)));
+  const list = SMART_TEMPLATES_BY_RATING[r] || SMART_TEMPLATES_BY_RATING[5];
+  return list[0].text;
+};
+
 export default function PanelFeedbackManagement() {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [metrics, setMetrics] = useState<FeedbackMetrics>({
@@ -72,6 +136,10 @@ export default function PanelFeedbackManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Auto-Reply Global System Setting State
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState<boolean>(true);
+  const [isTogglingAutoReply, setIsTogglingAutoReply] = useState<boolean>(false);
+
   // Filters
   const [filterTab, setFilterTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -84,8 +152,14 @@ export default function PanelFeedbackManagement() {
   // Merchant Reply Modal State
   const [replyTarget, setReplyTarget] = useState<FeedbackItem | null>(null);
   const [merchantReplyText, setMerchantReplyText] = useState<string>('');
+  const [selectedTemplateRating, setSelectedTemplateRating] = useState<number>(5);
   const [isPinningFeatured, setIsPinningFeatured] = useState<boolean>(false);
   const [isSubmittingReply, setIsSubmittingReply] = useState<boolean>(false);
+
+  // Quick Staff Note Modal State
+  const [noteTarget, setNoteTarget] = useState<FeedbackItem | null>(null);
+  const [staffNoteText, setStaffNoteText] = useState<string>('');
+  const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
 
   // Quality Issue & Service Recovery Modal State (1-2★ cases)
   const [recoveryTarget, setRecoveryTarget] = useState<FeedbackItem | null>(null);
@@ -148,6 +222,83 @@ export default function PanelFeedbackManagement() {
   useEffect(() => {
     fetchFeedbacks();
   }, [fetchFeedbacks]);
+
+  // Load Auto-Reply setting from SystemSettings
+  useEffect(() => {
+    api.get<any>('/api/admin/settings').then((res) => {
+      if (res && res.autoReplyReviews !== undefined) {
+        setAutoReplyEnabled(!!res.autoReplyReviews);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleToggleAutoReply = async () => {
+    const nextVal = !autoReplyEnabled;
+    setIsTogglingAutoReply(true);
+    setAutoReplyEnabled(nextVal);
+    try {
+      await api.put('/api/admin/settings', { autoReplyReviews: nextVal });
+      showToast(nextVal ? 'Auto-Reply Enabled for New Reviews' : 'Auto-Reply Disabled', 'success');
+    } catch (err) {
+      setAutoReplyEnabled(!nextVal);
+      showToast('Failed to update Auto-Reply setting', 'error');
+    } finally {
+      setIsTogglingAutoReply(false);
+    }
+  };
+
+  // 1-Click Quick Mark Reviewed
+  const handleQuickMarkReviewed = async (feedback: FeedbackItem) => {
+    try {
+      await api.patch(`/api/admin/feedback/${feedback.id}`, {
+        status: 'Reviewed'
+      });
+      showToast('Review marked as Reviewed', 'success');
+      fetchFeedbacks(true);
+    } catch (err) {
+      showToast('Failed to update review status', 'error');
+    }
+  };
+
+  // 1-Click Auto-Reply using star-matched smart template
+  const handleOneClickAutoReply = async (feedback: FeedbackItem) => {
+    const template = getPrimaryTemplateForRating(feedback.rating);
+    try {
+      await api.post(`/api/admin/feedback/${feedback.id}/reply`, {
+        reply: template
+      });
+      if (feedback.status === 'Pending') {
+        await api.patch(`/api/admin/feedback/${feedback.id}`, {
+          status: 'Reviewed'
+        });
+      }
+      showToast('Official store reply published & marked Reviewed', 'success');
+      fetchFeedbacks(true);
+    } catch (err) {
+      showToast('Failed to publish store reply', 'error');
+    }
+  };
+
+  // Quick Staff Note Submit
+  const handleSaveStaffNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteTarget) return;
+
+    setIsSavingNote(true);
+    try {
+      await api.patch(`/api/admin/feedback/${noteTarget.id}`, {
+        staffNotes: staffNoteText.trim(),
+        status: noteTarget.status === 'Pending' ? 'Reviewed' : noteTarget.status
+      });
+      showToast('Internal staff note saved', 'success');
+      setNoteTarget(null);
+      fetchFeedbacks(true);
+    } catch (err) {
+      showToast('Failed to save staff note', 'error');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -282,7 +433,27 @@ export default function PanelFeedbackManagement() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Automatic Reply Toggle */}
+          <button
+            type="button"
+            onClick={handleToggleAutoReply}
+            disabled={isTogglingAutoReply}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all flex items-center gap-2 ${
+              autoReplyEnabled
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+            }`}
+            title="When active, newly submitted customer reviews immediately receive an official star-calibrated store reply"
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                autoReplyEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+              }`}
+            />
+            <span>Auto-Reply: {autoReplyEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+
           <button
             onClick={handleExportCsv}
             className="bg-white/5 border border-border-glass hover:bg-white/10 text-text-main px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
@@ -727,16 +898,47 @@ export default function PanelFeedbackManagement() {
                     )}
                   </div>
 
-                  {/* Action Footer */}
-                  <div className="flex gap-2 pt-2 border-t border-border-glass mt-1 flex-wrap">
-                    {/* Merchant Reply Button */}
+                  {/* Action Footer: Quick Actions (Reply, Reviewed, Staff Note) */}
+                  <div className="flex gap-2 pt-2 border-t border-border-glass mt-1 flex-wrap items-center">
+                    {/* 1. Quick Mark Reviewed (Visible if still Pending) */}
+                    {f.status === 'Pending' && (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickMarkReviewed(f)}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                        title="Mark this customer review as Reviewed & Audited"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>Mark Reviewed</span>
+                      </button>
+                    )}
+
+                    {/* 2. 1-Click Smart Auto-Reply (If not yet replied) */}
+                    {!f.merchantReply && (
+                      <button
+                        type="button"
+                        onClick={() => handleOneClickAutoReply(f)}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                        title={`1-Click publish star-calibrated reply for ${f.rating}★ review`}
+                      >
+                        <span>⚡</span>
+                        <span>Quick Reply</span>
+                      </button>
+                    )}
+
+                    {/* 3. Merchant Reply / Edit Reply Button */}
                     <button
+                      type="button"
                       onClick={() => {
                         setReplyTarget(f);
-                        setMerchantReplyText(f.merchantReply || '');
+                        const r = Math.max(1, Math.min(5, Math.round(f.rating || 5)));
+                        setSelectedTemplateRating(r);
+                        setMerchantReplyText(f.merchantReply || getPrimaryTemplateForRating(f.rating));
                         setIsPinningFeatured(!!f.isFeatured);
                       }}
-                      className="flex-1 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      className="flex-1 min-w-[120px] py-1.5 px-3 rounded-lg bg-indigo-500/15 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -744,10 +946,32 @@ export default function PanelFeedbackManagement() {
                       <span>{f.merchantReply ? 'Edit Store Reply' : 'Reply as Store Owner'}</span>
                     </button>
 
-                    {/* Feature on Showcase Toggle */}
+                    {/* 4. Staff Note Button (Private internal note) */}
                     <button
+                      type="button"
+                      onClick={() => {
+                        setNoteTarget(f);
+                        setStaffNoteText(f.staffNotes || '');
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                        f.staffNotes
+                          ? 'bg-sky-500/15 text-sky-300 border-sky-500/30 hover:bg-sky-500/25'
+                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                      }`}
+                      title={f.staffNotes ? `Staff Note: "${f.staffNotes}"` : 'Add private internal staff note'}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                      <span>{f.staffNotes ? 'Note Added' : '+ Staff Note'}</span>
+                    </button>
+
+                    {/* 5. Feature on Showcase Toggle */}
+                    <button
+                      type="button"
                       onClick={() => handleToggleFeature(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                         f.isFeatured
                           ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
@@ -758,9 +982,10 @@ export default function PanelFeedbackManagement() {
                       <span>{f.isFeatured ? 'Featured' : 'Pin'}</span>
                     </button>
 
-                    {/* Service Recovery for 1-2★ */}
+                    {/* 6. Service Recovery for 1-2★ */}
                     {isCritical && (
                       <button
+                        type="button"
                         onClick={() => {
                           setRecoveryTarget(f);
                           setRecoveryRootCause(f.rootCause || 'Hoop Tension / Registration Defect');
@@ -768,7 +993,7 @@ export default function PanelFeedbackManagement() {
                           setRecoveryNotes(f.staffNotes || '');
                           setRecoveryStatus(f.status === 'Resolved' ? 'Resolved' : 'Reviewed');
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-danger/20 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                        className="px-2.5 py-1.5 rounded-lg bg-danger/20 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
                       >
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         <span>QA Recovery</span>
@@ -817,45 +1042,66 @@ export default function PanelFeedbackManagement() {
               <p className="text-text-dim italic m-0 mt-1">"{replyTarget.message}"</p>
             </div>
 
-            {/* Quick Templates Selector */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                Quick Merchant Templates:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMerchantReplyText(
-                      `Thank you so much for your kind words! We take great pride in our high-density monogram stitching. We hope to see you again at our Pacific Mall Lucena studio!`
-                    )
-                  }
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-[11px] text-text-main text-left cursor-pointer transition-all"
-                >
-                  <strong>5★ Craftsmanship Appreciation</strong>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMerchantReplyText(
-                      `We are thrilled your personalized embroidery arrived ahead of schedule and exceeded your expectations! Thank you for choosing Eds Towels & Caps.`
-                    )
-                  }
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-[11px] text-text-main text-left cursor-pointer transition-all"
-                >
-                  <strong>Speed &amp; Turnaround Gratitude</strong>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMerchantReplyText(
-                      `We sincerely apologize for this experience. Craftsmanship is our highest priority, and our workshop manager would love to remake your items free of charge. We have sent you a direct message.`
-                    )
-                  }
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-[11px] text-text-main text-left cursor-pointer transition-all sm:col-span-2"
-                >
-                  <strong>Service Recovery Apology &amp; Remake Offer</strong>
-                </button>
+            {/* Star-Calibrated Smart Templates Selector */}
+            <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-border-glass">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-amber-400">⚡</span> Star-Calibrated Smart Templates:
+                </span>
+                <span className="text-[10px] text-text-dim">
+                  Review Rating: <strong className="text-amber-400">{replyTarget.rating}★</strong>
+                </span>
+              </div>
+
+              {/* Star Tier Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                {[5, 4, 3, 2, 1].map((s) => {
+                  const isMatch = s === replyTarget.rating;
+                  const isSelected = s === selectedTemplateRating;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSelectedTemplateRating(s)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border shrink-0 ${
+                        isSelected
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
+                      }`}
+                    >
+                      <span>{s}★</span>
+                      {isMatch && (
+                        <span className="text-[9px] px-1 py-0.2 bg-amber-500/30 text-amber-200 rounded font-normal">
+                          Match
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Template Choices for Selected Star Tier */}
+              <div className="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                {(SMART_TEMPLATES_BY_RATING[selectedTemplateRating] || []).map((tpl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setMerchantReplyText(tpl.text)}
+                    className="p-2.5 rounded-lg bg-bg-surface hover:bg-white/10 border border-border-glass text-left cursor-pointer transition-all flex flex-col gap-1 group"
+                  >
+                    <div className="flex items-center justify-between text-[11px]">
+                      <strong className="text-text-main group-hover:text-amber-300 transition-colors">
+                        {tpl.label}
+                      </strong>
+                      <span className="text-[10px] text-text-dim group-hover:text-text-main">
+                        Click to Use ↵
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-dim m-0 line-clamp-2 leading-relaxed">
+                      "{tpl.text}"
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1021,6 +1267,65 @@ export default function PanelFeedbackManagement() {
                 className="px-5 py-2 rounded-xl bg-success hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-all border-none shadow-sm"
               >
                 {isSubmittingRecovery ? 'Saving...' : 'Save Resolution & Close Case'}
+              </button>
+            </div>
+          </form>
+        </GlassModal>
+      )}
+
+      {/* Modal 3: Quick Staff Note Modal */}
+      {noteTarget && (
+        <GlassModal
+          isOpen={!!noteTarget}
+          onClose={() => setNoteTarget(null)}
+          title={`Internal Staff Note • #${noteTarget.id.slice(0, 8)}`}
+          maxWidth="max-w-[480px]"
+        >
+          <form onSubmit={handleSaveStaffNote} className="flex flex-col gap-4 text-left">
+            <div className="p-3.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-text-main">{noteTarget.customerName || 'Anonymous Customer'}</span>
+                {renderStars(noteTarget.rating)}
+              </div>
+              {noteTarget.orderId && (
+                <span className="text-sky-300 font-mono font-bold text-[0.7rem]">
+                  Order #{noteTarget.orderId}
+                </span>
+              )}
+              <p className="text-text-dim italic m-0 mt-1 line-clamp-2">"{noteTarget.message}"</p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
+                Internal Private Note (Staff Only)
+              </label>
+              <textarea
+                rows={4}
+                required
+                placeholder="Document follow-ups, client outreach, machine adjustments, or special order details..."
+                value={staffNoteText}
+                onChange={(e) => setStaffNoteText(e.target.value)}
+                className="w-full bg-bg-surface border border-border-glass p-3 rounded-xl text-xs text-text-main outline-none focus:border-primary resize-none placeholder:text-text-dim/60 leading-relaxed font-sans"
+              />
+              <span className="text-[0.68rem] text-text-dim">
+                Private internal notes are never displayed on the public storefront.
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-border-glass">
+              <button
+                type="button"
+                onClick={() => setNoteTarget(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-dim text-xs font-bold border border-border-glass cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingNote || !staffNoteText.trim()}
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-all border-none shadow-sm"
+              >
+                {isSavingNote ? 'Saving...' : 'Save Staff Note'}
               </button>
             </div>
           </form>

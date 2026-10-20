@@ -3,6 +3,54 @@ const { randomUUID } = require('crypto');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS } = require('../../utils/apiConstants');
 
+// Smart Star-Calibrated Merchant Reply Templates
+// Formulated specifically for personalized embroidery, thread durability, and customer care
+const SMART_REPLY_TEMPLATES = {
+    5: [
+        "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece. We take immense pride in every stitch and look forward to creating your next order!",
+        "Thank you for choosing Stitch-Opt! We're delighted that our embroidery quality and detailing met your expectations. Enjoy your custom textile!",
+        "We truly appreciate your glowing review! Knowing that our high-tensile stitching and fabric quality impressed you motivates our atelier team every day."
+    ],
+    4: [
+        "Thank you for the wonderful 4-star feedback! We're glad you enjoyed your custom order and are committed to continuous refinement to make your next experience a full 5 stars.",
+        "Thank you for your valuable feedback and support! Our production team appreciates your review, and we're always working to deliver top-tier embroidery with rapid turnaround."
+    ],
+    3: [
+        "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality and production team to ensure even higher stitch precision.",
+        "Thank you for your feedback! We strive for excellence on every order and appreciate your input as we work on perfecting our turnaround times and custom detailing."
+    ],
+    2: [
+        "We sincerely apologize that your custom order did not meet your expectations. Quality and craftsmanship are our highest priorities. Our quality assurance team has been notified to investigate and ensure this standard is corrected.",
+        "We are truly sorry that you were not completely satisfied with your piece. Our support and management team has recorded your review for quality recovery."
+    ],
+    1: [
+        "We are deeply sorry for your disappointing experience. This falls far short of our embroidery standards. A management alert has been triggered so our team can review this order and improve our process.",
+        "Please accept our sincere apologies for your experience. We take quality defects and customer dissatisfaction very seriously. Our team has flagged this order for immediate review."
+    ]
+};
+
+function getSmartReplyTemplate(rating, customerName) {
+    const r = Math.max(1, Math.min(5, Math.round(rating || 5)));
+    const templates = SMART_REPLY_TEMPLATES[r] || SMART_REPLY_TEMPLATES[5];
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    let chosen = templates[randomIndex];
+    if (customerName && customerName !== 'Valued Customer' && customerName !== 'Verified Customer') {
+        chosen = `Hi ${customerName}! ${chosen}`;
+    }
+    return chosen;
+}
+
+exports.SMART_REPLY_TEMPLATES = SMART_REPLY_TEMPLATES;
+exports.getSmartReplyTemplate = getSmartReplyTemplate;
+
+// Expose templates to Admin & Employee UI for 1-click preset selection
+exports.getFeedbackTemplates = async (req, res) => {
+    res.json({
+        success: true,
+        templates: SMART_REPLY_TEMPLATES
+    });
+};
+
 // Submit Customer Feedback / Product Review (Guest or Authenticated)
 exports.submitFeedback = async (req, res) => {
     try {
@@ -42,14 +90,37 @@ exports.submitFeedback = async (req, res) => {
             }
         }
 
+        // Determine if Auto-Reply is enabled in SystemSettings
+        let autoReply = null;
+        let autoReplyAt = null;
+        try {
+            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            const isAutoReplyOn = settings ? settings.autoReplyReviews !== false : true;
+            if (isAutoReplyOn) {
+                autoReply = getSmartReplyTemplate(cleanRating, finalName);
+                autoReplyAt = new Date();
+            }
+        } catch (settingsErr) {
+            console.warn('[Feedback] Could not check autoReplyReviews setting; defaulting to enabled:', settingsErr?.message);
+            autoReply = getSmartReplyTemplate(cleanRating, finalName);
+            autoReplyAt = new Date();
+        }
+
         // One review per order per customer: update the existing one instead of duplicating
         if (userId && orderId) {
             const [existing] = await prisma.$queryRaw`
-                SELECT "id" FROM "Feedback" WHERE "orderId" = ${orderId.trim()} AND "userId" = ${userId} LIMIT 1
+                SELECT "id", "merchantReply" FROM "Feedback" WHERE "orderId" = ${orderId.trim()} AND "userId" = ${userId} LIMIT 1
             `;
             if (existing) {
+                // If it already had a reply, retain it; otherwise attach autoReply if enabled
+                const replyToKeep = existing.merchantReply || autoReply;
                 await prisma.$executeRaw`
-                    UPDATE "Feedback" SET "rating" = ${cleanRating}, "message" = ${cleanMessage}, "updatedAt" = NOW()
+                    UPDATE "Feedback" 
+                    SET "rating" = ${cleanRating}, 
+                        "message" = ${cleanMessage},
+                        "merchantReply" = ${replyToKeep},
+                        "merchantReplyAt" = CASE WHEN ${replyToKeep} IS NOT NULL AND "merchantReplyAt" IS NULL THEN NOW() ELSE "merchantReplyAt" END,
+                        "updatedAt" = NOW()
                     WHERE "id" = ${existing.id}
                 `;
                 const [updated] = await prisma.$queryRaw`SELECT * FROM "Feedback" WHERE "id" = ${existing.id}`;
@@ -66,11 +137,13 @@ exports.submitFeedback = async (req, res) => {
             INSERT INTO "Feedback" (
                 "id", "category", "rating", "message", "status",
                 "customerName", "customerEmail", "orderId", "userId", "productId",
+                "merchantReply", "merchantReplyAt",
                 "isFeatured",
                 "createdAt", "updatedAt"
             ) VALUES (
                 ${id}, ${cleanCategory}, ${cleanRating}, ${cleanMessage}, ${initialStatus},
                 ${finalName}, ${finalEmail}, ${orderId?.trim() || null}, ${userId}, ${resolvedProductId},
+                ${autoReply}, ${autoReplyAt},
                 false,
                 NOW(), NOW()
             )

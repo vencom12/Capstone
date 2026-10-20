@@ -40,6 +40,7 @@ export default function PanelSettings({
   const [aiVisionModel, setAiVisionModel] = useState('llama-3.2-11b-vision-preview');
   const [aiProviderUrl, setAiProviderUrl] = useState('https://api.groq.com/openai/v1/chat/completions');
   const [minConfidenceScore, setMinConfidenceScore] = useState(75); // displayed as percentage (0-100)
+  const [autoReplyReviews, setAutoReplyReviews] = useState<boolean>(true);
   
   // Business Profile Settings State
   const [businessName, setBusinessName] = useState('STITCH-OPT DESIGNS');
@@ -88,6 +89,7 @@ export default function PanelSettings({
         if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
         if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
         if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
+        if (res.autoReplyReviews !== undefined) setAutoReplyReviews(!!res.autoReplyReviews);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -108,9 +110,10 @@ export default function PanelSettings({
         aiChatModel: aiChatModel.trim(),
         aiVisionModel: aiVisionModel.trim(),
         aiProviderUrl: aiProviderUrl.trim(),
-        minConfidenceScore: parseFloat((minConfidenceScore / 100).toFixed(2))
+        minConfidenceScore: parseFloat((minConfidenceScore / 100).toFixed(2)),
+        autoReplyReviews: !!autoReplyReviews
       });
-      showToast('AI settings saved', 'success');
+      showToast('AI & Automation settings saved', 'success');
     } catch (e: any) {
       console.error(e);
       showToast(e.message || 'Failed to save settings', 'error');
@@ -124,6 +127,7 @@ export default function PanelSettings({
     setAiVisionModel('llama-3.2-11b-vision-preview');
     setAiProviderUrl('https://api.groq.com/openai/v1/chat/completions');
     setMinConfidenceScore(75);
+    setAutoReplyReviews(true);
     setPingResult(null);
     showToast('AI settings reset. Click Save.', 'info');
   };
@@ -848,6 +852,77 @@ export default function PanelSettings({
                     <span className="font-mono text-xs font-bold text-text-main w-12 text-right bg-primary/10 text-primary px-2 py-1 rounded">
                       {minConfidenceScore}%
                     </span>
+                  </div>
+                </div>
+
+                {/* Customer Reviews Auto-Reply & Smart Response Engine */}
+                <div className="flex flex-col bg-white/5 border border-border-glass p-5 rounded-xl gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-glass">
+                    <div className="flex flex-col max-w-[480px]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-text-main">
+                          Customer Review Smart Auto-Reply System
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          autoReplyReviews 
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                            : 'bg-white/10 text-text-dim border border-border-glass'
+                        }`}>
+                          {autoReplyReviews ? 'Active & Auto-Publishing' : 'Disabled (Manual Only)'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-text-dim mt-1 leading-relaxed">
+                        When customers submit a product review, automatically attach an official merchant reply calibrated precisely to the rating (1★ apology/recovery, 3★ constructive feedback, 5★ craftsmanship appreciation). Customer responses are locked to keep public comment threads clean and professional.
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoReplyReviews(!autoReplyReviews)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        autoReplyReviews ? 'bg-primary' : 'bg-white/20'
+                      }`}
+                      title={autoReplyReviews ? 'Turn off auto-reply' : 'Turn on auto-reply'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          autoReplyReviews ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Smart Templates Preview */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
+                      <span>⚡</span> Star-Calibrated Response Tiers:
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
+                        <span className="font-bold text-amber-400 flex items-center gap-1">
+                          5★ &amp; 4★ High-Praise Tier
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece..."
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
+                        <span className="font-bold text-sky-400 flex items-center gap-1">
+                          3★ Constructive Tier
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality team..."
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
+                        <span className="font-bold text-rose-400 flex items-center gap-1">
+                          1★ &amp; 2★ Service Recovery Tier
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "We are deeply sorry for your disappointing experience. Quality and craftsmanship are our highest priorities. A management alert has been triggered so our team can review this order..."
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
