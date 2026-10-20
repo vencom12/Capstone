@@ -21,7 +21,17 @@ const KEYFRAMES: ShelfKeyframe[] = [
   { p: 1.00, x: 0.500, y: 0.54, zoom: 1.25 }, // Full shelf wall linger
 ];
 
-// Smooth Hermite / Catmull-Rom interpolation for cinematic camera dolly
+// High-resolution master (3840px). The 1376px day photo is only used as a colour
+// grade layered over it, so detail always comes from the 4K source.
+const HIRES_SRC = '/landing/atelier-shelf-panoramic-4k.webp';
+const DAY_GRADE_SRC = '/landing/atelier-shelf-panoramic-day.jpg';
+
+// Easing speeds (per second). Frame-rate independent: identical feel on 60Hz and 120Hz.
+const CAMERA_SPEED = 7;
+const THEME_SPEED = 4;
+const MAX_DPR = 2;
+
+// Smootherstep easing between keyframes for a cinematic camera dolly
 function interpolateCamera(p: number): { x: number; y: number; zoom: number } {
   const clamped = Math.max(0, Math.min(1, p));
   let i = 0;
@@ -33,8 +43,8 @@ function interpolateCamera(p: number): { x: number; y: number; zoom: number } {
 
   if (k1.p === k2.p) return { x: k1.x, y: k1.y, zoom: k1.zoom };
 
-  const segT = (clamped - k1.p) / (k2.p - k1.p);
-  const ease = segT * segT * (3 - 2 * segT);
+  const t = (clamped - k1.p) / (k2.p - k1.p);
+  const ease = t * t * t * (t * (t * 6 - 15) + 10);
 
   return {
     x: k1.x + (k2.x - k1.x) * ease,
@@ -43,217 +53,287 @@ function interpolateCamera(p: number): { x: number; y: number; zoom: number } {
   };
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      // Decode off the main thread before first draw to avoid a hitch.
+      (img.decode ? img.decode() : Promise.resolve()).then(() => resolve(img), () => resolve(img));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Shared chapter caption transition: compositor-only (opacity + transform).
+const captionBase =
+  'absolute bottom-2 sm:bottom-6 md:bottom-8 inset-x-4 max-w-3xl mx-auto ' +
+  'transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform]';
+const captionShown = 'opacity-100 translate-y-0';
+const captionHidden = 'opacity-0 translate-y-5 pointer-events-none';
+const headingShadow = '[text-shadow:0_6px_28px_rgba(0,0,0,0.85)]';
+const bodyShadow = '[text-shadow:0_2px_12px_rgba(0,0,0,0.8)]';
+
 export default function FullScreenStitchExperience() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Discrete active chapter: 0 = Towels, 1 = Fans, 2 = Caps, 3 = CTA, 4 = Products
-  // React ONLY renders 4 times during the entire scroll runway, completely eliminating scroll jank
   const [activeChapter, setActiveChapter] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
-  // Cached layout metrics to eliminate forced synchronous layout (layout thrashing) on scroll
   const topRef = useRef(0);
   const totalScrollableRef = useRef(1);
 
-  // Day & Night Ambient Blend refs (0 = Day, 1 = Night)
-  const targetAmbientBlendRef = useRef<number>(0);
-  const currentAmbientBlendRef = useRef<number>(0);
-
-  // Camera progress refs
-  const currentProgressRef = useRef(0);
   const targetProgressRef = useRef(0);
+  const currentProgressRef = useRef(0);
+  const targetBlendRef = useRef(0); // 0 = day, 1 = night
+  const currentBlendRef = useRef(0);
   const lastChapterRef = useRef(0);
 
-  // Synchronize Atelier Day/Night background with global theme preference
+  // Wakes the render loop. The loop sleeps whenever the scene is settled, so an
+  // idle page costs zero GPU/CPU (main fix for mobile lag and battery drain).
+  const kickRef = useRef<() => void>(() => {});
+
+  // Theme sync
   useEffect(() => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || getStoredTheme() === 'dark';
-    targetAmbientBlendRef.current = isDark ? 1.0 : 0.0;
-    currentAmbientBlendRef.current = targetAmbientBlendRef.current;
+    targetBlendRef.current = isDark ? 1 : 0;
+    currentBlendRef.current = targetBlendRef.current;
 
     const onThemeChange = (e: any) => {
       const theme = e?.detail?.theme || (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
-      targetAmbientBlendRef.current = theme === 'dark' ? 1.0 : 0.0;
+      targetBlendRef.current = theme === 'dark' ? 1 : 0;
+      kickRef.current();
     };
 
     window.addEventListener('themechange', onThemeChange);
-    return () => {
-      window.removeEventListener('themechange', onThemeChange);
-    };
+    return () => window.removeEventListener('themechange', onThemeChange);
   }, []);
 
-  // 60FPS / 120FPS Hardware-accelerated RAF Loop for Cinematic Shelf Dolly & Day/Night Crossfade
+  // Render loop + layout/scroll observers
   useEffect(() => {
-    let animId: number;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    // Load both Day & Night panoramic atelier shelf walls (with universal fallback)
-    let isDayLoaded = false;
-    const dayImg = new window.Image();
-    dayImg.onload = () => { isDayLoaded = true; };
-    dayImg.src = '/landing/atelier-shelf-panoramic-day.jpg';
-    if (dayImg.complete && dayImg.naturalWidth > 0) isDayLoaded = true;
+    let nightLayer: CanvasImageSource | null = null;
+    let dayLayer: CanvasImageSource | null = null;
+    let srcW = 3840;
+    let srcH = 2144;
 
-    let isNightLoaded = false;
-    const nightImg = new window.Image();
-    nightImg.onload = () => { isNightLoaded = true; };
-    nightImg.src = '/landing/atelier-shelf-panoramic-night.jpg';
-    if (nightImg.complete && nightImg.naturalWidth > 0) isNightLoaded = true;
+    let rafId = 0;
+    let running = false;
+    let lastTime = 0;
+    let needsDraw = true;
+    let cssW = 0;
+    let cssH = 0;
+    let dpr = 1;
+    let disposed = false;
 
-    let isFallbackLoaded = false;
-    const fallbackImg = new window.Image();
-    fallbackImg.onload = () => { isFallbackLoaded = true; };
-    fallbackImg.src = '/landing/atelier-shelf-panoramic.jpg';
-    if (fallbackImg.complete && fallbackImg.naturalWidth > 0) isFallbackLoaded = true;
+    const updateChapter = (p: number) => {
+      let next = 0;
+      if (p < 0.28) next = 0;
+      else if (p < 0.60) next = 1;
+      else if (p < 0.85) next = 2;
+      else if (p < 0.96) next = 3;
+      else next = 4;
+      if (next !== lastChapterRef.current) {
+        lastChapterRef.current = next;
+        setActiveChapter(next);
+      }
+    };
 
-    const render = () => {
-      // Snappy, silky-smooth spring lerp (0.15 damping factor for immediate response)
-      const diff = targetProgressRef.current - currentProgressRef.current;
-      currentProgressRef.current += diff * 0.15;
+    const draw = () => {
+      if (!cssW || !cssH) return;
       const p = currentProgressRef.current;
+      const blend = Math.max(0, Math.min(1, currentBlendRef.current));
 
-      // Smooth Day <-> Night time-lapse crossfade
-      const blendDiff = targetAmbientBlendRef.current - currentAmbientBlendRef.current;
-      currentAmbientBlendRef.current += blendDiff * 0.10;
-      const blend = Math.max(0, Math.min(1, currentAmbientBlendRef.current));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Synchronize active chapter ONLY when crossing key milestones (never re-renders React in-between!)
-      let nextChapter = 0;
-      if (p < 0.28) nextChapter = 0;
-      else if (p < 0.60) nextChapter = 1;
-      else if (p < 0.85) nextChapter = 2; // Caps chapter
-      else if (p < 0.96) nextChapter = 3; // "Ready For Your Custom Piece" CTA over full shelf
-      else nextChapter = 4;               // Fades out completely before products enter!
-
-      if (nextChapter !== lastChapterRef.current) {
-        lastChapterRef.current = nextChapter;
-        setActiveChapter(nextChapter);
+      if (!nightLayer) {
+        ctx.fillStyle = '#060910';
+        ctx.fillRect(0, 0, cssW, cssH);
+        return;
       }
 
-      {
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-        const w = canvas.width / dpr;
-        const h = canvas.height / dpr;
+      const { x: camX, y: camY, zoom } = interpolateCamera(p);
+      const imgAspect = srcW / srcH;
+      let baseW = cssW;
+      let baseH = cssH;
+      if (cssW / cssH > imgAspect) baseH = cssW / imgAspect;
+      else baseW = cssH * imgAspect;
 
-        if (w > 0 && h > 0) {
-          ctx.save();
-          ctx.scale(dpr, dpr);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'medium'; // Fast hardware bilinear filtering
+      const drawW = baseW * zoom;
+      const drawH = baseH * zoom;
+      const drawX = cssW / 2 - camX * drawW;
+      const drawY = cssH / 2 - camY * drawH;
 
-          const hasAnyImage = isDayLoaded || isNightLoaded || isFallbackLoaded;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
-          if (hasAnyImage) {
-            const { x: camX, y: camY, zoom } = interpolateCamera(p);
+      const day = dayLayer || nightLayer;
+      if (blend <= 0.001) {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(day, drawX, drawY, drawW, drawH);
+      } else if (blend >= 0.999) {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(nightLayer, drawX, drawY, drawW, drawH);
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(day, drawX, drawY, drawW, drawH);
+        ctx.globalAlpha = blend;
+        ctx.drawImage(nightLayer, drawX, drawY, drawW, drawH);
+        ctx.globalAlpha = 1;
+      }
+    };
 
-            // Reference image for aspect ratio
-            const refImg = isDayLoaded ? dayImg : (isNightLoaded ? nightImg : fallbackImg);
-            const imgW = refImg.naturalWidth || 1376;
-            const imgH = refImg.naturalHeight || 768;
-            const imgAspect = imgW / imgH;
-            const canvasAspect = w / h;
+    const frame = (time: number) => {
+      if (disposed) return;
+      const dt = lastTime ? Math.min(0.05, (time - lastTime) / 1000) : 1 / 60;
+      lastTime = time;
 
-            // Base cover dimensions
-            let baseW = w;
-            let baseH = h;
-            if (canvasAspect > imgAspect) {
-              baseH = w / imgAspect;
-            } else {
-              baseW = h * imgAspect;
-            }
+      const camK = 1 - Math.exp(-CAMERA_SPEED * dt);
+      const themeK = 1 - Math.exp(-THEME_SPEED * dt);
 
-            // Apply dynamic camera zoom
-            const drawW = baseW * zoom;
-            const drawH = baseH * zoom;
+      const pDiff = targetProgressRef.current - currentProgressRef.current;
+      const bDiff = targetBlendRef.current - currentBlendRef.current;
 
-            // Anchor camera focus on (camX, camY) of the image
-            const targetPixelX = camX * drawW;
-            const targetPixelY = camY * drawH;
+      const camMoving = Math.abs(pDiff) > 0.00005;
+      const themeMoving = Math.abs(bDiff) > 0.001;
 
-            const drawX = w / 2 - targetPixelX;
-            const drawY = h / 2 - targetPixelY;
+      currentProgressRef.current = camMoving ? currentProgressRef.current + pDiff * camK : targetProgressRef.current;
+      currentBlendRef.current = themeMoving ? currentBlendRef.current + bDiff * themeK : targetBlendRef.current;
 
-            // Determine base image according to current theme/blend
-            const baseImg = (blend < 0.5)
-              ? (isDayLoaded ? dayImg : (isFallbackLoaded ? fallbackImg : nightImg))
-              : (isNightLoaded ? nightImg : (isFallbackLoaded ? fallbackImg : dayImg));
+      updateChapter(currentProgressRef.current);
 
-            ctx.globalAlpha = 1;
-            ctx.drawImage(baseImg, drawX, drawY, drawW, drawH);
+      // Skip drawing once the camera has fully left the shelf (products section covers it).
+      const offStage = currentProgressRef.current > 1.02 && targetProgressRef.current > 1.02;
+      if ((camMoving || themeMoving || needsDraw) && !offStage) {
+        draw();
+        needsDraw = false;
+      }
 
-            // Crossfade companion image if both are available
-            if (isDayLoaded && isNightLoaded) {
-              if (blend > 0 && baseImg === dayImg) {
-                ctx.globalAlpha = blend;
-                ctx.drawImage(nightImg, drawX, drawY, drawW, drawH);
-              } else if (blend < 1 && baseImg === nightImg) {
-                ctx.globalAlpha = 1 - blend;
-                ctx.drawImage(dayImg, drawX, drawY, drawW, drawH);
-              }
-            }
-            ctx.globalAlpha = 1;
-          } else {
-            // Placeholder gradient while images load
-            ctx.fillStyle = '#090d16';
-            ctx.fillRect(0, 0, w, h);
-          }
+      if (camMoving || themeMoving || needsDraw) {
+        rafId = requestAnimationFrame(frame);
+      } else {
+        running = false;
+        lastTime = 0;
+      }
+    };
 
-          // Subtle cinematic vignette
-          const vignette = ctx.createRadialGradient(w / 2, h / 2, w * 0.22, w / 2, h / 2, w * 0.75);
-          vignette.addColorStop(0, 'rgba(6, 9, 16, 0.15)');
-          vignette.addColorStop(0.7, 'rgba(6, 9, 16, 0.65)');
-          vignette.addColorStop(1, '#060910');
-          ctx.fillStyle = vignette;
-          ctx.fillRect(0, 0, w, h);
+    const kick = () => {
+      if (running || disposed) return;
+      running = true;
+      lastTime = 0;
+      rafId = requestAnimationFrame(frame);
+    };
+    kickRef.current = kick;
 
-          ctx.restore();
+    const measure = () => {
+      topRef.current = container.getBoundingClientRect().top + window.scrollY;
+      totalScrollableRef.current = Math.max(1, container.offsetHeight - window.innerHeight);
+    };
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      const nextDpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+      const nextW = Math.round(rect.width);
+      const nextH = Math.round(rect.height);
+      // Only reallocate the backing store when dimensions truly change; mobile URL-bar
+      // show/hide fires resize constantly and reallocation was a big source of jank.
+      if (nextW === cssW && nextH === cssH && nextDpr === dpr) return;
+      cssW = nextW;
+      cssH = nextH;
+      dpr = nextDpr;
+      canvas.width = Math.max(1, Math.round(cssW * dpr));
+      canvas.height = Math.max(1, Math.round(cssH * dpr));
+      needsDraw = true;
+    };
+
+    const onScroll = () => {
+      const raw = (window.scrollY - topRef.current) / totalScrollableRef.current;
+      targetProgressRef.current = Math.max(0, raw);
+      kick();
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      measure();
+      resizeCanvas();
+      onScroll();
+      needsDraw = true;
+      kick();
+    });
+    resizeObserver.observe(canvas);
+    resizeObserver.observe(container);
+
+    measure();
+    resizeCanvas();
+    onScroll();
+    currentProgressRef.current = targetProgressRef.current;
+    kick();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    // Load the 4K master, then build the day layer: 4K detail + day colour grade
+    // composited once offscreen, so each frame is still a single drawImage.
+    loadImage(HIRES_SRC)
+      .then(async (hires) => {
+        if (disposed) return;
+        srcW = hires.naturalWidth;
+        srcH = hires.naturalHeight;
+        nightLayer = hires;
+        setIsReady(true);
+        needsDraw = true;
+        kick();
+
+        try {
+          const dayImg = await loadImage(DAY_GRADE_SRC);
+          if (disposed) return;
+          const off = document.createElement('canvas');
+          off.width = srcW;
+          off.height = srcH;
+          const octx = off.getContext('2d');
+          if (!octx) return;
+          octx.drawImage(hires, 0, 0, srcW, srcH);
+          // Lift the 4K into daylight with the day photo's colours. 'color' keeps the
+          // sharp luminance of the 4K, 'screen' brings in the daylight brightness.
+          octx.imageSmoothingQuality = 'high';
+          octx.globalCompositeOperation = 'screen';
+          octx.globalAlpha = 0.55;
+          octx.drawImage(dayImg, 0, 0, srcW, srcH);
+          octx.globalCompositeOperation = 'color';
+          octx.globalAlpha = 0.5;
+          octx.drawImage(dayImg, 0, 0, srcW, srcH);
+          dayLayer = off;
+          needsDraw = true;
+          kick();
+        } catch {
+          /* day grade optional */
         }
-      }
-
-      animId = requestAnimationFrame(render);
-    };
-
-    animId = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
-  // Window resize & zero-reflow scroll observer
-  useEffect(() => {
-    const handleResize = () => {
-      const container = containerRef.current;
-      if (container) {
-        topRef.current = container.offsetTop;
-        totalScrollableRef.current = Math.max(1, container.offsetHeight - window.innerHeight);
-      }
-
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize, { passive: true });
-
-    // Passive scroll listener (reads window.scrollY directly without forced layout)
-    const handleScroll = () => {
-      const scrollY = window.scrollY || window.pageYOffset || 0;
-      const rawProgress = (scrollY - topRef.current) / totalScrollableRef.current;
-      targetProgressRef.current = Math.max(0, rawProgress);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+      })
+      .catch(() => {
+        // 4K unavailable: fall back to the original day photo.
+        loadImage(DAY_GRADE_SRC).then((img) => {
+          if (disposed) return;
+          srcW = img.naturalWidth;
+          srcH = img.naturalHeight;
+          nightLayer = img;
+          setIsReady(true);
+          needsDraw = true;
+          kick();
+        }).catch(() => {});
+      });
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleScroll);
+      disposed = true;
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      window.removeEventListener('scroll', onScroll);
+      kickRef.current = () => {};
     };
   }, []);
 
@@ -267,99 +347,70 @@ export default function FullScreenStitchExperience() {
       ref={containerRef}
       className="relative w-full h-[400vh] bg-[#060910] text-white selection:bg-red-500/30"
     >
-      {/* =========================================================================
-          FIXED FULL-SCREEN VIEWPORT (Pinned to Screen while scrolling shelf runway)
-          ========================================================================= */}
-      <div
-        className="fixed top-[var(--header-height)] inset-x-0 bottom-0 overflow-hidden flex flex-col justify-between pointer-events-none z-10"
-      >
-        {/* Full-bleed HTML5 Canvas (Hardware-accelerated) */}
+      {/* Fixed full-screen viewport, pinned while scrolling the shelf runway */}
+      <div className="fixed top-[var(--header-height)] inset-x-0 bottom-0 overflow-hidden flex flex-col justify-between pointer-events-none z-10">
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+          className={`absolute inset-0 w-full h-full z-0 pointer-events-none transition-opacity duration-700 ease-out ${
+            isReady ? 'opacity-100' : 'opacity-0'
+          }`}
         />
 
-        {/* Ambient bottom shadow vignette */}
+        {/* Static cinematic vignette (CSS, painted once instead of every frame) */}
         <div
-          className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/50 to-transparent pointer-events-none z-[4]"
+          className="absolute inset-0 pointer-events-none z-[3]"
+          style={{
+            background:
+              'radial-gradient(ellipse 75% 70% at 50% 50%, rgba(6,9,16,0.10) 0%, rgba(6,9,16,0.55) 70%, rgba(6,9,16,0.92) 100%)',
+          }}
         />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-[4]" />
 
-        {/* Top spacer to ensure clear headroom beneath fixed StorefrontHeader */}
         <div className="w-full h-16 pointer-events-none" />
 
-        {/* =========================================================================
-            DYNAMIC FLOATING LUXURY TYPOGRAPHY (Transitions As Camera Dollies Across Shelves)
-            ========================================================================= */}
+        {/* Floating chapter captions */}
         <div className="relative z-10 w-full px-4 sm:px-6 flex-1 flex flex-col items-center justify-end text-center max-w-4xl mx-auto pointer-events-none pb-4 sm:pb-8">
-          {/* Compartment 01: Turkish Terry Towels */}
-          <div
-            className={`transition-all duration-700 absolute bottom-2 sm:bottom-6 md:bottom-8 inset-x-4 max-w-3xl mx-auto ${
-              activeChapter === 0
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 -translate-y-6 scale-95 pointer-events-none'
-            }`}
-          >
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
+          <div className={`${captionBase} ${activeChapter === 0 ? captionShown : 'opacity-0 -translate-y-5 pointer-events-none'}`}>
+            <h1 className={`text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-white ${headingShadow}`}>
               Precision In{' '}
-              <span className="bg-gradient-to-r from-amber-400 via-rose-300 to-amber-200 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 via-rose-300 to-amber-200 bg-clip-text text-transparent [text-shadow:none]">
                 Every Thread.
               </span>
             </h1>
-            <p className="mt-2.5 sm:mt-3 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium drop-shadow-lg">
+            <p className={`mt-2.5 sm:mt-3 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium ${bodyShadow}`}>
               Dense double-loop Turkish cotton terry engineered to anchor high-tensile Madeira rayon embroidery with heirloom durability.
             </p>
           </div>
 
-          {/* Compartment 02: Pleated Silk Fans */}
-          <div
-            className={`transition-all duration-700 absolute bottom-2 sm:bottom-6 md:bottom-8 inset-x-4 max-w-3xl mx-auto ${
-              activeChapter === 1
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 translate-y-6 scale-95 pointer-events-none'
-            }`}
-          >
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
+          <div className={`${captionBase} ${activeChapter === 1 ? captionShown : captionHidden}`}>
+            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white ${headingShadow}`}>
               Micro-Gauge Silk Weaving.
             </h2>
-            <p className="mt-2 sm:mt-2.5 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium drop-shadow-lg">
+            <p className={`mt-2 sm:mt-2.5 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium ${bodyShadow}`}>
               Delicate cherry blossom branches traced across natural habotai silk without warping curved bamboo ribs.
             </p>
           </div>
 
-          {/* Compartment 03: 3D High-Density Puff Caps */}
-          <div
-            className={`transition-all duration-700 absolute bottom-2 sm:bottom-6 md:bottom-8 inset-x-4 max-w-3xl mx-auto ${
-              activeChapter === 2
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 translate-y-6 scale-95 pointer-events-none'
-            }`}
-          >
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
+          <div className={`${captionBase} ${activeChapter === 2 ? captionShown : captionHidden}`}>
+            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white ${headingShadow}`}>
               3D Architectural Relief.
             </h2>
-            <p className="mt-2 sm:mt-2.5 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium drop-shadow-lg">
+            <p className={`mt-2 sm:mt-2.5 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium ${bodyShadow}`}>
               Laser-cut 3mm high-density EVA foam beneath double-pass satin stitching for proud crown dimension.
             </p>
           </div>
 
-          {/* Arrival & Direct Call to Action */}
-          <div
-            className={`transition-all duration-300 absolute bottom-2 sm:bottom-6 md:bottom-8 inset-x-4 max-w-3xl mx-auto pointer-events-auto ${
-              activeChapter === 3
-                ? 'opacity-100 translate-y-0 scale-100'
-                : 'opacity-0 translate-y-6 scale-95 pointer-events-none'
-            }`}
-          >
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)]">
+          <div className={`${captionBase} ${activeChapter === 3 ? `${captionShown} pointer-events-auto` : captionHidden}`}>
+            <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white ${headingShadow}`}>
               Ready For Your Custom Piece.
             </h2>
-            <p className="mt-2 text-xs sm:text-base text-slate-200 max-w-md mx-auto mb-4 sm:mb-5 font-medium drop-shadow-lg">
+            <p className={`mt-2 text-xs sm:text-base text-slate-200 max-w-md mx-auto mb-4 sm:mb-5 font-medium ${bodyShadow}`}>
               Explore our ready-to-stitch products below or order custom personalized monogramming.
             </p>
             <button
               suppressHydrationWarning
               onClick={scrollToProducts}
-              className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm tracking-wide shadow-[0_0_35px_rgba(220,38,38,0.6)] hover:shadow-[0_0_50px_rgba(220,38,38,0.8)] active:scale-95 transition-all cursor-pointer flex items-center gap-2 mx-auto"
+              className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm tracking-wide shadow-[0_0_35px_rgba(220,38,38,0.6)] hover:shadow-[0_0_50px_rgba(220,38,38,0.8)] active:scale-95 transition-[transform,box-shadow] duration-200 cursor-pointer flex items-center gap-2 mx-auto"
             >
               <span>Explore Products Below</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="animate-bounce"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
@@ -367,17 +418,13 @@ export default function FullScreenStitchExperience() {
           </div>
         </div>
 
-        {/* =========================================================================
-            BOTTOM PROGRESS BAR & SCROLL TICKER
-            ========================================================================= */}
+        {/* Bottom scroll ticker */}
         <div
           className={`relative z-10 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto pointer-events-auto transition-opacity duration-500 ${
             activeChapter < 4 ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
           <div />
-
-          {/* Minimalist Scroll Prompt / Direction Indicator */}
           <div className="flex items-center gap-2 text-slate-300 text-xs font-bold uppercase tracking-widest">
             {activeChapter < 3 ? (
               <span className="flex items-center gap-1.5">

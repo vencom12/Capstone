@@ -103,24 +103,48 @@ export default function AuthModal() {
     }
   };
 
-  // Google Sign-In. All Firebase logic lives in lib/googleAuth.ts.
+  // Google sign-in. All Firebase logic lives in lib/googleAuth.ts.
+  // Firebase's popup-closed detection is unreliable (Google's COOP headers block
+  // `popup.closed` polling), so we also watch for the main window regaining focus.
   const handleGoogleSignIn = async () => {
     if (isSubmitting || isGoogleSubmitting) return;
     setIsGoogleSubmitting(true);
     setFormError(null);
 
-    // Clear query param before navigating so the returning page loads clean without ?auth=login
     if (authParam) {
       router.replace('/');
     }
 
-    const failure = await startGoogleSignIn();
-    if (failure) {
-      setIsGoogleSubmitting(false);
-      setFormError(failure.message);
-      showToast(failure.message, 'error');
-    } else {
-      handleClose(true);
+    let settled = false;
+    let focusTimer: ReturnType<typeof setTimeout> | null = null;
+    const onFocus = () => {
+      if (focusTimer) clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => {
+        // Backend exchange in progress = user actually signed in; keep spinner.
+        if (!settled && !isGoogleAuthPending()) setIsGoogleSubmitting(false);
+      }, 1200);
+    };
+    // Defer so the focus shift caused by opening the popup itself isn't counted.
+    const attachTimer = setTimeout(() => window.addEventListener('focus', onFocus), 300);
+
+    try {
+      const failure = await startGoogleSignIn();
+      settled = true;
+      if (failure) {
+        setIsGoogleSubmitting(false);
+        if (!failure.cancelled) {
+          setFormError(failure.message);
+          showToast(failure.message, 'error');
+        }
+      } else if (useAuthStore.getState().isAuthenticated || useUIStore.getState().googleSetupData) {
+        handleClose(true);
+      } else {
+        setIsGoogleSubmitting(false);
+      }
+    } finally {
+      clearTimeout(attachTimer);
+      if (focusTimer) clearTimeout(focusTimer);
+      window.removeEventListener('focus', onFocus);
     }
   };
 

@@ -185,7 +185,7 @@ export function resetGoogleAuthState(): void {
  * zero reliance on partitioned sessionStorage or cross-site redirect state.
  * Gracefully falls back to signInWithRedirect only if popup is blocked by the browser.
  */
-export async function startGoogleSignIn(): Promise<{ ok: false; message: string } | void> {
+export async function startGoogleSignIn(): Promise<{ ok: false; message: string; cancelled?: boolean } | void> {
   resetGoogleAuthState();
 
   try {
@@ -196,8 +196,8 @@ export async function startGoogleSignIn(): Promise<{ ok: false; message: string 
     }
     return;
   } catch (err: any) {
-    if (err?.code === 'auth/popup-closed-by-user') {
-      return;
+    if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+      return { ok: false, message: 'Google sign-in was cancelled.', cancelled: true };
     }
     // If the browser strictly blocked the popup, fall back to redirect
     if (err?.code === 'auth/popup-blocked') {
