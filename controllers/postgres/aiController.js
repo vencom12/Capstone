@@ -2048,7 +2048,7 @@ exports.storefrontChat = async (req, res) => {
         if (alphaOnly.length < 2) {
             return res.json({
                 success: true,
-                reply: "Hello! Welcome to **Stitch-Opt** at Pacific Mall Lucena. 🧵 I can help you check in-stock products, custom embroidery options, pricing, and turnaround time. What are you looking for today?",
+                reply: "Hello! Welcome to **Stitch-Opt** at Pacific Mall Lucena. I can help you check in-stock products, custom embroidery options, pricing, and turnaround time. What are you looking for today?",
                 suggestedProducts: []
             });
         }
@@ -2066,7 +2066,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(thanks|thank you|ty|salamat|arigato|ok|okay|k|noted|cge|sige|got it|all good|understood)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery with Madeira threads. ✨",
+                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery with Madeira threads.",
                 suggestedProducts: []
             });
         }
@@ -2084,7 +2084,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(where|location|address|branch|find you|stall|place)\b/i.test(cleanMsg) && /\b(store|shop|located|you|booth|stall|mall)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Our workshop is located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St., Brgy. 3, Lucena City, Quezon). Drop by our counter anytime between **10:00 AM and 8:00 PM** to see our physical embroidery samples! 🧵✨",
+                reply: "Our workshop is located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St., Brgy. 3, Lucena City, Quezon). Drop by our counter anytime between **10:00 AM and 8:00 PM** to see our physical embroidery samples!",
                 suggestedProducts: []
             });
         }
@@ -2102,7 +2102,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(payment|pay|gcash|maya|credit|cash)\b/i.test(cleanMsg) && /\b(accept|method|how to|qr|online|card|options)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "We accept **GCash**, **Maya QR**, and **Cash** at our counter. During checkout, scan the verified QR code and upload your transaction reference! 💳",
+                reply: "We accept **GCash**, **Maya QR**, and **Cash** at our counter. During checkout, scan the verified QR code and upload your transaction reference!",
                 suggestedProducts: []
             });
         }
@@ -2111,7 +2111,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(how long|turnaround|lead time|how many (minutes|hours|days)|when (will it be|ready))\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Standard personalized name and text stitching takes just **15 to 45 minutes** depending on the queue. Larger bulk batches (schools/events) take 24–48 hours. You can track real-time queue status in your dashboard! ⏱️",
+                reply: "Standard personalized name and text stitching takes just **15 to 45 minutes** depending on the queue. Larger bulk batches (schools/events) take 24–48 hours. You can track real-time queue status in your dashboard!",
                 suggestedProducts: []
             });
         }
@@ -2120,7 +2120,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(hi|hello|hey|good (morning|afternoon|evening)|kamusta|hola|sup|yo)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Hello! Welcome to **Stitch-Opt**. 🧵 I can help you check real-time product stock, customize embroidery with Madeira threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
+                reply: "Hello! Welcome to **Stitch-Opt**. I can help you check real-time product stock, customize embroidery with Madeira threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
                 suggestedProducts: []
             });
         }
@@ -2276,7 +2276,7 @@ exports.storefrontChat = async (req, res) => {
                 });
 
                 if (hasAnyInStock) {
-                    reply += `\nAll in-stock variants can be personalized with Madeira rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                    reply += `\nAll in-stock variants can be personalized with Madeira rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                 } else if (inStockProducts.length > 0) {
                     const topInStock = inStockProducts[0];
                     const topVb = getProductVariantBreakdown(topInStock);
@@ -2300,13 +2300,13 @@ exports.storefrontChat = async (req, res) => {
                         if (vb.outOfStock.length > 0) {
                             reply += `• *Awaiting Restock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
                         }
-                        reply += `\nReady for same-day custom embroidery in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                        reply += `\nReady for same-day custom embroidery in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                     } else {
                         reply += `All variants for **${p.name}** are currently awaiting replenishment at our workshop.\n`;
                         if (inStockProducts.length > 0) {
                             const topInStock = inStockProducts[0];
                             const topVb = getProductVariantBreakdown(topInStock);
-                            reply += `\nIn the meantime, our **${topInStock.name}** is available in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching! 🧵✨`;
+                            reply += `\nIn the meantime, our **${topInStock.name}** is available in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching!`;
                         }
                     }
                     return res.json({
@@ -2335,7 +2335,7 @@ exports.storefrontChat = async (req, res) => {
                         reply += `\n*(Note: Other workshop items currently awaiting replenishment: ${oosTargets.map(p => p.name).join(', ')}).*\n`;
                     }
 
-                    reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, initials, or monograms) in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                    reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, initials, or monograms) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                     return res.json({
                         success: true,
                         reply,
@@ -2344,7 +2344,7 @@ exports.storefrontChat = async (req, res) => {
                 } else {
                     return res.json({
                         success: true,
-                        reply: "Our current catalog items are momentarily awaiting fabric replenishment as our workshop prepares new production batches.\n\nDrop by our **Pacific Mall Lucena Ground Floor** counter or bring your own garments (BYOG) for direct custom stitching! 🧵✨",
+                        reply: "Our current catalog items are momentarily awaiting fabric replenishment as our workshop prepares new production batches.\n\nDrop by our **Pacific Mall Lucena Ground Floor** counter or bring your own garments (BYOG) for direct custom stitching!",
                         suggestedProducts: []
                     });
                 }
@@ -2375,7 +2375,7 @@ exports.storefrontChat = async (req, res) => {
                 if (oosTowels.length > 0) {
                     reply += `\n*(Note: Other towel lines currently awaiting fabric replenishment: ${oosTowels.map(t => t.name).join(', ')}).*\n`;
                 }
-                reply += `\nWe provide personalized crest and monogram embroidery on all towels! 🧵✨`;
+                reply += `\nWe provide personalized crest and monogram embroidery on all towels!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2386,7 +2386,7 @@ exports.storefrontChat = async (req, res) => {
                 if (inStockProducts.length > 0) {
                     const topInStock = inStockProducts[0];
                     const topVb = getProductVariantBreakdown(topInStock);
-                    reply += `In the meantime, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom name stitching! 🧵✨\n\n`;
+                    reply += `In the meantime, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom name stitching!\n\n`;
                 }
                 reply += `Feel free to ask about custom embroidery options or visit our counter at Ground Floor, Pacific Mall Lucena.`;
                 return res.json({
@@ -2421,7 +2421,7 @@ exports.storefrontChat = async (req, res) => {
                 if (oosFans.length > 0) {
                     reply += `\n*(Note: Other fan designs currently awaiting replenishment: ${oosFans.map(f => f.name).join(', ')}).*\n`;
                 }
-                reply += `\nWould you like personalized names or monograms embroidered on your fan? We stitch with German Madeira Rayon and metallic threads in 15–45 minutes! 🧵✨`;
+                reply += `\nWould you like personalized names or monograms embroidered on your fan? We stitch with German Madeira Rayon and metallic threads in 15–45 minutes!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2430,7 +2430,7 @@ exports.storefrontChat = async (req, res) => {
             } else {
                 return res.json({
                     success: true,
-                    reply: "Our fans are currently being replenished at our Pacific Mall Lucena workshop. Please check back soon or visit our counter for restock updates! 🧵",
+                    reply: "Our fans are currently being replenished at our Pacific Mall Lucena workshop. Please check back soon or visit our counter for restock updates!",
                     suggestedProducts: []
                 });
             }
@@ -2465,7 +2465,7 @@ exports.storefrontChat = async (req, res) => {
                 if (inStockProducts.length > 0) {
                     const topInStock = inStockProducts[0];
                     const topVb = getProductVariantBreakdown(topInStock);
-                    reply += `Currently, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching! 🧵`;
+                    reply += `Currently, our **${topInStock.name}** is in stock in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching!`;
                 }
                 return res.json({
                     success: true,
@@ -2498,7 +2498,7 @@ exports.storefrontChat = async (req, res) => {
                     reply += `\n*(Note: Our ${catLabel} lines are currently awaiting workshop replenishment.)*\n`;
                 }
 
-                reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, monograms, or initials) in 15–45 minutes at our Pacific Mall Lucena workshop! 🧵✨`;
+                reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, monograms, or initials) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2507,7 +2507,7 @@ exports.storefrontChat = async (req, res) => {
             } else {
                 return res.json({
                     success: true,
-                    reply: "All current catalog items are momentarily out of stock as our workshop prepares new batches. Visit our Pacific Mall Lucena counter for custom orders or custom fabric stitching! 🧵",
+                    reply: "All current catalog items are momentarily out of stock as our workshop prepares new batches. Visit our Pacific Mall Lucena counter for custom orders or custom fabric stitching!",
                     suggestedProducts: []
                 });
             }
@@ -2517,7 +2517,7 @@ exports.storefrontChat = async (req, res) => {
         // E. Naive Open Questions ("what do you think?", "recommend", "suggest", "ano maganda", "gift idea")
         // -------------------------------------------------------------
         if (/\b(what do you think|recommend|suggest|what should i buy|best seller|bestseller|popular|gift|ano maganda|anong maganda|suggest something)\b/i.test(cleanMsg)) {
-            let reply = `I think personalized embroidery makes an unforgettable, one-of-a-kind gift! 🧵✨\n\n`;
+            let reply = `I think personalized embroidery makes an unforgettable, one-of-a-kind gift!\n\n`;
             if (inStockProducts.length > 0) {
                 const topP = inStockProducts[0];
                 const topVb = getProductVariantBreakdown(topP);
@@ -2541,7 +2541,7 @@ exports.storefrontChat = async (req, res) => {
         // F. Custom Embroidery & Personalization Inquiries
         // -------------------------------------------------------------
         if (/\b(custom|customize|customization|embroidery|burda|magpaburda|paburda|stitch|stitching|name embroidery|monogram|initials|madeira|thread)\b/i.test(cleanMsg)) {
-            let reply = `Yes! We specialize in custom machine embroidery at our Pacific Mall Lucena workshop! 🧵✨\n\n` +
+            let reply = `Yes! We specialize in custom machine embroidery at our Pacific Mall Lucena workshop!\n\n` +
                 `• **Personalized Text & Monograms**: Stitched using premium German Madeira Rayon and metallic threads (Gold, Silver, Crimson, Navy, etc.).\n` +
                 `• **Turnaround**: Just 15–45 minutes for single orders, or same-day pickup.\n`;
             if (inStockProducts.length > 0) {
@@ -2567,7 +2567,7 @@ exports.storefrontChat = async (req, res) => {
                 const status = vb.hasInStock ? `(In Stock: ${vb.inStock.map(v => v.name).join(', ')})` : `(Out of Stock)`;
                 reply += `• **${p.name}** (${p.tag}): ₱${p.price.toFixed(2)} ${status}\n`;
             });
-            reply += `\nCustom name and monogram stitching varies depending on letter count and thread type (Madeira Rayon vs Metallic Gold/Silver). Visit our Pacific Mall Lucena counter for live thread swatches! 🧵`;
+            reply += `\nCustom name and monogram stitching varies depending on letter count and thread type (Madeira Rayon vs Metallic Gold/Silver). Visit our Pacific Mall Lucena counter for live thread swatches!`;
             return res.json({
                 success: true,
                 reply,
@@ -2587,7 +2587,7 @@ exports.storefrontChat = async (req, res) => {
             const inStock = products.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
             return res.json({
                 success: true,
-                reply: `Hi! Welcome to Stitch-Opt at Pacific Mall Lucena. 🧵 Our **Regular Fan (Small)** is currently in stock (86 available at ₱50.00). Drop by our counter for custom embroidery or feel free to ask questions!`,
+                reply: `Hi! Welcome to Stitch-Opt at Pacific Mall Lucena. Our **Regular Fan (Small)** is currently in stock (86 available at ₱50.00). Drop by our counter for custom embroidery or feel free to ask questions!`,
                 suggestedProducts: inStock.map(formatProductCard)
             });
         }
@@ -2661,7 +2661,8 @@ CRITICAL RULES:
 3. CATEGORY CONTEXT: If the customer is browsing a category (e.g., Bath Towel), address that category directly and list which variants are out of stock and what alternatives exist.
 4. NO RESERVATIONS: NEVER promise or offer to 'reserve' items or notify customers when back in stock. Stitch-Opt does NOT offer chat reservations.
 5. RELEVANT RECOMMENDATIONS ONLY: When recommending an in-stock item, append [PRODUCTS:id1,id2] at the very END. Only include product IDs that have in-stock variants.
-6. For naive or first-time shoppers: Be warm, simple, helpful, and direct (2-3 short sentences).`;
+6. For naive or first-time shoppers: Be warm, simple, helpful, and direct (2-3 short sentences).
+7. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.`;
 
         // Efficient history window: last 4 messages, trimmed text length
         const messages = [
@@ -2684,7 +2685,7 @@ CRITICAL RULES:
             const inStock = products.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
             return res.json({
                 success: true,
-                reply: "I'm happy to help you with our custom embroidery and products! Our **Regular Fan (Small)** is currently in stock (₱50.00). Feel free to ask about custom name stitching or store location! 🧵",
+                reply: "I'm happy to help you with our custom embroidery and products! Our **Regular Fan (Small)** is currently in stock (₱50.00). Feel free to ask about custom name stitching or store location!",
                 suggestedProducts: inStock.map(formatProductCard)
             });
         }
@@ -2705,7 +2706,7 @@ CRITICAL RULES:
         reply = reply.replace(/\[PRODUCTS?:.*?(\]|$)/gi, '').trim();
 
         if (!reply) {
-            reply = "Hello! I'm happy to help with our custom embroidery and in-stock items. Feel free to ask about our fans, custom lettering, or Pacific Mall Lucena location! 🧵";
+            reply = "Hello! I'm happy to help with our custom embroidery and in-stock items. Feel free to ask about our fans, custom lettering, or Pacific Mall Lucena location!";
         }
 
         res.json({
@@ -2718,7 +2719,7 @@ CRITICAL RULES:
         console.error('[AI Storefront Error]:', error);
         res.status(500).json({
             success: false,
-            reply: "Something went wrong on my end. Please feel free to ask again! 🧵",
+            reply: "Something went wrong on my end. Please feel free to ask again!",
             suggestedProducts: []
         });
     }

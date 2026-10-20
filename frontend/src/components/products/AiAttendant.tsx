@@ -30,7 +30,7 @@ const SpeechRecognition = typeof window !== 'undefined'
   : null;
 
 export default function AiAttendant() {
-  const { isAiOpen, setAiOpen, initialAiQuery, clearInitialAiQuery, isBasketOpen } = useUIStore();
+  const { isAiOpen, setAiOpen, initialAiQuery, clearInitialAiQuery } = useUIStore();
   const isOpen = isAiOpen;
   const setIsOpen = setAiOpen;
 
@@ -58,7 +58,7 @@ export default function AiAttendant() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { selectedCategory, searchQuery } = useProductStore();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { items: basketItems, addItem } = useBasketStore();
 
   // Voice Typing States
@@ -273,7 +273,7 @@ export default function AiAttendant() {
       const aiMsg: ChatMessage = {
         id: createMsgId(),
         role: 'assistant',
-        text: rawReply || "Hello! I'm here to help you find in-stock items (like our Regular Fans), check custom embroidery pricing, or answer questions about our store at Pacific Mall Lucena! 🧵✨",
+        text: rawReply || "Hello! I'm here to help you find in-stock items (like our Regular Fans), check custom embroidery pricing, or answer questions about our store at Pacific Mall Lucena.",
         suggestedProducts: data.suggestedProducts || [],
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -318,7 +318,7 @@ export default function AiAttendant() {
       setMessages([{
         id: createMsgId(),
         role: 'assistant',
-        text: "Hi there! Welcome to **Stitch Art**! 👋✨ How can I help you today? Ask me anything about our products, custom embroidery, rush orders, or workshop policies.",
+        text: "Hi there! Welcome to **Stitch Art**! How can I help you today? Ask me anything about our products, custom embroidery, rush orders, or workshop policies.",
       }]);
     }
   }, [isOpen, hasGreeted, initialAiQuery]);
@@ -575,38 +575,15 @@ export default function AiAttendant() {
     return elements;
   };
 
-  // Staff roles manage the store and workshop floors, not customer chat
-  if (user?.role === 'admin' || user?.role === 'employee') return null;
+  if (!isOpen) return null;
 
   return (
     <>
-      {/* Floating Launcher Button (when closed and basket drawer not open) */}
-      {!isOpen && !isBasketOpen && (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-[2200] flex items-center gap-2.5 px-4 py-3 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 group"
-          title="Ask AI Store Attendant"
-          aria-label="Ask AI Store Attendant"
-        >
-          <span className="p-1 rounded-full bg-white/20 flex items-center justify-center">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
-              <path d="M19 4v4m2-2h-4" />
-            </svg>
-          </span>
-          <span className="font-bold tracking-wide">Ask Assistant</span>
-        </button>
-      )}
-
-      {/* Chat Panel & Backdrop (when open) */}
-      {isOpen && (
-        <>
-          {/* Backdrop (Click outside to close) */}
-          <div
-            onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[2399] transition-opacity animate-[fadeIn_0.2s_ease-out]"
-          />
+      {/* Backdrop (Click outside to close) */}
+      <div
+        onClick={() => setIsOpen(false)}
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[2399] transition-opacity animate-[fadeIn_0.2s_ease-out]"
+      />
 
       {/* Chat Panel */}
       <div
@@ -738,14 +715,23 @@ export default function AiAttendant() {
                             disabled={oos}
                             className={`
                               shrink-0 px-3 py-1.5 rounded-lg text-[0.7rem] font-bold
-                              border cursor-pointer transition-all duration-200
+                              border cursor-pointer transition-all duration-200 flex items-center gap-1
                               ${oos
                                 ? 'bg-white/5 text-text-dim border-border-glass cursor-not-allowed'
                                 : 'bg-white/10 hover:bg-white/20 text-text-main border-border-glass active:scale-95 shadow-xs'
                               }
                             `}
                           >
-                            {oos ? 'Out' : '🛍️ Add'}
+                            {oos ? (
+                              'Out'
+                            ) : (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                Add
+                              </>
+                            )}
                           </button>
                         </div>
                       );
@@ -767,7 +753,7 @@ export default function AiAttendant() {
                       label: "What's in stock?",
                       query: "What products are currently available in stock?",
                       icon: (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-text-main transition-colors shrink-0">
                           <circle cx="11" cy="11" r="8" />
                           <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
@@ -777,7 +763,7 @@ export default function AiAttendant() {
                       label: "How long does embroidery take?",
                       query: "How long does custom embroidery take?",
                       icon: (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-text-main transition-colors shrink-0">
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
                         </svg>
@@ -787,7 +773,7 @@ export default function AiAttendant() {
                       label: "Can I bring my own garments?",
                       query: "Can I bring my own garments for custom embroidery (BYOG)?",
                       icon: (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-text-main transition-colors shrink-0">
                           <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
                         </svg>
                       )
@@ -796,7 +782,7 @@ export default function AiAttendant() {
                       label: "Embroidery pricing",
                       query: "How much does custom embroidery cost?",
                       icon: (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-text-main transition-colors shrink-0">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
                           <circle cx="7" cy="7" r="1.5" />
                         </svg>
@@ -806,7 +792,7 @@ export default function AiAttendant() {
                       label: "Store location & hours",
                       query: "Where is your workshop located and what are your store hours?",
                       icon: (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-primary transition-colors shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim group-hover:text-text-main transition-colors shrink-0">
                           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                           <circle cx="12" cy="10" r="3" />
                         </svg>
@@ -893,8 +879,6 @@ export default function AiAttendant() {
           </div>
         </div>
       </div>
-        </>
-      )}
     </>
   );
 }

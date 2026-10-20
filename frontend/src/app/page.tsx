@@ -205,7 +205,7 @@ export default function StorefrontPage() {
         }}
       />
 
-      {/* Floating Customer AI Store Assistant */}
+      {/* Virtual Store Attendant Modal */}
       <AiAttendant />
     </div>
   );
