@@ -2,6 +2,7 @@ const prisma = require('../../utils/prisma');
 const crypto = require('crypto');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
+const { calculatePickupSchedule } = require('../../utils/pickupScheduler');
 
 // Idempotency cache (5-minute TTL) to prevent duplicate order submissions from double-taps / retries
 const orderIdempotencyStore = new Map();
@@ -247,7 +248,7 @@ exports.submitOrder = async (req, res) => {
             });
             if (alreadyUsedReceipt) {
                 return res.status(400).json({
-                    message: "This payment receipt was already used for an earlier order. Please upload the official GCash receipt you used for this purchase so we can get your order started right away! 🧵"
+                    message: "This payment receipt was already used for an earlier order. Please upload the official GCash receipt you used for this purchase so we can get your order started right away."
                 });
             }
         }
@@ -385,6 +386,31 @@ exports.submitOrder = async (req, res) => {
                 personalization: orderPersonalization
             }));
 
+            // Calculate realistic pickup schedule based on current shop backlog & operating clock
+            const activeQueueOrders = await tx.order.findMany({
+                where: {
+                    status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+                },
+                select: { estimatedTime: true }
+            });
+            const queueBacklogMins = activeQueueOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 2), 0);
+            const totalItemCount = sanitizedItems.reduce((acc, it) => acc + (it.quantity || 1), 0);
+            const isExpress = totalItemCount <= 3;
+
+            const pickupSchedule = calculatePickupSchedule({
+                orderDurationMinutes: calculatedEstTime,
+                queueBacklogMinutes: queueBacklogMins,
+                activeMachines: 1,
+                isExpress,
+                startTime: new Date()
+            });
+
+            const finalClaimSchedule = (deliveryTime && deliveryTime !== 'Store Pick-up') ? deliveryTime : pickupSchedule.readyLabel;
+            const finalDueDate = dueDate ? new Date(dueDate) : pickupSchedule.estimatedReadyDate;
+
+            orderPersonalization.readyLabel = finalClaimSchedule;
+            orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
+
             const order = await tx.order.create({
                 data: {
                     orderId: secureOrderId,
@@ -397,7 +423,7 @@ exports.submitOrder = async (req, res) => {
                     paymentStatus: isInstantApproved ? 'paid' : 'unpaid',
                     status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',
                     address,
-                    deliveryTime: 'Store Pick-up',
+                    deliveryTime: finalClaimSchedule,
                     notes,
                     progress: isInstantApproved ? 5 : 0,
                     isByog: isByog || false,
@@ -407,7 +433,7 @@ exports.submitOrder = async (req, res) => {
                     personalization: orderPersonalization,
                     isRush: isRush || false,
                     estimatedTime: calculatedEstTime,
-                    dueDate: dueDate ? new Date(dueDate) : null
+                    dueDate: finalDueDate
                 }
             });
 
@@ -635,14 +661,25 @@ exports.getCapacity = async (req, res) => {
 
         const machineCount = Math.max(1, activeMachines);
 
-        // Sum actual estimated stitch times recorded on queued orders, fallback 6 mins per typical order (incl. 1m buffer)
-        const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 6), 0);
-        const estimatedMinutes = activeOrders === 0 ? 6 : Math.ceil(totalQueueMinutes / machineCount);
+        // Sum actual estimated stitch times recorded on queued orders, fallback 2 mins per typical order
+        const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 2), 0);
+        
+        // Express checkout benchmark (1-3 items)
+        const schedule = calculatePickupSchedule({
+            orderDurationMinutes: 2,
+            queueBacklogMinutes: totalQueueMinutes,
+            activeMachines: machineCount,
+            isExpress: true,
+            startTime: new Date()
+        });
 
         res.json({
             activeOrders,
-            activeMachines,
-            estimatedMinutes
+            activeMachines: machineCount,
+            estimatedMinutes: schedule.estimatedWaitMinutes,
+            readyLabel: schedule.readyLabel,
+            estimatedReadyDate: schedule.estimatedReadyDate,
+            isStoreOpenNow: schedule.isStoreOpenNow
         });
     } catch (err) {
         console.error('Capacity error:', err);
@@ -726,24 +763,50 @@ exports.trackOrder = async (req, res) => {
         }
 
         let ordersAhead = 0;
+        let backlogMinutesAhead = 0;
         if (stage === 'queue') {
-            ordersAhead = await prisma.order.count({
+            const priorOrders = await prisma.order.findMany({
                 where: {
                     status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] },
                     createdAt: { lt: order.createdAt }
-                }
+                },
+                select: { estimatedTime: true }
             });
+            ordersAhead = priorOrders.length;
+            backlogMinutesAhead = priorOrders.reduce((acc, o) => acc + (o.estimatedTime || 2), 0);
         }
 
-        const estMins = order.estimatedTime || 6;
+        const estMins = order.estimatedTime || 2;
         let estimatedMinutesLeft = estMins;
+        let readyLabel = '';
+
         if (stage === 'stitching') {
             const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
             estimatedMinutesLeft = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
+            const sched = calculatePickupSchedule({
+                orderDurationMinutes: estimatedMinutesLeft,
+                queueBacklogMinutes: 0,
+                activeMachines: 1,
+                isExpress: true,
+                startTime: new Date()
+            });
+            readyLabel = sched.readyLabel;
         } else if (stage === 'queue') {
-            estimatedMinutesLeft = (ordersAhead + 1) * estMins;
+            const sched = calculatePickupSchedule({
+                orderDurationMinutes: estMins,
+                queueBacklogMinutes: backlogMinutesAhead,
+                activeMachines: 1,
+                isExpress: true,
+                startTime: new Date()
+            });
+            estimatedMinutesLeft = sched.estimatedWaitMinutes;
+            readyLabel = sched.readyLabel;
+        } else if (stage === 'ready') {
+            estimatedMinutesLeft = 0;
+            readyLabel = 'Ready for Pickup Now';
         } else {
             estimatedMinutesLeft = 0;
+            readyLabel = 'Completed';
         }
 
         res.json({
@@ -758,6 +821,7 @@ exports.trackOrder = async (req, res) => {
                 stage,
                 ordersAhead,
                 estimatedMinutesLeft,
+                readyLabel,
                 totalAmount: order.totalAmount,
                 paymentStatus: order.paymentStatus,
                 createdAt: order.createdAt,

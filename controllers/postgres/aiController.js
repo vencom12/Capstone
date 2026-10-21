@@ -498,7 +498,7 @@ exports.chat = async (req, res) => {
         if (!apiKey) {
             return res.json({ 
                 success: true, 
-                reply: "AI is in 'Local Mode'. Add GROQ_API_KEY to Render to enable automation! 🤖✨" 
+                reply: "AI is in 'Local Mode'. Add GROQ_API_KEY to Render to enable automation." 
             });
         }
 
@@ -526,23 +526,21 @@ exports.chat = async (req, res) => {
         // =============================================================
         // TOKEN CONSERVATION: Zero-Token Direct Database Fast Paths
         // Handles structured operator & admin prompts with ZERO LLM tokens!
-        // =============================================================
-
-        // 0. Conversational Greetings & Introductions (100% Zero-Token Direct Fast Path)
+        // ==========================================================        // 0. Conversational Greetings & Introductions (100% Zero-Token Direct Fast Path)
         const isGreetingOnly = /^(hi|hello|hey|wassup|what'?s\s*up|whats\s*up|sup|yo|good\s+(morning|afternoon|evening)|howdy|who\s+are\s+you|what\s+can\s+you\s+do|help)\b/i.test(cleanMsg) &&
             !/\b(order|status|stock|machine|product|create|update|delete|assign|route|ticket|email|urgent|rush|acquire|acquisition|revenue|summary)\b/i.test(cleanMsg);
 
         if (isGreetingOnly) {
             const roleTitle = dbUser.role === 'admin' ? 'Administrator' : 'Operator';
             const firstName = (dbUser.name || dbUser.username || 'Team Member').split(' ')[0];
-            const reply = `Hey there, **${firstName}**! 👋 I am **StitchMaster AI**, your real-time workshop intelligence assistant.\n\n` +
+            const reply = `Hello, **${firstName}**. I am **StitchMaster AI**, your workshop intelligence assistant.\n\n` +
                 `I have live database access. As an **${roleTitle}**, here is what I can do for you:\n` +
-                `• ⚡ **Live Operations:** Check rush orders, queue status, and machine fleet capacity.\n` +
-                `• 📦 **Materials & Inventory:** Audit low thread spools and auto-draft material acquisition forms.\n` +
+                `• **Live Operations:** Check rush orders, queue status, and machine fleet capacity.\n` +
+                `• **Materials & Inventory:** Audit low thread spools and draft material acquisition forms.\n` +
                 (dbUser.role === 'admin' 
-                    ? `• 📈 **Analytics & Management:** Inspect daily revenue, conversion rates, and manage product catalog stock.\n` 
-                    : `• 🧵 **Workstation:** Review assigned machine orders, update order status, and log machine maintenance.\n`) +
-                `\nWhat would you like to work on today? Ask me any question or tap one of the quick actions above!`;
+                    ? `• **Analytics & Management:** Inspect daily revenue, conversion rates, and manage product catalog stock.\n` 
+                    : `• **Workstation:** Review assigned machine orders, update order status, and log machine maintenance.\n`) +
+                `\nWhat would you like to work on today? Ask a question or select a command above.`;
 
             return res.json({
                 success: true,
@@ -567,20 +565,21 @@ exports.chat = async (req, res) => {
             if (urgentOrders.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "Great news! There are currently **no urgent or rush orders** pending in the queue. All workshop stations are caught up!",
+                    reply: "**No Rush Orders:** All active orders are on standard schedule.",
                     tokensUsed: 0
                 });
             }
 
-            let reply = `Here are the top **urgent and rush orders** currently prioritized in the workshop:\n\n`;
-            reply += `| Order ID | Client | Design | Status | Priority Score | Due Date |\n`;
-            reply += `| :--- | :--- | :--- | :--- | :---: | :--- |\n`;
+            let reply = `**Urgent & Rush Orders (${urgentOrders.length} pending):**\n\n`;
+            reply += `| Order | Design | Due Date |\n`;
+            reply += `| :--- | :--- | :---: |\n`;
             urgentOrders.forEach(o => {
-                const due = o.dueDate ? new Date(o.dueDate).toLocaleDateString() : 'Standard';
-                const score = (o.priorityScore ?? 0).toFixed(0);
-                reply += `| \`#${o.orderId}\` | ${o.client || 'Walk-in'} | ${o.design || 'Custom'} | ${o.status.toUpperCase()} | **${score}** | ${due} |\n`;
+                const due = o.dueDate ? new Date(o.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'ASAP';
+                const client = (o.client || 'Customer').split(' ')[0];
+                const design = (o.design || 'Custom Garment').slice(0, 18);
+                reply += `| \`#${o.orderId.slice(-6)}\` | ${design} (${client}) | **${due}** |\n`;
             });
-            reply += `\n*Priority is dynamically calculated using turnaround deadlines, delivery commitments, and machine availability.*`;
+            reply += `\n*Prioritized at the top of the machine line.*`;
 
             return res.json({
                 success: true,
@@ -605,8 +604,6 @@ exports.chat = async (req, res) => {
             const enrichedProducts = await enrichProductsWithStock(rawProducts);
 
             const depletedOrOosProducts = [];
-            const healthyProducts = [];
-
             for (const p of enrichedProducts) {
                 let rawVariants = p.variants;
                 if (typeof rawVariants === 'string') {
@@ -614,25 +611,12 @@ exports.chat = async (req, res) => {
                 }
                 if (!Array.isArray(rawVariants)) rawVariants = [];
 
-                const inStockVariants = rawVariants.filter(v => v && !v.isOutOfStock && (v.availableStock ?? 0) > 0);
                 const oosVariants = rawVariants.filter(v => v && (v.isOutOfStock || (v.availableStock ?? 0) <= 0));
-                const totalAvail = p.availableStock !== undefined ? p.availableStock : 0;
-                const isTotalOOS = p.isOutOfStock || totalAvail <= 0 || rawVariants.length === 0;
-                const isPartialOOS = rawVariants.length > 0 && inStockVariants.length > 0 && oosVariants.length > 0;
-                const isLowStock = !isTotalOOS && totalAvail <= (p.minThreshold || 5);
-
-                if (isTotalOOS || isPartialOOS || isLowStock) {
+                if (oosVariants.length > 0) {
                     depletedOrOosProducts.push({
-                        product: p,
-                        rawVariants,
-                        inStockVariants,
-                        oosVariants,
-                        isTotalOOS,
-                        isPartialOOS,
-                        isLowStock
+                        name: p.name,
+                        oosVariants: oosVariants.map(v => v.name)
                     });
-                } else {
-                    healthyProducts.push(p);
                 }
             }
 
@@ -641,50 +625,26 @@ exports.chat = async (req, res) => {
             if (depletedOrOosProducts.length === 0 && lowMaterials.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "✅ **All Systems Healthy:** All catalog products, variants, and workshop raw materials are currently at **HEALTHY** stockpile levels! No stockouts or depleted variants detected.",
+                    reply: "**Stock Levels Healthy:** All blank garments, variants, and thread spools are above minimum safety thresholds.",
                     tokensUsed: 0
                 });
             }
 
-            let reply = `⚠️ **Stock & Variant Audit Alert:** Detected depleted variants, out-of-stock catalog items, or low materials in the workshop.\n\n`;
+            let reply = `**Low Stock Alert:**\n\n`;
+            reply += `| Item | Stock Left | Min Safety |\n`;
+            reply += `| :--- | :---: |\n`;
 
-            if (depletedOrOosProducts.length > 0) {
-                reply += `### 📦 Product Catalog & Variant Stock Status:\n`;
-                reply += `| Product Name | Total Stock | In-Stock Variants | Depleted / Out-of-Stock Variants | Status |\n`;
-                reply += `| :--- | :---: | :--- | :--- | :---: |\n`;
+            lowMaterials.forEach(i => {
+                const unit = i.unit || 'Cones';
+                reply += `| **${i.item}** | ${i.count} ${unit} | ${i.minThreshold || 10} |\n`;
+            });
 
-                depletedOrOosProducts.forEach(({ product, inStockVariants, oosVariants, isTotalOOS, isPartialOOS }) => {
-                    const status = isTotalOOS ? 'CRITICAL_OUT' : 'LOW_STOCK';
-                    let inStockStr = inStockVariants.length > 0
-                        ? inStockVariants.map(v => `${v.name} (${v.availableStock ?? v.stock ?? 0})`).join(', ')
-                        : 'None (0)';
-                    let oosStr = oosVariants.length > 0
-                        ? oosVariants.map(v => v.name).join(', ')
-                        : 'None';
+            depletedOrOosProducts.forEach(p => {
+                reply += `| **${p.name}** | 0 Pcs (${p.oosVariants.slice(0, 2).join(', ')}) | 5 Pcs |\n`;
+            });
 
-                    if (isPartialOOS && inStockVariants.length === 1) {
-                        inStockStr = `⭐ **Only ${inStockVariants[0].name} (${inStockVariants[0].availableStock ?? inStockVariants[0].stock ?? 0})**`;
-                    }
-
-                    reply += `| **${product.name}** | **${product.availableStock ?? 0}** | ${inStockStr} | ${oosStr} | ${status} |\n`;
-                });
-                reply += `\n`;
-            }
-
-            if (lowMaterials.length > 0) {
-                reply += `### 🧵 Critical Raw Materials & Thread Spools:\n`;
-                reply += `| Material Item | Current Count | Min Threshold | Unit | Status |\n`;
-                reply += `| :--- | :---: | :---: | :---: | :---: |\n`;
-                lowMaterials.forEach(i => {
-                    const status = (i.count === 0) ? 'CRITICAL_OUT' : 'LOW_STOCK';
-                    reply += `| **${i.item}** | **${i.count}** | ${i.minThreshold || 10} | ${i.unit || 'Cones'} | ${status} |\n`;
-                });
-                reply += `\n`;
-            } else if (allInv.length > 0) {
-                reply += `*🧵 Workshop raw thread spools are stable (${allInv.length} item${allInv.length > 1 ? 's' : ''} at healthy threshold).* \n\n`;
-            }
-
-            reply += `*Recommendation: Restock depleted blank garments and link material inventory to variants in **Product Management**.*`;
+            reply += `\n**Recommendation:** Several items are depleted. Generate an Acquisition Form to order restocks from your suppliers.\n\n`;
+            reply += `[action:create-acquisition|Create Acquisition Form Now]`;
 
             return res.json({
                 success: true,
@@ -724,7 +684,7 @@ exports.chat = async (req, res) => {
             if (lowMaterials.length === 0 && depletedVariantsList.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "Great news! All workshop materials and product catalog variants are currently **above safety thresholds**. There are no items in critical need of replenishment, so a supply acquisition form is not required right now.",
+                    reply: "**No Restock Needed:** All workshop materials and blank garments are currently above safety limits.",
                     tokensUsed: 0
                 });
             }
@@ -732,47 +692,39 @@ exports.chat = async (req, res) => {
             const todayFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const reqCode = `REQ-${Date.now().toString().slice(-6)}`;
 
-            let reply = `📋 **Supply Acquisition & Requisition Form**\n`;
-            reply += `**Requisition Code:** \`${reqCode}\` | **Date:** ${todayFormatted} | **Status:** PENDING_APPROVAL\n\n`;
+            let reply = `**Supply Acquisition Form**\n`;
+            reply += `**Code:** \`${reqCode}\` | **Date:** ${todayFormatted}\n\n`;
+            reply += `| Item Description | Current Stock | Order Needed |\n`;
+            reply += `| :--- | :---: | :---: |\n`;
 
             const supplierLines = [];
 
-            if (lowMaterials.length > 0) {
-                reply += `### 🧵 Raw Materials & Spools:\n`;
-                reply += `| Raw Material | Current Count | Safety Margin | Recommended Reorder | Unit |\n`;
-                reply += `| :--- | :---: | :---: | :---: | :---: |\n`;
-                lowMaterials.forEach(i => {
-                    const threshold = i.minThreshold || 10;
-                    const suggestedQty = Math.max(5, (threshold * 2) - i.count);
-                    const unit = i.unit || 'Cones';
-                    reply += `| **${i.item}** | ${i.count} | ${threshold} | **+${suggestedQty}** | ${unit} |\n`;
-                    supplierLines.push(`• ${i.item} — Qty: ${suggestedQty} ${unit}`);
-                });
-                reply += `\n`;
-            }
+            lowMaterials.forEach(i => {
+                const threshold = i.minThreshold || 10;
+                const suggestedQty = Math.max(5, (threshold * 2) - i.count);
+                const unit = i.unit || 'Cones';
+                reply += `| **${i.item}** | ${i.count} ${unit} | **+${suggestedQty} ${unit}** |\n`;
+                supplierLines.push(`• ${i.item} — Qty: ${suggestedQty} ${unit}`);
+            });
 
-            if (depletedVariantsList.length > 0) {
-                reply += `### 👕 Depleted Catalog Garments & Blank Variants:\n`;
-                reply += `| Product Name | Depleted Variants | Recommended Reorder | Unit |\n`;
-                reply += `| :--- | :--- | :---: | :---: |\n`;
-                depletedVariantsList.forEach(item => {
-                    const suggestedQty = 20; // Standard batch restock for garments/blanks
-                    reply += `| **${item.productName}** | ${item.variants.join(', ')} | **+${suggestedQty}** | Pcs |\n`;
-                    supplierLines.push(`• ${item.productName} (${item.variants.join(', ')}) — Qty: ${suggestedQty} Pcs`);
-                });
-                reply += `\n`;
-            }
+            depletedVariantsList.forEach(item => {
+                const suggestedQty = 20;
+                reply += `| **${item.productName}** (${item.variants.slice(0, 2).join(', ')}) | 0 Pcs | **+${suggestedQty} Pcs** |\n`;
+                supplierLines.push(`• ${item.productName} (${item.variants.join(', ')}) — Qty: ${suggestedQty} Pcs`);
+            });
 
-            reply += `### 💬 Copyable Supplier Message (Viber / Messenger / Email):\n`;
+            reply += `\n### Supplier Message (Viber / Messenger):\n`;
             reply += "```text\n";
-            reply += `SUPPLY ACQUISITION REQUISITION — Eds Towels & Caps\n`;
+            reply += `SUPPLY ACQUISITION — Eds Towels & Caps\n`;
             reply += `Ref: ${reqCode} | Date: ${todayFormatted}\n`;
-            reply += `Please confirm pricing & availability for delivery:\n`;
+            reply += `Please confirm pricing & availability:\n`;
             reply += supplierLines.join('\n') + '\n';
-            reply += `Delivery to: Eds Towels & Caps Workshop Receiving\n`;
+            reply += `Delivery: Ground Floor, Pacific Mall Lucena City\n`;
             reply += `Contact: 0928 810 3928\n`;
             reply += "```\n\n";
-            reply += `*Click **Copy** above to send directly to your supplier, or review under **Materials > Acquisition Form**.*`;
+
+            reply += `[action:download-pdf|Download Requisition (PDF)]\n`;
+            reply += `[action:download-png|Download Restock Slip (PNG)]`;
 
             return res.json({
                 success: true,
@@ -802,17 +754,15 @@ exports.chat = async (req, res) => {
             const idleCount = machines.filter(m => m.status === 'Idle').length;
             const maintCount = machines.filter(m => m.status === 'Maintenance' || m.status === 'Offline').length;
 
-            let reply = `🧵 **Workshop Embroidery Machine Fleet:**\n\n`;
-            reply += `| Machine Name | Type | Status | Assigned Operator | Last Activity |\n`;
-            reply += `| :--- | :--- | :---: | :--- | :--- |\n`;
+            let reply = `**Embroidery Machine Fleet:**\n\n`;
+            reply += `| Machine | Status | Operator |\n`;
+            reply += `| :--- | :---: | :--- |\n`;
             machines.forEach(m => {
-                const operator = m.assignedUser?.username || 'Unassigned';
-                const updated = m.updatedAt ? new Date(m.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                reply += `| **${m.name}** | ${m.type || 'Embroidery'} | ${m.status.toUpperCase()} | ${operator} | ${updated} |\n`;
+                const operator = (m.assignedUser?.username || 'Available').split(' ')[0];
+                reply += `| **${m.name}** | ${m.status.toUpperCase()} | ${operator} |\n`;
             });
 
-            const utilization = Math.round((runningCount / machines.length) * 100);
-            reply += `\n**Fleet Summary:** ${runningCount} RUNNING • ${idleCount} IDLE • ${maintCount} IN MAINTENANCE (**${utilization}% Active Utilization**)\n`;
+            reply += `\n**Summary:** ${runningCount} Running • ${idleCount} Idle • ${maintCount} Maintenance.`;
 
             return res.json({
                 success: true,
@@ -826,7 +776,7 @@ exports.chat = async (req, res) => {
             if (dbUser.role !== 'admin') {
                 return res.json({
                     success: true,
-                    reply: "🔒 **Access Restricted:** Financial and revenue snapshots are restricted to Administrators only. As an operator, you have access to machine fleet status and workbench order queues.",
+                    reply: "Access Restricted: Financial and revenue snapshots are restricted to Administrators only.",
                     tokensUsed: 0
                 });
             }
@@ -836,23 +786,48 @@ exports.chat = async (req, res) => {
 
             const todayOrders = await prisma.order.findMany({
                 where: { createdAt: { gte: startOfToday } },
-                select: { id: true, totalAmount: true, status: true, paymentStatus: true, client: true }
+                select: { id: true, totalAmount: true, status: true, paymentStatus: true, items: true }
             });
 
             const totalCount = todayOrders.length;
-            const grossRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
             const paidOrders = todayOrders.filter(o => (o.paymentStatus || '').toLowerCase() === 'paid');
-            const paidRevenue = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-            const unpaidRevenue = Math.max(0, grossRevenue - paidRevenue);
+            const grossSales = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
-            let reply = `💰 **Today's Financial & Sales Snapshot:**\n\n`;
-            reply += `| Metric | Figure | Operational Note |\n`;
-            reply += `| :--- | :---: | :--- |\n`;
-            reply += `| **New Orders Today** | **${totalCount}** | Total customer intake since midnight |\n`;
-            reply += `| **Gross Booked Value** | **₱${grossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | All customer orders generated today |\n`;
-            reply += `| **Collected / Paid** | **₱${paidRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | Verified payments received (${paidOrders.length} orders) |\n`;
-            reply += `| **Pending Collection** | **₱${unpaidRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}** | Awaiting balance on pickup/delivery |\n\n`;
-            reply += `*Computed live directly from active order invoices in PostgreSQL.*`;
+            let totalGarments = 0;
+            todayOrders.forEach(o => {
+                if (Array.isArray(o.items)) {
+                    o.items.forEach(it => { totalGarments += (it.quantity || 1); });
+                } else {
+                    totalGarments += 1;
+                }
+            });
+
+            const dailyRent = 650.00; // Pacific Mall Kiosk Pro-rated Rent
+            const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
+            const totalExpenses = dailyRent + materialsCost;
+            const netProfit = grossSales - totalExpenses;
+
+            let reply = `**Today's Financial Summary:**\n\n`;
+            reply += `| Category | Amount |\n`;
+            reply += `| :--- | :---: |\n`;
+            reply += `| **Sales Income** | ₱${grossSales.toLocaleString('en-US', { minimumFractionDigits: 2 })} |\n`;
+            reply += `| **Shop Rent (Daily)** | -₱${dailyRent.toFixed(2)} |\n`;
+            reply += `| **Materials Used Cost** | -₱${materialsCost.toFixed(2)} |\n`;
+            reply += `| **ESTIMATED NET PROFIT** | **₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}** |\n\n`;
+
+            reply += `**Details:** ${totalCount} orders (${totalGarments} garments made, ~${Math.ceil(totalGarments / 5)} thread spools used).\n\n`;
+
+            reply += `### Daily Summary Message:\n`;
+            reply += "```text\n";
+            reply += `DAILY FINANCIAL RECAP — Eds Towels & Caps\n`;
+            reply += `Date: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}\n`;
+            reply += `• Gross Sales: ₱${grossSales.toFixed(2)} (${totalCount} orders)\n`;
+            reply += `• Daily Rent: ₱${dailyRent.toFixed(2)}\n`;
+            reply += `• Materials Used: ₱${materialsCost.toFixed(2)} (${totalGarments} pcs)\n`;
+            reply += `• Estimated Net Profit: ₱${netProfit.toFixed(2)}\n`;
+            reply += "```\n\n";
+
+            reply += `[action:download-revenue-pdf|Download Daily Financial Report (PDF)]`;
 
             return res.json({
                 success: true,
@@ -871,20 +846,21 @@ exports.chat = async (req, res) => {
                 prisma.order.count({ where: { status: 'In Queue' } }),
                 prisma.order.count({ where: { status: 'Preparing Order' } }),
                 prisma.order.count({ where: { status: { in: ['Order Delivered', 'Completed'] }, updatedAt: { gte: startOfToday } } }),
-                prisma.machine.findMany({ select: { name: true, status: true, type: true } })
+                prisma.machine.findMany({ select: { name: true, status: true } })
             ]);
 
             const activeMachines = machines.filter(m => m.status === 'Running' || m.status === 'Active').length;
 
-            let reply = `📊 **Today's Workshop Throughput & Operations Summary:**\n\n`;
-            reply += `| Operational Metric | Live Count | Current Status / Note |\n`;
-            reply += `| :--- | :---: | :--- |\n`;
-            reply += `| **New Orders Today** | **${todayOrders}** | Inflow since midnight |\n`;
-            reply += `| **In Queue Waiting** | **${pendingQueue}** | Ready for machine assignment |\n`;
-            reply += `| **Actively Stitching** | **${preparingOrders}** | Currently on machine hoops |\n`;
-            reply += `| **Completed / Delivered Today** | **${deliveredToday}** | Handed off to clients |\n`;
-            reply += `| **Active Machine Fleet** | **${activeMachines}/${machines.length}** | Online embroidery heads |\n\n`;
-            reply += `*Real-time metrics refreshed directly from the workshop database.*`;
+            let reply = `**Today's Workshop Summary:**\n\n`;
+            reply += `| Activity | Count |\n`;
+            reply += `| :--- | :---: |\n`;
+            reply += `| **Completed Orders** | **${deliveredToday}** |\n`;
+            reply += `| **Actively Stitching** | **${preparingOrders}** |\n`;
+            reply += `| **In Queue Waiting** | **${pendingQueue}** |\n`;
+            reply += `| **New Orders Today** | **${todayOrders}** |\n`;
+            reply += `| **Active Machines** | **${activeMachines}/${machines.length}** |\n\n`;
+
+            reply += `*All workshop stations operating within scheduled store hours (10:00 AM – 8:00 PM).*`;
 
             return res.json({
                 success: true,
@@ -1644,7 +1620,7 @@ exports.verifyReceipt = async (req, res) => {
                     });
                     return res.json({
                         success: false,
-                        message: "This receipt was already used for an earlier order. Please upload the official GCash receipt screenshot you used to pay for this purchase! 🧵",
+                        message: "This receipt was already used for an earlier order. Please upload the official GCash receipt screenshot you used to pay for this purchase.",
                         flaggedReason: 'duplicate_image'
                     });
                 }
@@ -1962,7 +1938,7 @@ Output ONLY a JSON object:
         }
 
         const customerMessage = willAutoApproveToQueue
-            ? "Payment confirmed! We received your GCash payment and your order is now in the queue. 🧵"
+            ? "Payment confirmed! We received your GCash payment and your order is now in the queue."
             : (isHighValue && allChecksPassed
                 ? `Receipt received! Since this is a larger custom order (₱${numOrderTotal.toFixed(2)}), our team will quickly verify the transfer so our embroidery team can get to work right away.`
                 : (flaggedReason || "We received your receipt! Our team will quickly review your payment."));

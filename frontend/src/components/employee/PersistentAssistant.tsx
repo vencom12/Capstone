@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { API_BASE } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -419,43 +419,155 @@ export default function PersistentAssistant() {
     }
   };
 
+  const handleCustomAction = async (actionType: string) => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    if (actionType === 'create-acquisition') {
+      sendPromptText('Create acquisition and purchase requisition form for all low stock items and materials.');
+    } else if (actionType === 'download-pdf') {
+      try {
+        showToast('Preparing Requisition PDF...', 'info');
+        await api.download('/api/admin/inventory/shopping-list/pdf', `STITCH_OPT_RESTOCK_LIST_${dateStr}.pdf`);
+        showToast('Requisition PDF downloaded!', 'success');
+      } catch (e: any) {
+        showToast(e.message || 'Failed to download PDF', 'error');
+      }
+    } else if (actionType === 'download-revenue-pdf') {
+      try {
+        showToast('Preparing Daily Financial Report PDF...', 'info');
+        await api.download('/api/admin/reports/daily-financial/pdf', `DAILY_FINANCIAL_REPORT_${dateStr}.pdf`);
+        showToast('Daily Financial PDF downloaded!', 'success');
+      } catch (e: any) {
+        showToast(e.message || 'Failed to download Financial PDF', 'error');
+      }
+    } else if (actionType === 'download-png') {
+      try {
+        showToast('Preparing Restock Slip PNG...', 'info');
+        const invRes = await api.get<any[]>('/api/admin/inventory');
+        const lowItems = Array.isArray(invRes) ? invRes.filter(i => i.count <= (i.minThreshold || 5)) : [];
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        const rowH = 34;
+        const totalRows = Math.max(1, lowItems.length);
+        canvas.height = 240 + totalRows * rowH;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = '#1E293B';
+          ctx.fillRect(0, 0, canvas.width, 70);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('EDS TOWELS & CAPS — RESTOCK ORDER SLIP', canvas.width / 2, 35);
+          ctx.font = '12px sans-serif';
+          ctx.fillStyle = '#94A3B8';
+          ctx.fillText(`Ground Floor, Pacific Mall Lucena • ${new Date().toLocaleDateString()}`, canvas.width / 2, 55);
+
+          ctx.fillStyle = '#F1F5F9';
+          ctx.fillRect(20, 90, canvas.width - 40, 32);
+          ctx.fillStyle = '#334155';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('ITEM / MATERIAL', 35, 111);
+          ctx.textAlign = 'right';
+          ctx.fillText('STOCK LEFT', canvas.width - 140, 111);
+          ctx.fillText('ORDER QTY', canvas.width - 35, 111);
+
+          let curY = 145;
+          if (lowItems.length === 0) {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#64748B';
+            ctx.fillText('All workshop stockpiles are healthy.', canvas.width / 2, curY);
+          } else {
+            lowItems.forEach((it, idx) => {
+              if (idx % 2 === 1) {
+                ctx.fillStyle = '#F8FAFC';
+                ctx.fillRect(20, curY - 20, canvas.width - 40, rowH);
+              }
+              ctx.textAlign = 'left';
+              ctx.fillStyle = '#0F172A';
+              ctx.font = '600 13px sans-serif';
+              ctx.fillText(it.item.slice(0, 32), 35, curY);
+
+              ctx.textAlign = 'right';
+              ctx.fillStyle = '#64748B';
+              ctx.font = '12px sans-serif';
+              ctx.fillText(`${it.count} ${it.unit || 'units'}`, canvas.width - 140, curY);
+
+              const need = Math.max(5, (it.minThreshold || 10) * 2 - it.count);
+              ctx.fillStyle = '#059669';
+              ctx.font = 'bold 13px sans-serif';
+              ctx.fillText(`+${need} ${it.unit || 'units'}`, canvas.width - 35, curY);
+              curY += rowH;
+            });
+          }
+
+          curY += 20;
+          ctx.strokeStyle = '#E2E8F0';
+          ctx.strokeRect(20, curY, canvas.width - 40, 1);
+          curY += 25;
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#64748B';
+          ctx.font = '11px sans-serif';
+          ctx.fillText('Please confirm availability and delivery timeframe. Thank you!', 35, curY);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `EDS_RESTOCK_SLIP_${dateStr}.png`;
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast('Restock Slip PNG downloaded!', 'success');
+            }
+          }, 'image/png');
+        }
+      } catch (err: any) {
+        showToast('Failed to generate restock image', 'error');
+      }
+    }
+  };
+
   // Status Badge Highlighting helper
   const renderStatusBadges = (text: string): React.ReactNode => {
     const trimmed = text.trim();
     const upper = trimmed.toUpperCase();
 
     if (upper === 'LOW_STOCK' || upper === 'LOW STOCK' || upper === 'PARTIAL_STOCK' || upper === 'PARTIAL STOCK' || upper === 'DEPLETED') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Low Stock</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Healthy</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Healthy</span>;
     }
     if (upper === 'CRITICAL' || upper === 'CRITICAL_OUT' || upper === 'OUT OF STOCK') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">Critical Out</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Critical Out</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Delivered</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Delivered</span>;
     }
     if (['PREPARING ORDER', 'PREPARING', 'IN STITCHING'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Preparing</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Preparing</span>;
     }
     if (['IN QUEUE', 'QUEUE'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">In Queue</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">In Queue</span>;
     }
     if (['IN TRANSIT', 'TRANSIT'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">In Transit</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">In Transit</span>;
     }
     if (['RUNNING', 'ACTIVE'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">Running</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Running</span>;
     }
     if (['IDLE', 'STANDBY'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30">Idle</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Idle</span>;
     }
     if (['MAINTENANCE', 'OFFLINE'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Maintenance</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Maintenance</span>;
     }
     if (['PENDING_APPROVAL', 'PENDING APPROVAL', 'DRAFT'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Pending Approval</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Pending Approval</span>;
     }
     return text;
   };
@@ -481,7 +593,7 @@ export default function PersistentAssistant() {
         return (
           <code
             key={i}
-            className="bg-sky-500/10 text-sky-300 font-mono text-[0.74rem] px-1.5 py-0.5 rounded border border-sky-500/25 font-semibold"
+            className="bg-white/10 text-text-main font-mono text-[0.74rem] px-1.5 py-0.5 rounded border border-white/10 font-semibold"
           >
             {inner}
           </code>
@@ -518,7 +630,7 @@ export default function PersistentAssistant() {
               className="px-2 py-0.5 rounded text-[0.68rem] font-bold bg-white/10 hover:bg-white/20 text-text-main border border-white/10 transition-colors flex items-center gap-1 cursor-pointer"
             >
               {isCopied ? (
-                <span className="text-emerald-400 font-bold">✓ Copied!</span>
+                <span className="text-text-main font-bold">✓ Copied!</span>
               ) : (
                 <>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -530,7 +642,7 @@ export default function PersistentAssistant() {
               )}
             </button>
           </div>
-          <pre className="p-3 m-0 text-[0.76rem] font-mono leading-relaxed text-emerald-300 overflow-x-auto whitespace-pre selection:bg-emerald-500/30">
+          <pre className="p-3 m-0 text-[0.76rem] font-mono leading-relaxed text-text-main overflow-x-auto whitespace-pre selection:bg-white/20">
             {codeText}
           </pre>
         </div>
@@ -677,6 +789,27 @@ export default function PersistentAssistant() {
 
       if (!trimmed) continue;
 
+      // Interactive Action Buttons: [action:TYPE|LABEL]
+      const actionMatch = trimmed.match(/^\[action:([^\|]+)\|([^\]]+)\]$/);
+      if (actionMatch) {
+        if (currentList) flushList(elementKey++);
+        const actionType = actionMatch[1];
+        const actionLabel = actionMatch[2];
+        const isDownload = actionType.startsWith('download');
+        elements.push(
+          <div key={elementKey++} className="my-1.5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleCustomAction(actionType)}
+              className="w-full py-2 px-3.5 rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer border bg-white/10 hover:bg-white/20 text-text-main border-border-glass"
+            >
+              <span>{actionLabel}</span>
+            </button>
+          </div>
+        );
+        continue;
+      }
+
       elements.push(
         <p key={elementKey++} className="m-0 mb-1.5 last:mb-0 text-[0.82rem] leading-relaxed text-text-main">
           {renderTextInline(line)}
@@ -794,8 +927,8 @@ export default function PersistentAssistant() {
                   title={lastTokensUsed !== null ? `Last query used ${lastTokensUsed} tokens. Session total: ${sessionTokens.toLocaleString()} tokens` : 'Live session token consumption meter'}
                   className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[0.66rem] font-mono font-semibold bg-white/5 border border-border-glass text-text-dim whitespace-nowrap shrink-0 cursor-default"
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${sessionTokens === 0 ? 'bg-emerald-400' : 'bg-cyan-400 animate-pulse'}`} />
-                  <span>Tokens: <strong className={sessionTokens === 0 ? 'text-emerald-400 font-bold' : 'text-cyan-300 font-bold'}>{sessionTokens.toLocaleString()}</strong></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-text-dim/60" />
+                  <span>Tokens: <strong className="text-text-main font-bold">{sessionTokens.toLocaleString()}</strong></span>
                   {lastTokensUsed !== null && (
                     <span className="text-[0.6rem] text-text-dim/80">
                       ({lastTokensUsed === 0 ? '0 • Fast DB' : `+${lastTokensUsed}`})
@@ -847,7 +980,7 @@ export default function PersistentAssistant() {
                   <button
                     type="button"
                     onClick={() => scrollChips('right')}
-                    className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-500/60 shadow-sm flex items-center justify-center shrink-0 cursor-pointer transition-all animate-pulse z-10"
+                    className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-text-main border border-border-glass shadow-xs flex items-center justify-center shrink-0 cursor-pointer transition-all z-10"
                     title="More quick commands available (Click to scroll)"
                     aria-label="Scroll right for more commands"
                   >
@@ -875,8 +1008,12 @@ export default function PersistentAssistant() {
               ))}
               {isTyping && (
                 <div className="flex w-full justify-start">
-                  <div className="bg-white/5 text-text-dim rounded-xl rounded-bl-sm border border-border-glass p-2.5 text-[0.75rem] flex items-center gap-2 animate-pulse">
-                    <span>🧵</span>
+                  <div className="bg-white/5 text-text-dim rounded-xl rounded-bl-sm border border-border-glass p-2.5 text-[0.75rem] flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-text-dim animate-bounce" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-text-dim animate-bounce [animation-delay:0.2s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-text-dim animate-bounce [animation-delay:0.4s]" />
+                    </div>
                     <span>Querying workshop database and generating insights...</span>
                   </div>
                 </div>
@@ -947,7 +1084,10 @@ export default function PersistentAssistant() {
             </div>
             {logs.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center text-text-dim flex-1 gap-2 p-6">
-                <span className="text-xl">📋</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim/50">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
                 <p className="text-xs m-0">No automated database changes recorded in current session.</p>
               </div>
             ) : (

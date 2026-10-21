@@ -2,56 +2,19 @@ const prisma = require('./prisma');
 const socketUtil = require('./socketUtil');
 const { ACTIONS, ENTITIES } = require('./apiConstants');
 
+const { estimateArtisanProductionTime } = require('./pickupScheduler');
+
 /**
- * Estimates production time in minutes for a given order based on empirical shop data:
- * - Setup & hooping + 1st letter: 2.0 minutes (120 seconds).
- * - Anti-rush comfort buffer: +1.0 minute safety buffer so artisan never feels rushed.
- * - Total base for 1st letter with buffer: 3.0 minutes.
- * - Each proceeding letter: 30 seconds (0.5 minutes).
+ * Estimates production time in minutes for a given order based on artisan sewing machine speeds:
+ * - 12 seconds per letter (0.20 minutes / letter; a 5-letter name = 60s active stitching).
+ * - Standard single font & single size.
+ * - ~1.0 minute handling per item (0.6 min hooping + 0.4 min trim/pack).
+ * - Plain retail items (no monogram): 0.5 minutes inspection/pack.
  * @param {Object} order The order object to estimate
  * @returns {number} Estimated time in minutes
  */
 function estimateProductionTime(order) {
-    // 1. Extract total personalization character count
-    let letters = 1;
-    if (order.personalization && typeof order.personalization === 'object') {
-        const text = (order.personalization.text || '').replace(/\s+/g, '');
-        if (text.length > 0) letters = text.length;
-    } else if (typeof order.monogramText === 'string') {
-        const text = order.monogramText.replace(/\s+/g, '');
-        if (text.length > 0) letters = text.length;
-    } else if (order.items && Array.isArray(order.items)) {
-        let totalLetters = 0;
-        order.items.forEach(item => {
-            const itemText = item.personalization?.text || '';
-            totalLetters += itemText.replace(/\s+/g, '').length;
-        });
-        if (totalLetters > 0) letters = totalLetters;
-    }
-
-    // 2. Base formula:
-    // 1.5 mins setup/hooping + 1.0 min anti-rush buffer + (letters * 0.5 mins / 30 seconds)
-    // 1 letter: 2.5 + 0.5 = 3.0 mins (includes +1m peace-of-mind buffer)
-    // Each additional letter: +0.5 mins (30 seconds)
-    let baseTime = 2.5 + (letters * 0.5);
-
-    // 3. Minor garment framing adjustments
-    const design = (order.design || '').toLowerCase();
-    if (design.includes('cap') || design.includes('hat')) {
-        baseTime += 0.5; // Cap round-clamp hooping (+30s)
-    } else if (design.includes('hoodie') || design.includes('jacket')) {
-        baseTime += 1.0; // Thick garment alignment (+60s)
-    }
-
-    // 4. Quantity factor
-    let quantity = 1;
-    if (order.items && Array.isArray(order.items)) {
-        quantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-    } else if (typeof order.items === 'object' && order.items !== null) {
-        quantity = order.items.quantity || 1;
-    }
-
-    return Math.max(3, Math.ceil(baseTime * Math.max(1, quantity)));
+    return estimateArtisanProductionTime(order);
 }
 
 /**

@@ -369,31 +369,31 @@ export default function AiAttendant() {
     const upper = trimmed.toUpperCase();
     
     if (upper === 'LOW_STOCK' || upper === 'LOW STOCK') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Low Stock</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">{trimmed}</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">{trimmed}</span>;
     }
     if (upper === 'CRITICAL') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">Critical</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Critical</span>;
     }
     if (upper === 'WARNING') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Warning</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Warning</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Delivered</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Delivered</span>;
     }
     if (['PREPARING ORDER', 'PREPARING'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Preparing</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Preparing</span>;
     }
     if (upper === 'IN QUEUE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">In Queue</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">In Queue</span>;
     }
     if (['ORDER CANCELED', 'CANCELED', 'CANCELLED'].includes(upper)) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Canceled</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Canceled</span>;
     }
     if (upper === 'PENDING PAYMENT') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Pending Pay</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Pending Pay</span>;
     }
     
     return text;
@@ -413,7 +413,7 @@ export default function AiAttendant() {
       }
       if (part.startsWith('`') && part.endsWith('`')) {
         const inner = part.slice(1, -1);
-        return <code key={i} className="bg-white/15 px-1.5 py-0.5 rounded font-mono text-[0.75rem] text-[#818cf8] border border-white/5">{inner}</code>;
+        return <code key={i} className="bg-white/10 px-1.5 py-0.5 rounded font-mono text-[0.74rem] text-text-main border border-white/10 font-semibold">{inner}</code>;
       }
       return <span key={i}>{renderStatusBadges(part)}</span>;
     });

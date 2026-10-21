@@ -395,7 +395,9 @@ export default function DashboardOmniSearch({
                     className="w-full flex items-center justify-between p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-border-glass text-left cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm">🧵</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                        <path d="m12 2 10 6-10 6-10-6Z"/><path d="m2 12 10 6 10-6"/><path d="m2 17 10 6 10-6"/>
+                      </svg>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-text-main m-0 truncate">{mat.name}</p>
                         <p className="text-[0.65rem] text-text-dim m-0 capitalize truncate">
@@ -405,10 +407,10 @@ export default function DashboardOmniSearch({
                     </div>
                     <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                       isLow 
-                        ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
-                        : 'bg-white/10 text-text-dim border-border-glass'
+                        ? 'bg-white/15 text-text-main border-white/20' 
+                        : 'bg-white/5 text-text-dim border-border-glass'
                     }`}>
-                      {isLow ? `⚠️ Low: ${count} ${mat.unit || ''}` : `${count} ${mat.unit || ''}`}
+                      {isLow ? `Low: ${count} ${mat.unit || ''}` : `${count} ${mat.unit || ''}`}
                     </span>
                   </button>
                 );
@@ -442,7 +444,10 @@ export default function DashboardOmniSearch({
           {/* Empty fallback */}
           {searchResults.total === 0 && (
             <div className="p-4 text-center text-text-dim flex flex-col items-center gap-1.5">
-              <span className="text-lg">🔍</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim/50">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
               <p className="text-xs m-0">No direct matches for "{query}".</p>
               <button
                 type="button"

@@ -67,54 +67,54 @@ export default function GCashPayment({
   };
 
   return (
-    <div className="flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
+    <div className="flex flex-col gap-3 animate-[fadeIn_0.3s_ease-out]">
       {/* GCash Quick Transfer Info Card - Compact Side-by-Side Layout */}
-      <div className="bg-[#007df2]/10 border border-[#007df2]/30 p-3.5 rounded-xl flex flex-col gap-2.5">
+      <div className="bg-white/[0.03] border border-border-glass/60 p-2.5 sm:p-3 rounded-xl flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="bg-[#007df2] text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0">G</span>
-            <span className="text-[0.85rem] font-extrabold text-text-main">GCash Express Pay</span>
+            <span className="bg-[#007df2] text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[0.65rem] shrink-0">G</span>
+            <span className="text-[0.8rem] font-bold text-text-main">GCash Express Pay</span>
           </div>
           <button
             type="button"
             onClick={() => copyToClipboard(total.toFixed(2), 'amount')}
-            className="text-[0.72rem] bg-[#007df2]/20 hover:bg-[#007df2]/30 border border-[#007df2]/40 text-[#007df2] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0"
+            className="text-[0.68rem] bg-white/[0.05] hover:bg-white/[0.1] border border-border-glass/60 text-text-main font-semibold px-2 py-0.5 rounded-md transition-all cursor-pointer flex items-center gap-1 shrink-0"
           >
-            {copiedAmount ? '✓ Copied Total' : `Copy ₱${total.toFixed(2)}`}
+            {copiedAmount ? '✓ Copied' : `Copy ₱${total.toFixed(2)}`}
           </button>
         </div>
 
         {/* Compact 2-column: Account Info on Left, QR Code on Right */}
-        <div className="flex items-center gap-3 bg-bg-surface/80 p-2.5 rounded-xl border border-border-glass">
-          <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+        <div className="flex items-center gap-3 bg-bg-surface/80 p-2.5 rounded-lg border border-border-glass/50">
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
             <div>
-              <span className="text-[0.65rem] text-text-dim block uppercase tracking-wider font-semibold">GCash Number</span>
+              <span className="text-[0.62rem] text-text-dim block uppercase tracking-wider font-semibold">GCash Number</span>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[#007df2] font-black text-sm tracking-wide font-mono truncate">{displayAccountNo}</span>
+                <span className="text-text-main font-bold text-sm tracking-wide font-mono truncate">{displayAccountNo}</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(accountNo, 'number')}
-                  className="bg-primary hover:bg-primary/90 text-white font-bold px-2 py-0.5 rounded-md text-[0.68rem] transition-all cursor-pointer border border-primary/30 shadow-sm shrink-0"
+                  className="bg-white/10 hover:bg-white/20 text-white font-semibold px-2 py-0.5 rounded text-[0.65rem] transition-all cursor-pointer border border-white/20 shrink-0"
                 >
                   {copiedNumber ? '✓' : 'Copy'}
                 </button>
               </div>
             </div>
             <div className="border-t border-border-glass/40 pt-1">
-              <span className="text-[0.65rem] text-text-dim block uppercase tracking-wider font-semibold">Account Name</span>
-              <span className="text-text-main font-bold text-[0.75rem] truncate block">Eds Towels and Caps Embroidery</span>
+              <span className="text-[0.62rem] text-text-dim block uppercase tracking-wider font-semibold">Account Name</span>
+              <span className="text-text-main font-semibold text-[0.72rem] truncate block">Eds Towels &amp; Caps</span>
             </div>
           </div>
 
           {activeQrCodeUrl && (
             <div
               onClick={() => setShowQrModal(true)}
-              className="relative group cursor-pointer bg-white p-1 rounded-lg shadow-md border border-white/20 hover:scale-105 transition-all shrink-0"
+              className="relative group cursor-pointer bg-white p-1 rounded-lg shadow-sm border border-white/20 hover:scale-105 transition-all shrink-0"
               title="Click to enlarge QR"
             >
-              <img src={activeQrCodeUrl} alt="GCash QR Code" className="w-20 h-20 sm:w-22 sm:h-22 object-contain rounded" />
+              <img src={activeQrCodeUrl} alt="GCash QR Code" className="w-16 h-16 sm:w-18 sm:h-18 object-contain rounded" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
-                <span className="text-white font-bold text-[0.6rem] bg-black/70 px-1.5 py-0.5 rounded">Enlarge</span>
+                <span className="text-white font-bold text-[0.55rem] bg-black/70 px-1 py-0.5 rounded">Enlarge</span>
               </div>
             </div>
           )}
@@ -122,25 +122,25 @@ export default function GCashPayment({
       </div>
 
       {/* Upload Zone */}
-      <div className="flex flex-col gap-2">
-        <h4 className="text-[0.85rem] font-bold m-0 flex items-center gap-2 text-text-main">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+      <div className="flex flex-col gap-1.5">
+        <h4 className="text-[0.72rem] font-bold m-0 flex items-center gap-1.5 text-text-main uppercase tracking-wider">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
           Upload GCash Receipt Screenshot
         </h4>
         <div 
           onClick={() => document.getElementById('gcash-upload')?.click()}
-          className="border-2 border-dashed border border-primary/40 rounded-xl p-4 text-center cursor-pointer hover:border-[#007df2] transition-all bg-black/20 hover:bg-[#007df2]/5"
+          className="border border-dashed border-border-glass hover:border-white/40 rounded-xl p-3 text-center cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.03]"
         >
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
           {receiptFile ? (
             <div className="flex items-center justify-center gap-2">
-              <span className="text-[0.85rem] text-[#007df2] font-bold">{receiptFile.name}</span>
+              <span className="text-[0.78rem] text-text-main font-bold truncate max-w-[200px]">{receiptFile.name}</span>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-1">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-              <span className="text-[0.8rem] text-text-main font-semibold">Click or tap to upload receipt</span>
-              <span className="text-[0.7rem] text-text-dim">Supports JPG, PNG, WEBP</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+              <span className="text-[0.75rem] text-text-main font-semibold">Click or tap to upload receipt</span>
+              <span className="text-[0.62rem] text-text-dim">Supports JPG, PNG, WEBP</span>
             </div>
           )}
         </div>
@@ -148,21 +148,21 @@ export default function GCashPayment({
 
       {/* Receipt Processing Status */}
       {analyzing && (
-        <div className="flex items-center gap-3 bg-[#007df2]/15 border border-[#007df2] p-3.5 rounded-xl animate-pulse">
-          <div className="w-3 h-3 bg-[#007df2] rounded-full animate-ping"></div>
+        <div className="flex items-center gap-2.5 bg-white/[0.04] border border-border-glass p-2.5 rounded-xl animate-pulse">
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-ping"></div>
           <div className="flex flex-col">
-            <span className="text-[0.8rem] text-text-main font-bold">Checking your receipt...</span>
-            <span className="text-[0.7rem] text-text-dim">Confirming your GCash payment details</span>
+            <span className="text-[0.75rem] text-text-main font-bold">Checking your receipt...</span>
+            <span className="text-[0.65rem] text-text-dim">Confirming payment details</span>
           </div>
         </div>
       )}
 
       {/* Verification Notice or Friendly Encouragement Box */}
       {aiVerificationResult && !analyzing && (
-        <div className={`flex flex-col gap-2 p-3.5 rounded-xl text-[0.78rem] font-medium border ${
+        <div className={`flex flex-col gap-2 p-2.5 rounded-xl text-[0.72rem] font-medium border ${
           verified 
-            ? 'bg-success/10 border-success/30 text-success' 
-            : 'bg-warning/10 border-warning/30 text-warning'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
         }`}>
           <span className="leading-relaxed font-bold">{aiVerificationResult}</span>
           
@@ -217,16 +217,16 @@ export default function GCashPayment({
             type="button"
             onClick={onBypassPayment}
             disabled={isBypassing || analyzing}
-            className="text-[0.72rem] text-amber-400/80 hover:text-amber-300 font-semibold cursor-pointer bg-transparent border-none p-1 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            className="text-[0.72rem] text-text-dim hover:text-text-main font-medium cursor-pointer bg-transparent border-none p-1 flex items-center gap-1.5 transition-colors disabled:opacity-50"
             title="Instant test mode bypass for development"
           >
             {isBypassing ? (
               <>
-                <div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-text-dim border-t-transparent rounded-full animate-spin" />
                 <span>Bypassing GCash &amp; Placing Order...</span>
               </>
             ) : (
-              <span>⚡ Test Mode: 1-Click Payment Bypass</span>
+              <span>Test Mode: 1-Click Payment Bypass</span>
             )}
           </button>
         </div>

@@ -15,6 +15,7 @@ interface TrackedOrder {
   stage: 'queue' | 'stitching' | 'ready' | 'completed';
   ordersAhead: number;
   estimatedMinutesLeft: number;
+  readyLabel?: string;
   totalAmount: number;
   paymentStatus: string;
   createdAt: string;
@@ -192,8 +193,11 @@ function OrderTrackerContent() {
   if (!rawId) {
     return (
       <main className="flex-1 p-6 max-w-sm w-full mx-auto flex flex-col items-center justify-center text-center gap-6">
-        <div className="w-16 h-16 rounded-xl bg-red-600/10 border border-red-500/30 flex items-center justify-center text-3xl shadow-lg shadow-red-950/50">
-          🎟️
+        <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main shadow-lg">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-main">
+            <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
+            <path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>
+          </svg>
         </div>
 
         <div>
@@ -243,8 +247,10 @@ function OrderTrackerContent() {
   if (error || !order) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-14 h-14 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-2xl mb-4">
-          🔍
+        <div className="w-14 h-14 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
         </div>
         <h2 className="text-lg font-bold text-text-main mb-1">Ticket Not Found</h2>
         <p className="text-xs text-text-dim max-w-xs mb-6">
@@ -295,17 +301,17 @@ function OrderTrackerContent() {
           </div>
 
           <div
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border flex items-center gap-1.5 shadow-sm ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 shadow-xs ${
               isReady
-                ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
+                ? 'bg-white/20 text-text-main border-white/30'
                 : isStitching
-                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                ? 'bg-white/15 text-text-main border-white/20'
                 : isCompleted
                 ? 'bg-white/10 text-text-dim border-border-glass'
-                : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                : 'bg-white/10 text-text-main border-border-glass'
             }`}
           >
-            <span>{isReady ? '🟢' : isStitching ? '🔵' : isCompleted ? '✓' : '🟡'}</span>
+            <span className="w-2 h-2 rounded-full bg-text-main inline-block" />
             <span>
               {isReady
                 ? 'READY FOR CLAIM'
@@ -327,7 +333,7 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isQueue || isStitching || isReady || isCompleted
-                  ? 'bg-amber-500 text-white shadow-sm'
+                  ? 'bg-white/20 text-text-main border border-white/30 shadow-xs'
                   : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
@@ -341,7 +347,7 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isStitching || isReady || isCompleted
-                  ? 'bg-blue-500 text-white shadow-sm'
+                  ? 'bg-white/20 text-text-main border border-white/30 shadow-xs'
                   : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
@@ -355,7 +361,7 @@ function OrderTrackerContent() {
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                 isReady || isCompleted
-                  ? 'bg-emerald-500 text-white shadow-sm'
+                  ? 'bg-white/20 text-text-main border border-white/30 shadow-xs'
                   : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
@@ -367,9 +373,9 @@ function OrderTrackerContent() {
 
         {/* Turnaround Status Notice */}
         {isReady ? (
-          <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-3.5 text-center">
-            <div className="text-sm font-black text-emerald-500 dark:text-emerald-300">
-              🎉 Your order is ready for pickup!
+          <div className="bg-white/10 border border-border-glass rounded-xl p-3.5 text-center">
+            <div className="text-sm font-bold text-text-main">
+              Your order is ready for pickup!
             </div>
             <p className="text-xs text-text-dim mt-1 leading-relaxed">
               Please proceed to the counter and show your claim code{' '}
@@ -377,25 +383,25 @@ function OrderTrackerContent() {
             </p>
           </div>
         ) : isStitching ? (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 text-center">
-            <span className="text-xs text-blue-500 dark:text-blue-300 font-bold block">
-              🧵 Currently stitching on the machine
+          <div className="bg-white/5 border border-border-glass rounded-xl p-3 text-center">
+            <span className="text-xs text-text-main font-bold block">
+              Currently stitching on the machine
             </span>
             <span className="text-[11px] text-text-dim">
-              Estimated completion in <strong>~{order.estimatedMinutesLeft} minutes</strong>.
+              Estimated ready: <strong className="text-text-main">{order.readyLabel || `in ~${order.estimatedMinutesLeft} minutes`}</strong> (~{order.estimatedMinutesLeft} min remaining).
             </span>
           </div>
         ) : isCompleted ? (
           <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-center text-xs text-text-dim">
-            ✓ Order collected. Thank you for your business!
+            Order collected. Thank you for your business!
           </div>
         ) : (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-            <span className="text-xs text-amber-500 dark:text-amber-400 font-bold block">
-              ⏳ In machine queue ({order.ordersAhead} orders ahead)
+          <div className="bg-white/5 border border-border-glass rounded-xl p-3 text-center">
+            <span className="text-xs text-text-main font-bold block">
+              In machine queue ({order.ordersAhead} orders ahead)
             </span>
             <span className="text-[11px] text-text-dim">
-              Estimated wait time: <strong>~{order.estimatedMinutesLeft} minutes</strong>.
+              Estimated pickup: <strong className="text-text-main">{order.readyLabel || `in ~${order.estimatedMinutesLeft} minutes`}</strong> (~{order.estimatedMinutesLeft} min wait).
             </span>
           </div>
         )}
@@ -415,7 +421,7 @@ function OrderTrackerContent() {
         {order.monogramText && (
           <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 flex items-center justify-between text-xs">
             <span className="text-text-dim text-[11px]">Embroidered Text:</span>
-            <span className="font-mono font-black text-amber-300 text-sm tracking-wider uppercase">
+            <span className="font-mono font-bold text-text-main text-sm tracking-wider uppercase">
               "{order.monogramText}"
             </span>
           </div>
@@ -428,7 +434,7 @@ function OrderTrackerContent() {
 
         <div className="flex justify-between items-center text-xs">
           <span className="text-text-dim">Total Paid:</span>
-          <span className="font-mono font-bold text-emerald-500">
+          <span className="font-mono font-bold text-text-main">
             ₱{order.totalAmount?.toFixed(2)} (PAID)
           </span>
         </div>
@@ -436,7 +442,7 @@ function OrderTrackerContent() {
 
       {/* Customer Mall Tip */}
       <div className="mt-auto bg-bg-surface border border-border-glass rounded-xl p-4 text-xs text-text-dim text-center leading-relaxed">
-        💡 <strong>Customer Tip:</strong> Feel free to browse around Pacific Mall while you wait. This tracker automatically updates and plays a chime once your order is ready for pickup!
+        <strong>Customer Tip:</strong> Feel free to browse around Pacific Mall while you wait. This tracker automatically updates and plays a chime once your order is ready for pickup!
       </div>
     </main>
   );

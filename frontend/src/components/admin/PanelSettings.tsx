@@ -52,6 +52,15 @@ export default function PanelSettings({
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
 
+  // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
+  const [artisanSecondsPerLetter, setArtisanSecondsPerLetter] = useState<number>(12.0);
+  const [artisanHandlingMinutes, setArtisanHandlingMinutes] = useState<number>(1.0);
+  const [artisanCapOffsetMinutes, setArtisanCapOffsetMinutes] = useState<number>(0.5);
+  const [artisanDailyMinutes, setArtisanDailyMinutes] = useState<number>(500.0);
+  const [expressLanePercent, setExpressLanePercent] = useState<number>(35.0);
+  const [efficiencyFactor, setEfficiencyFactor] = useState<number>(85);
+  const [isSavingArtisan, setIsSavingArtisan] = useState(false);
+
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingBiz, setIsSavingBiz] = useState(false);
@@ -90,6 +99,12 @@ export default function PanelSettings({
         if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
         if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
         if (res.autoReplyReviews !== undefined) setAutoReplyReviews(!!res.autoReplyReviews);
+        if (res.artisanSecondsPerLetter !== undefined) setArtisanSecondsPerLetter(res.artisanSecondsPerLetter);
+        if (res.artisanHandlingMinutes !== undefined) setArtisanHandlingMinutes(res.artisanHandlingMinutes);
+        if (res.artisanCapOffsetMinutes !== undefined) setArtisanCapOffsetMinutes(res.artisanCapOffsetMinutes);
+        if (res.artisanDailyMinutes !== undefined) setArtisanDailyMinutes(res.artisanDailyMinutes);
+        if (res.expressLanePercent !== undefined) setExpressLanePercent(res.expressLanePercent);
+        if (res.efficiencyFactor !== undefined) setEfficiencyFactor(Math.round(res.efficiencyFactor * 100));
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -152,6 +167,37 @@ export default function PanelSettings({
       setIsSavingBiz(false);
     }
   };
+
+  const handleSaveArtisanSettings = async () => {
+    setIsSavingArtisan(true);
+    try {
+      await api.put('/api/admin/settings', {
+        artisanSecondsPerLetter: Number(artisanSecondsPerLetter),
+        artisanHandlingMinutes: Number(artisanHandlingMinutes),
+        artisanCapOffsetMinutes: Number(artisanCapOffsetMinutes),
+        artisanDailyMinutes: Number(artisanDailyMinutes),
+        expressLanePercent: Number(expressLanePercent),
+        efficiencyFactor: Number(efficiencyFactor) / 100.0
+      });
+      showToast('Artisan workshop calibration updated!', 'success');
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to save calibration', 'error');
+    } finally {
+      setIsSavingArtisan(false);
+    }
+  };
+
+  const handleResetArtisanSettings = () => {
+    setArtisanSecondsPerLetter(12.0);
+    setArtisanHandlingMinutes(1.0);
+    setArtisanCapOffsetMinutes(0.5);
+    setArtisanDailyMinutes(500.0);
+    setExpressLanePercent(35.0);
+    setEfficiencyFactor(85);
+    showToast('Calibration parameters reset to standard defaults. Click Save to persist.', 'info');
+  };
+
 
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -720,6 +766,197 @@ export default function PanelSettings({
                   </div>
                 </div>
               </div>
+
+              {/* Artisan Workshop & Capacity Calibration Card */}
+              <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col gap-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border-glass">
+                  <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 font-bold text-lg shrink-0">
+                    🪡
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold m-0 text-text-main">Artisan Workshop &amp; Capacity Calibration</h3>
+                    <p className="text-xs text-text-dim m-0 mt-0.5">
+                      Fine-tune classic manual sewing speeds, hooping overhead, and daily capacity allocation for Pacific Mall Lucena.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 1: Machine Speed & Piece Offsets */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim mb-3">
+                    1. Manual Stitching Speeds &amp; Piece Handling Offsets
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Seconds per Letter */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Speed per Letter</span>
+                        <span className="text-[10px] text-text-dim font-mono">sec / char</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        max="60"
+                        value={artisanSecondsPerLetter}
+                        onChange={(e) => setArtisanSecondsPerLetter(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Standard free-motion needle rate. Default: <strong>12.0s</strong> (~5 letters / min).
+                      </span>
+                    </div>
+
+                    {/* Handling Overhead */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Handling Overhead</span>
+                        <span className="text-[10px] text-text-dim font-mono">min / piece</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        max="10"
+                        value={artisanHandlingMinutes}
+                        onChange={(e) => setArtisanHandlingMinutes(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Fabric hooping, stabilizer mounting, trimming &amp; folding. Default: <strong>1.0 min</strong>.
+                      </span>
+                    </div>
+
+                    {/* Cap Frame Offset */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Cap / Hat Extra Offset</span>
+                        <span className="text-[10px] text-text-dim font-mono">+min / cap</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="5"
+                        value={artisanCapOffsetMinutes}
+                        onChange={(e) => setArtisanCapOffsetMinutes(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Curvature alignment &amp; clamp tensioning for structured caps. Default: <strong>+0.5 min</strong>.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Daily Capacity & Lane Split */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim mb-3">
+                    2. Daily Capacity &amp; Express vs. Bulk Allocation
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Usable Minutes */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Daily Usable Capacity</span>
+                        <span className="text-[10px] text-text-dim font-mono">min / day</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="10"
+                        min="60"
+                        max="1200"
+                        value={artisanDailyMinutes}
+                        onChange={(e) => setArtisanDailyMinutes(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Store hours (10AM–8PM) minus lunch &amp; artisan breaks. Default: <strong>500 min</strong>.
+                      </span>
+                    </div>
+
+                    {/* Express Lane Share */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Express Lane Share</span>
+                        <span className="text-[10px] text-text-dim font-mono">% of day</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="5"
+                        max="90"
+                        value={expressLanePercent}
+                        onChange={(e) => setExpressLanePercent(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Reserved strictly for 1–3 item gifts &amp; mall walk-in patrons. Default: <strong>35%</strong> (~175 min).
+                      </span>
+                    </div>
+
+                    {/* Efficiency Factor */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Artisan Efficiency</span>
+                        <span className="text-[10px] text-text-dim font-mono">% speed</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="20"
+                        max="100"
+                        value={efficiencyFactor}
+                        onChange={(e) => setEfficiencyFactor(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Accounts for bobbin rewinds, thread changes &amp; human pacing. Default: <strong>85%</strong>.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Calculation Summary Bar */}
+                <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-text-main flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-teal-400 font-bold">✓ Active Calibration Model:</span>
+                    <span className="text-text-dim">
+                      {artisanDailyMinutes} min/day budget &bull;{' '}
+                      <strong className="text-text-main">{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} min</strong> Express &bull;{' '}
+                      <strong className="text-text-main">{Math.round(artisanDailyMinutes * (1 - expressLanePercent / 100))} min</strong> Bulk Amortization &bull;{' '}
+                      ~{(artisanHandlingMinutes + (5 * (artisanSecondsPerLetter / 60))).toFixed(1)}m per 5-letter towel
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-border-glass">
+                  <button
+                    type="button"
+                    onClick={handleResetArtisanSettings}
+                    disabled={isSavingArtisan}
+                    className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                  >
+                    Reset Defaults
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveArtisanSettings}
+                    disabled={isSavingArtisan}
+                    className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
+                  >
+                    {isSavingArtisan ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                        Saving Calibration...
+                      </>
+                    ) : (
+                      'Save Workshop Calibration'
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -895,7 +1132,7 @@ export default function PanelSettings({
                   {/* Smart Templates Preview */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
-                      <span>⚡</span> Star-Calibrated Response Tiers:
+                      Star-Calibrated Response Tiers:
                     </span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">

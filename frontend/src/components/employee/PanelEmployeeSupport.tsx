@@ -481,7 +481,9 @@ export default function PanelEmployeeSupport() {
           <div className="p-14 text-center text-text-dim text-xs">Loading customer reviews...</div>
         ) : feedbacks.length === 0 ? (
           <div className="p-14 text-center text-text-dim text-xs flex flex-col items-center justify-center gap-2">
-            <span className="text-2xl">💬</span>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim/50">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
             <p className="m-0 font-medium">No customer reviews found matching your filters.</p>
             {(ratingFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
               <button
@@ -588,7 +590,7 @@ export default function PanelEmployeeSupport() {
                       <button
                         type="button"
                         onClick={() => handleQuickMarkReviewed(item)}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-semibold cursor-pointer transition-all flex items-center gap-1"
                         title="1-Click Mark Reviewed"
                       >
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -603,10 +605,9 @@ export default function PanelEmployeeSupport() {
                       <button
                         type="button"
                         onClick={() => handleOneClickAutoReply(item)}
-                        className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-semibold cursor-pointer transition-all flex items-center gap-1"
                         title={`1-Click publish star-calibrated reply for ${item.rating}★ review`}
                       >
-                        <span>⚡</span>
                         <span>Quick Reply</span>
                       </button>
                     )}
@@ -775,10 +776,10 @@ export default function PanelEmployeeSupport() {
             <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-border-glass">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="text-amber-400">⚡</span> Star-Calibrated Smart Templates:
+                  Star-Calibrated Smart Templates:
                 </span>
                 <span className="text-[10px] text-text-dim">
-                  Review Rating: <strong className="text-amber-400">{replyTarget.rating}★</strong>
+                  Review Rating: <strong className="text-text-main">{replyTarget.rating}★</strong>
                 </span>
               </div>
 

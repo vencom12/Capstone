@@ -1239,6 +1239,90 @@ exports.downloadShoppingListPdf = async (req, res) => {
     }
 };
 
+exports.downloadDailyFinancialPdf = async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const todayOrders = await prisma.order.findMany({
+            where: { createdAt: { gte: startOfToday } },
+            select: { id: true, orderId: true, totalAmount: true, status: true, paymentStatus: true, client: true, items: true }
+        });
+
+        const grossRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const paidOrders = todayOrders.filter(o => (o.paymentStatus || '').toLowerCase() === 'paid');
+        const paidRevenue = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+        let totalGarments = 0;
+        todayOrders.forEach(o => {
+            if (Array.isArray(o.items)) {
+                o.items.forEach(it => { totalGarments += (it.quantity || 1); });
+            } else {
+                totalGarments += 1;
+            }
+        });
+
+        const dailyRent = 650.00; // Pacific Mall Kiosk Pro-rated Rent
+        const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
+        const totalExpenses = dailyRent + materialsCost;
+        const netProfit = paidRevenue - totalExpenses;
+
+        const doc = new PDFDocument({ size: [300, 380], margin: 15 });
+        const dateStr = new Date().toISOString().split('T')[0];
+        const isInline = req.query.inline === 'true' || req.query.view === 'inline';
+        const disposition = isInline ? 'inline' : 'attachment';
+
+        res.setHeader('Content-disposition', `${disposition}; filename=DAILY_FINANCIAL_${dateStr}.pdf`);
+        res.setHeader('Content-type', 'application/pdf');
+
+        doc.pipe(res);
+
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+
+        doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });
+        doc.font('Helvetica').fontSize(8).text('DAILY FINANCIAL & EXPENSES REPORT', { align: 'center' });
+        doc.font('Helvetica').fontSize(7).text(`Date: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, { align: 'center' });
+        doc.moveDown(0.3);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.4);
+
+        doc.font('Courier-Bold').fontSize(8);
+        doc.text('CATEGORY'.padEnd(20) + 'AMOUNT'.padStart(16), { align: 'center' });
+        doc.font('Courier').fontSize(8);
+        doc.moveDown(0.3);
+
+        doc.text('Sales Collected'.padEnd(20) + `P${paidRevenue.toFixed(2)}`.padStart(16), { align: 'center' });
+        doc.text('Shop Rent (Daily)'.padEnd(20) + `-P${dailyRent.toFixed(2)}`.padStart(16), { align: 'center' });
+        doc.text('Materials Cost'.padEnd(20) + `-P${materialsCost.toFixed(2)}`.padStart(16), { align: 'center' });
+
+        doc.moveDown(0.3);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.moveDown(0.3);
+
+        doc.font('Courier-Bold').fontSize(9);
+        const netLabel = netProfit >= 0 ? 'NET PROFIT' : 'NET LOSS';
+        doc.text(`${netLabel}`.padEnd(18) + `P${netProfit.toFixed(2)}`.padStart(18), { align: 'center' });
+
+        doc.moveDown(0.5);
+        doc.font('Helvetica').fontSize(7.5);
+        doc.text(`• Total Orders Today: ${todayOrders.length} orders (${paidOrders.length} paid)`, { align: 'left', indent: 10 });
+        doc.text(`• Total Garments Produced: ${totalGarments} pcs`, { align: 'left', indent: 10 });
+        doc.text(`• Operating Hours: 10:00 AM - 8:00 PM (15m lunch)`, { align: 'left', indent: 10 });
+        doc.text(`• Location: Ground Floor, Pacific Mall Lucena`, { align: 'left', indent: 10 });
+
+        doc.moveDown(0.5);
+        doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
+        doc.font('Helvetica-Oblique').fontSize(7).text('Official Daily Workshop Statement', { align: 'center' });
+        doc.end();
+
+    } catch (err) {
+        console.error('downloadDailyFinancialPdf error:', err);
+        res.status(500).send('Error generating financial PDF');
+    }
+};
+
 exports.uploadBusinessLogo = async (req, res) => {
     try {
         if (!req.file) {

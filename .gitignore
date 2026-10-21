@@ -43,3 +43,4 @@ development/dev_routes.js
 *.pid
 *.traineddata
 ~$*
+scratch/

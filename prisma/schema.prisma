@@ -7,6 +7,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   extensions = [vector]
 }
 
@@ -103,11 +104,13 @@ model Order {
   dueDate       DateTime? // For AI Queuing (due date/time)
 
   // Business Solutions Fields
-  isByog             Boolean @default(false) // Bring Your Own Garment
-  waiverSigned       Boolean @default(false) // Legal waiver
-  giftPackaging      Boolean @default(false) // Premium upsell
-  calligraphyMessage String? // Handwritten note
-  personalization    Json? // Custom cursive data { text, font, color }
+  isByog             Boolean   @default(false) // Bring Your Own Garment
+  waiverSigned       Boolean   @default(false) // Legal waiver
+  garmentsReceivedAt DateTime? // Physical counter drop-off timestamp for BYOG
+  garmentsReceivedBy String?   // Staff username/ID who accepted garments
+  giftPackaging      Boolean   @default(false) // Premium upsell
+  calligraphyMessage String?   // Handwritten note
+  personalization    Json?     // Custom cursive data { text, font, color }
 
   date DateTime @default(now())
 
@@ -239,6 +242,14 @@ model SystemSettings {
   businessWebsite String @default("www.stitch-opt.com")
   businessLogoUrl String?
   gcashQrCodeUrl  String?
+
+  // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
+  artisanSecondsPerLetter Float   @default(12.0)
+  artisanHandlingMinutes  Float   @default(1.0)
+  artisanCapOffsetMinutes Float   @default(0.5)
+  artisanDailyMinutes     Float   @default(500.0)
+  expressLanePercent      Float   @default(35.0)
+  efficiencyFactor        Float   @default(0.85)
 }
 
 model GlobalAuditLog {

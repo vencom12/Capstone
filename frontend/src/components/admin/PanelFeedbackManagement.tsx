@@ -636,10 +636,10 @@ export default function PanelFeedbackManagement() {
               metrics.sentimentHighlights.map((sh, idx) => (
                 <div
                   key={idx}
-                  className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-cyan-500/20 hover:border-cyan-500/40 flex items-center gap-2 shadow-xs transition-colors"
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-border-glass hover:border-white/20 flex items-center gap-2 shadow-xs transition-colors"
                 >
-                  <span className="text-cyan-300 font-semibold text-xs">{sh.tag}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-200 text-[10px] font-mono font-bold">
+                  <span className="text-text-main font-semibold text-xs">{sh.tag}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-white/10 text-text-dim text-[10px] font-mono font-bold">
                     {sh.count}
                   </span>
                 </div>
@@ -842,9 +842,9 @@ export default function PanelFeedbackManagement() {
                         {highlights.map((h, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[0.65rem] font-medium"
+                            className="px-2 py-0.5 rounded-md bg-white/10 border border-border-glass text-text-main text-[0.65rem] font-medium"
                           >
-                            ✨ {h}
+                            {h}
                           </span>
                         ))}
                       </div>
@@ -920,10 +920,9 @@ export default function PanelFeedbackManagement() {
                       <button
                         type="button"
                         onClick={() => handleOneClickAutoReply(f)}
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-border-glass text-xs font-semibold cursor-pointer transition-all flex items-center gap-1 shrink-0"
                         title={`1-Click publish star-calibrated reply for ${f.rating}★ review`}
                       >
-                        <span>⚡</span>
                         <span>Quick Reply</span>
                       </button>
                     )}
@@ -1046,10 +1045,10 @@ export default function PanelFeedbackManagement() {
             <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-border-glass">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="text-amber-400">⚡</span> Star-Calibrated Smart Templates:
+                  Star-Calibrated Smart Templates:
                 </span>
                 <span className="text-[10px] text-text-dim">
-                  Review Rating: <strong className="text-amber-400">{replyTarget.rating}★</strong>
+                  Review Rating: <strong className="text-text-main">{replyTarget.rating}★</strong>
                 </span>
               </div>
 

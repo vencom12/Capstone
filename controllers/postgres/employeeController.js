@@ -158,3 +158,76 @@ exports.toggleShift = async (req, res) => {
         res.status(500).json({ message: 'Server error toggling shift' });
     }
 };
+
+/**
+ * Marks physical client garments as received at the Pacific Mall kiosk counter.
+ * This officially activates the production schedule and due date for BYOG orders.
+ */
+exports.receiveGarments = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const username = req.user?.username || 'Staff';
+
+        // Support lookup by either database UUID (id) or human orderId
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [
+                    { id: orderId },
+                    { orderId: orderId }
+                ]
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const now = new Date();
+        const { calculatePickupSchedule, estimateArtisanProductionTime } = require('../../utils/pickupScheduler');
+        
+        // Fetch calibration settings
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const calibration = settings ? {
+            secondsPerLetter: settings.artisanSecondsPerLetter,
+            handlingMinutes: settings.artisanHandlingMinutes,
+            capOffsetMinutes: settings.artisanCapOffsetMinutes
+        } : {};
+
+        const estMinutes = order.estimatedTime || estimateArtisanProductionTime(order, calibration);
+        const schedule = calculatePickupSchedule({
+            orderDurationMinutes: estMinutes,
+            startTime: now,
+            isExpress: !order.isRush ? (Array.isArray(order.items) && order.items.length <= 3) : true,
+            calibration
+        });
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+                garmentsReceivedAt: now,
+                garmentsReceivedBy: username,
+                status: 'In Queue',
+                progress: 15,
+                dueDate: schedule.estimatedReadyDate
+            },
+            include: { transaction: true }
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        res.json({
+            success: true,
+            order: updatedOrder,
+            readyLabel: schedule.readyLabel,
+            message: `Garments received. Target pick-up: ${schedule.readyLabel}`
+        });
+    } catch (err) {
+        console.error('Error receiving garments:', err);
+        res.status(500).json({ message: 'Error marking garments as received' });
+    }
+};
+

@@ -390,6 +390,17 @@ export default function EmployeePage() {
     }
   };
 
+  const handleReceiveGarments = async (order: any) => {
+    try {
+      const orderId = order.id || order.orderId;
+      const res: any = await api.patch(`/api/employee/orders/${orderId}/garments-received`, {});
+      showToast(res?.message || `Garments received for Order #${order.orderId}!`, 'success');
+      fetchEmployeeData();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to record garments received', 'error');
+    }
+  };
+
   const handleBatchStatusUpdate = async () => {
     if (selectedOrderIds.length === 0) {
       showToast('No orders selected for batch update', 'error');
@@ -570,8 +581,8 @@ export default function EmployeePage() {
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <span className="text-xs font-bold px-3 py-1 rounded-xl border flex items-center gap-1.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                          <span>🏪 Pacific Mall Counter Pickup</span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-xl border flex items-center gap-1.5 bg-white/10 text-text-main border-border-glass">
+                          <span>Pacific Mall Counter Pickup</span>
                         </span>
                         <span className="text-xs font-mono font-bold bg-white/5 border border-border-glass px-2.5 py-1 rounded-xl text-text-dim">
                           Priority {score.toFixed(0)}
@@ -641,9 +652,11 @@ export default function EmployeePage() {
                     <div className="pt-2 border-t border-border-glass flex flex-wrap sm:flex-nowrap gap-2.5">
                       <button
                         onClick={() => advanceOrderStatus(activeStitchingOrder, 'Ready For Pick Up', 100)}
-                        className="flex-1 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 px-4 rounded-xl bg-primary hover:bg-primary-light active:scale-[0.99] text-white font-bold text-sm transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <span>✅</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
                         <span>Complete Stitching — Ready for Counter Pickup (100%)</span>
                       </button>
 
@@ -653,7 +666,10 @@ export default function EmployeePage() {
                         title="Print 80mm thermal slip to attach to garment bag"
                         className="py-3.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-border-glass active:scale-[0.99] text-text-main font-bold text-xs sm:text-sm transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 shrink-0"
                       >
-                        <span>🏷️</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
+                          <circle cx="7" cy="7" r="1.5"/>
+                        </svg>
                         <span>Print Bag Slip</span>
                       </button>
                     </div>
@@ -661,8 +677,11 @@ export default function EmployeePage() {
                 );
               })() : (
                 <div className="glass-card p-8 rounded-2xl border border-dashed border-border-glass text-center flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold border border-primary/20">
-                    🪡
+                  <div className="w-12 h-12 rounded-full bg-white/5 text-text-dim flex items-center justify-center border border-border-glass">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M12 2v7m0 6v7m-7-8h7m6 0h7"/>
+                    </svg>
                   </div>
                   <h3 className="text-base font-bold text-text-main m-0">Embroidery Machine Available (Idle)</h3>
                   <p className="text-xs text-text-dim m-0 max-w-md">
@@ -700,9 +719,20 @@ export default function EmployeePage() {
                         <div>
                           {/* Card Header: Rank + Claim Stub */}
                           <div className="flex justify-between items-start gap-2">
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                              #{idx + 1} Next in Queue
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                #{idx + 1} Next in Queue
+                              </span>
+                              {order.isByog && (
+                                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${
+                                  order.garmentsReceivedAt
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                                }`}>
+                                  {order.garmentsReceivedAt ? 'BYOG • In Hand' : 'BYOG • Awaiting Garment Drop-off'}
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] font-mono font-bold text-text-dim">
                               Pri: {score.toFixed(0)}
                             </span>
@@ -739,19 +769,30 @@ export default function EmployeePage() {
                           </div>
 
                           <div className="flex items-center justify-between text-[11px] text-text-dim mt-2">
-                            <span className="text-emerald-400/90 font-medium">🏪 Counter Pickup</span>
+                            <span className="text-text-main font-medium">Counter Pickup</span>
                             {order.estimatedTime && <span>Est: ~{order.estimatedTime}m</span>}
                           </div>
                         </div>
 
-                        {/* 1-Tap Load & Start Button */}
-                        <button
-                          onClick={() => advanceOrderStatus(order, 'Preparing Order', 50)}
-                          className="w-full py-2.5 px-3 rounded-xl bg-bg-surface/90 hover:bg-bg-surface border border-primary/50 hover:border-primary active:scale-[0.98] text-text-main hover:text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
-                        >
-                          <span className="text-primary text-sm group-hover/btn:scale-110 transition-transform">🪡</span>
-                          <span>Load to Machine &amp; Start Stitching</span>
-                        </button>
+                        {/* Action Button: If BYOG awaiting dropoff -> Confirm Garments Received; Else -> Load to Machine */}
+                        {order.isByog && !order.garmentsReceivedAt ? (
+                          <button
+                            onClick={() => handleReceiveGarments(order)}
+                            className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 active:scale-[0.98] text-amber-300 font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
+                            title="Click when customer drops off the physical garments at Pacific Mall kiosk counter"
+                          >
+                            <span className="text-amber-400 text-sm group-hover/btn:scale-110 transition-transform">📦</span>
+                            <span>Confirm Garments Received at Counter</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => advanceOrderStatus(order, 'Preparing Order', 50)}
+                            className="w-full py-2.5 px-3 rounded-xl bg-bg-surface/90 hover:bg-bg-surface border border-primary/50 hover:border-primary active:scale-[0.98] text-text-main hover:text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
+                          >
+                            <span className="text-primary text-sm group-hover/btn:scale-110 transition-transform">🪡</span>
+                            <span>Load to Machine &amp; Start Stitching</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -926,7 +967,10 @@ export default function EmployeePage() {
                                     title="Print 80mm thermal slip to attach to garment bag"
                                     className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1 shrink-0"
                                   >
-                                    <span>🏷️</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                                      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
+                                      <circle cx="7" cy="7" r="1.5"/>
+                                    </svg>
                                     <span>Bag Slip</span>
                                   </button>
                                  <button
@@ -1050,7 +1094,10 @@ export default function EmployeePage() {
                           title="Print 80mm thermal slip for garment bag"
                           className="bg-white/5 border border-border-glass text-text-main py-2.5 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center shrink-0 flex items-center justify-center gap-1"
                         >
-                          <span>🏷️</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
+                            <circle cx="7" cy="7" r="1.5"/>
+                          </svg>
                           <span>Bag Slip</span>
                         </button>
                         <button
@@ -1459,7 +1506,11 @@ export default function EmployeePage() {
                   : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
               }`}
             >
-              <span>{isChimeActive ? '🔔' : '🔕'}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                {!isChimeActive && <line x1="2" y1="2" x2="22" y2="22"/>}
+              </svg>
               <span className="hidden lg:inline">{isChimeActive ? 'Chime Alert On' : 'Chime Muted'}</span>
             </button>
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">

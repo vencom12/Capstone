@@ -116,8 +116,8 @@ export default function VerifyEmailPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg-dark p-4">
       <Suspense fallback={
         <div className="max-w-md w-full bg-bg-surface border border-border-glass rounded-xl p-8 text-center text-text-dim">
-          <div className="w-16 h-16 rounded-xl mx-auto mb-5 flex items-center justify-center text-3xl bg-primary/20 border border-primary/30 animate-pulse">
-            ⏳
+          <div className="w-16 h-16 rounded-xl mx-auto mb-5 flex items-center justify-center bg-white/5 border border-border-glass">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
           <h2 className="text-lg font-bold text-text-main mb-2">Loading verification...</h2>
         </div>

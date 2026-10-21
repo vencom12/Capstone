@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
@@ -27,7 +27,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const items = checkoutItems && checkoutItems.length > 0 ? checkoutItems : allBasketItems;
   const { user, setUser, refreshUser } = useAuthStore();
   const { fetchDashboardState } = useProductStore();
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
@@ -43,6 +43,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
+  const [readyLabel, setReadyLabel] = useState<string | null>(null);
+  const [estimatedReadyDate, setEstimatedReadyDate] = useState<string | null>(null);
+
+  // PSA/Retail Style Appointment Window Selection (Option 1: Modern Retail Model)
+  // Claim Date Selection (Customer chooses target day; pick up anytime during store hours)
+  const [selectedDateStr, setSelectedDateStr] = useState<string>('');
 
   // Pick-up Fulfillment & Special Instructions
   const [fulfillmentType] = useState<'pickup'>('pickup');
@@ -52,18 +58,94 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{gcashQrCodeUrl: string}>('/api/customer/settings')
+      api.get<{ gcashQrCodeUrl: string }>('/api/customer/settings')
         .then(res => {
           if (res) {
             setGcashQrCodeUrl(res.gcashQrCodeUrl);
           }
         })
         .catch(console.error);
-      api.get<{estimatedMinutes: number}>('/api/customer/capacity')
-        .then(res => res && setEstimatedMinutes(res.estimatedMinutes))
+      api.get<{ estimatedMinutes: number; readyLabel?: string; estimatedReadyDate?: string }>('/api/customer/capacity')
+        .then(res => {
+          if (res) {
+            setEstimatedMinutes(res.estimatedMinutes);
+            if (res.readyLabel) setReadyLabel(res.readyLabel);
+            if (res.estimatedReadyDate) {
+              setEstimatedReadyDate(res.estimatedReadyDate);
+            }
+          }
+        })
         .catch(console.error);
     }
   }, [isOpen]);
+
+  const availableDates = useMemo(() => {
+    const list: Array<{
+      dateStr: string;
+      dayOfWeek: string;
+      dayNumber: string;
+      friendlyLabel: string;
+    }> = [];
+
+    const start = estimatedReadyDate ? new Date(estimatedReadyDate) : new Date();
+    const base = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const today = new Date();
+    const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+
+      const diffDays = Math.round((d.getTime() - todayMid.getTime()) / (1000 * 60 * 60 * 24));
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      let friendlyLabel = `${weekday}, ${monthDay}`;
+      if (diffDays === 0) friendlyLabel = `Today, ${monthDay}`;
+      else if (diffDays === 1) friendlyLabel = `Tomorrow, ${monthDay}`;
+
+      list.push({
+        dateStr,
+        dayOfWeek: weekday.toUpperCase(),
+        dayNumber: String(d.getDate()),
+        friendlyLabel
+      });
+    }
+
+    return list;
+  }, [estimatedReadyDate]);
+
+  useEffect(() => {
+    if (availableDates.length > 0 && !selectedDateStr) {
+      setSelectedDateStr(availableDates[0].dateStr);
+    }
+  }, [availableDates, selectedDateStr]);
+
+  const { chosenDueDate, chosenDeliveryTimeLabel } = useMemo(() => {
+    const dateObj = availableDates.find(d => d.dateStr === selectedDateStr) || availableDates[0];
+
+    if (!selectedDateStr || !dateObj) {
+      return {
+        chosenDueDate: estimatedReadyDate || undefined,
+        chosenDeliveryTimeLabel: readyLabel || 'Earliest Available (10 AM–8 PM)'
+      };
+    }
+
+    const [year, month, day] = selectedDateStr.split('-').map(Number);
+    const chosen = new Date(year, month - 1, day, 10, 0, 0);
+
+    const dateLabel = dateObj.friendlyLabel;
+    const label = `${dateLabel} • Store Hours (10 AM–8 PM)`;
+
+    return {
+      chosenDueDate: chosen.toISOString(),
+      chosenDeliveryTimeLabel: label
+    };
+  }, [selectedDateStr, availableDates, estimatedReadyDate, readyLabel]);
 
   const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const finalTotal = itemsTotal;
@@ -96,7 +178,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       // Step 1: Upload receipt image to Cloudinary
       const formData = new FormData();
       formData.append('receipt', file);
-      
+
       let uploadData: { url?: string };
       try {
         uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
@@ -124,12 +206,15 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         items,
         totalAmount: finalTotal,
         address: currentAddress,
+        deliveryTime: chosenDeliveryTimeLabel,
+        dueDate: chosenDueDate,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         receiptUrl: uploadData.url,
         personalization: {
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
+          claimSchedule: chosenDeliveryTimeLabel,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
           pickupNote: pickupNote.trim() || undefined,
@@ -161,12 +246,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           if (verifyRes.aiResult?.referenceId) {
             setManualRef(verifyRes.aiResult.referenceId);
           }
-          setAiVerificationResult('📄 Receipt uploaded! Please confirm your GCash Reference Number below to finalize your order.');
+          setAiVerificationResult('Receipt uploaded! Please confirm your GCash Reference Number below to finalize your order.');
           showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
         } else {
           setPaymentVerified(true);
           const amountText = verifyRes.aiResult?.extractedAmount ? `₱${verifyRes.aiResult.extractedAmount.toFixed(2)}` : `₱${finalTotal.toFixed(2)}`;
-          setAiVerificationResult(`✅ Payment Confirmed — ${amountText}`);
+          setAiVerificationResult(`Payment Confirmed — ${amountText}`);
           showToast('Payment confirmed! Your order is now in the queue.', 'success');
           try {
             await refreshUser();
@@ -183,14 +268,14 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           setManualRef(verifyRes.aiResult.referenceId);
         }
         const reasonText = verifyRes.message || verifyRes.flaggedReason || "Please confirm your GCash Reference Number below to complete your order.";
-        setAiVerificationResult(`⚠️ ${reasonText}`);
+        setAiVerificationResult(`${reasonText}`);
         showToast(reasonText, 'info');
         await fetchDashboardState();
       }
     } catch (err: any) {
       console.warn('[Receipt Verification Notice]:', err?.message || err);
       const friendlyMsg = "Receipt image uploaded! Please confirm your GCash Reference Number below so our team can confirm your payment.";
-      setAiVerificationResult(`📄 ${friendlyMsg}`);
+      setAiVerificationResult(`${friendlyMsg}`);
       showToast('Receipt uploaded! Please confirm your GCash Reference Number below.', 'info');
     } finally {
       setAiAnalyzing(false);
@@ -213,6 +298,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         items,
         totalAmount: finalTotal,
         address: currentAddress,
+        deliveryTime: chosenDeliveryTimeLabel,
+        dueDate: chosenDueDate,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         existingOrderId: pendingOrderId || undefined,
@@ -221,6 +308,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         personalization: {
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
+          claimSchedule: chosenDeliveryTimeLabel,
           referenceNumber: cleanRef,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
@@ -232,7 +320,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       });
 
       setPaymentVerified(true);
-      setAiVerificationResult(`✅ GCash Reference Saved: ${cleanRef}`);
+      setAiVerificationResult(`GCash Reference Saved: ${cleanRef}`);
       showToast('Order received! Thank you for your payment.', 'success');
       await refreshUser();
       await fetchDashboardState();
@@ -281,6 +369,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         items,
         totalAmount: finalTotal,
         address: currentAddress,
+        deliveryTime: chosenDeliveryTimeLabel,
+        dueDate: chosenDueDate,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         isTestBypass: true,
@@ -290,6 +380,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
         personalization: {
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
+          claimSchedule: chosenDeliveryTimeLabel,
           referenceNumber: testRef,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
@@ -301,8 +392,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       });
 
       setPaymentVerified(true);
-      setAiVerificationResult(`⚡ Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
-      showToast('⚡ Test Mode: GCash Payment Bypassed & Order Placed!', 'success');
+      setAiVerificationResult(`Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
+      showToast('Test Mode: GCash Payment Bypassed & Order Placed!', 'success');
 
       try {
         await refreshUser();
@@ -338,142 +429,194 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   };
 
   return (
-    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[820px]" noPadding>
-      <div className="p-6 max-md:p-4 flex flex-col">
-        <div className="flex justify-between items-center mb-5 max-md:mb-3">
-          <h2 className="text-xl max-md:text-lg font-bold m-0 flex items-center gap-3 max-md:gap-2">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="max-[650px]:w-5 max-[650px]:h-5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
-            Secure Checkout
-          </h2>
+    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[880px]" noPadding>
+      <div className="p-4 sm:p-5 flex flex-col">
+        {/* Sticky/Fixed Modal Header */}
+        <div className="flex justify-between items-center pb-3 mb-3 border-b border-border-glass/40 pr-10">
+          <div className="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-main">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+              <path d="M3 6h18" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <h2 className="text-base sm:text-lg font-bold m-0 text-text-main">
+              Secure Checkout
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[0.62rem] font-medium text-text-dim px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border-glass/50">
+              Pick-up &amp; GCash
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-[1.15fr_1fr] gap-7 max-md:grid-cols-1 max-md:gap-4">
-          {/* Left: Store Pick-up & Summary */}
-          <div className="flex flex-col gap-5 max-md:gap-3">
-            {/* Single Streamlined Store Pick-up Card */}
-            <div className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
-              <div className="p-3 bg-white/[0.04] border border-border-glass rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shrink-0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <div className="grid grid-cols-[1.1fr_1fr] gap-5 max-md:grid-cols-1 max-md:gap-4">
+          {/* Left Column: Store Pick-up Appointment & Order Items */}
+          <div className="flex flex-col gap-3 min-w-0">
+            {/* Unified Store Pick-up & Schedule Card */}
+            <div className="bg-white/[0.02] border border-border-glass/60 rounded-xl p-3 flex flex-col gap-2.5">
+              {/* Card Header: Store Location & Policies */}
+              <div className="flex items-center justify-between pb-2 border-b border-border-glass/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-border-glass/60 flex items-center justify-center text-text-main shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                       <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
                   </div>
-                  <div className="flex flex-col text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-text-main text-[0.85rem]">Eds Towels &amp; Caps Studio</span>
-                      <span className="text-[0.62rem] px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold uppercase">
-                        Free Pick-up
+                  <div className="flex flex-col text-left min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-text-main text-[0.78rem] truncate">Eds Towels &amp; Caps Studio</span>
+                      <span className="text-[0.58rem] px-1.5 py-0.2 rounded bg-white/[0.06] border border-white/10 text-text-main font-semibold uppercase tracking-wider shrink-0">
+                        Free Pickup
                       </span>
                     </div>
-                    <span className="text-text-dim text-[0.72rem]">
-                      Pacific Mall Lucena • 10:00 AM – 8:00 PM Daily
+                    <span className="text-[0.66rem] text-text-dim truncate">
+                      Pacific Mall Lucena • Daily 10:00 AM – 8:00 PM
                     </span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setTermsInitialTab('pickup'); setIsTermsModalOpen(true); }}
-                  className="text-[0.7rem] text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap"
+                  className="text-[0.68rem] text-text-dim hover:text-text-main font-semibold underline underline-offset-2 shrink-0 cursor-pointer bg-transparent border-none p-1"
                 >
                   Policies ›
                 </button>
               </div>
 
-              {/* Pick-up Instructions / Special Notes */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[0.68rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
-                  <span>Pick-up Notes / Special Instructions</span>
-                  <span className="text-[0.62rem] text-text-dim/60 font-normal lowercase">(optional)</span>
+              {/* Target Claim Date Selection */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.62rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
+                  <span>Pick-up Date</span>
+                  <span className="text-[0.6rem] text-text-dim/70 font-mono font-normal">Held 30 Days</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Authorized brother to claim, weekend pick-up, etc."
-                  value={pickupNote}
-                  onChange={(e) => setPickupNote(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary placeholder:text-text-dim/40"
-                />
-                <p className="text-[0.68rem] text-text-dim/70 m-0">
-                  Instant counter pick-up with your official digital Claim Slip &amp; QR code.
-                </p>
+                <div className="relative">
+                  <select
+                    value={selectedDateStr}
+                    onChange={(e) => setSelectedDateStr(e.target.value)}
+                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
+                    className="w-full bg-bg-surface border border-border-glass/70 text-text-main text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-white/40 cursor-pointer font-medium"
+                  >
+                    {availableDates.map((item, idx) => (
+                      <option key={item.dateStr} value={item.dateStr} className="bg-[#12141c] text-white">
+                        {item.friendlyLabel}{idx === 0 ? ' • Earliest Ready' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim flex items-center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic Status Bar */}
+              <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass/50 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="text-[0.7rem] font-medium text-text-main truncate">
+                    {selectedDateStr === (availableDates[0]?.dateStr)
+                      ? (readyLabel ? `Ready starting ${readyLabel}` : 'Ready for counter claim')
+                      : `Held for you all day (10:00 AM – 8:00 PM)`}
+                  </span>
+                </div>
+                <span className="text-[0.58rem] px-1.5 py-0.5 rounded border border-border-glass/50 text-text-dim font-medium shrink-0 ml-2">
+                  Counter Claim
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-border-glass pt-4 max-[650px]:pt-3 max-md:gap-2">
-              <h3 className="text-[0.9rem] font-bold m-0">Order Summary</h3>
-              <div className="max-h-[140px] max-[650px]:max-h-[110px] overflow-y-auto pr-2 flex flex-col gap-2">
+            {/* Pick-up Note (Compact Single-line) */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.62rem] font-bold text-text-dim uppercase tracking-wider">
+                  Pick-up Notes / Claimant
+                </label>
+                <span className="text-[0.58rem] text-text-dim/60 font-normal lowercase">(optional)</span>
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. Authorized sibling to claim, special request, etc."
+                value={pickupNote}
+                onChange={(e) => setPickupNote(e.target.value)}
+                className="bg-bg-surface border border-border-glass/70 px-2.5 py-1.5 rounded-lg text-text-main text-xs outline-none focus:border-white/40 placeholder:text-text-dim/40"
+              />
+            </div>
+
+            {/* Order Summary (Compact with internal scroll) */}
+            <div className="flex flex-col gap-1.5 border-t border-border-glass/50 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[0.72rem] font-bold text-text-main m-0 uppercase tracking-wider">
+                  Order Items ({items.length})
+                </h3>
+                <span className="text-[0.72rem] text-text-dim">
+                  Total: <span className="font-mono font-bold text-text-main">₱{finalTotal.toFixed(2)}</span>
+                </span>
+              </div>
+              <div className="max-h-[96px] overflow-y-auto pr-1 flex flex-col gap-1.5 scrollbar-thin">
                 {items.map((item) => {
                   const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                   return (
-                    <div key={item.id} className="flex justify-between items-start p-2.5 bg-white/5 border border-border-glass/50 rounded-xl">
-                      <div className="flex flex-col text-left">
-                        <span className="font-bold text-[0.85rem]">{item.name}</span>
-                        <div className="flex items-center gap-1.5 text-[0.72rem] text-text-dim mt-0.5 flex-wrap">
+                    <div key={item.id} className="flex justify-between items-center p-1.5 px-2 bg-white/[0.02] border border-border-glass/40 rounded-lg text-xs">
+                      <div className="flex flex-col text-left min-w-0 pr-2">
+                        <span className="font-semibold text-text-main text-[0.75rem] truncate">{item.name}</span>
+                        <div className="flex items-center gap-1.5 text-[0.65rem] text-text-dim truncate">
                           {item.selectedColor && (
-                            <span 
-                              className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0" 
-                              style={{ backgroundColor: item.selectedColor }} 
+                            <span
+                              className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0"
+                              style={{ backgroundColor: item.selectedColor }}
                             />
                           )}
                           <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
                           {item.personalization?.text && (
-                            <span className="text-primary font-semibold flex items-center gap-1">
-                              • 
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                                <circle cx="6" cy="6" r="3" />
-                                <path d="M8.5 8.5L21 21" />
-                              </svg>
-                              &ldquo;{item.personalization.text}&rdquo; ({item.personalization.threadColor || 'Gold'})
+                            <span className="text-text-main font-mono truncate">
+                              • &ldquo;{item.personalization.text}&rdquo;
                             </span>
                           )}
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-[0.9rem]">₱{(item.price * item.quantity).toFixed(2)}</span>
+                      <span className="font-mono font-bold text-[0.78rem] shrink-0">₱{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   );
                 })}
               </div>
-
-              <div className="flex justify-between items-center px-2 pt-2 border-t border-border-glass">
-                <span className="font-bold text-sm">Total Payable:</span>
-                <span className="font-mono font-black text-lg text-primary">₱{finalTotal.toFixed(2)}</span>
-              </div>
             </div>
           </div>
 
-          {/* Right: Payment & Receipt AI Verification */}
-          <div className="flex flex-col gap-4 border-l border-border-glass pl-7 max-md:border-l-0 max-md:pl-0 max-md:pt-4 max-md:border-t max-md:gap-3">
-             <GCashPayment 
-               finalTotal={finalTotal}
-               totalAmount={finalTotal} 
-               qrCodeUrl={gcashQrCodeUrl}
-               receiptFile={receiptFile}
-               onFileSelect={handleFileSelect} 
-               aiAnalyzing={aiAnalyzing}
-               isAnalyzing={aiAnalyzing}
-               aiVerificationResult={aiVerificationResult}
-               paymentVerified={paymentVerified}
-               isVerified={paymentVerified}
-               manualRef={manualRef}
-               setManualRef={setManualRef}
-               onManualRefChange={setManualRef}
-               onSubmitManualRef={handleSubmitManualRef}
-               onBypassPayment={handleBypassGCash}
-               isBypassing={isBypassing}
-             />
+          {/* Right Column: GCash Payment & Place Order */}
+          <div className="flex flex-col gap-3 border-l border-border-glass/50 pl-5 max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:border-t min-w-0">
+            <GCashPayment
+              finalTotal={finalTotal}
+              totalAmount={finalTotal}
+              qrCodeUrl={gcashQrCodeUrl}
+              receiptFile={receiptFile}
+              onFileSelect={handleFileSelect}
+              aiAnalyzing={aiAnalyzing}
+              isAnalyzing={aiAnalyzing}
+              aiVerificationResult={aiVerificationResult}
+              paymentVerified={paymentVerified}
+              isVerified={paymentVerified}
+              manualRef={manualRef}
+              setManualRef={setManualRef}
+              onManualRefChange={setManualRef}
+              onSubmitManualRef={handleSubmitManualRef}
+              onBypassPayment={handleBypassGCash}
+              isBypassing={isBypassing}
+            />
 
-             {paymentVerified && (
-               <GlassButton
-                 variant="primary"
-                 fullWidth
-                 size="lg"
-                 onClick={handlePlaceOrder}
-                 className="shadow-sm hover:shadow-md"
-               >
-                 Confirm & Place Order
-               </GlassButton>
-             )}
+            {paymentVerified && (
+              <GlassButton
+                variant="primary"
+                fullWidth
+                size="md"
+                onClick={handlePlaceOrder}
+                className="shadow-sm hover:shadow-md"
+              >
+                Confirm &amp; Place Order
+              </GlassButton>
+            )}
           </div>
         </div>
       </div>
