@@ -179,9 +179,9 @@ def generate_master_document(filename="AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTAT
         ("Pillar 3: Dynamic Bulk Batch Slicing & Intake Throttling",
          "Large corporate orders exceeding daily capacity are sliced into daily digestible sub-batches (configurable via Admin Settings, default: 50 pieces/day or 250 pieces/week). Orders exceeding 100 pieces automatically trigger quotation review, protecting artisan health and preventing overbooking."),
         ("Pillar 4: Autonomous Physical Shelf Cubby Allocation (LRU Reclamation)",
-         "The instant an order is staged, the database algorithmically reserves the next available physical shelf bin (Bin A-1 to Bin C-10) using Least Recently Used (LRU) space reclamation. The assigned cubby is stamped on thermal bag slips and transmitted to the customer's smartphone."),
+         "The instant an order is staged, the database algorithmically reserves the next available physical shelf bin (Bin A-1 to Bin C-10) using Least Recently Used (LRU) space reclamation. The assigned cubby is stamped on thermal bag slips and automatically dispatched via transactional email to the customer's authenticated Gmail inbox."),
         ("Pillar 5: 1-Scan Cryptographic Counter Handover (<300ms)",
-         "Manual order search is completely eliminated. When the customer presents their mobile claim QR code (#A-XXXX), the cashier scans it with a USB barcode reader. In under 300ms, the system cryptographically authenticates the token, transitions the order to Completed, logs audit history, and releases the shelf cubby back to the available pool.")
+         "Manual order search is completely eliminated. Customers authenticate via Google OAuth (1-click Gmail). When the customer presents their digital claim QR code (#A-XXXX) from their Gmail receipt or customer portal, the cashier scans it with a USB barcode reader. In under 300ms, the system cryptographically authenticates the token, transitions the order to Completed, logs audit history, and releases the shelf cubby back to the available pool.")
     ]
 
     for title, desc in pillars:
@@ -318,9 +318,9 @@ def generate_master_document(filename="AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTAT
          "System Failsafe: The PostgreSQL backend maintains state idempotency. Order status remains locked in 'Preparing Order'. Upon power restoration, the workstation interface reloads the exact needle stitch coordinates and personalized text badge. The artisan does NOT restart from scratch; they resume from the current hooped garment, preventing dual-charging or duplicated inventory deduction."),
         ("Failsafe 2: Shelf Cubby Saturation (All 30 Primary Slots Occupied)",
          "Failure Mode: A sudden weekend surge fills all 30 primary slots (Bin A-1 to Bin C-10).\n"
-         "System Failsafe: The assignNextAvailableCubby() function automatically engages dynamic overflow addressing: 'Bin Overflow-1', 'Bin Overflow-2', etc., directed to a secondary staging cart behind the counter. Concurrently, the system dispatches automated SMS pickup reminders to customers whose orders have been waiting >24 hours, stimulating customer pickup and recycling cubbies."),
-        ("Failsafe 3: Barcode Scanner Disconnection / Damaged Phone Screen",
-         "Failure Mode: The handheld USB barcode scanner unplugs, or a customer arrives with a shattered phone screen that cannot be scanned.\n"
+         "System Failsafe: The assignNextAvailableCubby() function automatically engages dynamic overflow addressing: 'Bin Overflow-1', 'Bin Overflow-2', etc., directed to a secondary staging cart behind the counter. Concurrently, the system dispatches automated reminder emails to customers' Gmail inboxes whose orders have been waiting >24 hours, stimulating customer pickup and recycling cubbies."),
+        ("Failsafe 3: Barcode Scanner Disconnection / Unreadable Customer Screen",
+         "Failure Mode: The handheld USB barcode scanner unplugs, or a customer cannot display their QR code.\n"
          "System Failsafe: The 1-Scan modal features an intelligent debounce manual input fallback. The cashier can type the 4-digit code (e.g. '4821') or order ID ('A-4821') into the input field and press Enter. The backend controller (employeeController.js) parses the input case-insensitively, automatically prepending or stripping '#' symbols to authenticate the claim."),
         ("Failsafe 4: Broken Needle, Thread Snapping, or Mechanical Jam",
          "Failure Mode: An embroidery needle snaps or lower bobbin thread nests, requiring 5 minutes of mechanical artisan maintenance.\n"
@@ -333,7 +333,7 @@ def generate_master_document(filename="AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTAT
          "System Failsafe: The Next.js frontend uses optimistic UI locking and local browser storage. When an artisan taps 'Start Stitching', the interface immediately updates the local queue view. When internet connectivity is restored, the client sends queued state transitions to the PostgreSQL server, which resolves conflicts using transaction timestamps."),
         ("Failsafe 7: Abandoned Package Aging & Cubby Reclamation",
          "Failure Mode: A customer forgets to pick up their completed personalized towel for over 14 days, hogging a storage cubby.\n"
-         "System Failsafe: The daily queue maintenance cron audits cubby dwell times. Orders in 'Ready For Pick Up' exceeding 7 days are flagged as 'Stale Cubby', prompting an automated WhatsApp/SMS alert. After 14 days, the admin panel allows the manager to relocate the item to long-term storage and reassign the bin to the active pool.")
+         "System Failsafe: The daily queue maintenance cron audits cubby dwell times. Orders in 'Ready For Pick Up' exceeding 7 days are flagged as 'Stale Cubby', prompting an automated reminder email to the customer's registered Google/Gmail account. After 14 days, the admin panel allows the manager to relocate the item to long-term storage and reassign the bin to the active pool.")
     ]
 
     for title, desc in failsafes:
@@ -358,10 +358,10 @@ def generate_master_document(filename="AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTAT
          "System Execution: Multiple express walk-ins share the same Class 1 base priority (S_base = 70). Inside the class, tie-breaking is governed strictly by First-In-First-Out (FIFO) timestamp entry. If Customer B pays the Express Rush Fee, β_rush (+50 pts) elevates Customer B's priority to 120 pts, sequencing them immediately after the current piece finishes."),
         ("Scenario 4: Bulk order deadline is approaching today vs. walk-in express rush",
          "System Execution: The dynamic priority formula S(t) calculates W_due · max(0, 1 - (t_due - t) / T_window). If a bulk batch is due at 5:00 PM and the current time is 3:30 PM, its urgency score approaches +40 pts. Combined with accumulated aging (α · t), the bulk batch's composite score surpasses newly arriving walk-in orders (score ~70 vs bulk ~85). The system protects contractual commitments autonomously."),
-        ("Scenario 5: Customer arrives with dead phone battery / lost claim code",
-         "System Execution: The cashier opens the Scan Handover modal and switches to manual search mode. The cashier searches by customer surname or phone number. The system displays the customer's matching orders, requires the cashier to confirm customer photo ID, and logs a note ('Manual claim authorized by cashier due to unreadable phone'). The order completes and releases the cubby."),
+        ("Scenario 5: Customer arrives unable to access email / unreadable screen",
+         "System Execution: The cashier opens the Scan Handover modal and switches to manual lookup mode. The cashier searches by the customer's registered Gmail address or Order Reference ID (e.g. #A-4821). The system displays the customer's matching orders, allows the cashier to verify the customer against their Google profile name, and logs an audit note ('Manual claim authorized by cashier via Gmail verification'). The order completes and releases the cubby."),
         ("Scenario 6: All 30 primary shelf cubbies (A-1 to C-10) are full",
-         "System Execution: assignNextAvailableCubby() detects that occupied cubby count >= 30. It transparently assigns 'Bin Overflow-1' and highlights this on the printed thermal slip. Staff place the bagged towel in the overflow bin. Simultaneously, an automated push alert reminds customers with ready orders to collect their items."),
+         "System Execution: assignNextAvailableCubby() detects that occupied cubby count >= 30. It transparently assigns 'Bin Overflow-1' and highlights this on the printed thermal slip. Staff place the bagged towel in the overflow bin. Simultaneously, an automated email reminder pings customers with ready orders to collect their items."),
         ("Scenario 7: Artisan takes an unscheduled break or shift change occurs",
          "System Execution: If an artisan leaves mid-shift, the active garment remains in 'Preparing Order'. When the incoming shift artisan logs in, their terminal displays the exact active job and hooped specifications. No communication breakdown occurs; the new artisan taps 'Finish & Stage' once the stitch completes."),
         ("Scenario 8: Customer changes customization text at counter right after ordering",
@@ -428,8 +428,13 @@ def generate_master_document(filename="AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTAT
         add_heading_2(title)
         add_body(desc)
 
-    doc.save(filename)
-    print(f"Master documentation successfully generated at: {filename}")
+    try:
+        doc.save(filename)
+        print(f"Master documentation successfully generated at: {filename}")
+    except PermissionError:
+        alt_filename = "AUTOMATED_STITCH_QUEUE_FEATURE_DOCUMENTATION_UPDATED.docx"
+        doc.save(alt_filename)
+        print(f"[LOCKED] {filename} is currently open in Microsoft Word. Saved updated version to: {alt_filename}")
 
 if __name__ == "__main__":
     generate_master_document()
