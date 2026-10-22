@@ -63,6 +63,21 @@ export default function ProductModal({
     return items;
   }, [product]);
 
+  // Split variants into in-stock and out-of-stock options
+  const { inStockVariants, outOfStockVariants } = useMemo(() => {
+    if (!product?.variants || !Array.isArray(product.variants)) {
+      return { inStockVariants: [] as ProductVariant[], outOfStockVariants: [] as ProductVariant[] };
+    }
+    const inStock: ProductVariant[] = [];
+    const outOfStock: ProductVariant[] = [];
+    product.variants.forEach((v) => {
+      const stock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+      if (stock > 0) inStock.push(v);
+      else outOfStock.push(v);
+    });
+    return { inStockVariants: inStock, outOfStockVariants: outOfStock };
+  }, [product?.variants]);
+
   const activeImage = customActiveImage || selectedVariant?.imageUrl || product?.imageUrl || '';
 
   useEffect(() => {
@@ -409,7 +424,7 @@ export default function ProductModal({
         {/* Product Customization & Info Section */}
         <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3">
           <div>
-            <span className="inline-block px-2.5 py-1 bg-primary/10 text-primary rounded-md text-xs font-bold uppercase tracking-wider mb-2">
+            <span className="inline-block px-2.5 py-0.5 bg-white/5 border border-border-glass text-text-dim rounded-md text-[11px] font-mono font-medium uppercase tracking-wider mb-2">
               {product.tag || 'Design'}
             </span>
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[700px]:text-lg">
@@ -419,19 +434,19 @@ export default function ProductModal({
               <button
                 type="button"
                 onClick={() => setActiveModalTab('reviews')}
-                className="flex items-center gap-2 mt-1.5 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/20 cursor-pointer transition-colors text-left"
+                className="flex items-center gap-2 mt-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass cursor-pointer transition-colors text-left"
                 title="View verified buyer reviews"
               >
                 <div className="flex items-center text-amber-400 text-xs">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className={i < Math.round((reviewsData?.averageRating ?? (product as any).rating) || 0) ? 'text-amber-400' : 'text-text-dim/30'}>★</span>
+                    <span key={i} className={i < Math.round((reviewsData?.averageRating ?? (product as any).rating) || 0) ? 'text-amber-400' : 'text-text-dim/20'}>★</span>
                   ))}
                 </div>
-                <span className="text-xs font-bold text-amber-300">
+                <span className="text-xs font-bold text-text-main font-mono">
                   {((reviewsData?.averageRating ?? (product as any).rating) || 0).toFixed(1)}
                 </span>
-                <span className="text-[0.72rem] text-text-dim hover:text-text-main underline decoration-dotted">
-                  ({reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0} Verified {(reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0) === 1 ? 'Review' : 'Reviews'})
+                <span className="text-[0.72rem] text-text-dim">
+                  · {reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0} {(reviewsData?.totalReviews ?? (product as any).reviewCount ?? 0) === 1 ? 'review' : 'reviews'}
                 </span>
               </button>
             ) : (
@@ -444,13 +459,13 @@ export default function ProductModal({
           </div>
 
           {/* Navigation Tabs: Customization vs Reviews */}
-          <div className="flex border-b border-border-glass gap-1 pt-1">
+          <div className="flex border-b border-border-glass gap-2 pt-1">
             <button
               type="button"
               onClick={() => setActiveModalTab('configure')}
-              className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+              className={`pb-2 px-3 text-xs font-semibold transition-all border-b-2 cursor-pointer ${
                 activeModalTab === 'configure'
-                  ? 'border-primary text-primary'
+                  ? 'border-text-main text-text-main'
                   : 'border-transparent text-text-dim hover:text-text-main'
               }`}
             >
@@ -459,9 +474,9 @@ export default function ProductModal({
             <button
               type="button"
               onClick={() => setActiveModalTab('reviews')}
-              className={`pb-2 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              className={`pb-2 px-3 text-xs font-semibold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeModalTab === 'reviews'
-                  ? 'border-primary text-primary'
+                  ? 'border-text-main text-text-main'
                   : 'border-transparent text-text-dim hover:text-text-main'
               }`}
             >
@@ -475,21 +490,22 @@ export default function ProductModal({
           {activeModalTab === 'configure' ? (
             <>
 
-          <div className="flex justify-between items-center">
-            <div className="text-2xl font-extrabold text-primary font-mono max-[700px]:text-xl">
-              ₱{(effectivePrice * (isOutOfStock ? 1 : quantity)).toFixed(2)}
-              {quantity > 1 && !isOutOfStock && <span className="text-xs text-text-dim font-sans ml-2">(₱{effectivePrice.toFixed(2)} each)</span>}
+          <div className="flex justify-between items-baseline">
+            <div className="text-2xl font-bold text-text-main font-mono max-[700px]:text-xl tracking-tight">
+              ₱{(effectivePrice * (isOutOfStock ? 1 : quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {quantity > 1 && !isOutOfStock && (
+                <span className="text-xs text-text-dim font-sans font-normal ml-2">
+                  (₱{effectivePrice.toFixed(2)} each)
+                </span>
+              )}
             </div>
             {isOutOfStock ? (
-              <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold text-xs uppercase tracking-wider">
+              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-text-dim font-semibold text-xs tracking-wider uppercase">
                 Out of Stock
               </span>
             ) : (
-              <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                effectiveStock <= 5 
-                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400' 
-                  : 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
-              }`}>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-xs font-medium text-text-main">
+                <span className={`w-1.5 h-1.5 rounded-full ${effectiveStock <= 5 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                 {effectiveStock <= 5 ? `Only ${effectiveStock} left` : `In Stock (${effectiveStock} available)`}
               </span>
             )}
@@ -501,67 +517,92 @@ export default function ProductModal({
 
           {/* Variants & Swatches (Only shown if product has variants) */}
           {hasVariants ? (
-            <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
-              <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                Color / Variant:{' '}
-                {selectedVariant ? (
-                  <span className="text-primary font-bold normal-case ml-1">{selectedVariant.name}</span>
-                ) : (
-                  <span className="text-rose-400 font-bold normal-case ml-1">None available (All Options Out of Stock)</span>
+            <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
+                  Color / Variant:
+                </label>
+                {selectedVariant && (
+                  <span className="text-xs text-text-main font-semibold">{selectedVariant.name}</span>
                 )}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {product.variants!.map((variant, idx) => {
-                  const isSelected = selectedVariant?.name === variant.name;
-                  const vStock = variant.availableStock !== undefined ? variant.availableStock : (variant.stock ?? 0);
-                  const isVarOutOfStock = vStock <= 0;
-                  return (
+              </div>
+
+              {/* In-Stock Available Options */}
+              {inStockVariants.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {inStockVariants.map((variant, idx) => {
+                    const isSelected = selectedVariant?.name === variant.name;
+                    const vStock = variant.availableStock !== undefined ? variant.availableStock : (variant.stock ?? 0);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        suppressHydrationWarning
+                        onClick={() => {
+                          setSelectedVariant(variant);
+                          setCustomActiveImage(null);
+                          if (variant.color) setSelectedColor(variant.color);
+                          if (variant.size) setSelectedSize(variant.size);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all select-none cursor-pointer ${
+                          isSelected
+                            ? 'bg-white/10 border-text-main text-text-main shadow-sm ring-1 ring-white/20'
+                            : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main hover:border-white/20'
+                        }`}
+                      >
+                        {variant.color && (
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/20 inline-block shadow-sm shrink-0"
+                            style={{ backgroundColor: variant.color }}
+                          />
+                        )}
+                        <span>{variant.name}</span>
+                        <span className="text-[10px] text-text-dim font-mono">
+                          ({vStock} left)
+                        </span>
+                        {variant.priceOverride && variant.priceOverride !== product.price && (
+                          <span className="text-[10px] text-text-dim font-mono">
+                            ₱{variant.priceOverride}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-text-dim italic">All color options are currently out of stock.</div>
+              )}
+
+              {/* Compact Out of Stock Notice */}
+              {outOfStockVariants.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-text-dim uppercase tracking-wider font-semibold mr-1">Sold out:</span>
+                  {outOfStockVariants.map((variant, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      disabled={isVarOutOfStock}
-                      title={isVarOutOfStock ? `${variant.name} (Out of Stock)` : `${variant.name} (${vStock} available)`}
-                      suppressHydrationWarning
                       onClick={() => {
-                        if (isVarOutOfStock) return;
                         setSelectedVariant(variant);
-                        setCustomActiveImage(null);
-                        if (variant.color) setSelectedColor(variant.color);
-                        if (variant.size) setSelectedSize(variant.size);
+                        if (variant.imageUrl) setCustomActiveImage(variant.imageUrl);
                       }}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all select-none ${
-                        isVarOutOfStock
-                          ? 'opacity-35 grayscale bg-white/[0.02] border-white/10 text-text-dim cursor-not-allowed pointer-events-none line-through shadow-none'
-                          : isSelected
-                            ? 'bg-primary/20 border-primary text-primary shadow-sm scale-105 cursor-pointer'
-                            : 'bg-bg-surface border-border-glass text-text-main hover:border-primary/40 cursor-pointer'
+                      title={`${variant.name} is sold out — click to preview photo`}
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] transition-all cursor-pointer ${
+                        selectedVariant?.name === variant.name
+                          ? 'bg-white/10 border-white/30 text-text-main'
+                          : 'bg-white/[0.02] border-border-glass text-text-dim/60 hover:text-text-dim hover:border-white/15'
                       }`}
                     >
                       {variant.color && (
                         <span
-                          className={`w-3.5 h-3.5 rounded-full border border-white/20 inline-block shadow-sm shrink-0 ${isVarOutOfStock ? 'opacity-40' : ''}`}
+                          className="w-2 h-2 rounded-full opacity-40 inline-block shrink-0"
                           style={{ backgroundColor: variant.color }}
                         />
                       )}
                       <span>{variant.name}</span>
-                      {isVarOutOfStock ? (
-                        <span className="text-[10px] text-rose-400 font-semibold no-underline">
-                          (Out of stock)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-text-dim font-mono">
-                          ({vStock} left)
-                        </span>
-                      )}
-                      {variant.priceOverride && (
-                        <span className="text-[10px] text-primary/80 font-mono">
-                          ₱{variant.priceOverride}
-                        </span>
-                      )}
                     </button>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-3 rounded-xl bg-white/5 border border-border-glass text-text-dim text-xs flex items-center gap-2">
@@ -577,7 +618,7 @@ export default function ProductModal({
           {hasSizes && (
             <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
               <label className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                Select Size: <span className="text-primary font-bold normal-case ml-1">{selectedSize}</span>
+                Select Size: <span className="text-text-main font-semibold normal-case ml-1">{selectedSize}</span>
               </label>
               <div className="flex gap-2">
                 {availableSizes.map((s: any) => (
@@ -588,8 +629,8 @@ export default function ProductModal({
                     onClick={() => setSelectedSize(s)}
                     className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       selectedSize === s
-                        ? 'bg-primary/20 border-primary text-primary shadow-sm'
-                        : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
+                        ? 'bg-white/10 border-text-main text-text-main shadow-sm'
+                        : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main'
                     }`}
                   >
                     {s}
@@ -602,8 +643,13 @@ export default function ProductModal({
           {/* Custom Embroidery Personalization (Lettering / Monogram) */}
           <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-xl border border-white/5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-text-main flex items-center gap-1.5 cursor-pointer">
-                <span>🪡</span>
+              <label className="text-xs font-semibold text-text-main flex items-center gap-2 cursor-pointer">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+                  <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                  <path d="M2 2l7.586 7.586"/>
+                  <circle cx="11" cy="11" r="2"/>
+                </svg>
                 <span>Custom Embroidery Lettering</span>
               </label>
               <button
@@ -613,15 +659,15 @@ export default function ProductModal({
                   if (isOutOfStock) return;
                   setIsPersonalized(!isPersonalized);
                 }}
-                className={`text-[0.72rem] font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                className={`text-[0.72rem] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
                   isOutOfStock
                     ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
                     : isPersonalized
-                      ? 'bg-primary/20 border-primary text-primary cursor-pointer'
-                      : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
+                      ? 'bg-white/10 border-white/30 text-text-main cursor-pointer'
+                      : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 cursor-pointer'
                 }`}
               >
-                {isOutOfStock ? 'Unavailable' : isPersonalized ? '✓ Included' : '+ Add Name/Text'}
+                {isOutOfStock ? 'Unavailable' : isPersonalized ? 'Active' : '+ Add Name/Text'}
               </button>
             </div>
 
@@ -630,7 +676,7 @@ export default function ProductModal({
                 {/* Estimated Stitching Time (Applies only when personalizing) */}
                 <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.04] border border-border-glass text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary shrink-0 inline-block"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-text-dim shrink-0 inline-block"></span>
                     <span className="text-[0.72rem] text-text-dim font-medium">
                       Estimated artisan stitching:
                     </span>
@@ -662,7 +708,7 @@ export default function ProductModal({
                     placeholder="e.g. Dr. Rafael Santos or R.S."
                     className={`w-full bg-bg-surface border ${
                       monogramError ? 'border-rose-500/60 ring-1 ring-rose-500/30' : 'border-border-glass'
-                    } focus:border-primary p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
+                    } focus:border-white/40 p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
                   />
                   <InlineError message={monogramError} className="mt-1" />
                 </div>
@@ -706,21 +752,15 @@ export default function ProductModal({
                           title={tc.name}
                           className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
                             isSelected
-                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-bg-surface scale-110 border-white'
+                              ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110 border-white'
                               : 'border-white/20 hover:scale-105'
                           }`}
                           style={{ backgroundColor: tc.hex }}
                         >
                           {isSelected && (
-                            <span
-                              className={`text-[10px] font-bold ${
-                                tc.hex === '#ffffff' || tc.hex === '#e2e8f0'
-                                  ? 'text-black'
-                                  : 'text-white'
-                              }`}
-                            >
-                              ✓
-                            </span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={tc.hex === '#ffffff' || tc.hex === '#e2e8f0' ? 'text-black' : 'text-white'}>
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
                           )}
                         </button>
                       );
@@ -733,24 +773,26 @@ export default function ProductModal({
 
           {/* Quantity Stepper */}
           <div className="flex items-center justify-between border-t border-border-glass pt-3">
-            <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Quantity / Count</span>
-            <div className={`flex items-center gap-3 bg-bg-surface border border-border-glass p-1 rounded-xl ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
+            <div className={`flex items-center gap-2 bg-white/5 border border-border-glass p-1 rounded-lg ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
               <button
                 type="button"
                 disabled={isOutOfStock || quantity <= 1}
                 suppressHydrationWarning
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 text-text-main flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Decrease quantity"
               >
                 -
               </button>
-              <span className="font-mono font-bold text-sm w-6 text-center">{isOutOfStock ? 0 : quantity}</span>
+              <span className="font-mono font-bold text-sm w-7 text-center text-text-main">{isOutOfStock ? 0 : quantity}</span>
               <button
                 type="button"
                 disabled={isOutOfStock || quantity >= effectiveStock}
                 suppressHydrationWarning
                 onClick={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
-                className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass text-text-main hover:bg-white/10 flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 text-text-main flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Increase quantity"
               >
                 +
               </button>
@@ -760,30 +802,29 @@ export default function ProductModal({
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4">
             {isOutOfStock ? (
-              <GlassButton
-                variant="secondary"
-                fullWidth
+              <button
+                type="button"
                 disabled
-                className="py-3 font-bold opacity-60 cursor-not-allowed bg-white/5 border-border-glass text-text-dim"
+                className="w-full py-3 rounded-xl font-bold opacity-60 cursor-not-allowed bg-white/5 border border-border-glass text-text-dim text-xs uppercase tracking-wider"
               >
                 Out of Stock
-              </GlassButton>
+              </button>
             ) : (
               <div className="flex gap-3 max-[700px]:gap-2">
-                <GlassButton
-                  variant="secondary"
+                <button
+                  type="button"
                   onClick={handleAddToBasket}
-                  className="flex-1 py-3"
+                  className="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-xs font-semibold transition-all cursor-pointer hover:border-white/20 active:scale-[0.99]"
                 >
                   Add to Basket
-                </GlassButton>
-                <GlassButton
-                  variant="primary"
+                </button>
+                <button
+                  type="button"
                   onClick={handleBuyNow}
-                  className="flex-1 py-3 font-bold shadow-sm"
+                  className="flex-1 py-3 px-4 rounded-xl bg-text-main text-bg-dark hover:bg-white text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-[0.99]"
                 >
                   Buy Now
-                </GlassButton>
+                </button>
               </div>
             )}
             {actionError && (
