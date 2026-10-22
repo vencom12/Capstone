@@ -802,29 +802,35 @@ export default function ProductModal({
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4">
             {isOutOfStock ? (
-              <button
-                type="button"
+              <GlassButton
+                variant="secondary"
+                fullWidth
                 disabled
-                className="w-full py-3 rounded-xl font-bold opacity-60 cursor-not-allowed bg-white/5 border border-border-glass text-text-dim text-xs uppercase tracking-wider"
+                className="py-3 font-bold opacity-60 cursor-not-allowed text-xs uppercase tracking-wider"
               >
                 Out of Stock
-              </button>
+              </GlassButton>
             ) : (
               <div className="flex gap-3 max-[700px]:gap-2">
-                <button
-                  type="button"
+                <GlassButton
+                  variant="secondary"
                   onClick={handleAddToBasket}
-                  className="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-xs font-semibold transition-all cursor-pointer hover:border-white/20 active:scale-[0.99]"
+                  className="flex-1 py-3 text-xs font-semibold cursor-pointer"
                 >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 shrink-0">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <path d="M16 10a4 4 0 0 1-8 0" />
+                  </svg>
                   Add to Basket
-                </button>
-                <button
-                  type="button"
+                </GlassButton>
+                <GlassButton
+                  variant="primary"
                   onClick={handleBuyNow}
-                  className="flex-1 py-3 px-4 rounded-xl bg-text-main text-bg-dark hover:bg-white text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-[0.99]"
+                  className="flex-1 py-3 text-xs font-bold shadow-md cursor-pointer"
                 >
-                  Buy Now
-                </button>
+                  Buy Now →
+                </GlassButton>
               </div>
             )}
             {actionError && (
