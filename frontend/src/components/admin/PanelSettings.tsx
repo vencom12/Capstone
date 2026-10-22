@@ -782,13 +782,15 @@ export default function PanelSettings({
               {/* Artisan Workshop & Capacity Calibration Card */}
               <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col gap-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-border-glass">
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 font-bold text-lg shrink-0">
-                    🪡
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
                   </div>
                   <div>
                     <h3 className="text-lg font-bold m-0 text-text-main">Artisan Workshop &amp; Capacity Calibration</h3>
                     <p className="text-xs text-text-dim m-0 mt-0.5">
-                      Fine-tune classic manual sewing speeds, hooping overhead, and daily capacity allocation for Pacific Mall Lucena.
+                      Fine-tune manual stitch speeds, hooping overhead, and daily capacity allocation for Pacific Mall Lucena.
                     </p>
                   </div>
                 </div>
@@ -997,9 +999,9 @@ export default function PanelSettings({
                 </div>
 
                 {/* Calculation Summary Bar */}
-                <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-text-main flex flex-wrap items-center justify-between gap-3">
+                <div className="p-3.5 rounded-xl bg-white/5 border border-border-glass text-xs text-text-main flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-teal-400 font-bold">✓ Active Calibration Model:</span>
+                    <span className="font-semibold text-text-main">Workshop Calibration Summary:</span>
                     <span className="text-text-dim">
                       {artisanDailyMinutes} min/day budget &bull;{' '}
                       <strong className="text-text-main">{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} min</strong> Express &bull;{' '}

@@ -1091,6 +1091,15 @@ exports.updateSettings = async (req, res) => {
         // Mandatory compliance: Inventory audit trails cannot be disabled
         updateData.inventoryAuditLog = true;
 
+        if (updateData.maxBulkPiecesPerDay !== undefined) updateData.maxBulkPiecesPerDay = parseInt(updateData.maxBulkPiecesPerDay) || 50;
+        if (updateData.largeOrderQuoteThreshold !== undefined) updateData.largeOrderQuoteThreshold = parseInt(updateData.largeOrderQuoteThreshold) || 100;
+        if (updateData.artisanSecondsPerLetter !== undefined) updateData.artisanSecondsPerLetter = parseFloat(updateData.artisanSecondsPerLetter) || 12.0;
+        if (updateData.artisanHandlingMinutes !== undefined) updateData.artisanHandlingMinutes = parseFloat(updateData.artisanHandlingMinutes) || 1.0;
+        if (updateData.artisanCapOffsetMinutes !== undefined) updateData.artisanCapOffsetMinutes = parseFloat(updateData.artisanCapOffsetMinutes) || 0.5;
+        if (updateData.artisanDailyMinutes !== undefined) updateData.artisanDailyMinutes = parseFloat(updateData.artisanDailyMinutes) || 500.0;
+        if (updateData.expressLanePercent !== undefined) updateData.expressLanePercent = parseFloat(updateData.expressLanePercent) || 35.0;
+        if (updateData.efficiencyFactor !== undefined) updateData.efficiencyFactor = parseFloat(updateData.efficiencyFactor) || 0.85;
+
         const settings = await prisma.systemSettings.upsert({
             where: { id: 'global' },
             update: updateData,
@@ -1098,6 +1107,7 @@ exports.updateSettings = async (req, res) => {
         });
         res.json(settings);
     } catch (err) {
+        console.error('Update settings error:', err);
         res.status(500).json({ message: 'Error updating settings' });
     }
 };

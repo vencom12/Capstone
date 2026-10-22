@@ -360,6 +360,11 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
             stagingCubby = assignNextAvailableCubby(activeOrders);
         }
         personalization.stagingCubby = stagingCubby;
+    } else if (['completed', 'order delivered', 'order canceled'].includes(lowerStatus)) {
+        if (stagingCubby) {
+            personalization.releasedCubby = stagingCubby;
+            stagingCubby = null;
+        }
     }
 
     const updatedOrder = await tx.order.update({
@@ -368,7 +373,7 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
             status: newStatus, 
             progress,
             personalization,
-            stagingCubby: stagingCubby || undefined
+            stagingCubby: stagingCubby !== undefined ? stagingCubby : null
         }
     });
 

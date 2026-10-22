@@ -595,8 +595,10 @@ export default function EmployeePage() {
                   <div className="glass-card p-6 rounded-2xl border-2 border-primary/50 shadow-xl shadow-primary/5 flex flex-col gap-5 text-left relative overflow-hidden">
                     <div className="flex justify-between items-start gap-4 flex-wrap">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-lg border border-primary/30">
-                          🪡
+                        <div className="w-10 h-10 rounded-xl bg-white/5 text-text-main flex items-center justify-center border border-border-glass shrink-0">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                          </svg>
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -811,18 +813,23 @@ export default function EmployeePage() {
                         {order.isByog && !order.garmentsReceivedAt ? (
                           <button
                             onClick={() => handleReceiveGarments(order)}
-                            className="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 active:scale-[0.98] text-amber-300 font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
-                            title="Click when customer drops off the physical garments at Pacific Mall kiosk counter"
+                            className="w-full py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass active:scale-[0.98] text-text-main font-semibold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2"
+                            title="Record physical drop-off of customer garments at counter"
                           >
-                            <span className="text-amber-400 text-sm group-hover/btn:scale-110 transition-transform">📦</span>
-                            <span>Confirm Garments Received at Counter</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+                              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                              <path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>
+                            </svg>
+                            <span>Confirm Garments Received</span>
                           </button>
                         ) : (
                           <button
                             onClick={() => advanceOrderStatus(order, 'Preparing Order', 50)}
-                            className="w-full py-2.5 px-3 rounded-xl bg-bg-surface/90 hover:bg-bg-surface border border-primary/50 hover:border-primary active:scale-[0.98] text-text-main hover:text-white font-bold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 group/btn"
+                            className="w-full py-2.5 px-3 rounded-xl bg-bg-surface hover:bg-white/10 border border-border-glass hover:border-primary/50 active:scale-[0.98] text-text-main font-semibold text-xs cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2"
                           >
-                            <span className="text-primary text-sm group-hover/btn:scale-110 transition-transform">🪡</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+                              <polygon points="6 3 20 12 6 21 6 3"/>
+                            </svg>
                             <span>Load to Machine &amp; Start Stitching</span>
                           </button>
                         )}
@@ -851,14 +858,14 @@ export default function EmployeePage() {
                       setLastClaimedOrder(null);
                       setIsHandoverModalOpen(true);
                     }}
-                    className="bg-primary hover:bg-primary-light active:scale-[0.98] text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border-none"
-                    title="Scan customer QR code or enter claim ticket #A-XXXX for fast handover"
+                    className="bg-bg-surface hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                    title="Scan customer QR code or enter claim ticket for handover"
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
                       <rect width="18" height="18" x="3" y="3" rx="2" />
                       <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
                     </svg>
-                    <span>⚡ 1-Scan Counter Handover</span>
+                    <span>Scan QR Handover</span>
                   </button>
                   <GlassDatePicker 
                     value={ordersDateFilter}
@@ -937,8 +944,8 @@ export default function EmployeePage() {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
                                   {o.stagingCubby && (
-                                    <span className="text-[0.65rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
-                                      📍 {o.stagingCubby}
+                                    <span className="text-[10px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
+                                      {o.stagingCubby}
                                     </span>
                                   )}
                                 </div>
@@ -1001,10 +1008,10 @@ export default function EmployeePage() {
                                             {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                           </div>
                                           {stitchText && (
-                                            <div className="flex items-center gap-1 text-[0.7rem] text-amber-300 font-mono mt-0.5 pl-2.5 border-l-2 border-amber-400/40">
-                                              <span>✍️ &ldquo;{stitchText}&rdquo;</span>
+                                            <div className="flex items-center gap-1 text-[0.7rem] text-text-dim font-mono mt-0.5 pl-2 border-l border-border-glass">
+                                              <span>&ldquo;{stitchText}&rdquo;</span>
                                               {threadColor && (
-                                                <span className="text-text-dim text-[0.65rem] font-sans">
+                                                <span className="text-text-dim/70 text-[0.65rem] font-sans">
                                                   ({threadColor})
                                                 </span>
                                               )}
@@ -1046,18 +1053,18 @@ export default function EmployeePage() {
                                     o.isByog && !o.garmentsReceivedAt ? (
                                       <button
                                         onClick={() => handleReceiveGarments(o)}
-                                        className="bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer flex items-center gap-1"
+                                        className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
                                         title="Customer dropped off garments at counter"
                                       >
-                                        <span>📥 Intake</span>
+                                        <span>Intake</span>
                                       </button>
                                     ) : (
                                       <button
                                         onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
-                                        className="bg-primary/15 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer flex items-center gap-1"
+                                        className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
                                         title="Load to embroidery machine and start stitching"
                                       >
-                                        <span>▶ Start</span>
+                                        <span>Start Stitching</span>
                                       </button>
                                     )
                                   )}
@@ -1065,10 +1072,10 @@ export default function EmployeePage() {
                                   {o.status === 'Preparing Order' && (
                                     <button
                                       onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
-                                      className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer flex items-center gap-1"
+                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                                       title="Finish stitching and auto-assign staging shelf"
                                     >
-                                      <span>✓ Finish &amp; Staged</span>
+                                      <span>Finish &amp; Stage</span>
                                     </button>
                                   )}
 
@@ -1079,10 +1086,10 @@ export default function EmployeePage() {
                                         setLastClaimedOrder(null);
                                         setIsHandoverModalOpen(true);
                                       }}
-                                      className="bg-sky-500/15 border border-sky-500/30 text-sky-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-sky-500/25 transition-all cursor-pointer flex items-center gap-1"
-                                      title="Open 1-scan handover verification"
+                                      className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                                      title="Open handover verification"
                                     >
-                                      <span>⚡ Handover</span>
+                                      <span>Handover</span>
                                     </button>
                                   )}
 
@@ -1093,10 +1100,12 @@ export default function EmployeePage() {
                                       setOrderProgressInput((o.progress || 10).toString());
                                       setIsProcessModalOpen(true);
                                     }}
-                                    title="More manual options / override"
-                                    className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 text-xs transition-colors cursor-pointer"
+                                    title="Manual status override"
+                                    className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 text-xs transition-colors cursor-pointer flex items-center justify-center"
                                   >
-                                    ⚙
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                                    </svg>
                                   </button>
                                </div>
                              </td>
@@ -1190,8 +1199,8 @@ export default function EmployeePage() {
                                       {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
                                     </div>
                                     {stitchText && (
-                                      <span className="text-[0.65rem] text-amber-300 font-mono pl-3">
-                                        ✍️ &ldquo;{stitchText}&rdquo; {threadColor ? `(${threadColor})` : ''}
+                                      <span className="text-[0.65rem] text-text-dim font-mono pl-2 border-l border-border-glass">
+                                        &ldquo;{stitchText}&rdquo; {threadColor ? `(${threadColor})` : ''}
                                       </span>
                                     )}
                                   </div>
@@ -1227,25 +1236,25 @@ export default function EmployeePage() {
                           o.isByog && !o.garmentsReceivedAt ? (
                             <button
                               onClick={() => handleReceiveGarments(o)}
-                              className="flex-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer text-center"
+                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
                             >
-                              📥 Intake
+                              Intake
                             </button>
                           ) : (
                             <button
                               onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
-                              className="flex-1 bg-primary/15 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center"
+                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
                             >
-                              ▶ Start
+                              Start Stitching
                             </button>
                           )
                         )}
                         {o.status === 'Preparing Order' && (
                           <button
                             onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
-                            className="flex-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer text-center"
+                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                           >
-                            ✓ Finish &amp; Staged
+                            Finish &amp; Stage
                           </button>
                         )}
                         {o.status === 'Ready For Pick Up' && (
@@ -1255,9 +1264,9 @@ export default function EmployeePage() {
                               setLastClaimedOrder(null);
                               setIsHandoverModalOpen(true);
                             }}
-                            className="flex-1 bg-sky-500/15 border border-sky-500/30 text-sky-300 py-2.5 rounded-xl text-xs font-bold hover:bg-sky-500/25 transition-all cursor-pointer text-center"
+                            className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
                           >
-                            ⚡ Handover
+                            Handover
                           </button>
                         )}
                         <button
@@ -1267,10 +1276,12 @@ export default function EmployeePage() {
                             setOrderProgressInput((o.progress || 10).toString());
                             setIsProcessModalOpen(true);
                           }}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-bold cursor-pointer"
+                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-bold cursor-pointer flex items-center justify-center"
                           title="Manual adjustments"
                         >
-                          ⚙
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -1737,9 +1748,12 @@ export default function EmployeePage() {
       >
         <div className="flex flex-col gap-5 text-left">
           {/* Header Explanation */}
-          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/10 border border-primary/20">
-            <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 text-lg">
-              ⚡
+          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-white/5 border border-border-glass">
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-border-glass text-text-main flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
+              </svg>
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-text-main">Automated Counter Handover Station</span>
@@ -1768,7 +1782,7 @@ export default function EmployeePage() {
                   placeholder="Scan QR barcode or type #A-4821 / ORD-..."
                   value={handoverScanInput}
                   onChange={(e) => setHandoverScanInput(e.target.value)}
-                  className="w-full bg-bg-surface border-2 border-primary/40 focus:border-primary rounded-xl py-3 px-4 text-text-main font-mono text-base outline-none transition-all placeholder:text-text-dim/50"
+                  className="w-full bg-bg-surface border border-border-glass focus:border-primary/60 rounded-xl py-3 px-4 text-text-main font-mono text-base outline-none transition-all placeholder:text-text-dim/50"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-primary/70 bg-primary/10 px-2 py-0.5 rounded">
                   SCANNER ACTIVE
@@ -1782,10 +1796,7 @@ export default function EmployeePage() {
                 {isClaimingHandover ? (
                   <span>Verifying...</span>
                 ) : (
-                  <>
-                    <span>Verify &amp; Claim</span>
-                    <span>→</span>
-                  </>
+                  <span>Verify &amp; Claim</span>
                 )}
               </button>
             </div>
@@ -1793,16 +1804,16 @@ export default function EmployeePage() {
 
           {/* Success Banner & Released Cubby details */}
           {lastClaimedOrder && (
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
+            <div className="p-4 rounded-xl bg-white/5 border border-border-glass flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-bold text-xs uppercase tracking-wide text-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="font-semibold text-xs tracking-wide text-text-main">
                     Handover Confirmed &bull; Order Completed
                   </span>
                 </div>
                 {lastClaimedOrder.stagingCubby && (
-                  <span className="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                  <span className="text-xs font-mono text-text-dim bg-white/5 border border-border-glass px-2.5 py-0.5 rounded">
                     Released: {lastClaimedOrder.stagingCubby}
                   </span>
                 )}
@@ -1842,7 +1853,7 @@ export default function EmployeePage() {
                 <button
                   type="button"
                   onClick={() => setLastClaimedOrder(null)}
-                  className="py-2 px-4 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs transition-all cursor-pointer"
+                  className="py-2 px-4 rounded-lg bg-white/10 hover:bg-white/15 border border-border-glass text-text-main font-medium text-xs transition-all cursor-pointer"
                 >
                   Next Customer
                 </button>
@@ -1872,12 +1883,12 @@ export default function EmployeePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {o.stagingCubby && (
-                        <span className="font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded text-[10px]">
-                          📍 {o.stagingCubby}
+                        <span className="font-mono text-text-dim bg-white/5 border border-border-glass px-2 py-0.5 rounded text-[10px]">
+                          {o.stagingCubby}
                         </span>
                       )}
-                      <span className="text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity text-[11px]">
-                        Claim →
+                      <span className="text-text-main font-medium opacity-0 group-hover:opacity-100 transition-opacity text-[11px]">
+                        Select
                       </span>
                     </div>
                   </div>

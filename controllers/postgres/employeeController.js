@@ -238,14 +238,22 @@ exports.receiveGarments = async (req, res) => {
  */
 exports.scanClaimHandover = async (req, res) => {
     try {
-        const { code } = req.body;
-        if (!code || typeof code !== 'string') {
+        const rawInput = (req.body.claimCode || req.body.code || req.body.token || '').toString().trim();
+        if (!rawInput) {
             return res.status(400).json({ message: 'Valid claim code or QR token required' });
         }
 
-        const cleanCode = code.trim();
+        let cleanCode = rawInput;
+        if (cleanCode.includes('/')) {
+            cleanCode = cleanCode.split('/').pop().trim();
+        }
+        if (cleanCode.includes('=')) {
+            cleanCode = cleanCode.split('=').pop().trim();
+        }
+
         const upperCode = cleanCode.toUpperCase();
         const codeWithHash = upperCode.startsWith('#') ? upperCode : `#${upperCode}`;
+        const codeWithoutHash = upperCode.startsWith('#') ? upperCode.slice(1) : upperCode;
         const username = req.user?.username || 'Counter Staff';
 
         // Match by orderId, claimCode (#A-XXXX), trackingNumber, or database id
@@ -253,6 +261,7 @@ exports.scanClaimHandover = async (req, res) => {
             where: {
                 OR: [
                     { orderId: { equals: upperCode, mode: 'insensitive' } },
+                    { orderId: { equals: codeWithoutHash, mode: 'insensitive' } },
                     { id: cleanCode },
                     {
                         personalization: {
@@ -264,6 +273,12 @@ exports.scanClaimHandover = async (req, res) => {
                         personalization: {
                             path: ['claimCode'],
                             equals: codeWithHash
+                        }
+                    },
+                    {
+                        personalization: {
+                            path: ['claimCode'],
+                            equals: codeWithoutHash
                         }
                     },
                     {
