@@ -231,3 +231,90 @@ exports.receiveGarments = async (req, res) => {
     }
 };
 
+/**
+ * 1-Scan Counter Handover Verification:
+ * Cashier scans customer's phone QR claim code at the Pacific Mall kiosk counter.
+ * Automatically verifies anti-fraud code, transitions order to 'Completed', and releases shelf cubby.
+ */
+exports.scanClaimHandover = async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code || typeof code !== 'string') {
+            return res.status(400).json({ message: 'Valid claim code or QR token required' });
+        }
+
+        const cleanCode = code.trim();
+        const upperCode = cleanCode.toUpperCase();
+        const codeWithHash = upperCode.startsWith('#') ? upperCode : `#${upperCode}`;
+        const username = req.user?.username || 'Counter Staff';
+
+        // Match by orderId, claimCode (#A-XXXX), trackingNumber, or database id
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [
+                    { orderId: { equals: upperCode, mode: 'insensitive' } },
+                    { id: cleanCode },
+                    {
+                        personalization: {
+                            path: ['claimCode'],
+                            equals: upperCode
+                        }
+                    },
+                    {
+                        personalization: {
+                            path: ['claimCode'],
+                            equals: codeWithHash
+                        }
+                    },
+                    {
+                        personalization: {
+                            path: ['trackingNumber'],
+                            equals: upperCode
+                        }
+                    }
+                ]
+            },
+            include: { transaction: true }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: `No active order found matching code: ${cleanCode}` });
+        }
+
+        if (order.status === 'Completed' || order.status === 'Order Delivered') {
+            return res.status(400).json({
+                message: `Order #${order.orderId} was already claimed and completed.`,
+                order,
+                alreadyClaimed: true
+            });
+        }
+
+        const cubbyLocation = order.stagingCubby || order.personalization?.stagingCubby || 'Front Counter Shelf';
+
+        // Auto-transition to Completed via atomic state manager
+        const updatedOrder = await prisma.$transaction(async (tx) => {
+            return await handleOrderStateTransition(tx, order.id, 'Completed', username, {
+                note: `Claim verified via counter QR scan. Handed over from ${cubbyLocation}.`
+            });
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        res.json({
+            success: true,
+            order: updatedOrder,
+            cubby: cubbyLocation,
+            client: order.client,
+            message: `Verified! Hand over items from ${cubbyLocation}.`
+        });
+    } catch (err) {
+        console.error('Scan Claim Handover Error:', err);
+        res.status(500).json({ message: 'Error processing counter claim handover' });
+    }
+};
+
+

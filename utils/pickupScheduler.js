@@ -266,10 +266,11 @@ function calculatePickupSchedule({
 }) {
     const machines = Math.max(1, activeMachines);
     
-    // Express protection: express orders (1-3 items) jump the bulk queue backlog
-    // and only wait behind immediate orders currently on the machine (~2-6 mins)
+    // Cooperative Preemption at Unit Granularity:
+    // Express orders (1-3 items) never wait behind a 50-piece bulk batch.
+    // They only wait for the single garment currently hooped on the machine (~1.5-3 mins)
     const effectiveBacklog = isExpress 
-        ? Math.min(6, Math.ceil(queueBacklogMinutes / machines))
+        ? Math.min(3, Math.ceil(queueBacklogMinutes / machines))
         : Math.ceil(queueBacklogMinutes / machines);
 
     const activeMinutesNeeded = effectiveBacklog + Math.max(2, Math.ceil(orderDurationMinutes));
@@ -292,6 +293,69 @@ function calculatePickupSchedule({
     };
 }
 
+/**
+ * Mathematically slices a large bulk order into daily production batches
+ * so the bulk order does not monopolize the machine in one continuous multi-day block.
+ * 
+ * @param {Object} params
+ * @param {number} params.totalPieces Total items in order
+ * @param {number} [params.maxPiecesPerDay] Daily bulk cap (default: 50)
+ * @param {number} [params.minutesPerPiece] Average stitch time per piece
+ * @returns {Array<Object>} List of daily batch slices
+ */
+function sliceBulkOrderIntoDailyBatches({ totalPieces = 1, maxPiecesPerDay = 50, minutesPerPiece = 2.0 }) {
+    const cap = Math.max(1, maxPiecesPerDay);
+    const batches = [];
+    let remaining = Math.max(1, totalPieces);
+    let day = 0;
+
+    while (remaining > 0) {
+        const batchPieces = Math.min(remaining, cap);
+        batches.push({
+            dayOffset: day,
+            pieces: batchPieces,
+            estimatedMinutes: Math.ceil(batchPieces * minutesPerPiece)
+        });
+        remaining -= batchPieces;
+        day++;
+    }
+
+    return batches;
+}
+
+/**
+ * Algorithmically assigns the next available physical storage shelf cubby at Pacific Mall Lucena kiosk.
+ * Recycles empty cubbies from claimed/completed orders (Bin A-1 to A-10, B-1 to B-10, C-1 to C-10).
+ * 
+ * @param {Array<Object>} activeOrders Currently active orders with stagingCubby assigned
+ * @returns {string} Assigned cubby name (e.g. "Bin A-1")
+ */
+function assignNextAvailableCubby(activeOrders = []) {
+    const occupied = new Set();
+    if (Array.isArray(activeOrders)) {
+        activeOrders.forEach(o => {
+            const cubby = o.stagingCubby || o.personalization?.stagingCubby;
+            if (cubby && ['ready for pick up', 'ready for pickup', 'preparing order', 'in queue'].includes((o.status || '').toLowerCase())) {
+                occupied.add(cubby.trim());
+            }
+        });
+    }
+
+    // Shelves A, B, C with 10 cubbies each
+    const shelves = ['A', 'B', 'C'];
+    for (const shelf of shelves) {
+        for (let slot = 1; slot <= 10; slot++) {
+            const candidate = `Bin ${shelf}-${slot}`;
+            if (!occupied.has(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    // Overflow shelf
+    return `Bin Overflow-${occupied.size + 1}`;
+}
+
 module.exports = {
     SHOP_OPEN_HOUR,
     SHOP_CLOSE_HOUR,
@@ -305,5 +369,7 @@ module.exports = {
     addActiveProductionMinutes,
     formatPickupLabel,
     estimateArtisanProductionTime,
-    calculatePickupSchedule
+    calculatePickupSchedule,
+    sliceBulkOrderIntoDailyBatches,
+    assignNextAvailableCubby
 };

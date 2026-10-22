@@ -129,6 +129,12 @@ export default function EmployeePage() {
   const [orderProgressInput, setOrderProgressInput] = useState('10');
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
 
+  // 1-Scan Counter Handover State
+  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [handoverScanInput, setHandoverScanInput] = useState('');
+  const [isClaimingHandover, setIsClaimingHandover] = useState(false);
+  const [lastClaimedOrder, setLastClaimedOrder] = useState<any>(null);
+
   // Receipt Modal State
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -398,6 +404,33 @@ export default function EmployeePage() {
       fetchEmployeeData();
     } catch (err: any) {
       showToast(err?.message || 'Failed to record garments received', 'error');
+    }
+  };
+
+  const handleScanClaimHandover = async (codeToSubmit?: string) => {
+    const rawCode = (codeToSubmit || handoverScanInput).trim();
+    if (!rawCode) {
+      showToast('Please scan customer QR or enter claim ticket code', 'error');
+      return;
+    }
+    setIsClaimingHandover(true);
+    try {
+      const res: any = await api.post('/api/employee/orders/scan-claim', {
+        claimCode: rawCode
+      });
+      if (res && res.success) {
+        showToast(res.message || 'Counter handover complete! Order marked Completed.', 'success');
+        setLastClaimedOrder(res.order);
+        setHandoverScanInput('');
+        fetchEmployeeData();
+      } else {
+        showToast(res?.message || 'Handover failed', 'error');
+      }
+    } catch (err: any) {
+      console.error('Scan-claim error:', err);
+      showToast(err?.message || 'Invalid or unrecognized claim code', 'error');
+    } finally {
+      setIsClaimingHandover(false);
     }
   };
 
@@ -811,6 +844,22 @@ export default function EmployeePage() {
                 <h1 className="text-3xl font-extrabold mb-1">Active Order Queue</h1>
               </div>
               <div className="flex gap-3 items-center flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHandoverScanInput('');
+                      setLastClaimedOrder(null);
+                      setIsHandoverModalOpen(true);
+                    }}
+                    className="bg-primary hover:bg-primary-light active:scale-[0.98] text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border-none"
+                    title="Scan customer QR code or enter claim ticket #A-XXXX for fast handover"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="18" x="3" y="3" rx="2" />
+                      <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
+                    </svg>
+                    <span>⚡ 1-Scan Counter Handover</span>
+                  </button>
                   <GlassDatePicker 
                     value={ordersDateFilter}
                     onChange={(val) => setOrdersDateFilter(val)}
@@ -823,7 +872,6 @@ export default function EmployeePage() {
                    onChange={(e) => setOrdersSearchQuery(e.target.value)}
                    className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
                  />
-                 
               </div>
             </header>
 
@@ -886,7 +934,14 @@ export default function EmployeePage() {
                            <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
                              <td className="glass-td">
                                <div className="flex flex-col text-left">
-                                 <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                                  {o.stagingCubby && (
+                                    <span className="text-[0.65rem] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                                      📍 {o.stagingCubby}
+                                    </span>
+                                  )}
+                                </div>
                                  <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
                                    ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
                                      o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
@@ -930,22 +985,36 @@ export default function EmployeePage() {
                                )}
                              </td>
                              <td className="glass-td text-text-main text-sm text-left">
-                               {o.items && Array.isArray(o.items) ? (
-                                 <div className="flex flex-col gap-0.5">
-                                   {o.items.map((item: any, idx: number) => {
-                                     const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
-                                     return (
-                                       <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
-                                         {item.selectedColor && (
-                                           <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                         )}
-                                         <span className="font-medium">{item.quantity}x {item.name}</span>
-                                         {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
-                                       </div>
-                                     );
-                                   })}
-                                 </div>
-                               ) : (
+                                {o.items && Array.isArray(o.items) ? (
+                                  <div className="flex flex-col gap-1.5">
+                                    {o.items.map((item: any, idx: number) => {
+                                      const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                      const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
+                                      const threadColor = item.personalization?.threadColor || item.personalization?.color;
+                                      return (
+                                        <div key={idx} className="flex flex-col text-xs">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            {item.selectedColor && (
+                                              <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                            )}
+                                            <span className="font-medium text-text-main">{item.quantity}x {item.name}</span>
+                                            {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                          </div>
+                                          {stitchText && (
+                                            <div className="flex items-center gap-1 text-[0.7rem] text-amber-300 font-mono mt-0.5 pl-2.5 border-l-2 border-amber-400/40">
+                                              <span>✍️ &ldquo;{stitchText}&rdquo;</span>
+                                              {threadColor && (
+                                                <span className="text-text-dim text-[0.65rem] font-sans">
+                                                  ({threadColor})
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
                                  <span className="font-semibold">{o.design || 'Embroidery Design'}</span>
                                )}
                                {isBatchMatched && (
@@ -973,17 +1042,62 @@ export default function EmployeePage() {
                                     </svg>
                                     <span>Bag Slip</span>
                                   </button>
-                                 <button
-                                   onClick={() => {
-                                     setSelectedOrder(o);
-                                     setOrderStatusInput(o.status || 'In Queue');
-                                     setOrderProgressInput((o.progress || 10).toString());
-                                     setIsProcessModalOpen(true);
-                                   }}
-                                   className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
-                                 >
-                                   Process
-                                 </button>
+                                  {o.status === 'In Queue' && (
+                                    o.isByog && !o.garmentsReceivedAt ? (
+                                      <button
+                                        onClick={() => handleReceiveGarments(o)}
+                                        className="bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer flex items-center gap-1"
+                                        title="Customer dropped off garments at counter"
+                                      >
+                                        <span>📥 Intake</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
+                                        className="bg-primary/15 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer flex items-center gap-1"
+                                        title="Load to embroidery machine and start stitching"
+                                      >
+                                        <span>▶ Start</span>
+                                      </button>
+                                    )
+                                  )}
+
+                                  {o.status === 'Preparing Order' && (
+                                    <button
+                                      onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
+                                      className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer flex items-center gap-1"
+                                      title="Finish stitching and auto-assign staging shelf"
+                                    >
+                                      <span>✓ Finish &amp; Staged</span>
+                                    </button>
+                                  )}
+
+                                  {o.status === 'Ready For Pick Up' && (
+                                    <button
+                                      onClick={() => {
+                                        setHandoverScanInput(o.claimCode || o.orderId);
+                                        setLastClaimedOrder(null);
+                                        setIsHandoverModalOpen(true);
+                                      }}
+                                      className="bg-sky-500/15 border border-sky-500/30 text-sky-300 px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-sky-500/25 transition-all cursor-pointer flex items-center gap-1"
+                                      title="Open 1-scan handover verification"
+                                    >
+                                      <span>⚡ Handover</span>
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrder(o);
+                                      setOrderStatusInput(o.status || 'In Queue');
+                                      setOrderProgressInput((o.progress || 10).toString());
+                                      setIsProcessModalOpen(true);
+                                    }}
+                                    title="More manual options / override"
+                                    className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 text-xs transition-colors cursor-pointer"
+                                  >
+                                    ⚙
+                                  </button>
                                </div>
                              </td>
                            </tr>
@@ -1062,15 +1176,24 @@ export default function EmployeePage() {
                             {o.items && Array.isArray(o.items) ? (
                               o.items.map((item: any, idx: number) => {
                                 const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
+                                const threadColor = item.personalization?.threadColor || item.personalization?.color;
                                 return (
-                                  <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      {item.selectedColor && (
-                                        <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                      )}
-                                      <span className="truncate">{item.quantity}x {item.name}</span>
+                                  <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex flex-col gap-0.5">
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        {item.selectedColor && (
+                                          <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
+                                        )}
+                                        <span className="truncate">{item.quantity}x {item.name}</span>
+                                      </div>
+                                      {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
                                     </div>
-                                    {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
+                                    {stitchText && (
+                                      <span className="text-[0.65rem] text-amber-300 font-mono pl-3">
+                                        ✍️ &ldquo;{stitchText}&rdquo; {threadColor ? `(${threadColor})` : ''}
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               })
@@ -1100,6 +1223,43 @@ export default function EmployeePage() {
                           </svg>
                           <span>Bag Slip</span>
                         </button>
+                        {o.status === 'In Queue' && (
+                          o.isByog && !o.garmentsReceivedAt ? (
+                            <button
+                              onClick={() => handleReceiveGarments(o)}
+                              className="flex-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 py-2.5 rounded-xl text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer text-center"
+                            >
+                              📥 Intake
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
+                              className="flex-1 bg-primary/15 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center"
+                            >
+                              ▶ Start
+                            </button>
+                          )
+                        )}
+                        {o.status === 'Preparing Order' && (
+                          <button
+                            onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
+                            className="flex-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer text-center"
+                          >
+                            ✓ Finish &amp; Staged
+                          </button>
+                        )}
+                        {o.status === 'Ready For Pick Up' && (
+                          <button
+                            onClick={() => {
+                              setHandoverScanInput(o.claimCode || o.orderId);
+                              setLastClaimedOrder(null);
+                              setIsHandoverModalOpen(true);
+                            }}
+                            className="flex-1 bg-sky-500/15 border border-sky-500/30 text-sky-300 py-2.5 rounded-xl text-xs font-bold hover:bg-sky-500/25 transition-all cursor-pointer text-center"
+                          >
+                            ⚡ Handover
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setSelectedOrder(o);
@@ -1107,9 +1267,10 @@ export default function EmployeePage() {
                             setOrderProgressInput((o.progress || 10).toString());
                             setIsProcessModalOpen(true);
                           }}
-                          className="flex-1 bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
+                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-bold cursor-pointer"
+                          title="Manual adjustments"
                         >
-                          Process Ticket
+                          ⚙
                         </button>
                       </div>
                     </div>
@@ -1562,6 +1723,170 @@ export default function EmployeePage() {
       {/* Modals */}
 
 
+
+      {/* 1-Scan Counter Handover & QR Verification Modal */}
+      <GlassModal
+        isOpen={isHandoverModalOpen}
+        onClose={() => {
+          setIsHandoverModalOpen(false);
+          setHandoverScanInput('');
+          setLastClaimedOrder(null);
+        }}
+        title="1-Scan Counter Handover"
+        maxWidth="max-w-[520px]"
+      >
+        <div className="flex flex-col gap-5 text-left">
+          {/* Header Explanation */}
+          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/10 border border-primary/20">
+            <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 text-lg">
+              ⚡
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-text-main">Automated Counter Handover Station</span>
+              <span className="text-[11px] text-text-dim">
+                Scan customer's pickup QR code (#A-XXXX) or enter claim ticket. Auto-verifies token, frees shelf cubby, and completes order.
+              </span>
+            </div>
+          </div>
+
+          {/* Scanner Input Bar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleScanClaimHandover();
+            }}
+            className="flex flex-col gap-2"
+          >
+            <label className="text-xs font-bold uppercase tracking-wider text-text-dim">
+              Customer QR / Claim Code / Order ID
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Scan QR barcode or type #A-4821 / ORD-..."
+                  value={handoverScanInput}
+                  onChange={(e) => setHandoverScanInput(e.target.value)}
+                  className="w-full bg-bg-surface border-2 border-primary/40 focus:border-primary rounded-xl py-3 px-4 text-text-main font-mono text-base outline-none transition-all placeholder:text-text-dim/50"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-primary/70 bg-primary/10 px-2 py-0.5 rounded">
+                  SCANNER ACTIVE
+                </span>
+              </div>
+              <button
+                type="submit"
+                disabled={isClaimingHandover || !handoverScanInput.trim()}
+                className="bg-primary hover:bg-primary-light active:scale-[0.98] disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl transition-all cursor-pointer text-sm shrink-0 flex items-center gap-1.5"
+              >
+                {isClaimingHandover ? (
+                  <span>Verifying...</span>
+                ) : (
+                  <>
+                    <span>Verify &amp; Claim</span>
+                    <span>→</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Success Banner & Released Cubby details */}
+          {lastClaimedOrder && (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-bold text-xs uppercase tracking-wide text-emerald-300">
+                    Handover Confirmed &bull; Order Completed
+                  </span>
+                </div>
+                {lastClaimedOrder.stagingCubby && (
+                  <span className="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                    Released: {lastClaimedOrder.stagingCubby}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs bg-black/20 p-3 rounded-lg border border-white/5">
+                <div>
+                  <span className="text-text-dim block text-[10px] uppercase font-bold">Order ID</span>
+                  <span className="font-mono font-bold text-text-main">{lastClaimedOrder.orderId}</span>
+                </div>
+                <div>
+                  <span className="text-text-dim block text-[10px] uppercase font-bold">Customer</span>
+                  <span className="font-bold text-text-main">{lastClaimedOrder.client || 'Counter Pickup'}</span>
+                </div>
+                <div>
+                  <span className="text-text-dim block text-[10px] uppercase font-bold">Total Amount</span>
+                  <span className="font-mono font-bold text-primary">₱{parseFloat(lastClaimedOrder.totalAmount || lastClaimedOrder.amount || 0).toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-text-dim block text-[10px] uppercase font-bold">Claim Timestamp</span>
+                  <span className="text-text-main">{new Date().toLocaleTimeString()}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingReceiptOrder(lastClaimedOrder);
+                    setIsReceiptModalOpen(true);
+                  }}
+                  className="flex-1 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span>Print Receipt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLastClaimedOrder(null)}
+                  className="py-2 px-4 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  Next Customer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick List of Ready for Pickup Orders waiting at the Counter */}
+          <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
+              <span>Orders Waiting in Staging Bins ({orders.filter(o => o.status === 'Ready For Pick Up').length})</span>
+              <span className="text-[10px] text-primary lowercase">tap to instant-claim</span>
+            </span>
+            <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin">
+              {orders.filter(o => o.status === 'Ready For Pick Up').length === 0 ? (
+                <span className="text-xs text-text-dim italic py-2 text-center">No orders currently waiting in shelf cubbies.</span>
+              ) : (
+                orders.filter(o => o.status === 'Ready For Pick Up').map(o => (
+                  <div
+                    key={o.id || o.orderId}
+                    onClick={() => handleScanClaimHandover(o.claimCode || o.orderId)}
+                    className="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 flex items-center justify-between cursor-pointer transition-all text-xs group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-text-main group-hover:text-primary transition-colors">{o.orderId}</span>
+                      <span className="text-text-dim">&bull; {o.client}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {o.stagingCubby && (
+                        <span className="font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded text-[10px]">
+                          📍 {o.stagingCubby}
+                        </span>
+                      )}
+                      <span className="text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity text-[11px]">
+                        Claim →
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </GlassModal>
 
       {/* Process Order Modal */}
       <GlassModal

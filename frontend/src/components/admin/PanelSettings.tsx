@@ -59,6 +59,9 @@ export default function PanelSettings({
   const [artisanDailyMinutes, setArtisanDailyMinutes] = useState<number>(500.0);
   const [expressLanePercent, setExpressLanePercent] = useState<number>(35.0);
   const [efficiencyFactor, setEfficiencyFactor] = useState<number>(85);
+  const [maxBulkPiecesPerDay, setMaxBulkPiecesPerDay] = useState<number>(50);
+  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('day');
+  const [largeOrderQuoteThreshold, setLargeOrderQuoteThreshold] = useState<number>(100);
   const [isSavingArtisan, setIsSavingArtisan] = useState(false);
 
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
@@ -105,6 +108,9 @@ export default function PanelSettings({
         if (res.artisanDailyMinutes !== undefined) setArtisanDailyMinutes(res.artisanDailyMinutes);
         if (res.expressLanePercent !== undefined) setExpressLanePercent(res.expressLanePercent);
         if (res.efficiencyFactor !== undefined) setEfficiencyFactor(Math.round(res.efficiencyFactor * 100));
+        if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerDay(res.maxBulkPiecesPerDay);
+        if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
+        if (res.largeOrderQuoteThreshold !== undefined) setLargeOrderQuoteThreshold(res.largeOrderQuoteThreshold);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -177,7 +183,10 @@ export default function PanelSettings({
         artisanCapOffsetMinutes: Number(artisanCapOffsetMinutes),
         artisanDailyMinutes: Number(artisanDailyMinutes),
         expressLanePercent: Number(expressLanePercent),
-        efficiencyFactor: Number(efficiencyFactor) / 100.0
+        efficiencyFactor: Number(efficiencyFactor) / 100.0,
+        maxBulkPiecesPerDay: Number(maxBulkPiecesPerDay),
+        batchThrottlePeriod: batchThrottlePeriod,
+        largeOrderQuoteThreshold: Number(largeOrderQuoteThreshold),
       });
       showToast('Artisan workshop calibration updated!', 'success');
     } catch (e: any) {
@@ -195,6 +204,9 @@ export default function PanelSettings({
     setArtisanDailyMinutes(500.0);
     setExpressLanePercent(35.0);
     setEfficiencyFactor(85);
+    setMaxBulkPiecesPerDay(50);
+    setBatchThrottlePeriod('day');
+    setLargeOrderQuoteThreshold(100);
     showToast('Calibration parameters reset to standard defaults. Click Save to persist.', 'info');
   };
 
@@ -917,6 +929,73 @@ export default function PanelSettings({
                   </div>
                 </div>
 
+                {/* Section 3: Bulk Order & Batch Intake Throttling */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim mb-3">
+                    3. Bulk Order &amp; Batch Intake Throttling (Cooperative Slicing &amp; Anti-Burnout)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Max Bulk Pieces */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Max Bulk Batch Quota</span>
+                        <span className="text-[10px] text-text-dim font-mono">pieces / cycle</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="5"
+                        min="10"
+                        max="500"
+                        value={maxBulkPiecesPerDay}
+                        onChange={(e) => setMaxBulkPiecesPerDay(parseInt(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Limits daily stitch volume per large contract. Default: <strong>50 pcs</strong>.
+                      </span>
+                    </div>
+
+                    {/* Throttle Period */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Intake Throttle Period</span>
+                        <span className="text-[10px] text-text-dim font-mono">time window</span>
+                      </label>
+                      <select
+                        value={batchThrottlePeriod}
+                        onChange={(e) => setBatchThrottlePeriod(e.target.value)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-sans outline-none focus:border-primary transition-all"
+                      >
+                        <option value="day">Daily Slicing (Max pieces / day)</option>
+                        <option value="week">Weekly Slicing (Max pieces / week)</option>
+                      </select>
+                      <span className="text-[11px] text-text-dim">
+                        Slices massive bulk jobs into daily/weekly manageable sub-batches.
+                      </span>
+                    </div>
+
+                    {/* Large Order Quote Threshold */}
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Quote Review Threshold</span>
+                        <span className="text-[10px] text-text-dim font-mono">pcs limit</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="10"
+                        min="20"
+                        max="1000"
+                        value={largeOrderQuoteThreshold}
+                        onChange={(e) => setLargeOrderQuoteThreshold(parseInt(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Orders exceeding this size trigger custom lead-time quotation. Default: <strong>100 pcs</strong>.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Calculation Summary Bar */}
                 <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-text-main flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -925,6 +1004,7 @@ export default function PanelSettings({
                       {artisanDailyMinutes} min/day budget &bull;{' '}
                       <strong className="text-text-main">{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} min</strong> Express &bull;{' '}
                       <strong className="text-text-main">{Math.round(artisanDailyMinutes * (1 - expressLanePercent / 100))} min</strong> Bulk Amortization &bull;{' '}
+                      Quota: <strong className="text-text-main">{maxBulkPiecesPerDay} pcs/{batchThrottlePeriod}</strong> &bull;{' '}
                       ~{(artisanHandlingMinutes + (5 * (artisanSecondsPerLetter / 60))).toFixed(1)}m per 5-letter towel
                     </span>
                   </div>

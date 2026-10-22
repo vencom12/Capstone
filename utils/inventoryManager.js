@@ -346,12 +346,29 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     personalization.courier = extraData.courier || personalization.courier || 'Store Pick-up';
     personalization.fulfillmentType = 'pickup';
 
+    let stagingCubby = order.stagingCubby;
+    const lowerStatus = (newStatus || '').toLowerCase();
+    if (['ready for pick up', 'ready for pickup', 'ready for pick-up'].includes(lowerStatus)) {
+        if (!stagingCubby) {
+            const { assignNextAvailableCubby } = require('./pickupScheduler');
+            const activeOrders = await tx.order.findMany({
+                where: {
+                    status: { in: ['In Queue', 'Preparing Order', 'Ready For Pick Up', 'Ready For Pick-Up'] }
+                },
+                select: { stagingCubby: true, status: true, personalization: true }
+            });
+            stagingCubby = assignNextAvailableCubby(activeOrders);
+        }
+        personalization.stagingCubby = stagingCubby;
+    }
+
     const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: { 
             status: newStatus, 
             progress,
-            personalization 
+            personalization,
+            stagingCubby: stagingCubby || undefined
         }
     });
 

@@ -7,6 +7,7 @@ const auditLogger = require('../../middleware/postgres/auditLogger');
 router.get('/dashboard-state', staffAuth(), employeeController.getDashboardState);
 router.patch('/orders/:id/status', staffAuth(), auditLogger('Order', 'UPDATE_ORDER_STATUS'), employeeController.updateOrderStatus);
 router.patch('/orders/:id/garments-received', staffAuth(), auditLogger('Order', 'RECEIVE_CLIENT_GARMENTS'), employeeController.receiveGarments);
+router.post('/orders/scan-claim', staffAuth(), auditLogger('Order', 'COUNTER_CLAIM_SCAN'), employeeController.scanClaimHandover);
 router.patch('/inventory/:item', staffAuth(), auditLogger('Inventory', 'UPDATE_INVENTORY'), employeeController.updateInventory);
 router.put('/shift', staffAuth(), employeeController.toggleShift);
 

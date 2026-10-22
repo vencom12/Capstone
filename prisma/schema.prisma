@@ -108,6 +108,7 @@ model Order {
   waiverSigned       Boolean   @default(false) // Legal waiver
   garmentsReceivedAt DateTime? // Physical counter drop-off timestamp for BYOG
   garmentsReceivedBy String?   // Staff username/ID who accepted garments
+  stagingCubby       String?   // Physical shelf bin at Pacific Mall kiosk (e.g. "Bin B-3")
   giftPackaging      Boolean   @default(false) // Premium upsell
   calligraphyMessage String?   // Handwritten note
   personalization    Json?     // Custom cursive data { text, font, color }
@@ -250,6 +251,11 @@ model SystemSettings {
   artisanDailyMinutes     Float   @default(500.0)
   expressLanePercent      Float   @default(35.0)
   efficiencyFactor        Float   @default(0.85)
+
+  // Bulk Order & Batch Intake Throttling
+  maxBulkPiecesPerDay      Int     @default(50)
+  batchThrottlePeriod      String  @default("day") // "day" or "week"
+  largeOrderQuoteThreshold Int     @default(100)
 }
 
 model GlobalAuditLog {
