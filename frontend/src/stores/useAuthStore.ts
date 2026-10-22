@@ -21,9 +21,6 @@ interface AuthState {
 
   login: (email: string, password: string, rememberMe?: boolean, role?: 'customer' | 'employee' | 'admin') => Promise<AuthResponse>;
   register: (username: string, email: string, password: string, phoneNumber?: string, address?: string) => Promise<AuthResponse>;
-  sendPhoneOtp: (username: string, email: string, phoneNumber: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
-  resendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
-  registerWithOtp: (data: { username: string; email: string; password: string; phoneNumber: string; address?: string; code: string }) => Promise<AuthResponse>;
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
@@ -99,32 +96,6 @@ export const useAuthStore = create<AuthState>()(
         } catch (err) {
           set({ isLoading: false });
           return { success: false, message: err instanceof Error ? err.message : 'Registration failed' };
-        }
-      },
-
-      sendPhoneOtp: async (username, email, phoneNumber) => {
-        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
-          '/api/auth/phone/send-otp',
-          { username, email, phoneNumber }
-        );
-      },
-
-      resendPhoneOtp: async (phoneNumber) => {
-        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
-          '/api/auth/phone/resend-otp',
-          { phoneNumber }
-        );
-      },
-
-      registerWithOtp: async (payload) => {
-        set({ isLoading: true });
-        try {
-          const data = await api.post<{ user: User }>('/api/auth/register-with-otp', payload);
-          set({ user: data.user, isAuthenticated: true, isLoading: false });
-          return { success: true, user: data.user };
-        } catch (err) {
-          set({ isLoading: false });
-          return { success: false, message: err instanceof Error ? err.message : 'Verification failed' };
         }
       },
 

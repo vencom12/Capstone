@@ -63,12 +63,6 @@ services:
       - key: GROQ_API_KEY
         sync: false
 
-      # Leave SEMAPHORE_API_KEY blank to run SMS in defense-simulation mode
-      # (verification codes are printed to the server log).
-      - key: SEMAPHORE_API_KEY
-        sync: false
-      - key: SEMAPHORE_SENDER_NAME
-        value: SEMAPHORE
 
       # Live Email Delivery for Render (Render Free tier blocks standard SMTP ports 25, 465, 587).
       # Primary Option: Brevo HTTP API (Port 443 — 300 free emails/day to any recipient, no custom domain required)
