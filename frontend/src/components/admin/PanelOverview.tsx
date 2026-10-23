@@ -194,25 +194,35 @@ export default function PanelOverview({
     showToast(`Generated J&T Express code: ${code}`, 'info');
   };
 
-  // 1. Filtering Logic
-  const activeOrders = orders.filter((o) => {
-    // Hide delivered and canceled in primary Overview queue
-    if (['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
+  // 1. Filtering & Queue Priority Sorting Logic
+  const activeOrders = orders
+    .filter((o) => {
+      // Hide delivered and canceled in primary Overview queue
+      if (['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
 
-    const matchesSearch =
-      !searchQuery ||
-      o.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.status?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch =
+        !searchQuery ||
+        o.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.status?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesDate =
-      !dateFilter ||
-      new Date(o.date || o.createdAt).toISOString().split('T')[0] === dateFilter;
+      const matchesDate =
+        !dateFilter ||
+        new Date(o.date || o.createdAt).toISOString().split('T')[0] === dateFilter;
 
-    const matchesTab = queueTab === 'all' || o.status === queueTab;
+      const matchesTab = queueTab === 'all' || o.status === queueTab;
 
-    return matchesSearch && matchesDate && matchesTab;
-  });
+      return matchesSearch && matchesDate && matchesTab;
+    })
+    .sort((a, b) => {
+      // Prioritize Rush orders and high priority scores first, followed by FIFO order creation
+      const scoreA = (a.priorityScore || 0) + (a.isRush ? 100 : 0);
+      const scoreB = (b.priorityScore || 0) + (b.isRush ? 100 : 0);
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      return new Date(a.date || a.createdAt || 0).getTime() - new Date(b.date || b.createdAt || 0).getTime();
+    });
 
   // Pagination for Active Orders Queue Table
   const [currentPage, setCurrentPage] = useState(1);
@@ -395,6 +405,35 @@ export default function PanelOverview({
     }
   };
 
+  const handleReceiveGarmentsAdmin = async () => {
+    if (!editingOrder) return;
+    const orderId = editingOrder.id || editingOrder.orderId;
+    try {
+      const res: any = await api.patch(`/api/employee/orders/${orderId}/garments-received`, {});
+      showToast(res?.message || `Garments received for Order #${editingOrder.orderId}!`, 'success');
+      const nowIso = new Date().toISOString();
+      if (setOrders) {
+        setOrders(prev => prev.map(o => (o.id === orderId || o.orderId === orderId) ? {
+          ...o,
+          garmentsReceivedAt: nowIso,
+          status: 'In Queue',
+          dueDate: res?.order?.dueDate || o.dueDate
+        } : o));
+      }
+      setEditingOrder((prev: any) => ({
+        ...prev,
+        garmentsReceivedAt: nowIso,
+        status: 'In Queue',
+        dueDate: res?.order?.dueDate || prev.dueDate
+      }));
+      setEditStatus('In Queue');
+      refreshData().catch(() => { });
+    } catch (err: any) {
+      console.error(err);
+      showToast(err?.message || 'Failed to record garments received', 'error');
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedIds.length === activeOrders.length) {
       setSelectedIds([]);
@@ -570,7 +609,37 @@ export default function PanelOverview({
                           />
                         </td>
                         <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
-                          {o.orderId}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{o.orderId}</span>
+                            {o.isRush && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                RUSH
+                              </span>
+                            )}
+                            {o.isByog && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold border ${
+                                o.garmentsReceivedAt
+                                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                  : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              }`}>
+                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop-off'}
+                              </span>
+                            )}
+                          </div>
+                          {(o.estimatedTime || o.dueDate) && (
+                            <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
+                              {o.estimatedTime ? (
+                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main">
+                                  ⏱ ~{o.estimatedTime}m stitch
+                                </span>
+                              ) : null}
+                              {o.dueDate ? (
+                                <span className="text-primary font-medium">
+                                  Ready: {new Date(o.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
                         </td>
                         <td className="glass-td text-left text-sm">
                           <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
@@ -689,12 +758,38 @@ export default function PanelOverview({
                       </span>
 
                       <div className="flex flex-col">
-                        <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">
-                          {o.orderId}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">
+                            {o.orderId}
+                          </span>
+                          {o.isRush && (
+                            <span className="px-1 py-0.2 rounded text-[9px] font-sans font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              RUSH
+                            </span>
+                          )}
+                          {o.isByog && (
+                            <span className={`px-1 py-0.2 rounded text-[9px] font-sans font-semibold border ${
+                              o.garmentsReceivedAt
+                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                            }`}>
+                              {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop'}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[0.65rem] text-text-dim mt-0.5">
                           {new Date(o.date || o.createdAt).toLocaleString()}
                         </span>
+                        {(o.estimatedTime || o.dueDate) && (
+                          <div className="text-[10px] text-text-dim mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            {o.estimatedTime ? <span>⏱ ~{o.estimatedTime}m</span> : null}
+                            {o.dueDate ? (
+                              <span className="text-primary font-medium">
+                                Ready: {new Date(o.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col text-left">
@@ -785,17 +880,36 @@ export default function PanelOverview({
 
           return (
             <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
-              <div className="modal-box bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
+              <div className="modal-box bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center flex-wrap gap-2">
                 <div>
                   <span className="modal-label text-text-dim text-xs">Active Order ID</span>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <p className="font-mono font-bold text-text-main text-sm m-0">{editingOrder.orderId}</p>
                     {isPickup && (
                       <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">
                         {claimCode}
                       </span>
                     )}
+                    {editingOrder.isRush && (
+                      <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30">
+                        RUSH
+                      </span>
+                    )}
                   </div>
+                  {(editingOrder.estimatedTime || editingOrder.dueDate) && (
+                    <div className="text-[11px] text-text-dim mt-1.5 flex items-center gap-2 flex-wrap">
+                      {editingOrder.estimatedTime && (
+                        <span className="bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          ⏱ Est. Stitch: ~{editingOrder.estimatedTime} mins
+                        </span>
+                      )}
+                      {editingOrder.dueDate && (
+                        <span className="text-primary font-medium">
+                          Due: {new Date(editingOrder.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -811,6 +925,43 @@ export default function PanelOverview({
                   <span>Print Claim Slip</span>
                 </button>
               </div>
+
+              {/* BYOG Counter Reception Banner & Action */}
+              {editingOrder.isByog && (
+                <div className={`p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                  editingOrder.garmentsReceivedAt
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-amber-500/10 border-amber-500/30'
+                }`}>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold ${editingOrder.garmentsReceivedAt ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {editingOrder.garmentsReceivedAt ? '✓ Garments Dropped Off & Received' : '⚠ BYOG Drop-off Pending'}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-text-dim">
+                        Bring Your Own Garment
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-dim mt-0.5 mb-0">
+                      {editingOrder.garmentsReceivedAt
+                        ? `Received on ${new Date(editingOrder.garmentsReceivedAt).toLocaleString()}${editingOrder.garmentsReceivedBy ? ` by ${editingOrder.garmentsReceivedBy}` : ''}`
+                        : 'Customer has not handed over their physical garments yet. Confirm drop-off at Pacific Mall counter.'}
+                    </p>
+                  </div>
+                  {!editingOrder.garmentsReceivedAt && (
+                    <button
+                      type="button"
+                      onClick={handleReceiveGarmentsAdmin}
+                      className="bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap shadow-sm shrink-0 flex items-center gap-1.5"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Mark Garments Received</span>
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-text-main">

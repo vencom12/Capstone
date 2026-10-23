@@ -108,7 +108,6 @@ export default function DashboardOmniSearch({
       ];
     } else {
       return [
-        { id: 'workbench', title: 'My Workbench', desc: 'Active tickets assigned to this machine', category: 'Navigation' },
         { id: 'orders', title: 'Order Queue', desc: 'Workshop live embroidery and sewing queue', category: 'Navigation' },
         { id: 'counter', title: 'Walk-In Counter Mode', desc: 'POS tickets, claim slips, and on-site payments', category: 'Navigation' },
         { id: 'history', title: 'Order History', desc: 'Review completed tickets and claim stubs', category: 'Navigation' },

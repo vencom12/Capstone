@@ -975,7 +975,12 @@ exports.getLiveQueue = async (req, res) => {
 
 exports.getPublicSettings = async (req, res) => {
     try {
-        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let settings = null;
+        try {
+            settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        } catch (dbErr) {
+            console.warn('[getPublicSettings] Database query notice, using default settings:', dbErr.message);
+        }
         res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
@@ -987,13 +992,29 @@ exports.getPublicSettings = async (req, res) => {
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
         });
     } catch (err) {
-        res.status(500).json({ message: 'Error fetching public settings' });
+        console.error('[getPublicSettings] Unexpected error:', err);
+        // Fallback default response rather than 500 crash
+        res.json({
+            giftPackagingPrice: 5.00,
+            deliveryEnabled: false,
+            businessName: 'EDS TOWELS & CAPS',
+            businessAddress: 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
+            businessContact: '0928 810 3928',
+            receiptTagline: 'Custom Embroidery & Apparel Workshop',
+            businessLogoUrl: null,
+            gcashQrCodeUrl: null
+        });
     }
 };
 
 exports.getManifest = async (req, res) => {
     try {
-        let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let settings = null;
+        try {
+            settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        } catch (dbErr) {
+            console.warn('[getManifest] Database query notice, using default settings:', dbErr.message);
+        }
         let logoUrl = settings?.businessLogoUrl || '/fallback-icon.png';
 
         res.json({
@@ -1012,7 +1033,15 @@ exports.getManifest = async (req, res) => {
             ]
         });
     } catch (err) {
-        res.status(500).json({ error: 'Server error' });
+        res.json({
+            name: "Stitch-Opt | Premium Embroidery Designs",
+            short_name: "Stitch-Opt",
+            start_url: "/",
+            display: "standalone",
+            background_color: "#0f172a",
+            theme_color: "#6366f1",
+            icons: []
+        });
     }
 };
 
