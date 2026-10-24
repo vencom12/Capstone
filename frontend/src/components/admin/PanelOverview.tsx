@@ -633,11 +633,18 @@ export default function PanelOverview({
                                   ⏱ ~{o.estimatedTime}m stitch
                                 </span>
                               ) : null}
-                              {o.dueDate ? (
-                                <span className="text-primary font-medium">
-                                  Ready: {new Date(o.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              ) : null}
+                              {(() => {
+                                const createdTime = new Date(o.date || o.createdAt).getTime();
+                                const isCorruptedDue = o.dueDate && !isNaN(createdTime) && new Date(o.dueDate).getTime() < createdTime;
+                                const effectiveDue = isCorruptedDue
+                                  ? (o.personalization?.estimatedReadyDate || o.dueDate)
+                                  : (o.dueDate || o.personalization?.estimatedReadyDate);
+                                return effectiveDue ? (
+                                  <span className="text-primary font-medium">
+                                    Ready: {new Date(effectiveDue).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                ) : null;
+                              })()}
                             </div>
                           )}
                         </td>
@@ -783,11 +790,18 @@ export default function PanelOverview({
                         {(o.estimatedTime || o.dueDate) && (
                           <div className="text-[10px] text-text-dim mt-0.5 flex items-center gap-1.5 flex-wrap">
                             {o.estimatedTime ? <span>⏱ ~{o.estimatedTime}m</span> : null}
-                            {o.dueDate ? (
-                              <span className="text-primary font-medium">
-                                Ready: {new Date(o.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                              </span>
-                            ) : null}
+                            {(() => {
+                              const createdTime = new Date(o.date || o.createdAt).getTime();
+                              const isCorruptedDue = o.dueDate && !isNaN(createdTime) && new Date(o.dueDate).getTime() < createdTime;
+                              const effectiveDue = isCorruptedDue
+                                ? (o.personalization?.estimatedReadyDate || o.dueDate)
+                                : (o.dueDate || o.personalization?.estimatedReadyDate);
+                              return effectiveDue ? (
+                                <span className="text-primary font-medium">
+                                  Ready: {new Date(effectiveDue).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              ) : null;
+                            })()}
                           </div>
                         )}
                       </div>

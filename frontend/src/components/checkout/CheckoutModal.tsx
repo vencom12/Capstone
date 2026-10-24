@@ -139,8 +139,20 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       };
     }
 
-    const [year, month, day] = selectedDateStr.split('-').map(Number);
-    const chosen = new Date(year, month - 1, day, 10, 0, 0);
+    const earliestDateStr = availableDates[0]?.dateStr;
+    const isEarliestDate = selectedDateStr === earliestDateStr;
+
+    let chosen: Date;
+    if (isEarliestDate && estimatedReadyDate) {
+      chosen = new Date(estimatedReadyDate);
+    } else {
+      const [year, month, day] = selectedDateStr.split('-').map(Number);
+      // For future dates, default to 10:00 AM store opening, but never earlier than estimatedReadyDate
+      chosen = new Date(year, month - 1, day, 10, 0, 0);
+      if (estimatedReadyDate && chosen.getTime() < new Date(estimatedReadyDate).getTime()) {
+        chosen = new Date(estimatedReadyDate);
+      }
+    }
 
     const dateLabel = dateObj.friendlyLabel;
     const label = `${dateLabel} (Estimated completion${readyLabel ? `: ${readyLabel}` : ''})`;

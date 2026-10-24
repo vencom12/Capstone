@@ -388,7 +388,13 @@ exports.submitOrder = async (req, res) => {
             });
 
             const finalClaimSchedule = scheduling.readyLabel;
-            const finalDueDate = dueDate ? new Date(dueDate) : scheduling.estimatedReadyDate;
+            let finalDueDate = scheduling.estimatedReadyDate;
+            if (dueDate) {
+                const parsedDue = new Date(dueDate);
+                if (!isNaN(parsedDue.getTime()) && parsedDue.getTime() >= scheduling.estimatedReadyDate.getTime()) {
+                    finalDueDate = parsedDue;
+                }
+            }
 
             orderPersonalization.readyLabel = finalClaimSchedule;
             orderPersonalization.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();

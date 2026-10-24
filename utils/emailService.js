@@ -229,38 +229,37 @@ function renderEmailShell({ title, subtitle, statusBadge, contentHtml }) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${title || businessName}</title>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #090d16; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #f8fafc;">
-      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #090d16; min-height: 100vh; padding: 32px 12px;">
+    <body style="margin: 0; padding: 0; background-color: #090d16; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #f8fafc;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #090d16; padding: 10px 4px;">
         <tr>
           <td align="center" valign="top">
-            <!-- Main Email Container -->
-            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 580px; background-color: #0d121f; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+            <!-- Main Compact Container (Full width on mobile, max 520px) -->
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 520px; background-color: #0d121f; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
               
-              <!-- Top Artisan Crimson Precision Gradient Bar -->
+              <!-- Top Crimson Precision Bar -->
               <tr>
                 <td style="height: 3px; background: linear-gradient(90deg, #b91c1c 0%, #dc2626 50%, #991b1b 100%); font-size: 0; line-height: 0;">&nbsp;</td>
               </tr>
 
-              <!-- Studio Brand Header -->
+              <!-- Ultra-Compact Header (Single horizontal row) -->
               <tr>
-                <td style="padding: 24px 28px; background-color: #0d121f; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                <td style="padding: 10px 14px; background-color: #0d121f; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
                   <table cellpadding="0" cellspacing="0" border="0" width="100%">
                     <tr>
                       <td valign="middle">
                         <table cellpadding="0" cellspacing="0" border="0">
                           <tr>
-                            <td valign="middle" style="padding-right: 14px;">
-                              <!-- Artisan Brand Monogram Badge -->
-                              <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); text-align: center; line-height: 40px; box-shadow: 0 4px 12px rgba(185, 28, 28, 0.35);">
-                                <span style="font-size: 15px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">EDZ</span>
+                            <td valign="middle" style="padding-right: 8px;">
+                              <div style="width: 26px; height: 26px; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); border-radius: 5px; text-align: center; line-height: 26px; font-size: 10.5px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px;">
+                                EDZ
                               </div>
                             </td>
                             <td valign="middle">
-                              <div style="font-size: 13.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; text-transform: uppercase;">
+                              <div style="font-size: 11.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.3px; text-transform: uppercase;">
                                 ${businessName}
                               </div>
-                              <div style="font-size: 11px; font-weight: 500; color: #94a3b8; letter-spacing: 0.2px; margin-top: 1px;">
-                                Artisan Embroidery Studio • Pacific Mall Lucena
+                              <div style="font-size: 9.5px; color: #94a3b8;">
+                                Pacific Mall Lucena • Studio
                               </div>
                             </td>
                           </tr>
@@ -274,14 +273,14 @@ function renderEmailShell({ title, subtitle, statusBadge, contentHtml }) {
                     </tr>
                   </table>
                   ${title ? `
-                    <div style="margin-top: 18px;">
-                      <h1 style="color: #f8fafc; margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.4px;">
+                    <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                      <div style="color: #f8fafc; font-size: 14px; font-weight: 700;">
                         ${title}
-                      </h1>
+                      </div>
                       ${subtitle ? `
-                        <p style="color: #94a3b8; margin: 4px 0 0; font-size: 12.5px; line-height: 1.5;">
+                        <div style="color: #94a3b8; font-size: 11px; margin-top: 1px;">
                           ${subtitle}
-                        </p>
+                        </div>
                       ` : ''}
                     </div>
                   ` : ''}
@@ -290,20 +289,15 @@ function renderEmailShell({ title, subtitle, statusBadge, contentHtml }) {
 
               <!-- Card Body Content -->
               <tr>
-                <td style="padding: 24px 28px; background-color: #111827;">
+                <td style="padding: 12px 14px; background-color: #111827;">
                   ${contentHtml}
                 </td>
               </tr>
 
-              <!-- Brand Footer matching website -->
+              <!-- Ultra-Compact Footer (Single clean line) -->
               <tr>
-                <td style="border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 18px 28px; text-align: center; background-color: #090d16; font-size: 11.5px; color: #64748b; line-height: 1.6;">
-                  <div style="font-weight: 600; color: #94a3b8; margin-bottom: 2px;">
-                    Eds Towels &amp; Caps • Ground Floor, Pacific Mall Lucena City
-                  </div>
-                  <div>
-                    Operating Daily 10:00 AM – 8:00 PM • Counter Hotline: 0928 810 3928
-                  </div>
+                <td style="border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 8px 14px; text-align: center; background-color: #090d16; font-size: 10px; color: #64748b; line-height: 1.4;">
+                  Eds Towels &amp; Caps • Ground Floor, Pacific Mall Lucena City • 0928 810 3928
                 </td>
               </tr>
             </table>
@@ -317,10 +311,6 @@ function renderEmailShell({ title, subtitle, statusBadge, contentHtml }) {
 
 /**
  * Sends a verification email with a clickable link.
- * @param {string} recipientEmail
- * @param {string} recipientName 
- * @param {string} verificationToken
- * @returns {Promise<{ success: boolean, simulated?: boolean, provider?: string }>}
  */
 async function sendVerificationEmail(recipientEmail, recipientName, verificationToken) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -328,34 +318,30 @@ async function sendVerificationEmail(recipientEmail, recipientName, verification
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
 
   const contentHtml = `
-    <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
-      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>,
-    </p>
-    <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 24px;">
-      Welcome to <strong>${businessName}</strong>! Please verify your email address to activate your account and start ordering personalized custom embroidery. This security link expires in <strong style="color: #e2e8f0;">24 hours</strong>.
-    </p>
+    <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, welcome to <strong>${businessName}</strong>! Please verify your email to activate your account:
+    </div>
 
-    <div style="text-align: center; margin: 28px 0;">
+    <div style="margin: 14px 0;">
       <a href="${verifyUrl}" 
-         style="display: inline-block; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
-                color: #ffffff; text-decoration: none; padding: 13px 34px; border-radius: 8px; 
-                font-size: 13.5px; font-weight: 700; letter-spacing: 0.3px;
-                box-shadow: 0 4px 14px rgba(185, 28, 28, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);">
+         style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
+                color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 6px; 
+                font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+                box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);">
         Verify Email Address &rarr;
       </a>
     </div>
 
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 12px 14px; margin-top: 24px;">
-      <p style="color: #64748b; font-size: 11px; line-height: 1.5; margin: 0; word-break: break-all;">
-        If the button above does not open, copy and paste this URL into your browser:<br/>
-        <a href="${verifyUrl}" style="color: #ef4444; text-decoration: underline;">${verifyUrl}</a>
-      </p>
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 8px 10px;">
+      <div style="color: #64748b; font-size: 10px; line-height: 1.4; word-break: break-all;">
+        Or paste into browser: <a href="${verifyUrl}" style="color: #ef4444; text-decoration: underline;">${verifyUrl}</a>
+      </div>
     </div>
   `;
 
   const htmlContent = renderEmailShell({
-    title: 'Verify Your Email Address',
-    subtitle: 'Activate your customer account for custom embroidery orders',
+    title: 'Verify Your Email',
+    subtitle: 'Expires in 24 hours',
     contentHtml,
   });
 
@@ -369,10 +355,6 @@ async function sendVerificationEmail(recipientEmail, recipientName, verification
 
 /**
  * Sends a password reset email with a one-hour link.
- * @param {string} recipientEmail
- * @param {string} recipientName
- * @param {string} resetToken
- * @returns {Promise<{ success: boolean, simulated?: boolean, provider?: string }>}
  */
 async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -380,33 +362,28 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken)
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
 
   const contentHtml = `
-    <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
-      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>,
-    </p>
-    <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 24px;">
-      We received a request to reset your password for your <strong>${businessName}</strong> account. Click the button below to choose a new password. This security link expires in <strong style="color: #e2e8f0;">1 hour</strong> and can only be used once.
-    </p>
+    <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, we received a request to reset your password. Tap below to choose a new one:
+    </div>
 
-    <div style="text-align: center; margin: 28px 0;">
+    <div style="margin: 14px 0;">
       <a href="${resetUrl}" 
-         style="display: inline-block; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
-                color: #ffffff; text-decoration: none; padding: 13px 34px; border-radius: 8px; 
-                font-size: 13.5px; font-weight: 700; letter-spacing: 0.3px;
-                box-shadow: 0 4px 14px rgba(185, 28, 28, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);">
+         style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
+                color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 6px; 
+                font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+                box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);">
         Reset Password &rarr;
       </a>
     </div>
 
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 12px 14px; margin-top: 24px;">
-      <p style="color: #64748b; font-size: 11px; line-height: 1.5; margin: 0; word-break: break-all;">
-        If you did not request a password reset, you can safely ignore this email. Your account remains secure.
-      </p>
+    <div style="color: #64748b; font-size: 10.5px; text-align: center;">
+      Link expires in 1 hour. If you didn't request this, you can safely ignore this email.
     </div>
   `;
 
   const htmlContent = renderEmailShell({
-    title: 'Reset Your Password',
-    subtitle: 'Choose a new password to regain access to your account',
+    title: 'Reset Password',
+    subtitle: 'Security link valid for 1 hour',
     contentHtml,
   });
 
@@ -420,9 +397,6 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken)
 
 /**
  * Sends a security alert email when a password has been updated.
- * @param {string} recipientEmail
- * @param {string} recipientName
- * @returns {Promise<{ success: boolean, simulated?: boolean, provider?: string }>}
  */
 async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -431,34 +405,23 @@ async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
   const timeFormatted = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' });
 
   const contentHtml = `
-    <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
-      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>,
-    </p>
-    <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0 0 20px;">
-      The password for your account was successfully changed on <strong style="color: #e2e8f0;">${timeFormatted} (PHT)</strong>.
-    </p>
-
-    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px; margin: 0 0 20px;">
-      <p style="color: #cbd5e1; font-size: 12px; margin: 0; line-height: 1.5;">
-        <strong style="color: #ffffff;">Session Security:</strong> All other active sessions have been automatically logged out for your safety.
-      </p>
+    <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
+      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, the password for your account was changed on <strong style="color: #ffffff;">${timeFormatted}</strong>. All other sessions have been logged out.
     </div>
 
-    <div style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 6px; padding: 14px 16px; margin: 0 0 12px;">
-      <p style="color: #fca5a5; font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
-        <strong>Did not make this change?</strong> Your account may be compromised. Please secure your account immediately or inform our Pacific Mall counter team.
-      </p>
-      <div style="text-align: left;">
-        <a href="${resetUrl}" style="display: inline-block; background: #b91c1c; color: #ffffff; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 12px; font-weight: 700;">
-          Secure My Account &rarr;
-        </a>
+    <div style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 6px; padding: 10px 12px; margin-top: 10px;">
+      <div style="color: #fca5a5; font-size: 11px; margin-bottom: 6px;">
+        <strong>Did not make this change?</strong> Secure your account immediately:
       </div>
+      <a href="${resetUrl}" style="display: inline-block; background: #b91c1c; color: #ffffff; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+        Secure My Account &rarr;
+      </a>
     </div>
   `;
 
   const htmlContent = renderEmailShell({
     title: 'Password Updated',
-    subtitle: 'Security notification regarding your customer account',
+    subtitle: 'Account security notification',
     contentHtml,
   });
 
@@ -471,8 +434,9 @@ async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
 }
 
 /**
- * Sends an elevated, brand-aligned Order Confirmation & Digital Pick-Up Slip email.
- * Adheres strictly to the website's Grounded Obsidian (#090d16) and Artisan Crimson (#b91c1c) tokens.
+ * Sends an ultra-compact, mobile-first Order Confirmation & Claim Slip email.
+ * Maximizes horizontal space so customers can view their claim code, ready time,
+ * items, and store counter without scrolling on mobile phones.
  */
 async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -493,9 +457,8 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
   };
   const claimCode = personalization.claimCode || order.claimCode || getVerificationCode(orderId);
 
-  // 2. Estimated Ready Date & Time calculation honoring Pacific Mall workshop operating hours
+  // 2. Estimated Ready Date & Time calculation
   const ordersAhead = personalization.ordersAhead !== undefined ? personalization.ordersAhead : null;
-  const queuePosition = personalization.queuePosition !== undefined ? personalization.queuePosition : null;
   let estimatedReadyLabel = personalization.readyLabel || null;
 
   if (!estimatedReadyLabel) {
@@ -518,199 +481,126 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
   if (!estimatedReadyLabel) {
     estimatedReadyLabel = (order.deliveryTime && !order.deliveryTime.includes('Store Hours'))
       ? order.deliveryTime
-      : 'Scheduled for workshop production';
+      : 'Queued for workshop';
   }
 
   const paymentMethodLabel = (order.paymentMethod || 'GCash').toUpperCase();
 
-  // 3. Itemized Breakdown with Personalization Details
-  const itemsHtml = items.length > 0 ? items.map((it) => {
+  // 3. Compact Horizontal Itemized Breakdown
+  const itemsHtml = items.length > 0 ? items.map((it, idx) => {
     const customText = it.personalization?.text || personalization.text || '';
     const rawThread = it.personalization?.color || it.personalization?.threadHex || personalization.color || '';
     const fontChoice = it.personalization?.font || personalization.font || '';
     const unitPrice = parseFloat(it.price || 0);
     const qty = it.quantity || 1;
     const itemSubtotal = (unitPrice * qty).toFixed(2);
-    
-    // Resolve thread swatch color safely
-    let swatchColor = '#dc2626';
-    if (rawThread) {
-      if (rawThread.startsWith('#')) {
-        swatchColor = rawThread;
-      } else {
-        const lower = rawThread.toLowerCase();
-        if (lower.includes('gold') || lower.includes('yellow')) swatchColor = '#eab308';
-        else if (lower.includes('white') || lower.includes('silver')) swatchColor = '#f8fafc';
-        else if (lower.includes('blue')) swatchColor = '#3b82f6';
-        else if (lower.includes('green')) swatchColor = '#10b981';
-        else if (lower.includes('black')) swatchColor = '#1e293b';
-        else if (lower.includes('pink')) swatchColor = '#ec4899';
-      }
-    }
+    const isLast = idx === items.length - 1;
 
     return `
-      <div style="background: #151d2e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;">
+      <div style="padding: 6px 0; ${isLast ? '' : 'border-bottom: 1px solid rgba(255, 255, 255, 0.05);'}">
         <table cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
           <tr>
-            <td style="color: #f8fafc; font-size: 13px; font-weight: 600;">
-              <span style="display: inline-block; background: rgba(255, 255, 255, 0.08); color: #cbd5e1; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-right: 6px;">${qty}x</span>
+            <td style="color: #f8fafc; font-size: 12px; font-weight: 600; line-height: 1.3;">
+              <span style="display: inline-block; background: rgba(255, 255, 255, 0.08); color: #cbd5e1; font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-right: 4px;">${qty}x</span>
               ${it.name || 'Custom Garment'}
             </td>
-            <td style="color: #f8fafc; font-weight: 700; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 13px; text-align: right;">
+            <td align="right" style="color: #f8fafc; font-weight: 700; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 12px;">
               ₱${itemSubtotal}
             </td>
           </tr>
         </table>
         ${customText ? `
-          <div style="background: #090d16; border-left: 2px solid #b91c1c; padding: 6px 10px; border-radius: 4px; margin-top: 8px;">
-            <div style="color: #64748b; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px;">Custom Stitch Text:</div>
-            <div style="color: #ffffff; font-size: 12.5px; font-weight: 700; letter-spacing: 0.5px; margin-top: 1px;">&ldquo;${customText}&rdquo;</div>
-          </div>
-        ` : ''}
-        ${rawThread || fontChoice ? `
-          <div style="color: #94a3b8; font-size: 11.5px; margin-top: 6px;">
-            ${rawThread ? `
-              <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background-color: ${swatchColor}; border: 1px solid rgba(255, 255, 255, 0.2); vertical-align: middle; margin-right: 4px;"></span>
-              Thread: <strong style="color: #f8fafc;">${rawThread}</strong>
-            ` : ''}
-            ${rawThread && fontChoice ? ' &nbsp;•&nbsp; ' : ''}
-            ${fontChoice ? `Font: <strong style="color: #f8fafc;">${fontChoice}</strong>` : ''}
+          <div style="font-size: 10.5px; color: #94a3b8; margin-top: 2px; line-height: 1.3;">
+            <span style="color: #f87171; font-weight: 700;">&ldquo;${customText}&rdquo;</span>
+            ${rawThread ? ` • Thread: <strong style="color: #ffffff;">${rawThread}</strong>` : ''}
+            ${fontChoice ? ` • Font: <strong style="color: #ffffff;">${fontChoice}</strong>` : ''}
           </div>
         ` : ''}
       </div>
     `;
   }).join('') : `
-    <div style="color: #94a3b8; font-size: 13px; padding: 10px 0;">Custom Embroidery Garments</div>
+    <div style="color: #94a3b8; font-size: 12px; padding: 4px 0;">Custom Embroidery Garments</div>
   `;
 
   // Status Badge for top right
   const statusBadge = `
-    <span style="display: inline-block; font-size: 10.5px; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">
-      ✓ Paid &amp; In Queue
+    <span style="display: inline-block; font-size: 9.5px; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.3px;">
+      ✓ Paid &amp; Queued
     </span>
   `;
 
-  const contentHtml = `
-    <!-- Digital Counter Claim Ticket -->
-    <div style="background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);">
-      <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #dc2626; margin-bottom: 8px;">
-        Official In-Store Claim Slip
-      </div>
-      <div style="background: #090d16; border: 1px solid rgba(185, 28, 28, 0.4); border-radius: 8px; padding: 10px 24px; display: inline-block; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
-        <span style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 30px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">
-          ${claimCode}
-        </span>
-      </div>
-      <div style="color: #cbd5e1; font-size: 12px; line-height: 1.5;">
-        Present this code to our attendant at Pacific Mall Lucena upon pickup.
-      </div>
-    </div>
+  const queueSubtitle = ordersAhead !== null
+    ? (ordersAhead === 0 ? 'Next in line' : `${ordersAhead} orders ahead`)
+    : 'Workshop queue';
 
-    <!-- 3-Stage Workshop Stepper (Visual, Clean, No Emojis) -->
-    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; margin-bottom: 20px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 12px 14px;">
+  const contentHtml = `
+    <!-- Dual-Column Hero Card: Claim Code + Ready Time (Zero Scrolling Needed) -->
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #151d2e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; margin-bottom: 10px;">
       <tr>
-        <td style="text-align: center; width: 33.3%;">
-          <div style="font-size: 10px; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;">✓ 1. Verified</div>
-          <div style="font-size: 11px; color: #cbd5e1; font-weight: 600; margin-top: 2px;">Payment Settled</div>
+        <!-- Left: Claim Code -->
+        <td width="48%" style="padding: 10px 12px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255, 255, 255, 0.08);">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #f87171;">
+            CLAIM CODE
+          </div>
+          <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 2px; margin: 2px 0;">
+            ${claimCode}
+          </div>
+          <div style="font-size: 9px; color: #94a3b8;">
+            Show at GF Counter
+          </div>
         </td>
-        <td style="text-align: center; width: 33.3%; border-left: 1px solid rgba(255, 255, 255, 0.08); border-right: 1px solid rgba(255, 255, 255, 0.08);">
-          <div style="font-size: 10px; font-weight: 700; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px;">● 2. Workshop Queue</div>
-          <div style="font-size: 11px; color: #ffffff; font-weight: 600; margin-top: 2px;">${ordersAhead !== null ? (ordersAhead === 0 ? 'Next in Line' : `${ordersAhead} Ahead`) : 'Queued'}</div>
-        </td>
-        <td style="text-align: center; width: 33.3%;">
-          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">○ 3. Pick-Up</div>
-          <div style="font-size: 11px; color: #94a3b8; font-weight: 500; margin-top: 2px;">Ground Floor</div>
+        <!-- Right: Ready Time -->
+        <td width="52%" style="padding: 10px 12px; text-align: center; vertical-align: middle;">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #34d399;">
+            ESTIMATED READY
+          </div>
+          <div style="font-size: 12px; font-weight: 700; color: #ffffff; line-height: 1.25; margin: 3px 0 1px;">
+            ${estimatedReadyLabel}
+          </div>
+          <div style="font-size: 9px; color: #94a3b8;">
+            ${queueSubtitle}
+          </div>
         </td>
       </tr>
     </table>
 
-    <!-- Estimated Ready Time Card -->
-    <div style="background: rgba(185, 28, 28, 0.08); border: 1px solid rgba(185, 28, 28, 0.25); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
-      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+    <!-- Order Items & Payment Summary (High Density Horizontal Space) -->
+    <div style="background: #151d2e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 6px;">
         <tr>
-          <td valign="middle">
-            <span style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #f87171; display: block;">
-              Estimated Ready Time
-            </span>
-            <span style="font-size: 14.5px; font-weight: 700; color: #ffffff; margin-top: 3px; display: block;">
-              ${estimatedReadyLabel}
-            </span>
+          <td style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-family: monospace;">
+            ORDER #${orderId}
           </td>
-          <td align="right" valign="middle">
-            <span style="display: inline-block; font-size: 10.5px; font-weight: 600; color: #fca5a5; background: rgba(185, 28, 28, 0.2); border: 1px solid rgba(185, 28, 28, 0.35); padding: 4px 10px; border-radius: 6px;">
-              Pacific Mall Workshop
-            </span>
+          <td align="right" style="font-size: 11px; font-weight: 700; color: #10b981;">
+            PAID ₱${totalAmount} <span style="font-size: 9.5px; color: #94a3b8; font-weight: 500;">(${paymentMethodLabel})</span>
           </td>
         </tr>
       </table>
-    </div>
 
-    <!-- Workshop & Order Details Table -->
-    <div style="background: #151d2e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; color: #94a3b8; margin-bottom: 12px;">
-        Workshop &amp; Pick-Up Details
-      </div>
-      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; font-size: 12.5px;">
-        <tr>
-          <td style="color: #64748b; padding: 6px 0;">Order Reference:</td>
-          <td style="color: #f8fafc; font-weight: 600; text-align: right; padding: 6px 0; font-family: 'SFMono-Regular', Consolas, Menlo, monospace;">#${orderId}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; padding: 6px 0;">Pick-Up Counter:</td>
-          <td style="color: #f8fafc; font-weight: 600; text-align: right; padding: 6px 0;">Eds Towels &amp; Caps (Ground Floor)</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; padding: 6px 0;">Operating Hours:</td>
-          <td style="color: #94a3b8; text-align: right; padding: 6px 0;">Daily 10:00 AM – 8:00 PM</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b; padding: 6px 0;">Payment Method:</td>
-          <td style="color: #10b981; font-weight: 600; text-align: right; padding: 6px 0;">${paymentMethodLabel} • Fully Paid</td>
-        </tr>
-        <tr style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
-          <td style="color: #f8fafc; font-weight: 700; font-size: 13px; padding-top: 10px;">Total Amount:</td>
-          <td style="color: #10b981; font-weight: 800; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 16px; text-align: right; padding-top: 10px;">₱${totalAmount}</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- Itemized Garments Breakdown -->
-    <div style="margin-bottom: 20px;">
-      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; color: #94a3b8; margin-bottom: 12px;">
-        Itemized Garments &amp; Personalization
-      </div>
+      <!-- Items List -->
       ${itemsHtml}
     </div>
 
-    <!-- Live Tracking Callout (Clean, No Broken Buttons) -->
-    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.07); border-left: 3px solid #b91c1c; border-radius: 8px; padding: 14px 16px; margin-bottom: 18px;">
-      <div style="color: #f8fafc; font-size: 12.5px; font-weight: 600; margin-bottom: 4px;">
-        Track Workshop Progress Online
+    <!-- Store Counter & Quick Tracking (Single Compact Action Block) -->
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 9px 12px;">
+      <div style="font-size: 10.5px; color: #94a3b8; line-height: 1.35;">
+        <strong style="color: #ffffff;">Pick-Up:</strong> Eds Towels &amp; Caps, Ground Floor, Pacific Mall Lucena (10 AM – 8 PM)
       </div>
-      <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 10px;">
-        All garments are custom-embroidered in queue order at our Pacific Mall studio. You can monitor live embroidery machine progress anytime in the Orders tab of your customer account.
-      </p>
-      <a href="${trackingUrl}" style="color: #ef4444; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block;">
-        Open Orders Tab in Browser &rarr;
+      <a href="${trackingUrl}" style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); color: #ffffff; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 11.5px; font-weight: 700; margin-top: 8px; box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);">
+        Track Live Machine Status &rarr;
       </a>
-    </div>
-
-    <!-- Claim Instructions -->
-    <div style="color: #64748b; font-size: 11.5px; text-align: center; line-height: 1.5; padding: 4px 12px;">
-      Please keep this email or note down your Counter Claim Code <strong style="color: #cbd5e1;">${claimCode}</strong> when picking up your order at Pacific Mall Lucena.
     </div>
   `;
 
   const htmlContent = renderEmailShell({
-    title: 'Order Confirmed',
-    subtitle: `Order #${orderId} • Placed by ${recipientName || 'Customer'}`,
+    title: '',
     statusBadge,
     contentHtml,
   });
 
   return dispatchEmail({
     to: recipientEmail,
-    subject: `Order Received (#${orderId}) — Queued for Production at ${businessName}`,
+    subject: `Order #${orderId} Confirmed — ${businessName}`,
     html: htmlContent,
     simulationInfo: { tag: 'ORDER CONFIRMATION', url: trackingUrl }
   });
