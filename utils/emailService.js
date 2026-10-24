@@ -581,14 +581,11 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
       ${itemsHtml}
     </div>
 
-    <!-- Store Counter & Quick Tracking (Single Compact Action Block) -->
-    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 9px 12px;">
+    <!-- Store Counter Pick-Up Info -->
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 9px 12px; text-align: center;">
       <div style="font-size: 10.5px; color: #94a3b8; line-height: 1.35;">
         <strong style="color: #ffffff;">Pick-Up:</strong> Eds Towels &amp; Caps, Ground Floor, Pacific Mall Lucena (10 AM – 8 PM)
       </div>
-      <a href="${trackingUrl}" style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); color: #ffffff; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 11.5px; font-weight: 700; margin-top: 8px; box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);">
-        Track Live Machine Status &rarr;
-      </a>
     </div>
   `;
 
