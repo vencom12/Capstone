@@ -8,6 +8,7 @@ import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import { detectColorFromName } from '@/lib/colorUtils';
 import Pagination from '@/components/ui/Pagination';
 import { useAuthStore } from '@/stores/useAuthStore';
+import InlineError from '@/components/ui/InlineError';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -40,6 +41,32 @@ export default function PanelManageDesigns({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [count, setCount] = useState('');
   const [minThreshold, setMinThreshold] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; price?: string }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; price?: boolean }>({});
+  const [shakeKey, setShakeKey] = useState(0);
+
+  const validateProductField = (field: 'name' | 'price', val: string) => {
+    let err = '';
+    const clean = val.trim();
+    if (field === 'name') {
+      if (!clean) err = 'Product name is required';
+      else if (clean.length < 2) err = 'Must be at least 2 characters';
+    } else if (field === 'price') {
+      if (!clean) err = 'Price is required';
+      else {
+        const num = parseFloat(clean);
+        if (isNaN(num) || num < 0) err = 'Please enter a valid price (₱0.00 or higher)';
+      }
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: err }));
+    return err;
+  };
+
+  const handleProductBlur = (field: 'name' | 'price') => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = field === 'name' ? name : price;
+    validateProductField(field, val);
+  };
 
   // Recipe Builder Fields
   const [recipe, setRecipe] = useState<{ inventoryId: string; name: string; quantity: number }[]>([]);
@@ -91,7 +118,7 @@ export default function PanelManageDesigns({
 
   // Pagination for Products Grid
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 12;
+  const [pageSize, setPageSize] = useState(12);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -119,6 +146,8 @@ export default function PanelManageDesigns({
 
   // 2. Open Modal
   const openModal = (design?: any) => {
+    setFieldErrors({});
+    setTouched({});
     if (design) {
       setEditingDesign(design);
       setName(design.name || '');
@@ -306,8 +335,19 @@ export default function PanelManageDesigns({
       return;
     }
 
-    if (!name.trim()) return showToast('Name is required', 'error');
-    if (!price.trim() || isNaN(parseFloat(price))) return showToast('Enter a valid price', 'error');
+    const errName = validateProductField('name', name);
+    const errPrice = validateProductField('price', price);
+
+    if (errName || errPrice) {
+      setTouched({ name: true, price: true });
+      setShakeKey((k) => k + 1);
+      showToast({
+        title: 'Form Validation Error',
+        message: errName || errPrice || 'Please fix the highlighted product fields',
+        type: 'error'
+      });
+      return;
+    }
 
     // Derive total stock from variants:
     // Only variants linked to a material in Materials tab provide stock!
@@ -655,6 +695,11 @@ export default function PanelManageDesigns({
           totalItems={filteredProducts.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
+          pageSizeOptions={[6, 12, 24, 48]}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="products"
         />
       </div>
@@ -662,6 +707,7 @@ export default function PanelManageDesigns({
       {/* Modal: Create / Edit / Inspect Product Form */}
       <GlassModal
         isOpen={isOpen}
+        maxWidth="max-w-[580px]"
         onClose={() => {
           setIsOpen(false);
           setVariantToDeleteIndex(null);
@@ -686,41 +732,51 @@ export default function PanelManageDesigns({
         }}
         title={!isAdmin ? 'Product Specifications' : (editingDesign ? 'Edit Product Details' : 'Create New Product')}
       >
-        <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
-          <div className="modal-section">
-            <label className="modal-label">Product Name</label>
-            <input
-              type="text"
-              required
-              disabled={!isAdmin}
-              placeholder="e.g. Premium Embroidered Towel"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans disabled:opacity-75 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="modal-section">
-              <label className="modal-label">Price (₱)</label>
+        <form
+          key={shakeKey}
+          noValidate
+          onSubmit={handleSubmit}
+          className={`text-left max-h-[82vh] overflow-y-auto pr-1 flex flex-col gap-2.5 ${shakeKey > 0 ? 'animate-shake' : ''}`}
+        >
+          {/* Row 1: Product Name & Category */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div className="sm:col-span-8 flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
+                <span>Product Name</span>
+                {touched.name && !fieldErrors.name && name.trim() && (
+                  <span className="text-emerald-400 text-[0.65rem] font-bold">✓ Valid</span>
+                )}
+              </label>
               <input
-                type="number"
-                step="0.01"
-                required
+                type="text"
                 disabled={!isAdmin}
-                placeholder="e.g. 19.99"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
+                placeholder="e.g. Premium Embroidered Towel"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (touched.name) validateProductField('name', e.target.value);
+                }}
+                onBlur={() => handleProductBlur('name')}
+                className={`bg-bg-surface border h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-sans disabled:opacity-75 disabled:cursor-not-allowed transition-all ${
+                  touched.name && fieldErrors.name
+                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    : 'border-border-glass focus:border-white/40'
+                }`}
               />
+              {touched.name && fieldErrors.name && (
+                <InlineError message={fieldErrors.name} variant="field" />
+              )}
             </div>
-            <div className="modal-section">
-              <label className="modal-label">Product Categories</label>
+
+            <div className="sm:col-span-4 flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+                Category
+              </label>
               <select
                 value={tag}
                 disabled={!isAdmin}
                 onChange={(e) => setTag(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans disabled:opacity-75 disabled:cursor-not-allowed"
+                className="bg-bg-surface border border-border-glass h-9 px-2.5 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 <option value="towel">Towel</option>
                 <option value="bath towel">Bath Towel</option>
@@ -731,26 +787,46 @@ export default function PanelManageDesigns({
             </div>
           </div>
 
-          <div className="modal-section">
-            <label className="modal-label">Description</label>
-            <textarea
-              placeholder="Explain stitched features or customization limitations..."
-              rows={2}
-              disabled={!isAdmin}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full leading-relaxed font-sans disabled:opacity-75 disabled:cursor-not-allowed"
-            />
-          </div>
+          {/* Row 2: Price, Total Stock (Auto), Low Stock Limit */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
+                <span>Price (₱)</span>
+                {touched.price && !fieldErrors.price && price.trim() && (
+                  <span className="text-emerald-400 text-[0.65rem] font-bold">✓ Valid</span>
+                )}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                disabled={!isAdmin}
+                placeholder="e.g. 45.00"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  if (touched.price) validateProductField('price', e.target.value);
+                }}
+                onBlur={() => handleProductBlur('price')}
+                className={`bg-bg-surface border h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold disabled:opacity-75 disabled:cursor-not-allowed transition-all ${
+                  touched.price && fieldErrors.price
+                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    : 'border-border-glass focus:border-white/40'
+                }`}
+              />
+              {touched.price && fieldErrors.price && (
+                <InlineError message={fieldErrors.price} variant="field" />
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="modal-section">
-              <div className="flex justify-between items-center mb-1">
-                <label className="modal-label m-0">Total Product Stock</label>
-                <span className="text-[0.68rem] text-primary font-bold">Auto-calculated</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">
+                  Total Stock
+                </label>
+                <span className="text-[0.65rem] text-primary font-bold">Auto</span>
               </div>
-              <div className="bg-bg-surface border border-border-glass p-3 rounded-xl flex items-center justify-between">
-                <span className="font-mono font-bold text-sm text-text-main">
+              <div className="bg-bg-surface border border-border-glass h-9 px-2.5 rounded-lg flex items-center justify-between">
+                <span className="font-mono font-bold text-xs text-text-main">
                   {variants.length === 0 ? 0 : variants.reduce((sum, v) => {
                     if (v.materialId) {
                       const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
@@ -759,15 +835,16 @@ export default function PanelManageDesigns({
                     return sum + (typeof v.stock === 'number' ? v.stock : parseInt(v.stock?.toString() || '0', 10) || 0);
                   }, 0)} pcs
                 </span>
-                <span className="text-[0.7rem] text-text-dim">
-                  {variants.length === 0
-                    ? '0 variants (Out of Stock)'
-                    : `${variants.length} variant${variants.length === 1 ? '' : 's'}`}
+                <span className="text-[0.68rem] text-text-dim">
+                  {variants.length} var{variants.length === 1 ? '' : 's'}
                 </span>
               </div>
             </div>
-            <div className="modal-section">
-              <label className="modal-label">Low Stock Threshold</label>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+                Low Stock Limit
+              </label>
               <input
                 type="number"
                 required
@@ -775,44 +852,56 @@ export default function PanelManageDesigns({
                 placeholder="e.g. 5"
                 value={minThreshold}
                 onChange={(e) => setMinThreshold(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
+                className="bg-bg-surface border border-border-glass h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
+          {/* Row 3: Description */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+              Description
+            </label>
+            <textarea
+              placeholder="Explain stitched features or customization limitations..."
+              rows={2}
+              disabled={!isAdmin}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-text-main text-xs outline-none w-full leading-relaxed font-sans disabled:opacity-75 disabled:cursor-not-allowed"
+            />
+          </div>
+
           {/* Product Variants / Color Options Builder */}
-          <div className="modal-section border border-border-glass p-3.5 rounded-xl bg-white/5">
-            <label className="modal-label text-primary font-bold flex justify-between items-center mb-1">
-              <span className="flex items-center gap-2">
+          <div className="border border-border-glass p-3 rounded-xl bg-white/[0.02] flex flex-col gap-2.5">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-primary flex items-center gap-2">
                 <span>Color / Style Variants</span>
                 {isAdmin && editingVariantIndex !== null && (
-                  <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/40">
+                  <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/40">
                     Editing Variant #{editingVariantIndex + 1}
                   </span>
                 )}
               </span>
-              <span className="text-[0.7rem] text-primary font-bold">Variant-Driven Stock</span>
-            </label>
+              <span className="text-[0.68rem] text-text-dim font-medium">Variant-Driven Stock</span>
+            </div>
+
             {isAdmin && (
               <>
-                <p className="text-xs text-text-dim mb-2.5">
-                  Configure variants below. Each variant can either hold its own physical stock or dynamically link to a blank raw material in the Materials tab. Total product stock is the sum of all variants. Products with 0 variants have 0 stock.
-                </p>
-
                 {/* Real-time Color Auto-Detection Toast/Banner */}
                 {colorNotice && (
-                  <div className="mb-2 px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary text-[0.75rem] font-medium flex items-center gap-2 animate-fade">
-                    <span className="w-3 h-3 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
+                  <div className="px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-primary text-[0.72rem] font-medium flex items-center gap-2 animate-fade">
+                    <span className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0 shadow-sm" style={{ backgroundColor: variantColor }} />
                     <span>{colorNotice}</span>
                   </div>
                 )}
 
-                {/* Variant Configuration Form Fields */}
-                <div className="bg-bg-surface/60 border border-border-glass rounded-xl p-3.5 mb-3 flex flex-col gap-3">
+                {/* Compact Variant Configuration Form Fields */}
+                <div className="bg-bg-surface/60 border border-border-glass rounded-lg p-2.5 flex flex-col gap-2">
                   {/* Row 1: Name & Color Swatch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-8">
-                      <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <div className="sm:col-span-8 flex flex-col gap-1">
+                      <label className="text-[0.68rem] text-text-dim font-bold block">
                         Variant Name <span className="text-primary">*</span>
                       </label>
                       <input
@@ -820,14 +909,14 @@ export default function PanelManageDesigns({
                         placeholder="e.g. Royal Blue / 30x60cm"
                         value={variantName}
                         onChange={(e) => handleVariantNameInput(e.target.value)}
-                        className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full focus:border-primary/50 transition-all font-medium"
+                        className="bg-bg-surface border border-border-glass h-8 px-2.5 rounded-lg text-text-main text-xs outline-none w-full focus:border-primary/50 transition-all font-medium"
                       />
                     </div>
-                    <div className="sm:col-span-4">
-                      <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
+                    <div className="sm:col-span-4 flex flex-col gap-1">
+                      <label className="text-[0.68rem] text-text-dim font-bold block">
                         Color Swatch
                       </label>
-                      <div className="flex items-center gap-2 bg-bg-surface border border-border-glass p-1.5 rounded-xl h-[38px]">
+                      <div className="flex items-center gap-2 bg-bg-surface border border-border-glass px-2 rounded-lg h-8">
                         <input
                           type="color"
                           value={variantColor}
@@ -835,89 +924,90 @@ export default function PanelManageDesigns({
                             setVariantColor(e.target.value);
                             setColorNotice(null);
                           }}
-                          className="w-7 h-7 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
+                          className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent shrink-0"
                           title="Choose exact color swatch"
                         />
-                        <span className="text-xs font-mono font-bold text-text-main truncate">{variantColor}</span>
+                        <span className="text-[0.7rem] font-mono font-bold text-text-main truncate">{variantColor}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Row 2: Price Override */}
-                  <div>
-                    <label className="text-[0.7rem] text-text-dim font-bold block mb-1">
-                      Price Override (₱ Optional — leave blank to use product base price)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g. 250.00"
-                      value={variantPrice}
-                      onChange={(e) => setVariantPrice(e.target.value)}
-                      className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all"
-                    />
-                  </div>
-
-                  {/* Row 3: Linked Blank Material Dropdown */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-[0.7rem] text-text-dim font-bold block">
-                        Linked Blank Material in Materials Tab <span className="text-primary">*</span>
-                      </label>
-                      <span className="text-[0.65rem] text-primary font-bold">Supplies Variant Stock</span>
-                    </div>
-                    {inventory.length === 0 ? (
-                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
-                        No materials registered in the <b>Materials tab</b>. Variants can only have stock when linked to a material. Add materials in the Materials tab first.
+                  {/* Row 2: Linked Material (8 cols) & Price Override (4 cols) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <div className="sm:col-span-8 flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[0.68rem] text-text-dim font-bold block">
+                          Linked Blank Material <span className="text-primary">*</span>
+                        </label>
+                        <span className="text-[0.62rem] text-primary font-bold">Supplies Stock</span>
                       </div>
-                    ) : (
-                      <select
-                        value={variantMaterialId}
-                        onChange={(e) => setVariantMaterialId(e.target.value)}
-                        className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all font-medium"
-                      >
-                        <option value="">— No Material Linked (0 Stock) —</option>
-                        {inventory.map((item) => (
-                          <option key={item.id || item._id} value={item.id || item._id}>
-                            {item.item} ({item.count || 0} {item.unit || 'units'} available in stock)
-                          </option>
-                        ))}
-                      </select>
-                    )}
-
-                    {/* Real-time Material Linking Status Banner */}
-                    <div className="mt-1.5 text-[0.72rem]">
-                      {variantMaterialId ? (() => {
-                        const mat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
-                        const matCount = mat ? (mat.count || 0) : 0;
-                        return (
-                          <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1.5" : "text-amber-400 font-semibold flex items-center gap-1.5"}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${matCount > 0 ? "bg-emerald-400" : "bg-amber-400"}`} />
-                            <span>Linked to <b>{mat?.item || 'Material'}</b>: <b>{matCount} pcs</b> in stock</span>
-                          </span>
-                        );
-                      })() : (
-                        <span className="text-text-dim/70 italic">
-                          No material selected. This variant will have <b>0 stock</b> until linked to an inventory item.
-                        </span>
+                      {inventory.length === 0 ? (
+                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[0.72rem]">
+                          No materials in Materials tab. Add raw blanks there first.
+                        </div>
+                      ) : (
+                        <select
+                          value={variantMaterialId}
+                          onChange={(e) => setVariantMaterialId(e.target.value)}
+                          className="bg-bg-surface border border-border-glass h-8 px-2 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all font-medium"
+                        >
+                          <option value="">— No Material Linked (0 Stock) —</option>
+                          {inventory.map((item) => (
+                            <option key={item.id || item._id} value={item.id || item._id}>
+                              {item.item} ({item.count || 0} {item.unit || 'units'})
+                            </option>
+                          ))}
+                        </select>
                       )}
                     </div>
+
+                    <div className="sm:col-span-4 flex flex-col gap-1">
+                      <label className="text-[0.68rem] text-text-dim font-bold block">
+                        Price Override (₱ Optional)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 250.00"
+                        value={variantPrice}
+                        onChange={(e) => setVariantPrice(e.target.value)}
+                        className="bg-bg-surface border border-border-glass h-8 px-2.5 rounded-lg text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Material Linking Status Banner */}
+                  <div className="text-[0.7rem]">
+                    {variantMaterialId ? (() => {
+                      const mat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
+                      const matCount = mat ? (mat.count || 0) : 0;
+                      return (
+                        <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1.5" : "text-amber-400 font-semibold flex items-center gap-1.5"}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${matCount > 0 ? "bg-emerald-400" : "bg-amber-400"}`} />
+                          <span>Linked to <b>{mat?.item || 'Material'}</b>: <b>{matCount} pcs</b> in stock</span>
+                        </span>
+                      );
+                    })() : (
+                      <span className="text-text-dim/70 italic">
+                        No material selected (<b>0 stock</b> until linked to an inventory item).
+                      </span>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-0.5">
                     <button
                       type="button"
                       onClick={handleSaveVariant}
-                      className="flex-1 font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-all border flex items-center justify-center gap-1.5 shadow-sm bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary"
+                      className="flex-1 font-bold text-xs py-1.5 px-3 rounded-lg cursor-pointer transition-all border flex items-center justify-center gap-1.5 shadow-xs bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary"
                     >
-                      <span>{editingVariantIndex !== null ? 'Save Changes to Variant' : '+ Add Variant Option'}</span>
+                      <span>{editingVariantIndex !== null ? 'Save Variant Changes' : '+ Add Variant Option'}</span>
                     </button>
                     {editingVariantIndex !== null && (
                       <button
                         type="button"
                         onClick={handleCancelVariantEdit}
-                        className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-all font-semibold"
+                        className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-xs py-1.5 px-3 rounded-lg cursor-pointer transition-all font-semibold"
                       >
                         Cancel
                       </button>
@@ -929,34 +1019,34 @@ export default function PanelManageDesigns({
 
             {/* Current Variants List with Edit and Safe Delete actions */}
             {variants.length > 0 ? (
-              <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-                <span className="text-[0.7rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
+              <div className="flex flex-col gap-1 pt-1.5 border-t border-white/5">
+                <span className="text-[0.68rem] font-semibold text-text-dim uppercase tracking-wider mb-0.5">
                   Configured Variants ({variants.length})
                 </span>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {variants.map((v, idx) => (
                     isAdmin && variantToDeleteIndex === idx ? (
                       /* Warning / Confirmation state before removal */
                       <div
                         key={idx}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border border-danger/60 bg-danger/15 text-text-main shadow-md animate-[fadeIn_0.2s_ease-out]"
+                        className="flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border border-danger/60 bg-danger/15 text-text-main shadow-xs animate-[fadeIn_0.2s_ease-out]"
                       >
-                        <span className="w-2 h-2 rounded-full bg-danger shrink-0 animate-ping" />
-                        <span className="font-semibold text-danger-light">
+                        <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0 animate-ping" />
+                        <span className="font-semibold text-danger-light text-[0.72rem]">
                           Remove <strong className="text-text-main">"{v.name}"</strong>?
                         </span>
-                        <div className="flex items-center gap-1.5 ml-1">
+                        <div className="flex items-center gap-1 ml-1">
                           <button
                             type="button"
                             onClick={() => handleConfirmRemoveVariant(idx)}
-                            className="px-2.5 py-0.5 rounded-md bg-danger hover:bg-danger-light text-white font-bold text-[0.7rem] cursor-pointer transition-all border-0 shadow-sm"
+                            className="px-2 py-0.5 rounded bg-danger hover:bg-danger-light text-white font-bold text-[0.65rem] cursor-pointer transition-all border-0 shadow-xs"
                           >
                             Remove
                           </button>
                           <button
                             type="button"
                             onClick={handleCancelDeleteVariant}
-                            className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-text-dim hover:text-text-main text-[0.7rem] cursor-pointer transition-all border-0"
+                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-text-dim hover:text-text-main text-[0.65rem] cursor-pointer transition-all border-0"
                           >
                             Cancel
                           </button>
@@ -966,48 +1056,48 @@ export default function PanelManageDesigns({
                       /* Standard Variant Pill */
                       <div
                         key={idx}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border transition-all ${
                           editingVariantIndex === idx
-                            ? 'bg-primary/20 border-primary shadow-sm text-white'
+                            ? 'bg-primary/20 border-primary shadow-xs text-white'
                             : 'bg-bg-surface border-border-glass text-text-main'
                         }`}
                       >
                         <span
-                          className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0 inline-block shadow-sm"
+                          className="w-3 h-3 rounded-full border border-white/30 shrink-0 inline-block shadow-xs"
                           style={{ backgroundColor: v.color || '#b91c1c' }}
                         />
-                        <span className="font-bold">{v.name}</span>
+                        <span className="font-bold text-[0.75rem]">{v.name}</span>
                         {(() => {
                           const mat = v.materialId ? inventory.find((i) => (i.id || i._id) === v.materialId) : null;
                           const count = mat ? (mat.count || 0) : 0;
                           return (
-                            <span className={`font-mono text-[0.7rem] px-1.5 py-0.5 rounded font-bold ${
+                            <span className={`font-mono text-[0.65rem] px-1 py-0.5 rounded font-bold ${
                               count > 0 ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                             }`}>
                               {v.materialId ? (
                                 `${count} pcs (${v.materialName || mat?.item || 'Material'})`
                               ) : (
-                                '0 pcs (No material link)'
+                                '0 pcs'
                               )}
                             </span>
                           );
                         })()}
                         {v.priceOverride && (
-                          <span className="text-primary font-mono text-[0.7rem] bg-primary/10 px-1.5 py-0.5 rounded-md">
+                          <span className="text-primary font-mono text-[0.65rem] bg-primary/10 px-1 py-0.5 rounded">
                             ₱{parseFloat(v.priceOverride as any).toFixed(2)}
                           </span>
                         )}
                         
                         {isAdmin && (
-                          <>
+                          <div className="flex items-center ml-0.5">
                             <button
                               type="button"
                               onClick={() => handleStartEditVariant(idx)}
-                              className="text-text-dim hover:text-primary p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all ml-1 flex items-center justify-center"
+                              className="text-text-dim hover:text-primary p-0.5 rounded hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
                               title="Edit variant"
                               aria-label="Edit variant"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                                 <path d="m15 5 4 4"/>
                               </svg>
@@ -1015,16 +1105,16 @@ export default function PanelManageDesigns({
                             <button
                               type="button"
                               onClick={() => handleInitiateDeleteVariant(idx)}
-                              className="text-text-dim hover:text-danger p-1 rounded-md hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
+                              className="text-text-dim hover:text-danger p-0.5 rounded hover:bg-white/10 cursor-pointer border-0 bg-transparent transition-all flex items-center justify-center"
                               title="Remove variant"
                               aria-label="Remove variant"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
                               </svg>
                             </button>
-                          </>
+                          </div>
                         )}
                       </div>
                     )
@@ -1033,7 +1123,7 @@ export default function PanelManageDesigns({
 
                 {/* Inline Undo Notification Banner after removal */}
                 {isAdmin && lastDeletedVariant && (
-                  <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-text-dim animate-fadeIn mt-1">
+                  <div className="flex items-center justify-between px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[0.72rem] text-text-dim animate-fadeIn mt-0.5">
                     <span className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                       Removed variant <strong className="text-text-main">"{lastDeletedVariant.variant.name}"</strong>
@@ -1041,9 +1131,9 @@ export default function PanelManageDesigns({
                     <button
                       type="button"
                       onClick={handleUndoDeleteVariant}
-                      className="text-primary hover:text-primary-light font-bold cursor-pointer bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-md border border-primary/30 text-xs transition-all flex items-center gap-1"
+                      className="text-primary hover:text-primary-light font-bold cursor-pointer bg-primary/10 hover:bg-primary/20 px-1.5 py-0.5 rounded border border-primary/30 text-[0.68rem] transition-all flex items-center gap-1"
                     >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                       </svg>
@@ -1053,13 +1143,16 @@ export default function PanelManageDesigns({
                 )}
               </div>
             ) : !isAdmin ? (
-              <p className="text-xs text-text-dim italic m-0 pt-2 border-t border-white/5">No specific color variants configured for this product.</p>
+              <p className="text-xs text-text-dim italic m-0 pt-1.5 border-t border-white/5">No specific color variants configured for this product.</p>
             ) : null}
           </div>
 
+          {/* Upload Image */}
           {isAdmin ? (
-            <div className="modal-section">
-              <label className="modal-label">Upload Image</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+                Upload Image
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -1068,23 +1161,26 @@ export default function PanelManageDesigns({
                     setImageFile(e.target.files[0]);
                   }
                 }}
-                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-dim text-xs cursor-pointer w-full file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer"
+                className="bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-text-dim text-xs cursor-pointer w-full file:mr-3 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-[0.7rem] file:font-semibold file:bg-primary file:text-white file:cursor-pointer"
               />
             </div>
           ) : editingDesign?.imageUrl ? (
-            <div className="modal-section">
-              <label className="modal-label">Product Image</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+                Product Image
+              </label>
               <div 
-                className="w-full h-44 rounded-xl bg-cover bg-center border border-border-glass" 
+                className="w-full h-36 rounded-lg bg-cover bg-center border border-border-glass" 
                 style={{ backgroundImage: `url(${editingDesign.imageUrl})` }} 
               />
             </div>
           ) : null}
 
+          {/* Submit / Action Button */}
           {isAdmin ? (
             <button
               type="submit"
-              className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
+              className="bg-primary text-white font-bold py-2.5 rounded-xl mt-1 hover:bg-primary-light transition-all cursor-pointer border-none shadow-xs hover:shadow-md text-center w-full text-xs font-sans"
             >
               {editingDesign ? 'Save Product Details' : 'Create Product'}
             </button>
@@ -1092,7 +1188,7 @@ export default function PanelManageDesigns({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="bg-white/10 border border-border-glass text-text-main font-bold py-3.5 rounded-xl mt-4 hover:bg-white/15 transition-all cursor-pointer shadow-sm text-center w-full text-sm font-sans"
+              className="bg-white/10 border border-border-glass text-text-main font-bold py-2.5 rounded-xl mt-1 hover:bg-white/15 transition-all cursor-pointer shadow-xs text-center w-full text-xs font-sans"
             >
               Close Specifications
             </button>

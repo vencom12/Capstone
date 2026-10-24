@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from 'recharts';
 import { showToast } from '@/components/ui/Toast';
+import Pagination from '@/components/ui/Pagination';
 
 interface PanelAnalyticsProps {
   orders: any[];
@@ -23,7 +22,6 @@ interface PanelAnalyticsProps {
 }
 
 type TimeRange = 'today' | 'week' | 'month' | 'all';
-type DetailCategory = 'money' | 'supplies' | 'machine' | 'all';
 
 export default function PanelAnalytics({
   orders = [],
@@ -33,9 +31,39 @@ export default function PanelAnalytics({
   isSyncing = false,
 }: PanelAnalyticsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
-  const [activeCategory, setActiveCategory] = useState<DetailCategory>('money');
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
-  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(500); // Daily Pacific Mall stall rent & electricity
+  
+  // Daily Pacific Mall stall rent & electricity - persisted in localStorage
+  const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('stitch_daily_stall_rent');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 0) return parsed;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return 500;
+  });
+
+  const handleSaveRent = (val: number) => {
+    const safeVal = Math.max(0, val);
+    setDailyStallOverhead(safeVal);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('stitch_daily_stall_rent', String(safeVal));
+      } catch {
+        // fallback
+      }
+    }
+  };
+
+  // Pagination for category performance
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoryPageSize, setCategoryPageSize] = useState(5);
 
   // 1. Inventory cost map
   const inventoryCostMap = useMemo(() => {
@@ -47,8 +75,6 @@ export default function PanelAnalytics({
     });
     return map;
   }, [inventory]);
-
-  const hasRealCosts = useMemo(() => Object.keys(inventoryCostMap).length > 0, [inventoryCostMap]);
 
   const getRealOrEstimatedCost = (itemName: string, itemPrice: number, isByog: boolean, qty: number): number => {
     if (isByog) return 12 * qty;
@@ -68,7 +94,7 @@ export default function PanelAnalytics({
     return Math.round(itemPrice * 0.35) * qty;
   };
 
-  // 2. Filter orders
+  // 2. Filter orders by selected timeframe
   const filteredOrders = useMemo(() => {
     const nonCanceled = (orders || []).filter((o) => o.status !== 'Order Canceled');
     if (timeRange === 'all') return nonCanceled;
@@ -105,13 +131,7 @@ export default function PanelAnalytics({
     return nonCanceled;
   }, [orders, timeRange]);
 
-  const activeQueueOrders = useMemo(() => {
-    return (orders || []).filter((o) =>
-      ['In Queue', 'Preparing Order', 'In Production', 'Processing'].includes(o.status)
-    );
-  }, [orders]);
-
-  // 3. Simple Financial Totals
+  // 3. Financial calculations in plain language
   const totalRevenue = useMemo(() => {
     return filteredOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.amount) || 0), 0);
   }, [filteredOrders]);
@@ -148,11 +168,11 @@ export default function PanelAnalytics({
   }, [estimatedMaterialCosts, operatingOverhead]);
 
   const grossProfit = useMemo(() => {
-    return Math.max(0, totalRevenue - estimatedMaterialCosts);
+    return totalRevenue - estimatedMaterialCosts;
   }, [totalRevenue, estimatedMaterialCosts]);
 
   const netProfit = useMemo(() => {
-    return Math.max(0, totalRevenue - totalExpenses);
+    return totalRevenue - totalExpenses;
   }, [totalRevenue, totalExpenses]);
 
   const netMargin = useMemo(() => {
@@ -160,7 +180,7 @@ export default function PanelAnalytics({
     return Math.round((netProfit / totalRevenue) * 100);
   }, [netProfit, totalRevenue]);
 
-  // Break-even
+  // Pacific Mall stall rent break-even progress
   const breakEvenProgress = useMemo(() => {
     if (operatingOverhead === 0) return 100;
     return Math.min(200, Math.round((grossProfit / operatingOverhead) * 100));
@@ -170,7 +190,7 @@ export default function PanelAnalytics({
     return grossProfit - operatingOverhead;
   }, [grossProfit, operatingOverhead]);
 
-  // Payment Breakdown (Cash vs GCash)
+  // Cash vs GCash breakdown for cash drawer closing
   const paymentBreakdown = useMemo(() => {
     let cashTotal = 0;
     let cashCount = 0;
@@ -195,49 +215,14 @@ export default function PanelAnalytics({
     return { cashTotal, cashCount, gcashTotal, gcashCount };
   }, [filteredOrders]);
 
-  // Inventory value (money stored in goods)
-  const inventoryAssetStats = useMemo(() => {
-    let totalLockedValue = 0;
-    let totalPieces = 0;
-
-    (inventory || []).forEach((inv) => {
-      const count = Number(inv.count) || 0;
-      const unitCost = inv.supplierUnitCost != null ? Number(inv.supplierUnitCost) : 45;
-      totalLockedValue += count * unitCost;
-      totalPieces += count;
-    });
-
-    return { totalLockedValue, totalPieces };
-  }, [inventory]);
-
-  // Money needed to reorder low items
-  const restockOutflowForecast = useMemo(() => {
-    let budgetNeeded = 0;
-    let lowCount = 0;
-
-    (inventory || []).forEach((inv) => {
-      const count = Number(inv.count) || 0;
-      const threshold = Number(inv.minThreshold) || 10;
-      const unitCost = inv.supplierUnitCost != null ? Number(inv.supplierUnitCost) : 50;
-
-      if (count <= threshold) {
-        const units = Math.max(1, threshold * 2 - count);
-        budgetNeeded += units * unitCost;
-        lowCount++;
-      }
-    });
-
-    return { budgetNeeded, lowCount };
-  }, [inventory]);
-
-  // Sales & profit per item type
+  // Sales & profit per item category (What sold best)
   const categoryPerformance = useMemo(() => {
     const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
-      'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
       'Bath Towels': { category: 'Bath Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Chinese Fans': { category: 'Chinese Fans', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
       'Caps & Hats': { category: 'Caps & Hats', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Customer Brought Items': { category: 'Customer Brought Items', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Chinese Fans': { category: 'Chinese Fans', units: 0, revenue: 0, cost: 0, profit: 0 },
+      'Customer Brought Items (BYOG)': { category: 'Customer Brought Items (BYOG)', units: 0, revenue: 0, cost: 0, profit: 0 },
       'Shirts & Clothing': { category: 'Shirts & Clothing', units: 0, revenue: 0, cost: 0, profit: 0 },
     };
 
@@ -250,7 +235,7 @@ export default function PanelAnalytics({
         const isByog = Boolean(item.isByog || o.isByog);
 
         let key = 'Hand Towels';
-        if (isByog) key = 'Customer Brought Items';
+        if (isByog) key = 'Customer Brought Items (BYOG)';
         else if (name.includes('bath towel')) key = 'Bath Towels';
         else if (name.includes('fan')) key = 'Chinese Fans';
         else if (name.includes('cap') || name.includes('hat')) key = 'Caps & Hats';
@@ -264,12 +249,12 @@ export default function PanelAnalytics({
       });
     });
 
-    return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.profit - a.profit);
+    return Object.values(groups).filter((g) => g.units > 0).sort((a, b) => b.units - a.units);
   }, [filteredOrders, inventoryCostMap]);
 
-  // Timeline chart
+  // Clean daily chart
   const chartData = useMemo(() => {
-    const dailyMap: Record<string, { date: string; revenue: number; profit: number }> = {};
+    const dailyMap: Record<string, { date: string; timestamp: number; revenue: number; profit: number }> = {};
     filteredOrders.forEach((o) => {
       const d = new Date(o.createdAt || o.date);
       const key = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -283,106 +268,27 @@ export default function PanelAnalytics({
       } else {
         cost = o.isByog ? 12 : Math.round(rev * 0.35);
       }
-      const prof = Math.max(0, rev - cost);
+      const prof = rev - cost;
 
-      if (!dailyMap[key]) dailyMap[key] = { date: key, revenue: rev, profit: prof };
-      else {
+      if (!dailyMap[key]) {
+        dailyMap[key] = {
+          date: key,
+          timestamp: new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(),
+          revenue: rev,
+          profit: prof
+        };
+      } else {
         dailyMap[key].revenue += rev;
         dailyMap[key].profit += prof;
       }
     });
 
-    const entries = Object.values(dailyMap);
-    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: grossProfit }];
+    const entries = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
+    if (entries.length === 0) return [{ date: 'Today', revenue: totalRevenue, profit: netProfit }];
     return entries;
-  }, [filteredOrders, totalRevenue, grossProfit, inventoryCostMap]);
+  }, [filteredOrders, totalRevenue, netProfit, inventoryCostMap]);
 
-  // 7-day prediction
-  const forwardForecast = useMemo(() => {
-    const days14: number[] = [];
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(now.getDate() - i);
-      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
-
-      const dayTotal = (orders || []).reduce((sum, o) => {
-        if (o.status === 'Order Canceled') return sum;
-        const oTime = new Date(o.createdAt || o.date).getTime();
-        if (oTime >= startOfDay && oTime < endOfDay) {
-          return sum + (Number(o.totalAmount || o.amount) || 0);
-        }
-        return sum;
-      }, 0);
-      days14.push(dayTotal);
-    }
-
-    const n = days14.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-    for (let i = 0; i < n; i++) {
-      sumX += i;
-      sumY += days14[i];
-      sumXY += i * days14[i];
-      sumXX += i * i;
-    }
-    const denom = n * sumXX - sumX * sumX;
-    const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
-    const intercept = (sumY - slope * sumX) / n;
-
-    const projectionList: { dayLabel: string; projectedRevenue: number }[] = [];
-    let totalProjected7d = 0;
-    for (let j = 0; j < 7; j++) {
-      const x = n + j;
-      const proj = Math.max(200, Math.round(slope * x + intercept));
-      totalProjected7d += proj;
-      const fut = new Date();
-      fut.setDate(now.getDate() + j + 1);
-      projectionList.push({
-        dayLabel: `${fut.getMonth() + 1}/${fut.getDate()}`,
-        projectedRevenue: proj,
-      });
-    }
-
-    return {
-      daily14Velocity: Math.round(sumY / 14),
-      totalProjected7d,
-      projectionList,
-    };
-  }, [orders]);
-
-  // Thread colors in line
-  const threadBatches = useMemo(() => {
-    const map: Record<string, any[]> = {};
-    activeQueueOrders.forEach((ord) => {
-      const color =
-        ord.personalization?.color ||
-        ord.threadColor ||
-        ord.items?.[0]?.personalization?.threadColor ||
-        'Standard White';
-      if (!map[color]) map[color] = [];
-      map[color].push(ord);
-    });
-
-    return Object.entries(map)
-      .map(([color, list]) => ({
-        color,
-        count: list.length,
-        savedMins: Math.max(0, (list.length - 1) * 7),
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [activeQueueOrders]);
-
-  // Simple stitching time estimator
-  const [simCategory, setSimCategory] = useState<'fan' | 'cap' | 'towel' | 'byog'>('towel');
-  const [simLetters, setSimLetters] = useState<number>(6);
-  const predictedSimMinutes = useMemo(() => {
-    const basePrep = 2.5;
-    const catOffset = { fan: 0.0, towel: 0.5, cap: 0.5, byog: 0.5 }[simCategory];
-    const letterTime = simLetters * 0.5;
-    return (basePrep + catOffset + letterTime).toFixed(1);
-  }, [simCategory, simLetters]);
-
+  // 1-Click Thermal Print Slip for Cashier Turnover
   const handlePrintSlip = () => {
     const printWindow = window.open('', '_blank', 'width=380,height=600');
     if (!printWindow) {
@@ -393,29 +299,53 @@ export default function PanelAnalytics({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Daily Report - Eds Towels & Caps</title>
+        <title>Daily Closing Summary - Eds Towels & Caps</title>
         <style>
-          body { font-family: monospace; padding: 15px; font-size: 12px; color: #000; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; padding: 16px; font-size: 13px; color: #000; line-height: 1.4; }
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .divider { border-top: 1px dashed #000; margin: 8px 0; }
-          .row { display: flex; justify-content: space-between; margin: 4px 0; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .row { display: flex; justify-content: space-between; margin: 5px 0; }
+          .big { font-size: 16px; font-weight: bold; }
+          .footer { text-align: center; margin-top: 16px; font-size: 11px; }
         </style>
       </head>
       <body>
-        <div class="center bold" style="font-size: 14px;">EDS TOWELS & CAPS</div>
+        <div class="center big">EDS TOWELS & CAPS</div>
         <div class="center">Pacific Mall Lucena</div>
-        <div class="center">Daily Sales & Profit Summary</div>
-        <div class="center">${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+        <div class="center bold" style="margin-top: 4px;">DAILY CLOSING REPORT</div>
+        <div class="center">${new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        
         <div class="divider"></div>
-        <div class="row"><span>Total Orders:</span><span class="bold">${filteredOrders.length}</span></div>
-        <div class="row"><span>Cash Collected:</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
+        <div class="row"><span>Total Orders Handled:</span><span class="bold">${filteredOrders.length} orders</span></div>
+        <div class="row"><span>Timeframe:</span><span class="bold">${timeRange === 'today' ? 'Today' : timeRange === 'week' ? 'This Week' : timeRange === 'month' ? 'This Month' : 'All Time'}</span></div>
+        <div class="divider"></div>
+        
+        <div class="row"><span>Cash Collected (In Drawer):</span><span class="bold">₱${paymentBreakdown.cashTotal.toFixed(2)}</span></div>
         <div class="row"><span>GCash Received:</span><span class="bold">₱${paymentBreakdown.gcashTotal.toFixed(2)}</span></div>
+        <div class="row bold big" style="margin-top: 6px;"><span>TOTAL SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
+        
         <div class="divider"></div>
-        <div class="row bold"><span>TOTAL SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
-        <div class="row"><span>Item Costs:</span><span>₱${estimatedMaterialCosts.toFixed(2)}</span></div>
-        <div class="row"><span>Stall Rent & Power:</span><span>₱${operatingOverhead.toFixed(2)}</span></div>
-        <div class="row bold"><span>REAL PROFIT:</span><span>₱${netProfit.toFixed(2)}</span></div>
+        <div class="row"><span>Estimated Material Costs:</span><span>-₱${estimatedMaterialCosts.toFixed(2)}</span></div>
+        <div class="row"><span>Pacific Mall Daily Rent:</span><span>-₱${operatingOverhead.toFixed(2)}</span></div>
+        <div class="divider"></div>
+        
+        <div class="row bold big">
+          <span>${netProfit < 0 ? 'NET BALANCE:' : 'CLEAN PROFIT (KITA):'}</span>
+          <span style="color: ${netProfit < 0 ? '#b91c1c' : '#047857'};">
+            ${netProfit < 0 ? `-₱${Math.abs(netProfit).toFixed(2)}` : `₱${netProfit.toFixed(2)}`}
+          </span>
+        </div>
+        <div class="row" style="font-size: 11px; color: ${netProfit < 0 ? '#b91c1c' : '#444'}; font-weight: bold;">
+          <span>Status:</span>
+          <span>${netProfit < 0 ? `Needs ₱${Math.abs(netProfit).toFixed(2)} more for break-even` : `${netMargin}% net margin`}</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="footer">
+          *** Thank you! Verified by Admin ***<br/>
+          Staple this slip to your daily sales ledger.
+        </div>
       </body>
       </html>
     `;
@@ -428,78 +358,96 @@ export default function PanelAnalytics({
     }, 250);
   };
 
+  const paginatedCategories = useMemo(() => {
+    const start = (categoryPage - 1) * categoryPageSize;
+    return categoryPerformance.slice(start, start + categoryPageSize);
+  }, [categoryPerformance, categoryPage, categoryPageSize]);
+
+
   return (
-    <div className="flex flex-col h-full text-left font-sans max-w-6xl mx-auto pb-16">
-      {/* Top Toolbar: Time Filter & Quick Utilities */}
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-4 pb-3 border-b border-border-glass">
-        {/* Left: Time Period Filter */}
-        <div className="flex items-center gap-2">
-          <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs">
-            {(['today', 'week', 'month', 'all'] as TimeRange[]).map((tr) => (
+    <div className="flex flex-col h-full text-left font-sans max-w-5xl mx-auto pb-16">
+      {/* TOP ACTION TOOLBAR (Buttons on Left, No Redundant Header Text) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        {/* Left-Aligned Time Switcher */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex bg-bg-surface border border-border-glass rounded-xl p-1 text-xs shadow-xs">
+            {(
+              [
+                { id: 'today', label: 'Today' },
+                { id: 'week', label: 'This Week' },
+                { id: 'month', label: 'This Month' },
+                { id: 'all', label: 'All Time' },
+              ] as const
+            ).map((item) => (
               <button
-                key={tr}
+                key={item.id}
                 type="button"
-                onClick={() => setTimeRange(tr)}
-                className={`px-3 py-1 rounded-md font-semibold capitalize transition ${
-                  timeRange === tr
-                    ? 'bg-white/10 text-text-main shadow-xs'
-                    : 'text-text-dim hover:text-text-main'
+                onClick={() => setTimeRange(item.id)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  timeRange === item.id
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-text-dim hover:text-text-main hover:bg-white/5'
                 }`}
               >
-                {tr === 'today' ? 'Today' : tr === 'week' ? 'This Week' : tr === 'month' ? 'This Month' : 'All Time'}
+                <span>{item.label}</span>
               </button>
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowOverheadSettings(!showOverheadSettings)}
-            className="text-xs text-text-dim hover:text-text-main px-2.5 py-1 rounded-md border border-border-glass bg-bg-surface transition"
-          >
-            Stall Rent: ₱{dailyStallOverhead}/day
-          </button>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+          {/* Quick Print Summary Slip */}
           <button
             type="button"
             onClick={handlePrintSlip}
-            className="px-3 py-1.5 rounded-lg border border-border-glass bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main text-xs font-semibold transition flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/5 text-text-main border border-border-glass text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Print daily summary receipt for cashier closing"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 6 2 18 2 18 9" />
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
               <rect x="6" y="14" width="12" height="8" />
             </svg>
-            <span>Print Report</span>
+            <span>Print Slip</span>
+          </button>
+        </div>
+
+        {/* Right Side: Stall Overhead Badge */}
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowOverheadSettings(!showOverheadSettings)}
+            className="px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main transition flex items-center gap-2 cursor-pointer font-medium shadow-xs"
+            title="Configure Pacific Mall daily stall rent & electricity budget"
+          >
+            <span>Rent Shield:</span>
+            <strong className="text-text-main font-mono">₱{dailyStallOverhead.toLocaleString()}/day</strong>
+            <span className="text-[10px] text-primary underline">Edit</span>
           </button>
         </div>
       </div>
 
-      {/* Stall Rent Setting Popdown */}
+      {/* Collapsible Stall Overhead Input */}
       {showOverheadSettings && (
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-4 flex items-center justify-between text-xs">
-          <div className="text-text-dim">
-            Daily stall rent &amp; electricity cost (used to calculate your real take-home profit):
-          </div>
+        <div className="mb-4 p-3.5 bg-bg-surface border border-primary/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-[fadeIn_0.15s_ease-out]">
+          <span className="text-text-dim">
+            Pacific Mall stall daily rent &amp; electricity budget:
+          </span>
           <div className="flex items-center gap-2">
-            <span className="text-text-dim font-bold">₱</span>
+            <span className="font-bold text-text-dim font-mono text-sm">₱</span>
             <input
               type="number"
               min="0"
               step="50"
               value={dailyStallOverhead}
-              onChange={(e) => setDailyStallOverhead(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-20 bg-bg-surface border border-border-glass px-2 py-1 rounded text-text-main font-mono text-xs outline-none"
+              onChange={(e) => handleSaveRent(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-28 bg-bg-card border border-border-glass px-2.5 py-1.5 rounded-lg text-text-main font-mono text-sm font-bold outline-none focus:border-primary transition"
             />
             <button
               type="button"
               onClick={() => {
                 setShowOverheadSettings(false);
-                showToast('Stall cost saved', 'success');
+                showToast(`Daily rent saved: ₱${dailyStallOverhead.toLocaleString()}`, 'success');
               }}
-              className="px-2.5 py-1 bg-primary text-white rounded font-medium text-xs cursor-pointer"
+              className="px-3.5 py-1.5 bg-primary hover:bg-primary-light text-white rounded-lg font-bold text-xs transition cursor-pointer shadow-xs"
             >
               Save
             </button>
@@ -507,442 +455,133 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* EXECUTIVE SUMMARY (The 3 Main Category Cards) */}
-      <div className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Category 1: Money & Real Profit */}
-          <div
-            onClick={() => setActiveCategory('money')}
-            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
-              activeCategory === 'money'
-                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
-                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main">1. Money &amp; Earnings</span>
-                <span className="text-xs font-mono font-medium text-emerald-400">{netMargin}% margin</span>
-              </div>
-              <div className="text-2xl font-black font-mono text-emerald-400 my-2">
-                ₱{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Real take-home profit (Sales ₱{totalRevenue.toFixed(0)} − Costs ₱{totalExpenses.toFixed(0)})
-              </div>
-            </div>
-            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-text-dim font-medium">{filteredOrders.length} orders handled</span>
-              <span className={`font-bold transition ${activeCategory === 'money' ? 'text-white' : 'text-primary'}`}>
-                {activeCategory === 'money' ? 'Viewing Details ▼' : 'View Details →'}
-              </span>
-            </div>
-          </div>
 
-          {/* Category 2: Supplies & Stocks */}
-          <div
-            onClick={() => setActiveCategory('supplies')}
-            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
-              activeCategory === 'supplies'
-                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
-                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main">2. Shop Supplies &amp; Stocks</span>
-                {restockOutflowForecast.lowCount > 0 ? (
-                  <span className="text-xs font-mono text-amber-400">{restockOutflowForecast.lowCount} low items</span>
-                ) : (
-                  <span className="text-xs text-text-dim">Stock stable</span>
-                )}
-              </div>
-              <div className="text-2xl font-black font-mono text-text-main my-2">
-                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Money stored in {inventoryAssetStats.totalPieces} unsold towels &amp; thread spools
-              </div>
-            </div>
-            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-text-dim font-medium">Reorder needed: ₱{restockOutflowForecast.budgetNeeded.toFixed(0)}</span>
-              <span className={`font-bold transition ${activeCategory === 'supplies' ? 'text-white' : 'text-primary'}`}>
-                {activeCategory === 'supplies' ? 'Viewing Details ▼' : 'View Details →'}
-              </span>
-            </div>
-          </div>
 
-          {/* Category 3: Machine & Next 7 Days */}
-          <div
-            onClick={() => setActiveCategory('machine')}
-            className={`border rounded-xl p-4 flex flex-col justify-between transition cursor-pointer ${
-              activeCategory === 'machine'
-                ? 'bg-white/[0.04] border-white/30 shadow-md ring-1 ring-white/20'
-                : 'bg-bg-surface border-border-glass hover:bg-white/[0.02]'
-            }`}
-          >
+      {/* =========================================================================
+          TOP CRAFTED ARTIFACTS (BEST SELLERS) & PERFORMANCE TRENDLINE
+          ========================================================================= */}
+      <div className="space-y-4">
+        <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main">3. Production &amp; Next 7 Days</span>
-                <span className="text-xs font-mono text-text-dim">{threadBatches.length} colors in line</span>
-              </div>
-              <div className="text-2xl font-black font-mono text-text-main my-2">
-                ₱{forwardForecast.totalProjected7d.toLocaleString()}
-              </div>
-              <div className="text-xs text-text-dim">
-                Expected sales for the upcoming week based on daily orders
-              </div>
+              <h3 className="text-sm font-bold text-text-main">Top Sold Garments &amp; Best Sellers</h3>
+              <p className="text-xs text-text-dim">Ranked by units ordered by your customers.</p>
             </div>
-            <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-text-dim font-medium">Stitching time quoter &amp; batching</span>
-              <span className={`font-bold transition ${activeCategory === 'machine' ? 'text-white' : 'text-primary'}`}>
-                {activeCategory === 'machine' ? 'Viewing Details ▼' : 'View Details →'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Navigation Pills / Show All Switch */}
-        <div className="flex items-center justify-between mt-3 text-xs text-text-dim">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px]">Currently showing:</span>
-            <span className="font-bold text-text-main capitalize">
-              {activeCategory === 'money'
-                ? 'Money & Earnings Details'
-                : activeCategory === 'supplies'
-                ? 'Supplies & Stocks Details'
-                : activeCategory === 'machine'
-                ? 'Production & Next 7 Days Details'
-                : 'All Details'}
+            <span className="text-xs text-text-dim font-mono font-medium">
+              {filteredOrders.length} orders total
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveCategory(activeCategory === 'all' ? 'money' : 'all')}
-            className="hover:text-text-main underline cursor-pointer"
-          >
-            {activeCategory === 'all' ? 'Focus on One Category' : 'Show All Details Below'}
-          </button>
-        </div>
-      </div>
-
-      {/* CATEGORY 1 DETAILS: MONEY & EARNINGS */}
-      {(activeCategory === 'money' || activeCategory === 'all') && (
-        <div className="space-y-4 mb-6 animate-[fadeIn_0.2s_ease-out]">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Total Sales */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Total Sales</div>
-              <div className="text-2xl font-bold font-mono text-text-main my-1">
-                ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">{filteredOrders.length} orders paid</div>
+          {categoryPerformance.length === 0 ? (
+            <div className="py-10 text-center text-xs text-text-dim">
+              No orders recorded during this timeframe.
             </div>
-
-            {/* Total Costs */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Total Costs</div>
-              <div className="text-2xl font-bold font-mono text-text-main my-1">
-                ₱{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Supplies ₱{estimatedMaterialCosts.toFixed(0)} • Rent ₱{operatingOverhead.toFixed(0)}
-              </div>
-            </div>
-
-            {/* Cash on Hand */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Cash on Hand</div>
-              <div className="space-y-0.5 my-1">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim">Cash:</span>
-                  <span className="font-mono font-bold text-text-main">₱{paymentBreakdown.cashTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim">GCash:</span>
-                  <span className="font-mono font-bold text-text-main">₱{paymentBreakdown.gcashTotal.toFixed(2)}</span>
-                </div>
-              </div>
-              <div className="text-[11px] text-text-dim">
-                Total cash: ₱{(paymentBreakdown.cashTotal + paymentBreakdown.gcashTotal).toFixed(2)}
-              </div>
-            </div>
-
-            {/* Rent & Power Covered */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-text-dim font-medium">Rent &amp; Power Covered</span>
-                <span className="font-mono text-text-dim">{breakEvenProgress}%</span>
-              </div>
-              <div className="w-full bg-white/5 rounded-full h-1.5 my-2 overflow-hidden border border-white/5">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, breakEvenProgress)}%` }}
-                />
-              </div>
-              <div className="text-xs text-text-dim flex justify-between">
-                <span>Earned: ₱{grossProfit.toFixed(0)}</span>
-                <span className={breakEvenSurplus >= 0 ? 'text-emerald-400' : 'text-text-dim'}>
-                  {breakEvenSurplus >= 0 ? `Broke even! +₱${breakEvenSurplus.toFixed(0)} in profit` : `Need ₱${Math.abs(breakEvenSurplus).toFixed(0)} more`}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Profit History Chart */}
-          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-text-main">Daily Profit History</span>
-              <span className="text-[11px] text-emerald-400 font-mono">Real Profit (₱)</span>
-            </div>
-
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="date" stroke="#666666" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#666666" fontSize={10} tickLine={false} />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-bg-surface border border-border-glass p-2 rounded text-xs font-mono">
-                            <div className="text-text-dim">{label}</div>
-                            <div className="text-emerald-400 font-bold">
-                              Profit: ₱{parseFloat((payload[0]?.value as any) || 0).toFixed(2)}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="profit"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#profitGrad)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CATEGORY 2 DETAILS: SUPPLIES & STOCKS */}
-      {(activeCategory === 'supplies' || activeCategory === 'all') && (
-        <div className="space-y-4 mb-6 animate-[fadeIn_0.2s_ease-out]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Money in Stored Items */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs text-text-dim font-medium">Items in Stock (Value)</div>
-              <div className="text-2xl font-bold font-mono text-text-main my-1">
-                ₱{inventoryAssetStats.totalLockedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                {inventoryAssetStats.totalPieces} unsold towels, fans, and thread spools on shelves
-              </div>
-            </div>
-
-            {/* Money Needed to Reorder */}
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim font-medium">Money Needed to Reorder</span>
-                {restockOutflowForecast.lowCount > 0 && (
-                  <span className="text-[11px] text-amber-400 font-semibold">{restockOutflowForecast.lowCount} items running low</span>
-                )}
-              </div>
-              <div className="text-2xl font-bold font-mono text-text-main my-1">
-                ₱{restockOutflowForecast.budgetNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-text-dim">
-                Estimated cash to buy supplies below threshold
-              </div>
-            </div>
-          </div>
-
-          {/* Sales & Profit per Item Type Table */}
-          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
-            <div className="text-xs font-bold text-text-main mb-3">Sales &amp; Profit by Item</div>
-
-            {categoryPerformance.length === 0 ? (
-              <div className="py-6 text-center text-xs text-text-dim">No orders recorded in this period.</div>
-            ) : (
+          ) : (
+            <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-white/5 text-[11px] text-text-dim">
-                      <th className="pb-2 font-medium">Item</th>
-                      <th className="pb-2 font-medium text-center">Sold</th>
-                      <th className="pb-2 font-medium text-right">Sales</th>
-                      <th className="pb-2 font-medium text-right">Cost</th>
-                      <th className="pb-2 font-medium text-right">Profit</th>
+                    <tr className="border-b border-border-glass text-text-dim text-[11px] pb-2">
+                      <th className="pb-2.5 font-bold">Item Type</th>
+                      <th className="pb-2.5 font-bold text-center">Pieces Crafted</th>
+                      <th className="pb-2.5 font-bold text-right">Total Bounty</th>
+                      <th className="pb-2.5 font-bold text-right">Material Cost</th>
+                      <th className="pb-2.5 font-bold text-right">Net Profit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {categoryPerformance.map((row) => (
-                      <tr key={row.category} className="hover:bg-white/[0.02]">
-                        <td className="py-2 text-text-main font-medium">{row.category}</td>
-                        <td className="py-2 text-center text-text-dim font-mono">{row.units} pcs</td>
-                        <td className="py-2 text-right font-mono text-text-main">₱{row.revenue.toFixed(2)}</td>
-                        <td className="py-2 text-right font-mono text-text-dim">₱{row.cost.toFixed(2)}</td>
-                        <td className="py-2 text-right font-mono font-medium text-emerald-400">₱{row.profit.toFixed(2)}</td>
+                  <tbody className="divide-y divide-border-glass">
+                    {paginatedCategories.map((row) => (
+                      <tr key={row.category} className="hover:bg-primary/5 transition">
+                        <td className="py-3 text-text-main font-semibold text-sm">
+                          {row.category}
+                        </td>
+                        <td className="py-3 text-center font-mono font-bold text-text-main text-sm">
+                          {row.units} pcs
+                        </td>
+                        <td className="py-3 text-right font-mono font-semibold text-text-main text-sm">
+                          ₱{row.revenue.toFixed(2)}
+                        </td>
+                        <td className="py-3 text-right font-mono text-text-dim">
+                          ₱{row.cost.toFixed(2)}
+                        </td>
+                        <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-amber-500' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                          {row.profit < 0 ? `-₱${Math.abs(row.profit).toFixed(2)}` : `+₱${row.profit.toFixed(2)}`}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
+
+              <Pagination
+                currentPage={categoryPage}
+                totalItems={categoryPerformance.length}
+                pageSize={categoryPageSize}
+                onPageChange={setCategoryPage}
+                pageSizeOptions={[5, 10, 20]}
+                onPageSizeChange={(newSize) => {
+                  setCategoryPageSize(newSize);
+                  setCategoryPage(1);
+                }}
+                itemLabel="categories"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Daily Profit Curve */}
+        <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-bold text-text-main">Performance Trendline</h3>
+              <p className="text-xs text-text-dim">Clean earnings curve across the chosen period.</p>
+            </div>
+            <span className="text-xs font-mono font-bold text-emerald-500 dark:text-emerald-400">
+              Revenue &amp; Profit (₱)
+            </span>
+          </div>
+
+          <div className="h-44 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="questProfitGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#88888820" />
+                <XAxis dataKey="date" stroke="#888888" fontSize={11} tickLine={false} />
+                <YAxis stroke="#888888" fontSize={11} tickLine={false} />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const val = parseFloat((payload[0]?.value as any) || 0);
+                      return (
+                        <div className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-xs font-mono shadow-md">
+                          <div className="text-text-dim font-sans mb-1">{label}</div>
+                          <div className={`font-bold text-sm ${val < 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {val < 0 ? `Balance: -₱${Math.abs(val).toFixed(2)}` : `Profit: +₱${val.toFixed(2)}`}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="profit"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#questProfitGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
-      )}
-
-      {/* CATEGORY 3 DETAILS: MACHINE & NEXT 7 DAYS */}
-      {(activeCategory === 'machine' || activeCategory === 'all') && (
-        <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* How Long Will Stitching Take? */}
-            <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-text-main">How Long Will Stitching Take?</span>
-                  <span className="text-[11px] font-mono text-text-dim">3 mins setup + 30s/letter</span>
-                </div>
-                <div className="text-xs text-text-dim mb-3">
-                  Check how many minutes an item takes based on letters and garment thickness.
-                </div>
-              </div>
-
-              <div className="bg-bg-card border border-border-glass rounded-lg p-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-text-dim block mb-1">Item</label>
-                    <select
-                      value={simCategory}
-                      onChange={(e) => setSimCategory(e.target.value as any)}
-                      className="w-full bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-xs text-text-main outline-none"
-                    >
-                      <option value="fan">Chinese Fan</option>
-                      <option value="cap">Cap / Hat</option>
-                      <option value="towel">Bath Towel</option>
-                      <option value="byog">Customer Garment</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-[11px] text-text-dim">Number of Letters</label>
-                      <span className="text-[11px] font-mono text-text-main">{simLetters}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      value={simLetters}
-                      onChange={(e) => setSimLetters(parseInt(e.target.value) || 1)}
-                      className="w-full mt-1.5"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                  <span className="text-text-dim">Estimated Stitching Time:</span>
-                  <span className="font-mono font-bold text-text-main">Takes about ~{predictedSimMinutes} minutes</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Thread Colors Waiting in Line */}
-            <div className="lg:col-span-6 bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-text-main">Thread Colors Waiting in Line</span>
-                <span className="text-[11px] text-text-dim font-mono">{threadBatches.length} colors in queue</span>
-              </div>
-              <div className="text-xs text-text-dim mb-3">
-                Stitch matching thread colors together to save time changing needles.
-              </div>
-
-              {threadBatches.length === 0 ? (
-                <div className="py-6 text-center text-xs text-text-dim my-auto">
-                  No orders waiting in queue right now.
-                </div>
-              ) : (
-                <div className="space-y-2 overflow-y-auto max-h-[170px] pr-1">
-                  {threadBatches.map((b) => (
-                    <div key={b.color} className="bg-bg-card border border-border-glass rounded-lg p-2.5 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-semibold text-text-main">{b.color}</span>
-                        <span className="text-text-dim ml-2 font-mono">({b.count} orders)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {b.savedMins > 0 && (
-                          <span className="text-[11px] text-emerald-400 font-mono">Saves ~{b.savedMins} mins</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => showToast(`Moved ${b.color} orders next`, 'info')}
-                          className="text-text-dim hover:text-text-main underline text-[11px]"
-                        >
-                          Stitch Next
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Expected Sales for Next 7 Days */}
-          <div className="bg-bg-surface border border-border-glass rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-              <div>
-                <div className="text-xs font-bold text-text-main">Expected Sales for Next 7 Days</div>
-                <div className="text-xs text-text-dim">Estimate of upcoming sales based on recent daily orders.</div>
-              </div>
-              <div className="text-xs text-text-dim font-mono">
-                Estimated for next 7 days: <strong className="text-text-main">₱{forwardForecast.totalProjected7d.toLocaleString()}</strong>
-              </div>
-            </div>
-
-            <div className="h-40 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={forwardForecast.projectionList} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="dayLabel" stroke="#666666" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#666666" fontSize={10} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#121217',
-                      borderColor: '#2e2e38',
-                      borderRadius: '0.5rem',
-                      fontSize: '11px',
-                    }}
-                    formatter={(val: any) => [`₱${Number(val).toLocaleString()}`, 'Expected Sales']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="projectedRevenue"
-                    stroke="#818cf8"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: '#818cf8' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

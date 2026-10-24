@@ -37,7 +37,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
   const baseProducts = customProducts || products;
 
   const [page, setPage] = useState(1);
-  const pageSize = 12;
+  const [pageSize, setPageSize] = useState(12);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [isInView, setIsInView] = useState(false);
@@ -242,6 +242,11 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
             totalItems={filteredProducts.length}
             pageSize={pageSize}
             onPageChange={setPage}
+            pageSizeOptions={[6, 12, 24, 48]}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
             itemLabel="products"
           />
         </>

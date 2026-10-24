@@ -5,6 +5,7 @@ import GlassModal from '@/components/ui/GlassModal';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 
 interface OrderReviewModalProps {
   isOpen: boolean;
@@ -44,12 +45,17 @@ export default function OrderReviewModal({
     'Vibrant Thread Color',
   ]);
   const [comment, setComment] = useState<string>('');
+  const [reviewError, setReviewError] = useState<string>('');
+  const [shakeReview, setShakeReview] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isEditing = !!existingReview;
 
   // Prefill from the saved review: message format is "[Highlights: a, b]\n\ncomment"
   useEffect(() => {
-    if (!isOpen || !existingReview) return;
+    if (!isOpen) return;
+    setReviewError('');
+    setShakeReview(false);
+    if (!existingReview) return;
     const match = existingReview.message.match(/^\[Highlights: (.*?)\]\s*/);
     setRating(existingReview.rating);
     setSelectedTags(match ? match[1].split(', ') : []);
@@ -57,6 +63,7 @@ export default function OrderReviewModal({
   }, [isOpen, existingReview]);
 
   const toggleTag = (tag: string) => {
+    if (reviewError) setReviewError('');
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
@@ -82,7 +89,14 @@ export default function OrderReviewModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim() && selectedTags.length === 0) {
-      showToast('Please select quality tags or share brief comments', 'error');
+      setReviewError('Please select at least one quality highlight or share a brief comment.');
+      setShakeReview(true);
+      setTimeout(() => setShakeReview(false), 600);
+      showToast({
+        title: 'Review Highlights Needed',
+        message: 'Please select quality tags or share brief comments about your order',
+        type: 'warning'
+      });
       return;
     }
 
@@ -137,7 +151,11 @@ export default function OrderReviewModal({
       title={isEditing ? 'Edit Your Review' : 'Rate Order & Embroidery Quality'}
       maxWidth="max-w-[540px]"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+      <form
+        noValidate
+        onSubmit={handleSubmit}
+        className={`flex flex-col gap-4 text-left ${shakeReview ? 'animate-shake' : ''}`}
+      >
         {/* Verified Order Banner */}
         <div className="p-3.5 rounded-xl bg-white/[0.04] border border-border-glass flex items-center justify-between">
           <div className="flex flex-col gap-0.5">
@@ -228,10 +246,17 @@ export default function OrderReviewModal({
             rows={3}
             placeholder="Share details about the letter sharpness, fabric feel, or Pacific Mall store pickup..."
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            onChange={(e) => {
+              setComment(e.target.value);
+              if (reviewError) setReviewError('');
+            }}
             className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-xs outline-none focus:border-primary leading-relaxed"
           />
         </div>
+
+        {reviewError && (
+          <InlineError message={reviewError} variant="field" />
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-border-glass/60">

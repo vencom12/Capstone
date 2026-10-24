@@ -80,7 +80,7 @@ export default function EmployeePage() {
   const [batchStatus, setBatchStatus] = useState('');
   const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
   const [queuePage, setQueuePage] = useState(1);
-  const queuePageSize = 10;
+  const [queuePageSize, setQueuePageSize] = useState(10);
 
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
@@ -88,9 +88,10 @@ export default function EmployeePage() {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedTotal, setArchivedTotal] = useState(0);
   const [archivedPage, setArchivedPage] = useState(1);
+  const [archivedPageSize, setArchivedPageSize] = useState(15);
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
-  const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1) => {
+  const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1, limit = archivedPageSize) => {
     if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
     setIsLoadingArchived(true);
     try {
@@ -98,7 +99,7 @@ export default function EmployeePage() {
       if (query && query.trim()) params.append('search', query.trim());
       if (date && date.trim()) params.append('date', date.trim());
       params.append('page', String(page));
-      params.append('limit', '50');
+      params.append('limit', String(limit));
 
       const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
@@ -539,41 +540,41 @@ export default function EmployeePage() {
       case 'orders':
         return (
           <section className="animate-[fadeIn_0.3s_ease-out]">
-             <header className="mb-6 flex justify-between items-end flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-extrabold mb-1">Active Order Queue</h1>
-              </div>
-              <div className="flex gap-3 items-center flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHandoverScanInput('');
-                      setLastClaimedOrder(null);
-                      setIsHandoverModalOpen(true);
-                    }}
-                    className="bg-bg-surface hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
-                    title="Scan customer QR code or enter claim ticket for handover"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
-                      <rect width="18" height="18" x="3" y="3" rx="2" />
-                      <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
-                    </svg>
-                    <span>Scan QR Handover</span>
-                  </button>
-                  <GlassDatePicker 
-                    value={ordersDateFilter}
-                    onChange={(val) => setOrdersDateFilter(val)}
-                    placeholder="Filter date"
-                  />
-                 <input 
-                   type="text" 
-                   placeholder="Search queue..." 
-                   value={ordersSearchQuery}
-                   onChange={(e) => setOrdersSearchQuery(e.target.value)}
-                   className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
-                 />
-              </div>
+            <header className="mb-4">
+              <h1 className="text-3xl font-extrabold mb-1">Active Order Queue</h1>
             </header>
+
+            {/* Compact Top Filter & Action Toolbar */}
+            <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setHandoverScanInput('');
+                  setLastClaimedOrder(null);
+                  setIsHandoverModalOpen(true);
+                }}
+                className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none whitespace-nowrap"
+                title="Scan customer QR code or enter claim ticket for handover"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
+                </svg>
+                <span>Scan QR Handover</span>
+              </button>
+              <input 
+                type="text" 
+                placeholder="Search queue..." 
+                value={ordersSearchQuery}
+                onChange={(e) => setOrdersSearchQuery(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
+              />
+              <GlassDatePicker 
+                value={ordersDateFilter}
+                onChange={(val) => setOrdersDateFilter(val)}
+                placeholder="Filter date"
+              />
+            </div>
 
             {/* Status Tab Navigation */}
             {(() => {
@@ -989,6 +990,11 @@ export default function EmployeePage() {
               totalItems={activeOrders.length}
               pageSize={queuePageSize}
               onPageChange={setQueuePage}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onPageSizeChange={(newSize) => {
+                setQueuePageSize(newSize);
+                setQueuePage(1);
+              }}
               itemLabel="orders in queue"
             />
           </section>
@@ -1009,40 +1015,40 @@ export default function EmployeePage() {
       case 'history':
         return (
           <section className="animate-[fadeIn_0.3s_ease-out]">
-            <header className="mb-6 flex justify-between items-end flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-extrabold mb-1">Order History</h1>
-                <p className="text-text-dim text-[0.95rem] m-0">
-                  Archived completed and canceled orders.
-                  {archivedTotal > 0 && <span className="text-primary font-bold ml-1.5">({archivedTotal} orders archived)</span>}
-                </p>
-              </div>
-              <div className="flex gap-3 items-center flex-wrap">
-                <GlassDatePicker 
-                  value={historyDateFilter}
-                  onChange={(val) => setHistoryDateFilter(val)}
-                  placeholder="Filter date"
-                />
-                <input 
-                  type="text" 
-                  placeholder="Search history ID, client..." 
-                  value={historySearchQuery}
-                  onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
-                />
-                {(historySearchQuery || historyDateFilter) && (
-                  <button
-                    onClick={() => {
-                      setHistorySearchQuery('');
-                      setHistoryDateFilter('');
-                    }}
-                    className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
+            <header className="mb-4">
+              <h1 className="text-3xl font-extrabold mb-1">Order History</h1>
+              <p className="text-text-dim text-[0.95rem] m-0">
+                Archived completed and canceled orders.
+                {archivedTotal > 0 && <span className="text-primary font-bold ml-1.5">({archivedTotal} orders archived)</span>}
+              </p>
             </header>
+
+            {/* Compact Top Filter Toolbar */}
+            <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+              <input 
+                type="text" 
+                placeholder="Search history ID, client..." 
+                value={historySearchQuery}
+                onChange={(e) => setHistorySearchQuery(e.target.value)}
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
+              />
+              <GlassDatePicker 
+                value={historyDateFilter}
+                onChange={(val) => setHistoryDateFilter(val)}
+                placeholder="Filter date"
+              />
+              {(historySearchQuery || historyDateFilter) && (
+                <button
+                  onClick={() => {
+                    setHistorySearchQuery('');
+                    setHistoryDateFilter('');
+                  }}
+                  className="text-xs text-text-dim hover:text-text-main px-3 py-2 rounded-xl bg-white/5 border border-border-glass cursor-pointer transition-all"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
 
             {isLoadingArchived ? (
               <>
@@ -1203,8 +1209,13 @@ export default function EmployeePage() {
                 <Pagination
                   currentPage={archivedPage}
                   totalItems={archivedTotal}
-                  pageSize={50}
-                  onPageChange={(p) => fetchArchivedOrders(historySearchQuery, historyDateFilter, p)}
+                  pageSize={archivedPageSize}
+                  onPageChange={(p) => fetchArchivedOrders(historySearchQuery, historyDateFilter, p, archivedPageSize)}
+                  pageSizeOptions={[10, 15, 25, 50]}
+                  onPageSizeChange={(newSize) => {
+                    setArchivedPageSize(newSize);
+                    fetchArchivedOrders(historySearchQuery, historyDateFilter, 1, newSize);
+                  }}
                   itemLabel="archived orders"
                 />
               </>

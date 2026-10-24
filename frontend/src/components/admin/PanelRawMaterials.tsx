@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -12,8 +12,9 @@ import { useAuthStore } from '@/stores/useAuthStore';
 interface InlineStockAdjusterProps {
   material: any;
   refreshData: () => Promise<void>;
-  fetchAuditLogs: () => Promise<void>;
+  fetchAuditLogs?: () => Promise<void>;
   isAdmin?: boolean;
+  setInventory?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineStockAdjusterProps) {
@@ -43,7 +44,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         minThreshold: material.minThreshold || 10
       });
       refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      fetchAuditLogs?.().catch(() => {});
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -72,7 +73,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         minThreshold: material.minThreshold || 10
       });
       refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      fetchAuditLogs?.().catch(() => {});
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -113,7 +114,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         minThreshold: material.minThreshold || 10
       });
       refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      fetchAuditLogs?.().catch(() => {});
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -199,7 +200,7 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
   );
 }
 
-function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmin = true }: InlineStockAdjusterProps) {
+function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmin = true, setInventory }: InlineStockAdjusterProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState((material.minThreshold || 10).toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -230,9 +231,17 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
       return;
     }
 
+    const prevThreshold = material.minThreshold || 10;
+    const materialId = material.id || material._id;
+
+    if (setInventory) {
+      setInventory((prev) =>
+        prev.map((m) => ((m.id || m._id) === materialId ? { ...m, minThreshold: newVal } : m))
+      );
+    }
+
     setIsSubmitting(true);
     try {
-      const materialId = material.id || material._id;
       await api.patch(`/api/admin/inventory/${materialId}`, {
         count: material.count,
         action: 'Update',
@@ -241,9 +250,14 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
       });
       showToast(`Threshold set to ${newVal}`, 'success');
       await refreshData();
-      await fetchAuditLogs();
+      if (fetchAuditLogs) await fetchAuditLogs();
     } catch (err) {
       console.error(err);
+      if (setInventory) {
+        setInventory((prev) =>
+          prev.map((m) => ((m.id || m._id) === materialId ? { ...m, minThreshold: prevThreshold } : m))
+        );
+      }
       showToast('Failed to update threshold', 'error');
       setInputValue((material.minThreshold || 10).toString());
     } finally {
@@ -301,17 +315,51 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
   const [inputValue, setInputValue] = useState(
     material.supplierUnitCost != null ? String(material.supplierUnitCost) : ''
   );
+  const [inputMode, setInputMode] = useState<'unit' | 'pack'>('unit');
+  const [packInputValue, setPackInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const packSize = material.packSize && material.packSize > 1 ? material.packSize : 1;
+  const unitCost = material.supplierUnitCost != null ? Number(material.supplierUnitCost) : null;
+  const packCost = unitCost != null && packSize > 1 ? unitCost * packSize : null;
 
   useEffect(() => {
     setInputValue(material.supplierUnitCost != null ? String(material.supplierUnitCost) : '');
-  }, [material.supplierUnitCost]);
+    setPackInputValue(packCost != null ? packCost.toFixed(2) : '');
+  }, [material.supplierUnitCost, packCost]);
+
+  const handleUnitChange = (val: string) => {
+    setInputValue(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && packSize > 1) {
+      setPackInputValue((num * packSize).toFixed(2));
+    } else {
+      setPackInputValue('');
+    }
+  };
+
+  const handlePackChange = (val: string) => {
+    setPackInputValue(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && packSize > 1) {
+      setInputValue((num / packSize).toFixed(2));
+    } else {
+      setInputValue('');
+    }
+  };
 
   if (!isAdmin) {
     return (
-      <span className="font-mono text-xs text-text-dim px-2 py-1 select-none">
-        {material.supplierUnitCost != null ? `₱${Number(material.supplierUnitCost).toFixed(2)}` : '—'}
-      </span>
+      <div className="flex flex-col text-left font-mono select-none">
+        <span className="text-xs text-text-dim">
+          {unitCost != null ? `₱${unitCost.toFixed(2)}` : '—'}
+        </span>
+        {packCost != null && (
+          <span className="text-[10px] text-text-dim/70">
+            ₱{packCost.toFixed(2)} / pack of {packSize}
+          </span>
+        )}
+      </div>
     );
   }
 
@@ -320,6 +368,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     if (inputValue.trim() !== '' && (isNaN(parsed!) || parsed! < 0)) {
       showToast('Enter a valid cost (or leave blank to clear)', 'error');
       setInputValue(material.supplierUnitCost != null ? String(material.supplierUnitCost) : '');
+      setPackInputValue(packCost != null ? packCost.toFixed(2) : '');
       setIsEditing(false);
       return;
     }
@@ -340,7 +389,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     setIsEditing(false);
     showToast(
       parsed != null
-        ? `Cost set to ₱${parsed.toFixed(2)}`
+        ? `Cost set to ₱${parsed.toFixed(2)} / ${material.unit || 'PC'}`
         : 'Cost cleared',
       'success'
     );
@@ -357,6 +406,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
       }
       showToast('Failed to update cost', 'error');
       setInputValue(prevCost != null ? String(prevCost) : '');
+      setPackInputValue(packCost != null ? packCost.toFixed(2) : '');
     }
   };
 
@@ -364,26 +414,69 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     if (e.key === 'Enter') handleSubmit();
     else if (e.key === 'Escape') {
       setInputValue(material.supplierUnitCost != null ? String(material.supplierUnitCost) : '');
+      setPackInputValue(packCost != null ? packCost.toFixed(2) : '');
       setIsEditing(false);
     }
   };
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1.5 animate-fade" onClick={(e) => e.stopPropagation()}>
-        <span className="text-text-dim text-xs font-bold select-none">₱</span>
-        <input
-          type="number"
-          autoFocus
-          min="0"
-          step="0.5"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onBlur={handleSubmit}
-          onKeyDown={handleKeyDown}
-          placeholder="0.00"
-          className="w-20 bg-white/10 border border-primary/50 px-2 py-0.5 rounded text-center text-text-main font-mono font-bold outline-none text-xs"
-        />
+      <div className="flex flex-col gap-1.5 animate-fade bg-black/40 border border-primary/40 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
+        {packSize > 1 && (
+          <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded text-[9px] font-bold self-start">
+            <button
+              type="button"
+              onClick={() => setInputMode('unit')}
+              className={`px-1.5 py-0.5 rounded cursor-pointer transition ${inputMode === 'unit' ? 'bg-primary text-white' : 'text-text-dim hover:text-text-main'}`}
+            >
+              / {material.unit || 'PC'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode('pack')}
+              className={`px-1.5 py-0.5 rounded cursor-pointer transition ${inputMode === 'pack' ? 'bg-primary text-white' : 'text-text-dim hover:text-text-main'}`}
+            >
+              / Pack ({packSize})
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-text-dim text-xs font-bold select-none">₱</span>
+          {packSize > 1 && inputMode === 'pack' ? (
+            <input
+              type="number"
+              autoFocus
+              min="0"
+              step="1"
+              value={packInputValue}
+              onChange={(e) => handlePackChange(e.target.value)}
+              onBlur={handleSubmit}
+              onKeyDown={handleKeyDown}
+              placeholder="0.00"
+              className="w-20 bg-white/10 border border-primary/50 px-2 py-0.5 rounded text-center text-text-main font-mono font-bold outline-none text-xs"
+            />
+          ) : (
+            <input
+              type="number"
+              autoFocus
+              min="0"
+              step="0.5"
+              value={inputValue}
+              onChange={(e) => handleUnitChange(e.target.value)}
+              onBlur={handleSubmit}
+              onKeyDown={handleKeyDown}
+              placeholder="0.00"
+              className="w-20 bg-white/10 border border-primary/50 px-2 py-0.5 rounded text-center text-text-main font-mono font-bold outline-none text-xs"
+            />
+          )}
+        </div>
+
+        {packSize > 1 && inputValue && !isNaN(parseFloat(inputValue)) && (
+          <span className="text-[10px] text-emerald-400 font-mono whitespace-nowrap">
+            ₱{(parseFloat(inputValue) * packSize).toFixed(2)}/pack ÷ {packSize} = ₱{parseFloat(inputValue).toFixed(2)}/PC
+          </span>
+        )}
       </div>
     );
   }
@@ -392,13 +485,23 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     <button
       onClick={() => setIsEditing(true)}
       disabled={isSubmitting}
-      className="bg-transparent hover:bg-white/5 border-none px-2 py-1 rounded font-mono text-xs cursor-pointer transition-all flex items-center gap-1 group"
-      title="Click to set the supplier cost per unit (used for real profit tracking)"
+      className="bg-transparent hover:bg-white/5 border-none px-2 py-1 rounded text-xs cursor-pointer transition-all flex flex-col text-left group"
+      title={packSize > 1 ? `₱${unitCost?.toFixed(2)}/PC (₱${packCost?.toFixed(2)} for pack of ${packSize})` : "Click to set supplier cost"}
     >
-      {material.supplierUnitCost != null ? (
-        <span className="text-emerald-400 font-bold">₱{Number(material.supplierUnitCost).toFixed(2)}</span>
+      {unitCost != null ? (
+        <>
+          <span className="text-emerald-400 font-bold font-mono">
+            ₱{unitCost.toFixed(2)}
+            <span className="text-[10px] text-text-dim font-normal ml-0.5">/{material.unit || 'PC'}</span>
+          </span>
+          {packCost != null && (
+            <span className="text-[10px] text-text-dim font-mono">
+              ₱{packCost.toFixed(2)} / pack of {packSize}
+            </span>
+          )}
+        </>
       ) : (
-        <span className="text-text-dim/50 group-hover:text-text-dim italic">Set cost...</span>
+        <span className="text-text-dim/50 group-hover:text-text-dim italic font-mono">Set cost...</span>
       )}
     </button>
   );
@@ -543,9 +646,98 @@ export default function PanelRawMaterials({
   const [itemUnit, setItemUnit] = useState('PCs');
   const [itemThreshold, setItemThreshold] = useState('10');
   const [itemSupplierCost, setItemSupplierCost] = useState('');
+  const [itemPackSize, setItemPackSize] = useState('1');
+  const [itemPackCost, setItemPackCost] = useState('');
+
+  const handleAddPackCostChange = (val: string) => {
+    setItemPackCost(val);
+    const pSize = Math.max(1, parseInt(itemPackSize) || 1);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num >= 0) {
+      setItemSupplierCost((num / pSize).toFixed(2));
+    } else if (val === '') {
+      setItemSupplierCost('');
+    }
+  };
+
+  const handleAddUnitCostChange = (val: string) => {
+    setItemSupplierCost(val);
+    const pSize = Math.max(1, parseInt(itemPackSize) || 1);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num >= 0) {
+      setItemPackCost((num * pSize).toFixed(2));
+    } else if (val === '') {
+      setItemPackCost('');
+    }
+  };
+
+  const handleAddPackSizeChange = (val: string) => {
+    setItemPackSize(val);
+    const pSize = Math.max(1, parseInt(val) || 1);
+    if (itemSupplierCost !== '') {
+      const uNum = parseFloat(itemSupplierCost);
+      if (!isNaN(uNum)) {
+        setItemPackCost((uNum * pSize).toFixed(2));
+      }
+    } else if (itemPackCost !== '') {
+      const pNum = parseFloat(itemPackCost);
+      if (!isNaN(pNum)) {
+        setItemSupplierCost((pNum / pSize).toFixed(2));
+      }
+    }
+  };
 
   // Delete modal state
   const [deletingMaterial, setDeletingMaterial] = useState<any>(null);
+
+  // Edit Material Details Modal State
+  const [editingMaterial, setEditingMaterial] = useState<any | null>(null);
+  const [editItemName, setEditItemName] = useState('');
+  const [editItemCount, setEditItemCount] = useState('');
+  const [editItemUnit, setEditItemUnit] = useState('PCs');
+  const [editItemThreshold, setEditItemThreshold] = useState('10');
+  const [editItemSupplierCost, setEditItemSupplierCost] = useState('');
+  const [editItemPackSize, setEditItemPackSize] = useState('1');
+  const [editItemPackCost, setEditItemPackCost] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  const handleEditPackCostChange = (val: string) => {
+    setEditItemPackCost(val);
+    const pSize = Math.max(1, parseInt(editItemPackSize) || 1);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num >= 0) {
+      setEditItemSupplierCost((num / pSize).toFixed(2));
+    } else if (val === '') {
+      setEditItemSupplierCost('');
+    }
+  };
+
+  const handleEditUnitCostChange = (val: string) => {
+    setEditItemSupplierCost(val);
+    const pSize = Math.max(1, parseInt(editItemPackSize) || 1);
+    const num = parseFloat(val);
+    if (!isNaN(num) && num >= 0) {
+      setEditItemPackCost((num * pSize).toFixed(2));
+    } else if (val === '') {
+      setEditItemPackCost('');
+    }
+  };
+
+  const handleEditPackSizeChange = (val: string) => {
+    setEditItemPackSize(val);
+    const pSize = Math.max(1, parseInt(val) || 1);
+    if (editItemSupplierCost !== '') {
+      const uNum = parseFloat(editItemSupplierCost);
+      if (!isNaN(uNum)) {
+        setEditItemPackCost((uNum * pSize).toFixed(2));
+      }
+    } else if (editItemPackCost !== '') {
+      const pNum = parseFloat(editItemPackCost);
+      if (!isNaN(pNum)) {
+        setEditItemSupplierCost((pNum / pSize).toFixed(2));
+      }
+    }
+  };
 
   // Patch Quantity Fields
   const [patchAction, setPatchAction] = useState<'Add' | 'Deduct'>('Add');
@@ -554,114 +746,142 @@ export default function PanelRawMaterials({
   // Global Settings Field
   const [globalThreshold, setGlobalThreshold] = useState('10');
 
-  // Supplier Shipment / Delivery Intake Modal State
-  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
-  const [selectedRestockMaterialId, setSelectedRestockMaterialId] = useState<string>('');
-  const [restockAmount, setRestockAmount] = useState<string>('20');
-  const [restockSupplier, setRestockSupplier] = useState<string>('Madeira Thread Philippines');
-  const [restockDrNumber, setRestockDrNumber] = useState<string>('');
-  const [restockDyeLot, setRestockDyeLot] = useState<string>('');
-  const [restockNotes, setRestockNotes] = useState<string>('');
-  const [isSubmittingRestock, setIsSubmittingRestock] = useState(false);
-
-  // Sub-View Switcher: 'inventory' | 'purchase_orders'
-  const [activeView, setActiveView] = useState<'inventory' | 'purchase_orders'>('inventory');
-
-  // Purchase Orders & Supplier State
-  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
-  const [isLoadingPOs, setIsLoadingPOs] = useState(false);
-  const [isDraftPoOpen, setIsDraftPoOpen] = useState(false);
-  const [draftPoMaterialId, setDraftPoMaterialId] = useState('');
-  const [draftPoQuantity, setDraftPoQuantity] = useState('20');
-  const [draftPoEstCost, setDraftPoEstCost] = useState('100');
-  const [isSubmittingPo, setIsSubmittingPo] = useState(false);
-
   // Materials at or below threshold
   const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
 
-  // Wholesale Restock Calculation: brings stock up to 2x threshold rounded up to clean commercial pack size
-  const calculateSuggestedRestockQty = (item: any): number => {
-    if (!item) return 20;
+  // Restock Calculation: 3x threshold converted into whole supplier wholesale packs
+  const calculateSuggestedRestockPacks = (item: any): number => {
+    if (!item) return 1;
     const minVal = item.minThreshold || 10;
-    const target = minVal * 2;
-    const rawDeficit = Math.max(1, target - (item.count || 0));
-    const step = minVal >= 20 ? 10 : (minVal >= 10 ? 5 : 1);
-    return Math.ceil(rawDeficit / step) * step;
+    const neededPieces = minVal * 3;
+    const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
+    return Math.max(1, Math.ceil(neededPieces / packSize));
   };
 
-  const openDraftPoModal = (materialId?: string) => {
-    const targetId =
-      materialId ||
-      (lowStockItems.length > 0
-        ? lowStockItems[0].id || lowStockItems[0]._id
-        : inventory[0]?.id || inventory[0]?._id || '');
+  // State for user-customized order quantities on the restock slip
+  const [customSlipQuantities, setCustomSlipQuantities] = useState<Record<string, number>>({});
 
-    setDraftPoMaterialId(targetId);
+  // Batch Delivery Intake State
+  interface BatchReceiveItem {
+    id: string;
+    item: string;
+    currentCount: number;
+    unit: string;
+    packSize: number;
+    packs: number;
+    selected: boolean;
+  }
+  const [isBatchReceiveOpen, setIsBatchReceiveOpen] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchReceiveItem[]>([]);
+  const [batchSupplier, setBatchSupplier] = useState('Madeira Thread Philippines');
+  const [batchDrNumber, setBatchDrNumber] = useState('');
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
 
-    const targetItem = inventory.find((i) => (i.id || i._id) === targetId);
-    if (targetItem) {
-      const suggested = calculateSuggestedRestockQty(targetItem);
-      setDraftPoQuantity(suggested.toString());
-      const est = targetItem.supplierUnitCost
-        ? targetItem.supplierUnitCost * suggested
-        : suggested * 5;
-      setDraftPoEstCost(est.toString());
-    } else {
-      setDraftPoQuantity('20');
-      setDraftPoEstCost('100');
+  const openBatchReceiveModal = () => {
+    const sourceList = lowStockItems.length > 0 ? lowStockItems : inventory;
+    const items: BatchReceiveItem[] = sourceList.map((i) => {
+      const id = i.id || i._id;
+      const packSize = i.packSize && i.packSize > 1 ? i.packSize : 1;
+      const initialPacks = customSlipQuantities[id] !== undefined
+        ? customSlipQuantities[id]
+        : calculateSuggestedRestockPacks(i);
+      return {
+        id,
+        item: i.item,
+        currentCount: i.count,
+        unit: i.unit || 'PCs',
+        packSize,
+        packs: initialPacks,
+        selected: lowStockItems.length > 0 ? true : false,
+      };
+    });
+
+    setBatchItems(items);
+    setBatchSupplier('Madeira Thread Philippines');
+    setBatchDrNumber('');
+    setIsBatchReceiveOpen(true);
+  };
+
+  const handleBatchReceiveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeItems = batchItems.filter((i) => i.selected && i.packs > 0);
+    if (activeItems.length === 0) {
+      showToast('Select at least one material to check in', 'error');
+      return;
     }
-    setIsDraftPoOpen(true);
+
+    setIsSubmittingBatch(true);
+
+    // Optimistically update stock count in state (instant response)
+    if (setInventory) {
+      setInventory((prev) =>
+        prev.map((m) => {
+          const mId = m.id || m._id;
+          const match = activeItems.find((a) => a.id === mId);
+          if (match) {
+            const addedPieces = match.packs * match.packSize;
+            return { ...m, count: (m.count || 0) + addedPieces };
+          }
+          return m;
+        })
+      );
+    }
+
+    setIsBatchReceiveOpen(false);
+    showToast(`Checked in ${activeItems.length} materials into inventory!`, 'success');
+
+    try {
+      await Promise.all(
+        activeItems.map((item) => {
+          const addedPieces = item.packs * item.packSize;
+          return api.patch(`/api/admin/inventory/${item.id}`, {
+            action: 'Add',
+            amount: addedPieces,
+            supplier: batchSupplier.trim(),
+            deliveryReceipt: batchDrNumber.trim(),
+            notes: `Delivery intake: ${item.packs} packs (${addedPieces} ${item.unit})`
+          });
+        })
+      );
+
+      refreshData().catch(() => {});
+      fetchAuditLogs().catch(() => {});
+    } catch (err) {
+      console.error(err);
+      refreshData().catch(() => {});
+      showToast('Failed to save some delivery items', 'error');
+    } finally {
+      setIsSubmittingBatch(false);
+    }
   };
 
   const handleCopyLowStockRequisition = () => {
-    if (lowStockItems.length === 0) {
+    const items = lowStockItems.length > 0 ? lowStockItems : inventory;
+    if (items.length === 0) {
       showToast('All items are in stock.', 'info');
       return;
     }
     const phone = businessPhone || '0928 810 3928';
     let text = `SUPPLIER RESTOCK ORDER — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following raw materials:\n`;
-    lowStockItems.forEach((item) => {
-      const suggested = calculateSuggestedRestockQty(item);
-      text += `• ${suggested} ${item.unit || 'units'} — ${item.item}\n`;
+    items.forEach((item) => {
+      const id = item.id || item._id;
+      const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
+      const packs = customSlipQuantities[id] !== undefined ? customSlipQuantities[id] : calculateSuggestedRestockPacks(item);
+      if (packSize > 1) {
+        text += `• ${packs} ${packs === 1 ? 'Pack' : 'Packs'} (${packs * packSize} ${item.unit || 'units'} total, ${packSize}/pack) — ${item.item}\n`;
+      } else {
+        text += `• ${packs} ${item.unit || 'units'} — ${item.item}\n`;
+      }
     });
     text += `\nPlease confirm availability, current invoice pricing, and estimated delivery date. Thank you!`;
 
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`Copied ${lowStockItems.length} items to clipboard`, 'success');
+      showToast(`Copied ${items.length} items to clipboard`, 'success');
     }).catch(() => {
       showToast('Failed to copy to clipboard', 'error');
     });
   };
 
-  const handleBatchStageLowStockPos = async () => {
-    if (lowStockItems.length === 0) {
-      showToast('No low stock items to order.', 'info');
-      return;
-    }
-    setIsSubmittingPo(true);
-    try {
-      let stagedCount = 0;
-      for (const item of lowStockItems) {
-        const suggested = calculateSuggestedRestockQty(item);
-        const estCost = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
-        await api.post('/api/admin/purchase-orders', {
-          inventoryId: item.id || item._id,
-          quantity: suggested,
-          estimatedCost: estCost,
-          status: 'Approved'
-        });
-        stagedCount++;
-      }
-      showToast(`Created ${stagedCount} orders`, 'success');
-      setIsDraftPoOpen(false);
-      await fetchPurchaseOrders();
-    } catch (err: any) {
-      console.error(err);
-      showToast('Failed to create orders', 'error');
-    } finally {
-      setIsSubmittingPo(false);
-    }
-  };
 
   // PDF Inline Preview Modal State
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -675,7 +895,7 @@ export default function PanelRawMaterials({
   const [shoppingListImageBlob, setShoppingListImageBlob] = useState<Blob | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
-  const generateShoppingListImage = (): Promise<{ blob: Blob; dataUrl: string } | null> => {
+  const generateShoppingListImage = (overrides?: Record<string, number>): Promise<{ blob: Blob; dataUrl: string } | null> => {
     return new Promise((resolve) => {
       const items = lowStockItems.length > 0 ? lowStockItems : inventory;
       if (!items || items.length === 0) {
@@ -683,6 +903,7 @@ export default function PanelRawMaterials({
         resolve(null);
         return;
       }
+      const qtyMap = overrides || customSlipQuantities;
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -769,21 +990,27 @@ export default function PanelRawMaterials({
           ctx.fillRect(25, currentY - 14, width - 50, itemRowHeight);
         }
 
-        const suggestedQty = calculateSuggestedRestockQty(item);
+        const id = item.id || item._id;
+        const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
+        const packs = qtyMap[id] !== undefined ? qtyMap[id] : calculateSuggestedRestockPacks(item);
         const unit = item.unit || 'units';
 
         // Material name
         ctx.textAlign = 'left';
         ctx.fillStyle = '#0F172A';
         ctx.font = '600 13px system-ui, -apple-system, sans-serif';
-        const truncatedName = item.item.length > 42 ? `${item.item.slice(0, 40)}...` : item.item;
+        const displayName = packSize > 1 ? `${item.item} (${packSize} pcs/pack)` : item.item;
+        const truncatedName = displayName.length > 38 ? `${displayName.slice(0, 36)}...` : displayName;
         ctx.fillText(truncatedName, 38, currentY + 5);
 
-        // Order quantity (clean number + unit, no plus sign)
+        // Order quantity (clean number + unit or packs)
         ctx.textAlign = 'right';
         ctx.fillStyle = '#0F172A';
         ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`${suggestedQty} ${unit}`, width - 38, currentY + 5);
+        const qtyLabel = packSize > 1
+          ? `${packs} ${packs === 1 ? 'Pack' : 'Packs'} (${packs * packSize} ${unit})`
+          : `${packs} ${unit}`;
+        ctx.fillText(qtyLabel, width - 38, currentY + 5);
 
         // Row separator
         ctx.strokeStyle = '#F1F5F9';
@@ -832,7 +1059,14 @@ export default function PanelRawMaterials({
   const handleOpenShoppingListImage = async () => {
     setIsGeneratingImage(true);
     try {
-      const result = await generateShoppingListImage();
+      const items = lowStockItems.length > 0 ? lowStockItems : inventory;
+      const initialMap: Record<string, number> = {};
+      items.forEach((item) => {
+        const id = item.id || item._id;
+        initialMap[id] = calculateSuggestedRestockPacks(item);
+      });
+      setCustomSlipQuantities(initialMap);
+      const result = await generateShoppingListImage(initialMap);
       if (result) {
         setShoppingListImageUrl(result.dataUrl);
         setShoppingListImageBlob(result.blob);
@@ -843,6 +1077,19 @@ export default function PanelRawMaterials({
       showToast('Failed to create shopping list image', 'error');
     } finally {
       setIsGeneratingImage(false);
+    }
+  };
+
+  const handleSlipQuantityChange = async (materialId: string, newQty: number) => {
+    const updated = {
+      ...customSlipQuantities,
+      [materialId]: newQty
+    };
+    setCustomSlipQuantities(updated);
+    const result = await generateShoppingListImage(updated);
+    if (result) {
+      setShoppingListImageUrl(result.dataUrl);
+      setShoppingListImageBlob(result.blob);
     }
   };
 
@@ -876,24 +1123,6 @@ export default function PanelRawMaterials({
     showToast('Image saved', 'success');
   };
 
-  const fetchPurchaseOrders = async () => {
-    setIsLoadingPOs(true);
-    try {
-      const data = await api.get<any[]>('/api/admin/purchase-orders');
-      if (Array.isArray(data)) {
-        setPurchaseOrders(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch purchase orders:', err);
-    } finally {
-      setIsLoadingPOs(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPurchaseOrders();
-  }, []);
-
   const handlePreviewRestockList = async () => {
     if (lowStockItems.length === 0) {
       showToast('All items are in stock.', 'info');
@@ -915,170 +1144,7 @@ export default function PanelRawMaterials({
     }
   };
 
-  const handlePreviewPoPdf = async (poId: string) => {
-    setIsLoadingPdf(true);
-    try {
-      showToast('Loading order PDF...', 'info');
-      const blob = await api.getBlob(`/api/admin/purchase-orders/${poId}/pdf`);
-      const url = URL.createObjectURL(blob);
-      const targetPo = purchaseOrders.find((p) => (p.id || p._id) === poId);
-      const dateStr = targetPo?.createdAt ? new Date(targetPo.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-      setPdfPreviewUrl(url);
-      setPdfPreviewTitle(`Purchase Order #PO-${dateStr} (PDF)`);
-      setIsPdfModalOpen(true);
-    } catch (err: any) {
-      console.error('PO PDF Preview failed:', err);
-      showToast('Failed to load order PDF', 'error');
-    } finally {
-      setIsLoadingPdf(false);
-    }
-  };
 
-  const handleCopyPoForMessenger = (po: any) => {
-    const dateStr = po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const poNum = `PO-${dateStr}`;
-    const phone = businessPhone || '0928 810 3928';
-    const text = `PURCHASE ORDER — EDS TOWELS & CAPS\nPO Number: #${poNum}\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order the following embroidery materials:\n• ${po.quantity} ${po.inventory?.unit || 'Cones'} — ${po.inventory?.item || 'Embroidery Material'}\n${po.estimatedCost ? `Estimated Total: ₱${po.estimatedCost.toFixed(2)}\n` : ''}\nPlease confirm price invoice and expected delivery date. Thank you!`;
-    
-    navigator.clipboard.writeText(text).then(() => {
-      showToast(`Copied order #${poNum} to clipboard`, 'success');
-    }).catch(() => {
-      showToast('Failed to copy to clipboard', 'error');
-    });
-  };
-
-  const handleEmailPo = async (poId: string) => {
-    try {
-      const res = await api.post<{ success: boolean; message: string }>(`/api/admin/purchase-orders/${poId}/email`, {});
-      showToast(res.message || 'Order sent to email', 'success');
-      await fetchPurchaseOrders();
-    } catch (err: any) {
-      showToast('Failed to send email', 'error');
-    }
-  };
-
-  const handleMarkPoReceived = async (po: any) => {
-    const dr = window.prompt(`Confirm arrival of ${po.quantity} ${po.inventory?.unit || 'units'} of ${po.inventory?.item}.\nEnter Supplier Delivery Receipt (DR) # (optional):`, 'DR-');
-    if (dr === null) return;
-
-    try {
-      await api.put(`/api/admin/purchase-orders/${po.id}/status`, {
-        status: 'Received',
-        deliveryReceipt: dr.trim() || undefined
-      });
-      showToast(`Received ${po.quantity} ${po.inventory?.unit || 'units'} of ${po.inventory?.item}.`, 'success');
-      await fetchPurchaseOrders();
-      await refreshData();
-      await fetchAuditLogs();
-    } catch (err: any) {
-      showToast('Failed to update order', 'error');
-    }
-  };
-
-  const handleCreateDraftPo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draftPoMaterialId) {
-      showToast('Select a material', 'error');
-      return;
-    }
-    const qty = parseInt(draftPoQuantity);
-    if (isNaN(qty) || qty <= 0) {
-      showToast('Enter a valid quantity', 'error');
-      return;
-    }
-
-    setIsSubmittingPo(true);
-    try {
-      await api.post('/api/admin/purchase-orders', {
-        inventoryId: draftPoMaterialId,
-        quantity: qty,
-        estimatedCost: parseFloat(draftPoEstCost) || null,
-        status: 'Approved'
-      });
-      showToast('Order created', 'success');
-      setIsDraftPoOpen(false);
-      await fetchPurchaseOrders();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to create order', 'error');
-    } finally {
-      setIsSubmittingPo(false);
-    }
-  };
-
-  const openRestockModal = (material?: any) => {
-    if (material) {
-      setSelectedRestockMaterialId(material.id || material._id);
-    } else if (inventory.length > 0) {
-      setSelectedRestockMaterialId(inventory[0].id || inventory[0]._id);
-    }
-    setRestockAmount('20');
-    setRestockDrNumber('');
-    setRestockDyeLot('');
-    setRestockNotes('');
-    setIsRestockModalOpen(true);
-  };
-
-  const handleRestockSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRestockMaterialId) {
-      showToast('Select a material', 'error');
-      return;
-    }
-    const qty = parseInt(restockAmount);
-    if (isNaN(qty) || qty <= 0) {
-      showToast('Enter a valid quantity', 'error');
-      return;
-    }
-
-    const targetMaterial = inventory.find((i) => (i.id || i._id) === selectedRestockMaterialId);
-    if (!targetMaterial) {
-      showToast('Item not found', 'error');
-      return;
-    }
-
-    const prevCount = targetMaterial.count;
-    const materialId = selectedRestockMaterialId;
-
-    // Optimistically update stock count in state immediately (0ms latency)
-    if (setInventory) {
-      setInventory((prev) =>
-        prev.map((m) =>
-          (m.id || m._id) === materialId ? { ...m, count: (m.count || 0) + qty } : m
-        )
-      );
-    }
-
-    showToast(`Received ${qty} ${targetMaterial.unit || 'units'} of ${targetMaterial.item}`, 'success');
-
-    setIsRestockModalOpen(false);
-
-    try {
-      await api.patch(`/api/admin/inventory/${selectedRestockMaterialId}`, {
-        count: targetMaterial.count,
-        action: 'Add',
-        amount: qty,
-        supplier: restockSupplier.trim(),
-        deliveryReceipt: restockDrNumber.trim(),
-        dyeLot: restockDyeLot.trim(),
-        notes: restockNotes.trim()
-      });
-
-      refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
-    } catch (err) {
-      console.error(err);
-      if (setInventory) {
-        setInventory((prev) =>
-          prev.map((m) =>
-            (m.id || m._id) === materialId ? { ...m, count: prevCount } : m
-          )
-        );
-      }
-      showToast('Failed to update stock', 'error');
-    } finally {
-      setIsSubmittingRestock(false);
-    }
-  };
 
   // 1. Fetch Audit Trail logs
   const fetchAuditLogs = async () => {
@@ -1135,18 +1201,118 @@ export default function PanelRawMaterials({
     return level.tier === stockTierFilter;
   });
 
+  // Sorting for Inventory Table
+  const [sortBy, setSortBy] = useState<'name' | 'stock' | 'threshold' | 'cost'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: 'name' | 'stock' | 'threshold' | 'cost') => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedInventory = useMemo(() => {
+    return [...filteredInventory].sort((a, b) => {
+      let diff = 0;
+      if (sortBy === 'name') diff = (a.item || '').localeCompare(b.item || '');
+      else if (sortBy === 'stock') diff = (a.count || 0) - (b.count || 0);
+      else if (sortBy === 'threshold') diff = (a.minThreshold || 10) - (b.minThreshold || 10);
+      else if (sortBy === 'cost') diff = (a.supplierUnitCost || 0) - (b.supplierUnitCost || 0);
+      return sortOrder === 'asc' ? diff : -diff;
+    });
+  }, [filteredInventory, sortBy, sortOrder]);
+
   // Pagination for Inventory Table
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, stockTierFilter]);
+  }, [searchQuery, stockTierFilter, sortBy, sortOrder]);
 
-  const paginatedInventory = filteredInventory.slice(
+  const paginatedInventory = sortedInventory.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+
+  const openEditModal = (material: any) => {
+    setEditingMaterial(material);
+    setEditItemName(material.item || '');
+    setEditItemCount(String(material.count ?? 0));
+    setEditItemUnit(material.unit || 'PCs');
+    setEditItemThreshold(String(material.minThreshold ?? 10));
+    const uCost = material.supplierUnitCost != null ? Number(material.supplierUnitCost) : null;
+    const pSize = material.packSize != null && material.packSize > 1 ? material.packSize : 1;
+    setEditItemSupplierCost(uCost != null ? String(uCost) : '');
+    setEditItemPackSize(String(pSize));
+    setEditItemPackCost(uCost != null && pSize > 1 ? (uCost * pSize).toFixed(2) : '');
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMaterial) return;
+    const materialId = editingMaterial.id || editingMaterial._id;
+    const trimmedName = editItemName.trim();
+    if (!trimmedName) return showToast('Item name is required', 'error');
+
+    const newCount = parseInt(editItemCount);
+    if (isNaN(newCount) || newCount < 0) return showToast('Enter a valid stock count', 'error');
+
+    const newThreshold = parseInt(editItemThreshold);
+    if (isNaN(newThreshold) || newThreshold < 0) return showToast('Enter a valid safety threshold', 'error');
+
+    const newCost = editItemSupplierCost !== '' ? parseFloat(editItemSupplierCost) : null;
+    const newUnit = editItemUnit.trim() || 'PCs';
+    const newPackSize = Math.max(1, parseInt(editItemPackSize) || 1);
+
+    setIsSubmittingEdit(true);
+
+    const prevInventory = [...inventory];
+    if (setInventory) {
+      setInventory((prev) =>
+        prev.map((m) =>
+          (m.id || m._id) === materialId
+            ? {
+                ...m,
+                item: trimmedName,
+                count: newCount,
+                unit: newUnit,
+                minThreshold: newThreshold,
+                supplierUnitCost: newCost,
+                packSize: newPackSize
+              }
+            : m
+        )
+      );
+    }
+
+    showToast(`Updated ${trimmedName} details`, 'success');
+    setEditingMaterial(null);
+
+    try {
+      await api.patch(`/api/admin/inventory/${materialId}`, {
+        item: trimmedName,
+        count: newCount,
+        unit: newUnit,
+        minThreshold: newThreshold,
+        supplierUnitCost: newCost,
+        packSize: newPackSize
+      });
+      refreshData().catch(() => {});
+      fetchAuditLogs().catch(() => {});
+    } catch (err: any) {
+      console.error(err);
+      if (setInventory) {
+        setInventory(prevInventory);
+      }
+      showToast(err.message || 'Failed to update material', 'error');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
 
   const getComputedItemName = () => {
     if (materialCategory === 'Thread Spool') {
@@ -1165,6 +1331,7 @@ export default function PanelRawMaterials({
     const resolvedName = getComputedItemName();
     if (!resolvedName) return showToast('Item name is required', 'error');
 
+    const newPackSize = Math.max(1, parseInt(itemPackSize) || 1);
     const tempId = `temp_mat_${Date.now()}`;
     const newMaterial = {
       id: tempId,
@@ -1173,12 +1340,13 @@ export default function PanelRawMaterials({
       count: parseInt(itemCount) || 0,
       unit: itemUnit,
       minThreshold: parseInt(itemThreshold) || 10,
-      supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined
+      supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined,
+      packSize: newPackSize
     };
 
     const prevInventory = [...inventory];
     if (setInventory) {
-      setInventory((prev) => [newMaterial, ...prev]);
+      setInventory((prev) => [...prev, newMaterial]);
     }
 
     showToast(`Added ${resolvedName}`, 'success');
@@ -1191,6 +1359,8 @@ export default function PanelRawMaterials({
     setItemUnit('PCs');
     setItemThreshold('10');
     setItemSupplierCost('');
+    setItemPackSize('1');
+    setItemPackCost('');
 
     try {
       const res: any = await api.post('/api/admin/inventory', {
@@ -1198,7 +1368,8 @@ export default function PanelRawMaterials({
         count: parseInt(itemCount) || 0,
         unit: itemUnit,
         minThreshold: parseInt(itemThreshold) || 10,
-        supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined
+        supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined,
+        packSize: newPackSize
       });
 
       if (res?.data && setInventory) {
@@ -1279,7 +1450,29 @@ export default function PanelRawMaterials({
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
       {/* Compact Top Action Toolbar */}
-      <div className="flex justify-between items-center flex-wrap gap-3 mb-4">
+      <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setIsAddOpen(true)}
+            className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm transition flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <span>+ Add Material</span>
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/5 cursor-pointer transition shrink-0"
+            title="Inventory Threshold Settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
         <input
           type="text"
           placeholder="Search materials..."
@@ -1287,318 +1480,78 @@ export default function PanelRawMaterials({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[220px]"
         />
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="bg-bg-surface border border-border-glass w-10 h-10 rounded-xl flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/5 cursor-pointer transition"
-              title="Inventory Threshold Settings"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAddOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.85rem] cursor-pointer border-none shadow-sm transition flex items-center gap-1.5"
-            >
-              <span>+ Add Material</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main materials dashboard panel */}
       <div className="w-full glass-card">
-          {/* Sub-view Navigation Bar */}
-          <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-2">
-            <button
-              type="button"
-              onClick={() => setActiveView('inventory')}
-              className={`pb-2 px-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                activeView === 'inventory'
-                  ? 'border-primary text-text-main'
-                  : 'border-transparent text-text-dim hover:text-text-main'
-              }`}
-            >
-              <svg className="w-4 h-4 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Materials Registry ({inventory.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView('purchase_orders');
-                fetchPurchaseOrders();
-              }}
-              className={`pb-2 px-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-                activeView === 'purchase_orders'
-                  ? 'border-primary text-text-main'
-                  : 'border-transparent text-text-dim hover:text-text-main'
-              }`}
-            >
-              <svg className="w-4 h-4 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Purchase Orders &amp; Suppliers</span>
-              {purchaseOrders.filter(p => p.status !== 'Received').length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
-                  {purchaseOrders.filter(p => p.status !== 'Received').length} open
-                </span>
-              )}
-            </button>
-          </div>
-
-          {activeView === 'purchase_orders' ? (
-            <div className="flex flex-col gap-4 animate-fade text-left">
-              <div className="flex justify-between items-center flex-wrap gap-3 pb-3 border-b border-white/5">
-                <div>
-                  <h4 className="text-base font-bold text-text-main m-0">Supplier Purchase Orders</h4>
-                  <p className="text-xs text-text-dim m-0">Auto-staged by AI velocity forecasting or manual dispatch.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openDraftPoModal()}
-                    className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-                    title="Open acquisition form to order supplies, check low stocks, or stage purchase orders"
-                  >
-                    <span>+</span> Create Acquisition Form
-                  </button>
-                  <button
-                    type="button"
-                    onClick={fetchPurchaseOrders}
-                    className="p-2 rounded-xl bg-bg-surface border border-border-glass text-text-dim hover:text-text-main text-xs transition cursor-pointer"
-                    title="Refresh orders"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {isLoadingPOs ? (
-                <div className="text-center py-8 text-xs text-text-dim">Loading purchase orders...</div>
-              ) : purchaseOrders.length === 0 ? (
-                <div className="p-8 text-center bg-bg-surface/40 rounded-xl border border-dashed border-border-glass flex flex-col items-center gap-2">
-                  <svg className="w-8 h-8 text-text-dim opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="text-sm font-bold text-text-main">No Purchase Orders Created</span>
-                  <span className="text-xs text-text-dim max-w-sm">
-                    Create an acquisition form to check low stocks, copy orders to Messenger, or stage purchase orders for your supplier.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => openDraftPoModal()}
-                    className="mt-2 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold cursor-pointer"
-                  >
-                    + Create Acquisition Form
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {purchaseOrders.map((po) => {
-                    const dateStr = po.createdAt ? new Date(po.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-                    const poNum = `PO-${dateStr}`;
-                    const isReceived = po.status === 'Received';
-                    const isOrdered = po.status === 'Ordered';
-                    const isApproved = po.status === 'Approved';
-
-                    return (
-                      <div
-                        key={po.id}
-                        className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                          isReceived
-                            ? 'bg-emerald-500/5 border-emerald-500/20'
-                            : isOrdered
-                            ? 'bg-amber-500/5 border-amber-500/20'
-                            : 'bg-bg-surface/70 border-border-glass'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-1 text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-sm text-text-main">#{poNum}</span>
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase ${
-                                isReceived
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                  : isOrdered
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                  : isApproved
-                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                  : 'bg-white/10 text-text-dim border border-border-glass'
-                              }`}
-                            >
-                              {po.status}
-                            </span>
-                            <span className="text-[11px] text-text-dim">
-                              {new Date(po.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-
-                          <div className="text-sm font-bold text-text-main">
-                            {po.inventory?.item || 'Material Item'}
-                          </div>
-
-                          <div className="text-xs text-text-dim flex items-center gap-3">
-                            <span>Quantity: <strong className="text-text-main">{po.quantity} {po.inventory?.unit || 'units'}</strong></span>
-                            {po.estimatedCost && <span>Est. Cost: <strong className="text-emerald-400">₱{po.estimatedCost.toFixed(2)}</strong></span>}
-                          </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => handlePreviewPoPdf(po.id)}
-                            className="px-3 py-1.5 rounded-xl bg-bg-surface border border-border-glass hover:bg-white/10 text-text-main text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                            title="Preview official Purchase Order PDF on screen without downloading"
-                          >
-                            <svg className="w-3.5 h-3.5 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                              <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            <span>Preview Slip</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleCopyPoForMessenger(po)}
-                            className="px-3 py-1.5 rounded-xl bg-blue-500/15 border border-blue-500/30 hover:bg-blue-500/25 text-blue-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                            title="Copy ready-to-send text message for Facebook Messenger / Viber"
-                          >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            <span>Copy Messenger</span>
-                          </button>
-
-                          {!isReceived && (
-                            <button
-                              type="button"
-                              onClick={() => handleEmailPo(po.id)}
-                              className="px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500/25 text-purple-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                              title="Send official PO email to supplier"
-                            >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              <span>Email</span>
-                            </button>
-                          )}
-
-                          {!isReceived ? (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkPoReceived(po)}
-                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                              title="Confirm delivery arrival and automatically replenish inventory stock"
-                            >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              <span>Mark Received</span>
-                            </button>
-                          ) : (
-                            <span className="text-xs text-emerald-400 font-bold px-2 py-1 flex items-center gap-1">
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              <span>Stock Replenished</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-
-          {/* Restock Alert Banner */}
-          {lowStockItems.length > 0 ? (
-            <div className="bg-danger/10 border border-danger/20 p-3.5 rounded-xl flex justify-between items-center flex-wrap gap-3 mb-4 text-left animate-fade">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center text-danger shrink-0">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-danger">
-                    {lowStockItems.length} {lowStockItems.length === 1 ? 'item' : 'items'} running low on stock
-                  </span>
-                  <span className="text-xs text-text-dim mt-0.5">
-                    {lowStockItems.map((i) => i.item).slice(0, 3).join(', ')}
-                    {lowStockItems.length > 3 ? '...' : ''}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
+          {/* Simple 2-pill Stock Filter + Restock Slip Action */}
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              {[
+                { id: 'all', label: 'All Items', count: inventory.length },
+                { id: 'low', label: 'Needs Restock', count: lowStockItems.length },
+              ].map((pill) => (
                 <button
+                  key={pill.id}
                   type="button"
-                  onClick={() => openRestockModal(lowStockItems[0])}
-                  className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Directly intake arriving boxes for critical stock"
+                  onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${
+                    stockTierFilter === pill.id
+                      ? 'bg-primary text-white border-primary/40 shadow-sm'
+                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                  }`}
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>+ Restock Now</span>
+                  <span>{pill.label}</span>
+                  <span className={`text-[0.68rem] px-2 py-0.5 rounded-full font-bold font-mono ${
+                    pill.id === 'low' && lowStockItems.length > 0
+                      ? 'bg-danger/20 text-danger'
+                      : 'bg-white/10'
+                  }`}>
+                    {pill.count}
+                  </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleOpenShoppingListImage}
-                  disabled={isGeneratingImage}
-                  className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 font-bold px-3 py-1.5 rounded-xl text-xs hover:bg-emerald-500/25 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Generate restock slip image to copy directly to Messenger or Viber"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <span>{isGeneratingImage ? 'Creating Image...' : 'Copy Order Image'}</span>
-                </button>
-              </div>
+              ))}
             </div>
-          ) : (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex items-center gap-2 mb-4 text-left animate-fade">
-              <span className="text-xs font-semibold text-emerald-400">All shop materials are well stocked</span>
-            </div>
-          )}
 
-          {/* Simple 2-pill Stock Filter */}
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
-            {[
-              { id: 'all', label: 'All Items', count: inventory.length },
-              { id: 'low', label: 'Needs Restock', count: lowStockItems.length },
-            ].map((pill) => (
+            <div className="flex items-center gap-2">
               <button
-                key={pill.id}
                 type="button"
-                onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${
-                  stockTierFilter === pill.id
-                    ? 'bg-primary text-white border-primary/40 shadow-sm'
-                    : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                }`}
+                onClick={openBatchReceiveModal}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm bg-primary/20 border border-primary/40 text-primary-light hover:bg-primary/30"
+                title="Quickly check in multiple delivered packs from suppliers"
               >
-                <span>{pill.label}</span>
-                <span className="text-[0.68rem] px-2 py-0.5 rounded-full bg-white/10 font-bold font-mono">
-                  {pill.count}
-                </span>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+                <span>Receive Delivery</span>
               </button>
-            ))}
+
+              <button
+                type="button"
+                onClick={handleOpenShoppingListImage}
+                disabled={isGeneratingImage}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                  lowStockItems.length > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
+                }`}
+                title="Generate restock order slip to send to supplier via Messenger or Viber"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span>{isGeneratingImage ? 'Generating...' : 'Order Restock Slip'}</span>
+                {lowStockItems.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-mono">
+                    {lowStockItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {isSyncing && inventory.length === 0 ? (
@@ -1610,16 +1563,45 @@ export default function PanelRawMaterials({
               <table className="glass-table">
                 <thead>
                   <tr>
-                    <th className="glass-th text-left">Material Name</th>
-                    <th className="glass-th text-left">Current Stock</th>
-                    <th className="glass-th text-left">Supplier Cost / Unit</th>
+                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('name')} title="Click to sort by Name">
+                      <div className="flex items-center gap-1.5">
+                        <span>Material Name</span>
+                        {sortBy === 'name' && (
+                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('stock')} title="Click to sort by Stock Count">
+                      <div className="flex items-center gap-1.5">
+                        <span>Current Stock</span>
+                        {sortBy === 'stock' && (
+                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('threshold')} title="Click to sort by Safety Threshold">
+                      <div className="flex items-center gap-1.5">
+                        <span>Safety Threshold</span>
+                        {sortBy === 'threshold' && (
+                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('cost')} title="Click to sort by Supplier Cost">
+                      <div className="flex items-center gap-1.5">
+                        <span>Supplier Cost / Unit</span>
+                        {sortBy === 'cost' && (
+                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
                     <th className="glass-th text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInventory.length === 0 ? (
                     <tr className="glass-tr">
-                      <td colSpan={4} className="glass-td text-center text-text-dim">
+                      <td colSpan={5} className="glass-td text-center text-text-dim">
                         No materials match the selected filters.
                       </td>
                     </tr>
@@ -1628,9 +1610,14 @@ export default function PanelRawMaterials({
                     const id = i.id || i._id;
                     const isLow = i.count <= (i.minThreshold || 10);
                     return (
-                      <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
+                      <tr key={id} className={`glass-tr hover:bg-white/5 transition-all ${isLow ? 'bg-amber-500/[0.04]' : ''}`}>
                         <td className="glass-td font-bold text-sm text-text-main text-left">
-                          {i.item}
+                          <div>{i.item}</div>
+                          {i.packSize && i.packSize > 1 ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary-light font-medium mt-1">
+                              📦 {i.packSize} {i.unit || 'PCs'}/pack
+                            </span>
+                          ) : null}
                         </td>
                         <td className="glass-td text-left">
                           <div className="flex items-center gap-2">
@@ -1650,6 +1637,18 @@ export default function PanelRawMaterials({
                           </div>
                         </td>
                         <td className="glass-td text-left">
+                          <div className="flex items-center gap-1.5">
+                            <InlineThresholdAdjuster
+                              material={i}
+                              refreshData={refreshData}
+                              fetchAuditLogs={fetchAuditLogs}
+                              isAdmin={isAdmin}
+                              setInventory={setInventory}
+                            />
+                            <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
+                          </div>
+                        </td>
+                        <td className="glass-td text-left">
                           <InlineSupplierCostAdjuster
                             material={i}
                             refreshData={refreshData}
@@ -1659,22 +1658,32 @@ export default function PanelRawMaterials({
                         </td>
                         <td className="glass-td text-right">
                           <div className="flex gap-2 justify-end items-center">
-                            <button
-                              type="button"
-                              onClick={() => openRestockModal(i)}
-                              className="bg-success/10 border border-success/20 text-success hover:bg-success/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                              title={`Receive supplier delivery for ${i.item}`}
-                            >
-                              + Add Stock
-                            </button>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(i)}
+                                className="bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                                title={`Edit details for ${i.item}`}
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                <span>Edit</span>
+                              </button>
+                            )}
                             {isAdmin && (
                               <button
                                 type="button"
                                 onClick={() => setDeletingMaterial(i)}
-                                className="bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 hover:border-danger/50 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                                className="bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 hover:border-danger/50 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1"
                                 title={`Delete ${i.item}`}
                               >
-                                Delete
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                <span>Delete</span>
                               </button>
                             )}
                           </div>
@@ -1734,21 +1743,28 @@ export default function PanelRawMaterials({
                           />
                         </div>
                       </div>
+
+                      <div className="flex justify-between items-center text-[0.72rem] text-text-dim pt-1 border-t border-white/5">
+                        <span>Threshold: <b className="text-text-main font-mono">{i.minThreshold || 10} {i.unit || 'PCs'}</b></span>
+                        <span>Cost: <b className="text-emerald-400 font-mono">{i.supplierUnitCost != null ? `₱${Number(i.supplierUnitCost).toFixed(2)}` : '—'}</b></span>
+                      </div>
                     </div>
 
                     <div className="flex gap-2 w-full mt-2">
-                      <button
-                        type="button"
-                        onClick={() => openRestockModal(i)}
-                        className="flex-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer text-center shadow-sm"
-                      >
-                        Receive Stock
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(i)}
+                          className="flex-1 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-sm"
+                        >
+                          Edit
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           type="button"
                           onClick={() => setDeletingMaterial(i)}
-                          className="flex-1 bg-danger/10 border border-danger/30 text-danger py-2.5 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer text-center shadow-sm"
+                          className="flex-1 bg-danger/10 border border-danger/30 text-danger py-2 px-3 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer text-center shadow-sm"
                         >
                           Delete
                         </button>
@@ -1766,10 +1782,12 @@ export default function PanelRawMaterials({
             totalItems={filteredInventory.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
-            itemLabel="materials"
+            pageSizeOptions={[5, 10, 20, 50]}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
           />
-            </>
-          )}
       </div>
 
       {/* Modal: Add Material */}
@@ -1786,12 +1804,14 @@ export default function PanelRawMaterials({
           setItemUnit('PCs');
           setItemThreshold('10');
           setItemSupplierCost('');
+          setItemPackSize('1');
         }}
+        maxWidth="max-w-[500px]"
       >
-        <form onSubmit={handleCreateSubmit} className="modal-stack text-left">
-          {/* Material Category Selector */}
-          <div className="modal-section">
-            <label className="modal-label">Product / Material Category</label>
+        <form noValidate onSubmit={handleCreateSubmit} className="space-y-3 text-left text-xs">
+          {/* Category */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Product / Material Category</label>
             <select
               value={materialCategory}
               onChange={(e) => {
@@ -1803,7 +1823,7 @@ export default function PanelRawMaterials({
                   setItemUnit('PCs');
                 }
               }}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+              className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans focus:border-primary/50 transition"
             >
               <optgroup label="Products Being Sold (Blanks & Garments)">
                 <option value="Bath Towel">Bath Towel</option>
@@ -1845,12 +1865,12 @@ export default function PanelRawMaterials({
 
           {/* Conditional Color Selector for Thread Spool */}
           {materialCategory === 'Thread Spool' && (
-            <div className="modal-section animate-fade">
-              <label className="modal-label">Thread Color</label>
+            <div className="flex flex-col gap-1 animate-fade">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Thread Color</label>
               <select
                 value={spoolColor}
                 onChange={(e) => setSpoolColor(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans"
               >
                 <option value="Black">Black</option>
                 <option value="White">White</option>
@@ -1873,7 +1893,7 @@ export default function PanelRawMaterials({
                   placeholder="Specify custom thread color (e.g. Lavender, Emerald)"
                   value={customColor}
                   onChange={(e) => setCustomColor(e.target.value)}
-                  className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans mt-2 animate-fade"
+                  className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-sans mt-1 animate-fade"
                 />
               )}
             </div>
@@ -1881,86 +1901,360 @@ export default function PanelRawMaterials({
 
           {/* Custom Material Name if Custom is chosen */}
           {materialCategory === 'Custom' && (
-            <div className="modal-section animate-fade">
-              <label className="modal-label">Custom Product / Material Name</label>
+            <div className="flex flex-col gap-1 animate-fade">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Custom Material Name</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Sports Cap, Canvas Tote Bag, Face Towel"
+                placeholder="e.g. Sports Cap, Canvas Tote Bag"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-sans"
               />
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="modal-section">
-              <label className="modal-label">Amount</label>
+          {/* Stock Count & Measurement Unit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Initial Stock</label>
               <input
                 type="number"
+                min="0"
                 placeholder="e.g. 50"
                 value={itemCount}
                 onChange={(e) => setItemCount(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
             </div>
-            <div className="modal-section">
-              <label className="modal-label">Measurement Unit</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Measurement Unit</label>
               <select
                 value={itemUnit}
                 onChange={(e) => setItemUnit(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans focus:border-primary/50 transition"
               >
                 <option value="PCs">PCs</option>
                 <option value="Ea">Ea</option>
                 <option value="Cones">Cones</option>
                 <option value="Rolls">Rolls</option>
+                <option value="Meters">Meters</option>
+                <option value="Sets">Sets</option>
               </select>
             </div>
           </div>
 
-          <div className="modal-section">
-            <label className="modal-label">Low Stock Threshold</label>
-            <input
-              type="number"
-              value={itemThreshold}
-              onChange={(e) => setItemThreshold(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
-            />
-          </div>
-
-          {/* Supplier Cost per Unit — drives real profit in analytics */}
-          <div className="modal-section">
-            <label className="modal-label">
-              Supplier Cost per Unit (₱)
-              <span className="ml-2 text-[0.65rem] text-emerald-400 font-normal normal-case bg-emerald-500/10 px-2 py-0.5 rounded">
-                Powers real profit calculation
-              </span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim font-bold text-sm select-none">₱</span>
+          {/* Low Stock Threshold & Wholesale Pack Size */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Min. Threshold</label>
+                <span className="text-[0.62rem] text-amber-400 font-medium">Low-stock alert</span>
+              </div>
               <input
                 type="number"
                 min="0"
-                step="0.50"
-                placeholder="e.g. 45.00"
-                value={itemSupplierCost}
-                onChange={(e) => setItemSupplierCost(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 pl-7 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+                value={itemThreshold}
+                onChange={(e) => setItemThreshold(e.target.value)}
+                placeholder="e.g. 10"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
             </div>
-            <p className="text-[0.67rem] text-text-dim mt-1 m-0">
-              How much you pay the supplier per {itemUnit || 'unit'}. Leave blank if not applicable (e.g. thread spools).
-            </p>
+
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Wholesale Pack</label>
+                <span className="text-[0.62rem] text-primary-light font-medium">Units / pack</span>
+              </div>
+              <input
+                type="number"
+                min="1"
+                placeholder="1 if loose (e.g. 8)"
+                value={itemPackSize}
+                onChange={(e) => handleAddPackSizeChange(e.target.value)}
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+              />
+            </div>
           </div>
 
+          {/* Supplier Cost Section (Live two-way calculation if packSize > 1) */}
+          {(parseInt(itemPackSize) || 1) > 1 ? (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-text-main flex items-center gap-1.5 text-[0.72rem]">
+                  <span>📦 Wholesale Pack Pricing</span>
+                  <span className="text-[0.62rem] text-primary-light font-mono px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                    {parseInt(itemPackSize)} {itemUnit}/pack
+                  </span>
+                </span>
+                <span className="text-[0.62rem] text-emerald-400 font-medium">Live auto-calculation</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Wholesale Pack Cost */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[0.65rem] font-bold uppercase text-text-dim">Wholesale Pack Cost</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.50"
+                      placeholder="e.g. 80.00"
+                      value={itemPackCost}
+                      onChange={(e) => handleAddPackCostChange(e.target.value)}
+                      className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+                    />
+                  </div>
+                  <span className="text-[0.6rem] text-text-dim">Invoice cost for 1 pack</span>
+                </div>
+
+                {/* Unit Cost */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[0.65rem] font-bold uppercase text-text-dim">Cost per Unit ({itemUnit})</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs select-none">₱</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g. 10.00"
+                      value={itemSupplierCost}
+                      onChange={(e) => handleAddUnitCostChange(e.target.value)}
+                      className="bg-bg-surface border border-emerald-500/30 py-1.5 pl-6 pr-2 rounded-lg text-emerald-400 text-xs outline-none w-full font-mono font-bold focus:border-emerald-500 transition"
+                    />
+                  </div>
+                  <span className="text-[0.6rem] text-emerald-400/80">Powers recipe & profit</span>
+                </div>
+              </div>
+
+              {itemPackCost && itemSupplierCost && (
+                <div className="flex items-center justify-between text-[0.68rem] bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 font-mono">
+                  <span className="text-text-dim">
+                    🧮 ₱{parseFloat(itemPackCost || '0').toFixed(2)} ÷ {itemPackSize} {itemUnit}
+                  </span>
+                  <span className="font-bold text-emerald-400">
+                    = ₱{parseFloat(itemSupplierCost || '0').toFixed(2)} / {itemUnit}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Supplier Cost per Unit</label>
+                <span className="text-[0.62rem] text-emerald-400 font-medium">Powers profit analytics</span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  placeholder="e.g. 45.00"
+                  value={itemSupplierCost}
+                  onChange={(e) => handleAddUnitCostChange(e.target.value)}
+                  className="bg-bg-surface border border-border-glass py-2 pl-6 pr-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Add Material Button */}
           <button
             type="submit"
-            className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
+            className="bg-primary text-white font-bold py-2.5 rounded-lg mt-2 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow text-center w-full text-xs font-sans"
           >
             Add Material
           </button>
+        </form>
+      </GlassModal>
+
+      {/* Modal: Edit Material Details */}
+      <GlassModal
+        isOpen={!!editingMaterial}
+        onClose={() => setEditingMaterial(null)}
+        title={`Edit Material: ${editingMaterial?.item || ''}`}
+        onDiscard={() => setEditingMaterial(null)}
+        maxWidth="max-w-[500px]"
+      >
+        <form noValidate onSubmit={handleEditSubmit} className="space-y-3 text-left text-xs">
+          {/* Material Name */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Material Name</label>
+            <input
+              type="text"
+              required
+              value={editItemName}
+              onChange={(e) => setEditItemName(e.target.value)}
+              placeholder="e.g. Bath Towel, Hoodie Black"
+              className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-sans focus:border-primary/50 transition"
+            />
+          </div>
+
+          {/* Current Stock Count & Measurement Unit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Current Stock</label>
+              <input
+                type="number"
+                min="0"
+                value={editItemCount}
+                onChange={(e) => setEditItemCount(e.target.value)}
+                placeholder="e.g. 20"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Measurement Unit</label>
+              <select
+                value={editItemUnit}
+                onChange={(e) => setEditItemUnit(e.target.value)}
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans focus:border-primary/50 transition"
+              >
+                <option value="PCs">PCs</option>
+                <option value="Ea">Ea</option>
+                <option value="Cones">Cones</option>
+                <option value="Rolls">Rolls</option>
+                <option value="Meters">Meters</option>
+                <option value="Sets">Sets</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Safety Threshold & Wholesale Pack Size */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Min. Threshold</label>
+                <span className="text-[0.62rem] text-amber-400 font-medium">Low-stock alert</span>
+              </div>
+              <input
+                type="number"
+                min="0"
+                value={editItemThreshold}
+                onChange={(e) => setEditItemThreshold(e.target.value)}
+                placeholder="e.g. 10"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Pack Size</label>
+                <span className="text-[0.62rem] text-primary-light font-medium">Units / pack</span>
+              </div>
+              <input
+                type="number"
+                min="1"
+                value={editItemPackSize}
+                onChange={(e) => handleEditPackSizeChange(e.target.value)}
+                placeholder="1 if loose (e.g. 8)"
+                className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+              />
+            </div>
+          </div>
+
+          {/* Supplier Cost Section (Live two-way calculation if packSize > 1) */}
+          {(parseInt(editItemPackSize) || 1) > 1 ? (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-text-main flex items-center gap-1.5 text-[0.72rem]">
+                  <span>📦 Wholesale Pack Pricing</span>
+                  <span className="text-[0.62rem] text-primary-light font-mono px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                    {parseInt(editItemPackSize)} {editItemUnit}/pack
+                  </span>
+                </span>
+                <span className="text-[0.62rem] text-emerald-400 font-medium">Live auto-calculation</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Wholesale Pack Cost */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[0.65rem] font-bold uppercase text-text-dim">Wholesale Pack Cost</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.50"
+                      placeholder="e.g. 80.00"
+                      value={editItemPackCost}
+                      onChange={(e) => handleEditPackCostChange(e.target.value)}
+                      className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+                    />
+                  </div>
+                  <span className="text-[0.6rem] text-text-dim">Invoice cost for 1 pack</span>
+                </div>
+
+                {/* Unit Cost */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[0.65rem] font-bold uppercase text-text-dim">Cost per Unit ({editItemUnit})</label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs select-none">₱</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g. 10.00"
+                      value={editItemSupplierCost}
+                      onChange={(e) => handleEditUnitCostChange(e.target.value)}
+                      className="bg-bg-surface border border-emerald-500/30 py-1.5 pl-6 pr-2 rounded-lg text-emerald-400 text-xs outline-none w-full font-mono font-bold focus:border-emerald-500 transition"
+                    />
+                  </div>
+                  <span className="text-[0.6rem] text-emerald-400/80">Powers recipe & profit</span>
+                </div>
+              </div>
+
+              {editItemPackCost && editItemSupplierCost && (
+                <div className="flex items-center justify-between text-[0.68rem] bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 font-mono">
+                  <span className="text-text-dim">
+                    🧮 ₱{parseFloat(editItemPackCost || '0').toFixed(2)} ÷ {editItemPackSize} {editItemUnit}
+                  </span>
+                  <span className="font-bold text-emerald-400">
+                    = ₱{parseFloat(editItemSupplierCost || '0').toFixed(2)} / {editItemUnit}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Supplier Cost per Unit</label>
+                <span className="text-[0.62rem] text-emerald-400 font-medium">Powers profit analytics</span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  placeholder="0.00"
+                  value={editItemSupplierCost}
+                  onChange={(e) => handleEditUnitCostChange(e.target.value)}
+                  className="bg-bg-surface border border-border-glass py-2 pl-6 pr-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-2 justify-end pt-3 border-t border-white/10 mt-1">
+            <button
+              type="button"
+              onClick={() => setEditingMaterial(null)}
+              className="px-3.5 py-2 rounded-lg bg-white/5 border border-border-glass text-text-main text-xs font-semibold hover:bg-white/10 cursor-pointer transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingEdit}
+              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer transition shadow-sm"
+            >
+              {isSubmittingEdit ? 'Saving...' : 'Save Material Details'}
+            </button>
+          </div>
         </form>
       </GlassModal>
 
@@ -2002,7 +2296,7 @@ export default function PanelRawMaterials({
         onClose={() => setLinkingMaterial(null)}
         title="Link Material to Catalog Product"
       >
-        <form onSubmit={handleLinkProductSubmit} className="modal-stack text-left flex flex-col gap-4">
+        <form noValidate onSubmit={handleLinkProductSubmit} className="modal-stack text-left flex flex-col gap-4">
           <div className="modal-section">
             <label className="modal-label">Raw Material</label>
             <div className="p-3 rounded-xl bg-white/5 border border-border-glass text-sm font-bold text-text-main flex items-center justify-between">
@@ -2066,7 +2360,7 @@ export default function PanelRawMaterials({
 
       {/* Modal: Global settings inventory config */}
       <GlassModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Inventory Parameters">
-        <form onSubmit={handleSettingsSubmit} className="modal-stack text-left">
+        <form noValidate onSubmit={handleSettingsSubmit} className="modal-stack text-left">
           <div className="modal-section">
             <label className="modal-label">Global Low Stock Threshold</label>
             <input
@@ -2104,176 +2398,229 @@ export default function PanelRawMaterials({
         </form>
       </GlassModal>
 
-      {/* Modal: Supplier Shipment Delivery Intake */}
+
+
+      {/* Modal: Batch Supplier Delivery Check-In */}
       <GlassModal
-        isOpen={isRestockModalOpen}
-        onClose={() => setIsRestockModalOpen(false)}
-        title="Receive Supplier Shipment"
+        isOpen={isBatchReceiveOpen}
+        onClose={() => setIsBatchReceiveOpen(false)}
+        title="Check-In Supplier Delivery"
+        maxWidth="max-w-[620px]"
       >
-        <form onSubmit={handleRestockSubmit} className="modal-stack text-left">
-          <p className="text-xs text-text-dim m-0 mb-1 leading-relaxed">
-            Record physical inventory arrivals from suppliers, check in delivered materials, and generate a verified audit trail log.
-          </p>
+        <form noValidate onSubmit={handleBatchReceiveSubmit} className="space-y-3 text-left text-xs">
+          <div className="flex justify-between items-center text-text-dim text-[0.72rem] pb-1 border-b border-white/5">
+            <span>Check off delivered items. Quantities are shown in wholesale packs.</span>
+            <span className="text-primary font-semibold font-mono">
+              {batchItems.filter(b => b.selected).length} of {batchItems.length} selected
+            </span>
+          </div>
 
-          {/* Material Selection */}
-          <div className="modal-section">
-            <label className="modal-label">Material to Replenish</label>
-            <select
-              value={selectedRestockMaterialId}
-              onChange={(e) => setSelectedRestockMaterialId(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
-              required
-            >
-              {inventory.map((item) => {
-                const id = item.id || item._id;
-                const isLow = item.count <= (item.minThreshold || 10);
+          {/* Optional Supplier & DR # */}
+          <div className="grid grid-cols-2 gap-2.5 bg-white/[0.02] border border-border-glass p-2.5 rounded-lg">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.65rem] font-bold uppercase text-text-dim">Supplier / Vendor</label>
+              <input
+                type="text"
+                value={batchSupplier}
+                onChange={(e) => setBatchSupplier(e.target.value)}
+                placeholder="e.g. Madeira Thread"
+                className="bg-bg-surface border border-border-glass py-1.5 px-2.5 rounded-md text-text-main text-xs outline-none w-full"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.65rem] font-bold uppercase text-text-dim">Delivery Receipt (DR) #</label>
+              <input
+                type="text"
+                value={batchDrNumber}
+                onChange={(e) => setBatchDrNumber(e.target.value)}
+                placeholder="e.g. DR-2026-8812 (optional)"
+                className="bg-bg-surface border border-border-glass py-1.5 px-2.5 rounded-md text-text-main text-xs outline-none w-full font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Checklist of Delivered Items */}
+          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+            {batchItems.length === 0 ? (
+              <div className="text-center py-6 text-text-dim">No materials in checklist. Add one below.</div>
+            ) : (
+              batchItems.map((item, idx) => {
+                const isPack = item.packSize > 1;
+                const totalUnitsToAdd = item.packs * item.packSize;
+                const newTotal = item.currentCount + totalUnitsToAdd;
+
                 return (
-                  <option key={id} value={id}>
-                    {item.item} — In Stock: {item.count} {item.unit || 'units'} {isLow ? '[LOW STOCK]' : ''}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Delivered Quantity + Quick Increment Pills */}
-          <div className="modal-section">
-            <label className="modal-label">
-              Delivered Quantity ({inventory.find(i => (i.id || i._id) === selectedRestockMaterialId)?.unit || 'Units'})
-            </label>
-            <div className="flex gap-2 items-center">
-              <input
-                type="number"
-                min="1"
-                required
-                value={restockAmount}
-                onChange={(e) => setRestockAmount(e.target.value)}
-                placeholder="e.g. 25"
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none flex-1 font-mono font-bold"
-              />
-              <div className="flex gap-1.5 shrink-0">
-                {['+10', '+25', '+50', '+100'].map((pill) => (
-                  <button
-                    key={pill}
-                    type="button"
-                    onClick={() => {
-                      const base = parseInt(restockAmount) || 0;
-                      const add = parseInt(pill.replace('+', ''));
-                      setRestockAmount(String(base + add));
-                    }}
-                    className="bg-white/5 border border-border-glass hover:bg-white/10 text-text-main text-xs px-2.5 py-2.5 rounded-xl font-mono cursor-pointer transition-all"
+                  <div
+                    key={item.id}
+                    className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border transition ${
+                      item.selected
+                        ? 'bg-primary/5 border-primary/30 text-text-main'
+                        : 'bg-white/[0.02] border-border-glass opacity-60 text-text-dim'
+                    }`}
                   >
-                    {pill}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {/* Checkbox & Item info */}
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={(e) => {
+                          const updated = [...batchItems];
+                          updated[idx].selected = e.target.checked;
+                          setBatchItems(updated);
+                        }}
+                        className="w-4 h-4 rounded text-primary cursor-pointer accent-primary shrink-0"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-xs truncate">{item.item}</span>
+                        <span className="text-[0.68rem] text-text-dim">
+                          In Stock: <b className="font-mono text-text-main">{item.currentCount}</b> {item.unit}
+                          {isPack && <span className="text-primary-light ml-1.5">({item.packSize}/pack)</span>}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stepper & Math preview */}
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="flex items-center bg-bg-surface border border-border-glass rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...batchItems];
+                            updated[idx].packs = Math.max(1, updated[idx].packs - 1);
+                            setBatchItems(updated);
+                          }}
+                          className="px-2 py-1 text-text-dim hover:text-text-main hover:bg-white/10 transition cursor-pointer font-bold text-xs"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.packs}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            const updated = [...batchItems];
+                            updated[idx].packs = val;
+                            setBatchItems(updated);
+                          }}
+                          className="w-12 text-center bg-transparent text-text-main font-mono font-bold text-xs outline-none py-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...batchItems];
+                            updated[idx].packs = updated[idx].packs + 1;
+                            setBatchItems(updated);
+                          }}
+                          className="px-2 py-1 text-text-dim hover:text-text-main hover:bg-white/10 transition cursor-pointer font-bold text-xs"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="w-24 text-right flex flex-col justify-center">
+                        <span className="font-mono font-bold text-emerald-400 text-xs">
+                          +{totalUnitsToAdd} {item.unit}
+                        </span>
+                        <span className="text-[0.62rem] text-text-dim font-mono">
+                          New: {newTotal}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchItems(batchItems.filter((_, i) => i !== idx));
+                        }}
+                        className="text-text-dim hover:text-danger p-1 rounded transition cursor-pointer"
+                        title="Remove from shipment"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
-          {/* Supplier Name & Delivery Receipt */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="modal-section">
-              <label className="modal-label">Supplier / Vendor</label>
-              <input
-                type="text"
-                list="supplier-suggestions"
-                value={restockSupplier}
-                onChange={(e) => setRestockSupplier(e.target.value)}
-                placeholder="e.g. Madeira Thread Philippines"
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full"
-                required
-              />
-              <datalist id="supplier-suggestions">
-                <option value="Madeira Thread Philippines" />
-                <option value="Gunold Embroidery Supplies" />
-                <option value="Gildan Lucena Wholesaler" />
-                <option value="Winner Garments Manila" />
-                <option value="Blue Corner Apparel" />
-                <option value="Pacific Mall Haberdashery" />
-              </datalist>
-            </div>
-
-            <div className="modal-section">
-              <label className="modal-label">Delivery Receipt (DR) / Invoice #</label>
-              <input
-                type="text"
-                value={restockDrNumber}
-                onChange={(e) => setRestockDrNumber(e.target.value)}
-                placeholder="e.g. DR-2026-8812"
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Dye-Lot & Notes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="modal-section">
-              <label className="modal-label">Dye-Lot / Batch # (Optional)</label>
-              <input
-                type="text"
-                value={restockDyeLot}
-                onChange={(e) => setRestockDyeLot(e.target.value)}
-                placeholder="e.g. LOT-4029-B"
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
-              />
-            </div>
-
-            <div className="modal-section">
-              <label className="modal-label">Intake Notes / QA Remarks</label>
-              <input
-                type="text"
-                value={restockNotes}
-                onChange={(e) => setRestockNotes(e.target.value)}
-                placeholder="e.g. Inspected, clean spools"
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full"
-              />
-            </div>
-          </div>
-
-          {/* Live Calculation Preview Banner */}
+          {/* Add Another Material Dropdown */}
           {(() => {
-            const target = inventory.find(i => (i.id || i._id) === selectedRestockMaterialId);
-            const current = target ? target.count : 0;
-            const added = parseInt(restockAmount) || 0;
-            const finalCount = current + added;
-            const unit = target?.unit || 'units';
+            const availableToAdd = inventory.filter(
+              (inv) => !batchItems.some((b) => b.id === (inv.id || inv._id))
+            );
+            if (availableToAdd.length === 0) return null;
 
             return (
-              <div className="bg-emerald-500/10 border border-emerald-500/25 p-3.5 rounded-xl flex justify-between items-center gap-2 mt-1">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-emerald-400">Stockpile Projection:</span>
-                  <span className="text-[0.75rem] text-text-dim">
-                    Current: <b className="text-text-main font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Intake: <b className="text-emerald-400 font-mono text-sm">+{added} = {finalCount}</b> {unit}
-                  </span>
-                </div>
-                <svg className="w-5 h-5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 6l-9.5 9.5-5-5L1 18" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M17 6h6v6" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              <div className="pt-1">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const chosen = inventory.find((i) => (i.id || i._id) === e.target.value);
+                    if (chosen) {
+                      const id = chosen.id || chosen._id;
+                      const packSize = chosen.packSize && chosen.packSize > 1 ? chosen.packSize : 1;
+                      setBatchItems([
+                        ...batchItems,
+                        {
+                          id,
+                          item: chosen.item,
+                          currentCount: chosen.count,
+                          unit: chosen.unit || 'PCs',
+                          packSize,
+                          packs: 1,
+                          selected: true,
+                        },
+                      ]);
+                    }
+                  }}
+                  className="bg-white/5 border border-dashed border-border-glass py-1.5 px-3 rounded-lg text-text-dim hover:text-text-main text-xs outline-none w-full cursor-pointer transition"
+                >
+                  <option value="" disabled>+ Add another material to this delivery...</option>
+                  {availableToAdd.map((mat) => (
+                    <option key={mat.id || mat._id} value={mat.id || mat._id}>
+                      {mat.item} (In stock: {mat.count} {mat.unit || 'PCs'})
+                    </option>
+                  ))}
+                </select>
               </div>
             );
           })()}
 
-          {/* Submit Actions */}
-          <div className="flex gap-3 justify-end mt-4">
-            <button
-              type="button"
-              onClick={() => setIsRestockModalOpen(false)}
-              className="px-4 py-3 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmittingRestock}
-              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>{isSubmittingRestock ? 'Recording Intake...' : 'Confirm & Check-in Shipment'}</span>
-            </button>
-          </div>
+          {/* Summary & Submit */}
+          {(() => {
+            const active = batchItems.filter((i) => i.selected && i.packs > 0);
+            const totalUnits = active.reduce((sum, i) => sum + i.packs * i.packSize, 0);
+
+            return (
+              <div className="pt-2 border-t border-white/10 flex justify-between items-center gap-3">
+                <div className="text-xs text-text-dim">
+                  Checking in <b className="text-text-main font-mono">{active.length}</b> items (
+                  <b className="text-emerald-400 font-mono">+{totalUnits}</b> units total)
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBatchReceiveOpen(false)}
+                    className="px-3.5 py-2 rounded-lg bg-white/5 border border-border-glass text-text-main text-xs font-semibold hover:bg-white/10 cursor-pointer transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingBatch || active.length === 0}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>{isSubmittingBatch ? 'Checking in...' : `Check-in Delivery (+${totalUnits})`}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </form>
       </GlassModal>
 
@@ -2329,7 +2676,59 @@ export default function PanelRawMaterials({
               </div>
             </div>
 
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex justify-center items-center max-h-[60vh] overflow-y-auto">
+            {/* Editable Order Quantities */}
+            <div className="bg-bg-surface/90 border border-border-glass rounded-xl p-3 flex flex-col gap-2">
+              <div className="flex justify-between items-center text-xs pb-1.5 border-b border-white/5">
+                <span className="font-bold text-text-main flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  Customize Order Quantities
+                </span>
+                <span className="text-[11px] text-text-dim">
+                  Type any precise quantity to update slip live
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {(lowStockItems.length > 0 ? lowStockItems : inventory).map((item) => {
+                  const id = item.id || item._id;
+                  const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
+                  const currentVal = customSlipQuantities[id] !== undefined ? customSlipQuantities[id] : calculateSuggestedRestockPacks(item);
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-3 text-xs bg-white/5 border border-white/5 px-3 py-1.5 rounded-lg"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-semibold text-text-main text-[0.82rem]">{item.item}</span>
+                        <span className="text-[10px] text-text-dim">
+                          Current: {item.count} {item.unit || 'PCs'} • Threshold: {item.minThreshold || 10}
+                          {packSize > 1 ? ` • ${packSize} pcs/pack` : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="number"
+                          min="0"
+                          value={currentVal === 0 ? '' : currentVal}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                            handleSlipQuantityChange(id, isNaN(val) ? 0 : val);
+                          }}
+                          className="w-18 px-2 py-1 text-center bg-bg-surface border border-border-glass rounded-lg text-xs font-bold text-text-main focus:border-primary focus:outline-none"
+                          placeholder="0"
+                        />
+                        <span className="text-text-dim text-[11px] font-medium min-w-20 text-left">
+                          {packSize > 1 ? `Packs (${currentVal * packSize} ${item.unit || 'PCs'})` : (item.unit || 'PCs')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex justify-center items-center max-h-[50vh] overflow-y-auto">
               <img
                 src={shoppingListImageUrl}
                 alt="Supplier Restock Slip"
@@ -2402,284 +2801,6 @@ export default function PanelRawMaterials({
                 </button>
               </div>
             </div>
-          </div>
-        </GlassModal>
-      )}
-
-      {/* --- Supply Acquisition Form Modal --- */}
-      {isDraftPoOpen && (
-        <GlassModal
-          isOpen={isDraftPoOpen}
-          onClose={() => setIsDraftPoOpen(false)}
-          title={`Supply Acquisition Form — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-        >
-          <div className="flex flex-col gap-4 text-left max-w-3xl w-full">
-            {/* Header info & quick action bar */}
-            <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-white/10">
-              <div>
-                <p className="text-xs text-text-dim m-0">
-                  Supply acquisition form for restock orders, low-stock reference, and Messenger inquiries.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleOpenShoppingListImage}
-                  disabled={isGeneratingImage || lowStockItems.length === 0}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                  title="Generate restock slip image to copy directly to Messenger or Viber"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <span>Copy Order Image</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLowStockRequisition}
-                  disabled={lowStockItems.length === 0}
-                  className="px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold hover:bg-blue-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                  title="Copy full requisition list formatted for Messenger / Viber"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span>Copy for Messenger</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Low Stock Reference Panel */}
-            {lowStockItems.length > 0 ? (
-              <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 flex flex-col gap-2.5">
-                <div className="flex justify-between items-center flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="text-xs font-bold text-amber-300">
-                      Low stock ({lowStockItems.length} items below threshold):
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleBatchStageLowStockPos}
-                    disabled={isSubmittingPo}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold border border-amber-500/30 transition cursor-pointer flex items-center gap-1"
-                    title="Stage purchase orders for all low stock items automatically"
-                  >
-                    <span>Batch Stage All ({lowStockItems.length})</span>
-                  </button>
-                </div>
-
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-white/10 bg-bg-surface/60 divide-y divide-white/5">
-                  {lowStockItems.map((item) => {
-                    const minVal = item.minThreshold || 10;
-                    const suggested = calculateSuggestedRestockQty(item);
-                    const isSelected = (item.id || item._id) === draftPoMaterialId;
-
-                    return (
-                      <div
-                        key={item.id || item._id}
-                        className={`p-2.5 flex items-center justify-between gap-3 text-xs transition ${
-                          isSelected ? 'bg-primary/15 border-l-2 border-primary' : 'hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-bold text-text-main">{item.item}</span>
-                          <span className="text-[11px] text-text-dim">
-                            Current Stock: <b className="text-danger font-mono">{item.count}</b> / {minVal} {item.unit || 'units'} &nbsp;|&nbsp; Suggested Order: <span className="text-amber-400 font-mono">{suggested}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold text-[11px]">
-                            {suggested} {item.unit || 'units'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDraftPoMaterialId(item.id || item._id);
-                              setDraftPoQuantity(suggested.toString());
-                              const est = item.supplierUnitCost ? item.supplierUnitCost * suggested : suggested * 5;
-                              setDraftPoEstCost(est.toString());
-                              showToast(`Loaded ${item.item} into form`, 'info');
-                            }}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer transition ${
-                              isSelected
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'bg-white/10 hover:bg-white/20 text-text-main'
-                            }`}
-                          >
-                            {isSelected ? 'Selected' : 'Use in Form'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl flex items-center gap-2 text-xs text-emerald-400 font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>All items in stock</span>
-              </div>
-            )}
-
-            {/* The PO Form */}
-            <form onSubmit={handleCreateDraftPo} className="flex flex-col gap-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-text-dim mb-1">
-                  Material Item to Order <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={draftPoMaterialId}
-                  onChange={(e) => {
-                    const newId = e.target.value;
-                    setDraftPoMaterialId(newId);
-                    const found = inventory.find(i => (i.id || i._id) === newId);
-                    if (found) {
-                      const suggested = calculateSuggestedRestockQty(found);
-                      setDraftPoQuantity(suggested.toString());
-                      const est = found.supplierUnitCost ? found.supplierUnitCost * suggested : suggested * 5;
-                      setDraftPoEstCost(est.toString());
-                    }
-                  }}
-                  className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none cursor-pointer"
-                >
-                  {inventory.map((inv) => {
-                    const isLow = inv.count <= (inv.minThreshold || 10);
-                    return (
-                      <option key={inv.id || inv._id} value={inv.id || inv._id} className="bg-bg-surface text-text-main">
-                        {inv.item} — Stock: {inv.count} {inv.unit} {isLow ? '[LOW STOCK]' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-semibold text-text-dim">
-                      Quantity to Order ({inventory.find(i => (i.id || i._id) === draftPoMaterialId)?.unit || 'Units'}) <span className="text-red-400">*</span>
-                    </label>
-                    {(() => {
-                      const cur = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
-                      if (cur) {
-                        const suggested = calculateSuggestedRestockQty(cur);
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDraftPoQuantity(suggested.toString());
-                              const est = cur.supplierUnitCost ? cur.supplierUnitCost * suggested : suggested * 5;
-                              setDraftPoEstCost(est.toString());
-                            }}
-                            className="text-[10px] text-primary hover:underline cursor-pointer bg-transparent border-none"
-                          >
-                            Reset to Suggested ({suggested})
-                          </button>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                  <div className="flex gap-1.5 items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      value={draftPoQuantity}
-                      onChange={(e) => setDraftPoQuantity(e.target.value)}
-                      className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold font-mono"
-                    />
-                    <div className="flex gap-1 shrink-0">
-                      {['+10', '+25', '+50'].map((pill) => (
-                        <button
-                          key={pill}
-                          type="button"
-                          onClick={() => {
-                            const currentVal = parseInt(draftPoQuantity) || 0;
-                            const added = parseInt(pill.replace('+', ''));
-                            setDraftPoQuantity((currentVal + added).toString());
-                          }}
-                          className="bg-white/5 border border-border-glass hover:bg-white/10 text-text-main text-[11px] px-2 py-2 rounded-lg font-mono cursor-pointer"
-                        >
-                          {pill}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text-dim mb-1">
-                    Estimated Total Cost (₱)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={draftPoEstCost}
-                    onChange={(e) => setDraftPoEstCost(e.target.value)}
-                    placeholder="e.g. 250"
-                    className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none font-bold font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Stock Projection Card */}
-              {(() => {
-                const target = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
-                const current = target ? target.count : 0;
-                const added = parseInt(draftPoQuantity) || 0;
-                const finalCount = current + added;
-                const unit = target?.unit || 'units';
-
-                return (
-                  <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs text-text-dim">
-                    <span>
-                      Stockpile Projection: Current <b className="text-text-main font-mono">{current}</b> {unit} &nbsp;→&nbsp; After Delivery: <b className="text-emerald-400 font-mono">+{added} = {finalCount}</b> {unit}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const targetItem = inventory.find(i => (i.id || i._id) === draftPoMaterialId);
-                        const qty = parseInt(draftPoQuantity) || 0;
-                        const cost = parseFloat(draftPoEstCost);
-                        const phone = businessPhone || '0928 810 3928';
-                        const msg = `PURCHASE INQUIRY — EDS TOWELS & CAPS\nDelivery Hub: Ground Floor, Pacific Mall Lucena City\nContact: ${phone}\n\nGood day! We would like to order:\n• ${qty} ${targetItem?.unit || 'Cones'} — ${targetItem?.item || 'Embroidery Material'}\n${cost ? `Estimated Cost: ₱${cost.toFixed(2)}\n` : ''}\nPlease confirm invoice pricing and delivery time. Thank you!`;
-                        navigator.clipboard.writeText(msg).then(() => {
-                          showToast('Copied to clipboard', 'success');
-                        });
-                      }}
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer bg-transparent border-none"
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span>Copy Inquiry</span>
-                    </button>
-                  </div>
-                );
-              })()}
-
-              <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsDraftPoOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-main text-xs font-bold hover:bg-white/10 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingPo}
-                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer transition shadow-sm"
-                >
-                  {isSubmittingPo ? 'Saving...' : 'Save Acquisition Order'}
-                </button>
-              </div>
-            </form>
           </div>
         </GlassModal>
       )}

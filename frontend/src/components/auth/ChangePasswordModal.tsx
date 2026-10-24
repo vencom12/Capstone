@@ -4,10 +4,17 @@ import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface FieldErrors {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
 }
 
 export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
@@ -17,6 +24,8 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formShaking, setFormShaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -26,6 +35,8 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setFieldErrors({});
+    setFormShaking(false);
     setErrorMessage('');
     setSuccessMessage('');
   };
@@ -35,25 +46,72 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
     onClose();
   };
 
+  const validateField = (name: keyof FieldErrors, customVal?: string) => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (name === 'currentPassword') {
+        const val = customVal !== undefined ? customVal : currentPassword;
+        if (!val) {
+          next.currentPassword = 'Current password is required.';
+        } else {
+          delete next.currentPassword;
+        }
+      } else if (name === 'newPassword') {
+        const val = customVal !== undefined ? customVal : newPassword;
+        if (!val) {
+          next.newPassword = 'New password is required.';
+        } else if (val.length < 6) {
+          next.newPassword = 'Must be at least 6 characters.';
+        } else if (currentPassword && val === currentPassword) {
+          next.newPassword = 'Cannot be same as current.';
+        } else {
+          delete next.newPassword;
+        }
+      } else if (name === 'confirmPassword') {
+        const val = customVal !== undefined ? customVal : confirmPassword;
+        if (!val) {
+          next.confirmPassword = 'Confirmation is required.';
+        } else if (newPassword && val !== newPassword) {
+          next.confirmPassword = 'Passwords do not match.';
+        } else {
+          delete next.confirmPassword;
+        }
+      }
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
+    const errors: FieldErrors = {};
     if (!currentPassword) {
-      setErrorMessage('Please enter your current password.');
-      return;
+      errors.currentPassword = 'Current password is required.';
     }
-    if (newPassword.length < 6) {
-      setErrorMessage('New password must be at least 6 characters long.');
-      return;
+    if (!newPassword) {
+      errors.newPassword = 'New password is required.';
+    } else if (newPassword.length < 6) {
+      errors.newPassword = 'Must be at least 6 characters.';
+    } else if (currentPassword && newPassword === currentPassword) {
+      errors.newPassword = 'Cannot be same as current.';
     }
-    if (newPassword !== confirmPassword) {
-      setErrorMessage('New password and confirmation do not match.');
-      return;
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Confirmation is required.';
+    } else if (newPassword && confirmPassword !== newPassword) {
+      errors.confirmPassword = 'Passwords do not match.';
     }
-    if (currentPassword === newPassword) {
-      setErrorMessage('New password cannot be the same as your current password.');
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormShaking(true);
+      setTimeout(() => setFormShaking(false), 450);
+      showToast({
+        title: 'Review Password Form',
+        message: 'Please resolve the highlighted fields before submitting.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -62,7 +120,11 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
       const res = await changePassword(currentPassword, newPassword, confirmPassword);
       if (res.success) {
         setSuccessMessage(res.message || 'Password updated successfully.');
-        showToast('Password changed successfully', 'success');
+        showToast({
+          title: 'Password Changed',
+          message: 'Your password has been successfully updated.',
+          type: 'success',
+        });
         setTimeout(() => {
           handleClose();
         }, 1500);
@@ -76,8 +138,13 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
     }
   };
 
-  const inputCls =
-    'w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60';
+  const getInputCls = (hasError?: boolean) => `
+    w-full bg-bg-dark/80 border px-3.5 py-2.5 rounded-xl text-text-main text-sm outline-none transition-all placeholder:text-text-dim/60
+    ${hasError 
+      ? 'border-rose-500/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25 bg-rose-500/[0.04]' 
+      : 'border-border-glass focus:border-primary focus:ring-1 focus:ring-primary/30'
+    }
+  `;
 
   return (
     <GlassModal
@@ -116,17 +183,29 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
             <p className="text-xs text-text-dim m-0">Closing dialog...</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" suppressHydrationWarning>
+          <form noValidate onSubmit={handleSubmit} className={`flex flex-col gap-3.5 ${formShaking ? 'animate-shake' : ''}`} suppressHydrationWarning>
             {/* Current Password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-dim">Current Password</label>
+              <div className="flex items-center justify-between ml-0.5 min-w-0 gap-2">
+                <label className="text-xs font-medium text-text-dim whitespace-nowrap shrink-0">Current Password *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {fieldErrors.currentPassword && (
+                    <InlineError variant="label" message={fieldErrors.currentPassword} />
+                  )}
+                </div>
+              </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
-                required
                 placeholder="Enter current password"
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className={inputCls}
+                onBlur={() => validateField('currentPassword')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCurrentPassword(val);
+                  if (fieldErrors.currentPassword) validateField('currentPassword', val);
+                  if (errorMessage) setErrorMessage('');
+                }}
+                className={getInputCls(Boolean(fieldErrors.currentPassword))}
                 autoComplete="current-password"
                 suppressHydrationWarning
               />
@@ -134,15 +213,26 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
 
             {/* New Password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-dim">New Password</label>
+              <div className="flex items-center justify-between ml-0.5 min-w-0 gap-2">
+                <label className="text-xs font-medium text-text-dim whitespace-nowrap shrink-0">New Password *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {fieldErrors.newPassword && (
+                    <InlineError variant="label" message={fieldErrors.newPassword} />
+                  )}
+                </div>
+              </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
-                required
-                minLength={6}
                 placeholder="At least 6 characters"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className={inputCls}
+                onBlur={() => validateField('newPassword')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewPassword(val);
+                  if (fieldErrors.newPassword) validateField('newPassword', val);
+                  if (errorMessage) setErrorMessage('');
+                }}
+                className={getInputCls(Boolean(fieldErrors.newPassword))}
                 autoComplete="new-password"
                 suppressHydrationWarning
               />
@@ -150,15 +240,26 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
 
             {/* Confirm New Password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-dim">Confirm New Password</label>
+              <div className="flex items-center justify-between ml-0.5 min-w-0 gap-2">
+                <label className="text-xs font-medium text-text-dim whitespace-nowrap shrink-0">Confirm New Password *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {fieldErrors.confirmPassword && (
+                    <InlineError variant="label" message={fieldErrors.confirmPassword} />
+                  )}
+                </div>
+              </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
-                required
-                minLength={6}
                 placeholder="Re-enter new password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={inputCls}
+                onBlur={() => validateField('confirmPassword')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setConfirmPassword(val);
+                  if (fieldErrors.confirmPassword) validateField('confirmPassword', val);
+                  if (errorMessage) setErrorMessage('');
+                }}
+                className={getInputCls(Boolean(fieldErrors.confirmPassword))}
                 autoComplete="new-password"
                 suppressHydrationWarning
               />
@@ -176,11 +277,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
             </label>
 
             {/* Error Message */}
-            {errorMessage && (
-              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
-                {errorMessage}
-              </div>
-            )}
+            <InlineError variant="banner" message={errorMessage} />
 
             {/* Action Buttons */}
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border-glass/40">

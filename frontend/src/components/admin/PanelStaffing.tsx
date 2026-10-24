@@ -7,6 +7,8 @@ import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import { useAuthStore } from '@/stores/useAuthStore';
 import Pagination from '@/components/ui/Pagination';
+import InlineError from '@/components/ui/InlineError';
+import { validateEmail } from '@/lib/emailValidator';
 
 interface PanelStaffingProps {
   users: any[];
@@ -28,7 +30,7 @@ export default function PanelStaffing({
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   // Modals state
   const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +48,41 @@ export default function PanelStaffing({
   const [role, setRole] = useState('employee');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; email?: string; password?: string; phone?: string }>({});
+  const [touched, setTouched] = useState<{ username?: boolean; email?: boolean; password?: boolean; phone?: boolean }>({});
+  const [shakeKey, setShakeKey] = useState(0);
+
+  const validateField = (field: 'username' | 'email' | 'password' | 'phone', val: string, isEditing: boolean = !!editingStaff) => {
+    let err = '';
+    const clean = val.trim();
+    if (field === 'username') {
+      if (!clean) err = 'Username is required';
+      else if (clean.length < 3) err = 'Must be at least 3 characters';
+      else if (!/^[a-zA-Z0-9_]+$/.test(clean)) err = 'Only letters, numbers, and underscores allowed';
+    } else if (field === 'email') {
+      if (!clean) err = 'Email address is required';
+      else {
+        const res = validateEmail(clean);
+        if (!res.isValid) err = res.error || 'Please enter a valid email address';
+      }
+    } else if (field === 'password') {
+      if (!isEditing && !clean) err = 'Password is required';
+      else if (clean && clean.length < 8) err = 'Password must be at least 8 characters';
+    } else if (field === 'phone') {
+      if (clean) {
+        const digits = clean.replace(/\D/g, '');
+        if (digits.length < 10) err = 'Please enter a valid phone number (at least 10 digits)';
+      }
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: err }));
+    return err;
+  };
+
+  const handleBlur = (field: 'username' | 'email' | 'password' | 'phone') => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = field === 'username' ? username : field === 'email' ? email : field === 'password' ? password : phone;
+    validateField(field, val);
+  };
 
   const [activeTab, setActiveTab] = useState<'staff' | 'customers'>('staff');
 
@@ -115,6 +152,8 @@ export default function PanelStaffing({
 
   // 2. Open Modal
   const openModal = (staff?: any) => {
+    setFieldErrors({});
+    setTouched({});
     if (staff) {
       setEditingStaff(staff);
       setUsername(staff.username || '');
@@ -139,10 +178,21 @@ export default function PanelStaffing({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!username.trim()) return showToast('Username is required', 'error');
-    if (!email.trim()) return showToast('Email is required', 'error');
-    if (!editingStaff && !password.trim()) {
-      return showToast('Password is required', 'error');
+    const isEdit = !!editingStaff;
+    const errUsername = validateField('username', username, isEdit);
+    const errEmail = validateField('email', email, isEdit);
+    const errPassword = validateField('password', password, isEdit);
+    const errPhone = validateField('phone', phone, isEdit);
+
+    if (errUsername || errEmail || errPassword || errPhone) {
+      setTouched({ username: true, email: true, password: true, phone: true });
+      setShakeKey((k) => k + 1);
+      showToast({
+        title: 'Form Validation Error',
+        message: errUsername || errEmail || errPassword || errPhone || 'Please fix the highlighted fields',
+        type: 'error'
+      });
+      return;
     }
 
     const payload: any = {
@@ -157,7 +207,6 @@ export default function PanelStaffing({
       payload.password = password.trim();
     }
 
-    const isEdit = !!editingStaff;
     const optimisticUser = {
       ...(editingStaff || {}),
       username: username.trim(),
@@ -273,9 +322,13 @@ export default function PanelStaffing({
     setIsSendingReset(true);
     try {
       const res = await api.post<{ message: string; simulated?: boolean; resetUrl?: string }>(`/api/admin/users/${userId}/reset-password`, {});
-      if (res?.simulated && res?.resetUrl) {
-        showToast(res.message || 'Reset link created (Simulation mode). Copied URL to clipboard for testing.', 'info');
+      if (res?.resetUrl) {
         navigator.clipboard?.writeText(res.resetUrl).catch(() => {});
+        if (res.simulated) {
+          showToast(`Reset link generated & copied to clipboard! (${userEmail})`, 'info');
+        } else {
+          showToast(`Reset email sent to ${userEmail} & copied to clipboard for counter walk-in support!`, 'success');
+        }
       } else {
         showToast(res?.message || `Password reset link sent to ${userEmail}!`, 'success');
       }
@@ -339,67 +392,63 @@ export default function PanelStaffing({
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
       {/* Compact Top Action Toolbar */}
-      <div className="flex justify-between items-center flex-wrap gap-3 mb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="text"
-            placeholder="Search credentials or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[220px]"
-          />
-          {/* Status Filter Chips */}
-          <div className="flex items-center bg-bg-surface p-1 rounded-xl border border-border-glass gap-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none ${
-                statusFilter === 'all'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-text-dim hover:text-text-main bg-transparent'
-              }`}
-            >
-              All ({users.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
-                statusFilter === 'active'
-                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
-                  : 'text-text-dim hover:text-emerald-500 bg-transparent'
-              }`}
-            >
-              Active ({users.length - disabledCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('disabled')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
-                statusFilter === 'disabled'
-                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-sm'
-                  : 'text-text-dim hover:text-rose-500 bg-transparent'
-              }`}
-            >
-              Disabled ({disabledCount})
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
+        <button
+          type="button"
+          onClick={() => openModal()}
+          className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] shadow-sm hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
+        >
+          + Add Staff
+        </button>
+        <button
+          type="button"
+          onClick={exportUsersToCSV}
+          className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold px-4 py-2.5 rounded-xl text-[0.85rem] transition-all cursor-pointer flex items-center whitespace-nowrap"
+          title="Download accounts as Excel CSV"
+        >
+          Export CSV
+        </button>
+        <input
+          type="text"
+          placeholder="Search credentials or phone..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[220px]"
+        />
+        {/* Status Filter Chips */}
+        <div className="flex items-center bg-bg-surface p-1 rounded-xl border border-border-glass gap-1 text-xs">
           <button
             type="button"
-            onClick={exportUsersToCSV}
-            className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-main font-bold px-4 py-2.5 rounded-xl text-[0.85rem] transition-all cursor-pointer flex items-center"
-            title="Download accounts as Excel CSV"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none ${
+              statusFilter === 'all'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main bg-transparent'
+            }`}
           >
-            Export CSV
+            All ({users.length})
           </button>
           <button
-            onClick={() => openModal()}
-            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-[0.85rem] shadow-sm hover:shadow-md transition-all cursor-pointer whitespace-nowrap border-none"
+            type="button"
+            onClick={() => setStatusFilter('active')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
+              statusFilter === 'active'
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
+                : 'text-text-dim hover:text-emerald-500 bg-transparent'
+            }`}
           >
-            + Add Staff
+            Active ({users.length - disabledCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('disabled')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
+              statusFilter === 'disabled'
+                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-sm'
+                : 'text-text-dim hover:text-rose-500 bg-transparent'
+            }`}
+          >
+            Disabled ({disabledCount})
           </button>
         </div>
       </div>
@@ -746,6 +795,11 @@ export default function PanelStaffing({
         totalItems={filteredUsers.length}
         pageSize={pageSize}
         onPageChange={setCurrentPage}
+        pageSizeOptions={[5, 10, 20, 50]}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setCurrentPage(1);
+        }}
         itemLabel="personnel accounts"
       />
     </div>
@@ -763,46 +817,96 @@ export default function PanelStaffing({
           setRole('employee');
           setPhone('');
           setAddress('');
+          setFieldErrors({});
+          setTouched({});
         }}
       >
-        <form onSubmit={handleSubmit} className="modal-stack text-left max-h-[80vh] overflow-y-auto pr-1">
+        <form
+          key={shakeKey}
+          noValidate
+          onSubmit={handleSubmit}
+          className={`modal-stack text-left max-h-[80vh] overflow-y-auto pr-1 ${shakeKey > 0 ? 'animate-shake' : ''}`}
+        >
           <div className="modal-section">
-            <label className="modal-label">Username</label>
+            <label className="modal-label flex items-center justify-between">
+              <span>Username</span>
+              {touched.username && !fieldErrors.username && username.trim() && (
+                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid</span>
+              )}
+            </label>
             <input
               type="text"
-              required
               placeholder="e.g. revin_artisan"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (touched.username) validateField('username', e.target.value);
+              }}
+              onBlur={() => handleBlur('username')}
+              className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans transition-all ${
+                touched.username && fieldErrors.username
+                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  : 'border-border-glass focus:border-white/40'
+              }`}
             />
+            {touched.username && fieldErrors.username && (
+              <InlineError message={fieldErrors.username} variant="field" />
+            )}
           </div>
 
           <div className="modal-section">
-            <label className="modal-label">Email Address</label>
+            <label className="modal-label flex items-center justify-between">
+              <span>Email Address</span>
+              {touched.email && !fieldErrors.email && email.trim() && (
+                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid syntax</span>
+              )}
+            </label>
             <input
               type="email"
-              required
               placeholder="e.g. revin@stitchopt.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (touched.email) validateField('email', e.target.value);
+              }}
+              onBlur={() => handleBlur('email')}
+              className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans transition-all ${
+                touched.email && fieldErrors.email
+                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  : 'border-border-glass focus:border-white/40'
+              }`}
             />
+            {touched.email && fieldErrors.email && (
+              <InlineError message={fieldErrors.email} variant="field" />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="modal-section">
-              <label className="modal-label" id="staff-password-label">
-                {editingStaff ? 'Reset Password (Optional)' : 'Password'}
+              <label className="modal-label flex items-center justify-between" id="staff-password-label">
+                <span>{editingStaff ? 'Reset Password (Optional)' : 'Password'}</span>
+                {touched.password && !fieldErrors.password && password.trim() && (
+                  <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Good</span>
+                )}
               </label>
               <input
                 type="password"
-                required={!editingStaff}
-                placeholder={editingStaff ? '••••••••' : 'Enter strong password'}
+                placeholder={editingStaff ? '••••••••' : 'Enter strong password (min 8 chars)'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (touched.password) validateField('password', e.target.value);
+                }}
+                onBlur={() => handleBlur('password')}
+                className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full transition-all ${
+                  touched.password && fieldErrors.password
+                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    : 'border-border-glass focus:border-white/40'
+                }`}
               />
+              {touched.password && fieldErrors.password && (
+                <InlineError message={fieldErrors.password} variant="field" />
+              )}
             </div>
             <div className="modal-section">
               <label className="modal-label">Access Role designation</label>
@@ -834,24 +938,40 @@ export default function PanelStaffing({
           </div>
 
           <div className="modal-section">
-            <label className="modal-label">Phone Number</label>
+            <label className="modal-label flex items-center justify-between">
+              <span>Phone Number (Optional)</span>
+              {touched.phone && !fieldErrors.phone && phone.trim() && (
+                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid</span>
+              )}
+            </label>
             <input
               type="tel"
-              placeholder="e.g. +639123456789"
+              placeholder="e.g. +639123456789 or 09123456789"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (touched.phone) validateField('phone', e.target.value);
+              }}
+              onBlur={() => handleBlur('phone')}
+              className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono transition-all ${
+                touched.phone && fieldErrors.phone
+                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  : 'border-border-glass focus:border-white/40'
+              }`}
             />
+            {touched.phone && fieldErrors.phone && (
+              <InlineError message={fieldErrors.phone} variant="field" />
+            )}
           </div>
 
           <div className="modal-section">
-            <label className="modal-label">Physical Address</label>
+            <label className="modal-label">Physical Address (Optional)</label>
             <input
               type="text"
-              placeholder="e.g. City Central, Manila"
+              placeholder="e.g. City Central, Lucena"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans"
+              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans focus:border-white/40"
             />
           </div>
 

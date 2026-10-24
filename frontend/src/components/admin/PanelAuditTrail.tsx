@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
@@ -31,24 +31,34 @@ interface AuditLogEntry {
   targetDetail?: string | null;
 }
 
+// Module-level cache for instant tab navigation (Stale-While-Revalidate)
+let cachedAuditLogs: {
+  logs: AuditLogEntry[];
+  totalCount: number;
+  currentPage: number;
+} | null = null;
+
 export default function PanelAuditTrail() {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const isFirstMountRef = useRef(true);
+  const [logs, setLogs] = useState<AuditLogEntry[]>(() => cachedAuditLogs?.logs || []);
+  const [isLoading, setIsLoading] = useState(() => !cachedAuditLogs);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntity, setSelectedEntity] = useState('All');
   const [selectedLogForDetails, setSelectedLogForDetails] = useState<AuditLogEntry | null>(null);
 
   // Server-side Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 15;
+  const [currentPage, setCurrentPage] = useState(() => cachedAuditLogs?.currentPage || 1);
+  const [totalCount, setTotalCount] = useState(() => cachedAuditLogs?.totalCount || 0);
+  const [pageSize, setPageSize] = useState(15);
 
-  const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery) => {
-    setIsLoading(true);
+  const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery, size = pageSize, silent = false) => {
+    if (!silent && !cachedAuditLogs) {
+      setIsLoading(true);
+    }
     try {
       const params = new URLSearchParams();
       params.append('page', String(page));
-      params.append('limit', String(pageSize));
+      params.append('limit', String(size));
       if (entity && entity !== 'All') params.append('entity', entity);
       if (search && search.trim()) params.append('search', search.trim());
 
@@ -59,13 +69,15 @@ export default function PanelAuditTrail() {
 
       if (res && res.logs) {
         setLogs(res.logs);
-        if (res.pagination) {
-          setTotalCount(res.pagination.totalCount);
-          setCurrentPage(res.pagination.currentPage);
-        } else {
-          setTotalCount(res.logs.length);
-          setCurrentPage(page);
-        }
+        const resolvedTotal = res.pagination ? res.pagination.totalCount : res.logs.length;
+        const resolvedPage = res.pagination ? res.pagination.currentPage : page;
+        setTotalCount(resolvedTotal);
+        setCurrentPage(resolvedPage);
+        cachedAuditLogs = {
+          logs: res.logs,
+          totalCount: resolvedTotal,
+          currentPage: resolvedPage,
+        };
       }
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
@@ -77,8 +89,14 @@ export default function PanelAuditTrail() {
 
   // Re-fetch on filter or search change with debounce
   useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      const hasCached = Boolean(cachedAuditLogs);
+      fetchLogs(currentPage, selectedEntity, searchQuery, pageSize, hasCached);
+      return;
+    }
     const timer = setTimeout(() => {
-      fetchLogs(1, selectedEntity, searchQuery);
+      fetchLogs(1, selectedEntity, searchQuery, pageSize, false);
     }, 250);
     return () => clearTimeout(timer);
   }, [selectedEntity, searchQuery]);
@@ -370,6 +388,11 @@ export default function PanelAuditTrail() {
         totalItems={totalCount}
         pageSize={pageSize}
         onPageChange={(p) => fetchLogs(p, selectedEntity, searchQuery)}
+        pageSizeOptions={[10, 15, 25, 50]}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          fetchLogs(1, selectedEntity, searchQuery, newSize);
+        }}
         itemLabel="audit log entries"
       />
 

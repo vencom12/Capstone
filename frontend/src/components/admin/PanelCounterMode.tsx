@@ -6,6 +6,8 @@ import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
 import type { Product, ProductVariant } from '@/lib/types';
+import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
+import Pagination from '@/components/ui/Pagination';
 
 interface PanelCounterModeProps {
   orders: any[];
@@ -42,6 +44,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [customByogName, setCustomByogName] = useState('');
+  const [byogGarmentType, setByogGarmentType] = useState<'small' | 'big'>('small');
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState<number>(250);
 
@@ -57,6 +60,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   // Quick Slip Punch Form fields (Solution 1: Nanay Slips)
   const [quickProductId, setQuickProductId] = useState<string>('');
+  const [quickByogGarmentType, setQuickByogGarmentType] = useState<'small' | 'big'>('small');
   const [quickText, setQuickText] = useState('');
   const [quickPrice, setQuickPrice] = useState<number>(250);
   const [quickQuantity, setQuickQuantity] = useState(1);
@@ -82,8 +86,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [turnOverSearch, setTurnOverSearch] = useState('');
   const [queueFilterStage, setQueueFilterStage] = useState<'all' | 'in_queue' | 'stitching' | 'ready'>('all');
   const [queueScope, setQueueScope] = useState<'all' | 'walkin_only'>('all');
+  const [turnOverPage, setTurnOverPage] = useState(1);
+  const [turnOverPageSize, setTurnOverPageSize] = useState(8);
   const [verifyingOrderForRelease, setVerifyingOrderForRelease] = useState<any | null>(null);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTurnOverPage(1);
+  }, [turnOverSearch, queueFilterStage, queueScope]);
 
   // Audio chime for Nanay when orders advance
   const playQueueChime = (type: 'start' | 'ready') => {
@@ -207,10 +217,38 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setQuickPrice(item.price);
   };
 
-  const grandTotal = useMemo(() => {
-    return (unitPrice || 0) * (quantity || 1);
-  }, [unitPrice, quantity]);
+  // Lettering extra pricing rule:
+  // First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
+  const isSelectedBigGarment = useMemo(() => {
+    if (activeSelectedItem?.isByog) {
+      return byogGarmentType === 'big';
+    }
+    return isBigGarment(activeSelectedItem?.category, activeSelectedItem?.name || customByogName);
+  }, [activeSelectedItem, customByogName, byogGarmentType]);
 
+  const counterLettering = useMemo(() => {
+    return calculateLetteringCost(monogramText, isSelectedBigGarment);
+  }, [monogramText, isSelectedBigGarment]);
+
+  const effectiveUnitPrice = (unitPrice || 0) + counterLettering.extraCost;
+
+  const grandTotal = useMemo(() => {
+    return effectiveUnitPrice * (quantity || 1);
+  }, [effectiveUnitPrice, quantity]);
+
+  // Quick Slip Punch lettering
+  const isQuickBigGarment = useMemo(() => {
+    if (activeQuickItem?.isByog) {
+      return quickByogGarmentType === 'big';
+    }
+    return isBigGarment(activeQuickItem?.category, activeQuickItem?.name);
+  }, [activeQuickItem, quickByogGarmentType]);
+
+  const quickLettering = useMemo(() => {
+    return calculateLetteringCost(quickText, isQuickBigGarment);
+  }, [quickText, isQuickBigGarment]);
+
+  const effectiveQuickPrice = (quickPrice || 0) + quickLettering.extraCost;
 
   const estimatedReadyTime = useMemo(() => {
     const readyDate = new Date(Date.now() + 20 * 60000);
@@ -236,8 +274,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setIsSubmitting(true);
     try {
       const isByog = activeSelectedItem.isByog;
-      const itemName = isByog && customByogName.trim()
-        ? `BYOG (${customByogName.trim()})`
+      const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
+      const itemName = isByog
+        ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
         : selectedVariant
           ? `${activeSelectedItem.name} - ${selectedVariant.name}`
           : activeSelectedItem.name;
@@ -256,14 +295,16 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             productId: activeSelectedItem.isByog ? undefined : activeSelectedItem.id,
             name: itemName,
             quantity,
-            price: unitPrice,
+            price: effectiveUnitPrice,
             isByog,
             selectedVariant: selectedVariant?.name || null,
             personalization: {
               text: cleanText,
               threadColor,
               placement: activeSelectedItem.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
-              variant: selectedVariant?.name || null
+              variant: selectedVariant?.name || null,
+              extraLetteringCost: counterLettering.extraCost,
+              extraLettersCount: counterLettering.extraLettersCount,
             }
           }
         ],
@@ -319,8 +360,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   const handleQuickSlipPunch = async () => {
     setQuickPunchError(null);
-    const itemName = activeQuickItem.name;
-    const totalAmount = (quickPrice || 0) * (quickQuantity || 1);
+    const isByog = Boolean(activeQuickItem.isByog);
+    const byogTag = quickByogGarmentType === 'big' ? 'Big Item' : 'Small Item';
+    const itemName = isByog ? `BYOG [${byogTag}]` : activeQuickItem.name;
+    const totalAmount = (effectiveQuickPrice || 0) * (quickQuantity || 1);
     const cleanText = quickText.trim().toUpperCase();
     const tempSlipId = `temp-${Date.now()}`;
     const tempOrderId = `WI-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -351,9 +394,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             productId: activeQuickItem.isByog ? undefined : activeQuickItem.id,
             name: itemName,
             quantity: quickQuantity,
-            price: quickPrice,
+            price: effectiveQuickPrice,
             isByog: activeQuickItem.isByog,
-            personalization: { text: cleanText }
+            personalization: {
+              text: cleanText,
+              extraLetteringCost: quickLettering.extraCost,
+              extraLettersCount: quickLettering.extraLettersCount,
+            }
           }
         ],
         totalAmount,
@@ -423,6 +470,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       o.design?.toLowerCase().includes(q)
     );
   }, [allActiveQueueOrders, walkInActiveOrders, queueScope, queueFilterStage, turnOverSearch]);
+
+  const paginatedTurnOverOrders = useMemo(() => {
+    const start = (turnOverPage - 1) * turnOverPageSize;
+    return filteredTurnOverOrders.slice(start, start + turnOverPageSize);
+  }, [filteredTurnOverOrders, turnOverPage, turnOverPageSize]);
 
   const handleStartStitching = async (order: any) => {
     const prevOrders = [...orders];
@@ -689,12 +741,52 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               )}
 
-              {/* BYOG Custom Note */}
+              {/* BYOG Custom Note & Garment Size */}
               {activeSelectedItem.isByog && (
-                <div className="mt-3 pt-2.5 border-t border-border-glass">
+                <div className="mt-3 pt-2.5 border-t border-border-glass space-y-2.5">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                        Garment Size &amp; Lettering Rate
+                      </label>
+                      <span className="text-[10px] text-text-dim">1st word included in base price</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setByogGarmentType('small')}
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                          byogGarmentType === 'small'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center justify-between">
+                          <span>Small Garment</span>
+                          <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                        </div>
+                        <div className="text-[10px] text-text-dim mt-0.5">Cap, Face Towel, Hand Towel, Fan, Handkerchief</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setByogGarmentType('big')}
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                          byogGarmentType === 'big'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center justify-between">
+                          <span>Big Garment</span>
+                          <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                        </div>
+                        <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel, Hoodie</div>
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="text"
-                    placeholder="Describe item brought by customer (e.g. Uniform, Polo)..."
+                    placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
                     value={customByogName}
                     onChange={(e) => setCustomByogName(e.target.value)}
                     className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary/50"
@@ -725,6 +817,24 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   }}
                   className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
                 />
+                {monogramText.trim() && (
+                  <div className="mt-2 text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
+                    <span className="text-text-dim text-[11px]">
+                      {counterLettering.extraCost > 0 ? (
+                        <>
+                          First word included. Additional letters: <strong className="text-amber-400">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
+                        </>
+                      ) : (
+                        <span>First word included in base price (₱0 extra)</span>
+                      )}
+                    </span>
+                    {counterLettering.extraCost > 0 && (
+                      <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-2">
+                        +₱{counterLettering.extraCost.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -913,6 +1023,48 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Step 2: Monogram text from slip */}
+              {activeQuickItem?.isByog && (
+                <div className="mb-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                      Slip Garment Rate
+                    </span>
+                    <span className="text-[10px] text-text-dim">1st word included</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQuickByogGarmentType('small')}
+                      className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                        quickByogGarmentType === 'small'
+                          ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                          : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      <div className="font-bold text-xs flex items-center justify-between">
+                        <span>Small Item</span>
+                        <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                      </div>
+                      <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickByogGarmentType('big')}
+                      className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                        quickByogGarmentType === 'big'
+                          ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                          : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      <div className="font-bold text-xs flex items-center justify-between">
+                        <span>Big Item</span>
+                        <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                      </div>
+                      <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="mb-3.5">
                 <input
                   type="text"
@@ -921,6 +1073,24 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   onChange={(e) => setQuickText(e.target.value.toUpperCase())}
                   className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50"
                 />
+                {quickText.trim() && (
+                  <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
+                    <span className="text-text-dim text-[11px]">
+                      {quickLettering.extraCost > 0 ? (
+                        <>
+                          First word included. Extra: <strong className="text-amber-400">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
+                        </>
+                      ) : (
+                        <span>First word included in base price (₱0 extra)</span>
+                      )}
+                    </span>
+                    {quickLettering.extraCost > 0 && (
+                      <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-1">
+                        +₱{quickLettering.extraCost.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Step 3: Quantity & Payment */}
@@ -979,7 +1149,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <span>
                   {isPunchSubmitting
                     ? 'Recording...'
-                    : `Log Finished Sale — ₱${((quickPrice || 0) * (quickQuantity || 1)).toFixed(2)} (${quickPayment})`}
+                    : `Log Finished Sale — ₱${((effectiveQuickPrice || 0) * (quickQuantity || 1)).toFixed(2)} (${quickPayment})`}
                 </span>
               </button>
               <InlineError error={quickPunchError} />
@@ -1138,7 +1308,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredTurnOverOrders.map((order) => {
+              {paginatedTurnOverOrders.map((order) => {
                 const isReady = order.status === 'Ready For Pick Up' || order.status === 'Ready for Pickup';
                 const isStitching = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
                 const isInQueue = order.status === 'In Queue';
@@ -1284,6 +1454,20 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               })}
             </div>
           )}
+
+          {/* Turn-Over Desk Pagination Controls */}
+          <Pagination
+            currentPage={turnOverPage}
+            totalItems={filteredTurnOverOrders.length}
+            pageSize={turnOverPageSize}
+            onPageChange={setTurnOverPage}
+            pageSizeOptions={[4, 8, 12, 24]}
+            onPageSizeChange={(newSize) => {
+              setTurnOverPageSize(newSize);
+              setTurnOverPage(1);
+            }}
+            itemLabel="turnover orders"
+          />
 
           {/* ───────────────────────────────────────────────────────────── */}
           {/* ANTI-FRAUD VERIFICATION POPUP MODAL (1-TAP TURNOVER)          */}

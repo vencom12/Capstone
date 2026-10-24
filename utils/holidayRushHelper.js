@@ -20,7 +20,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Expedited Priority Order',
-      title: '⚡ Expedited Priority Machine Order',
+      title: 'Expedited Priority Machine Order',
       description: 'This order was flagged for priority turnaround. Our multi-needle machines operated on expedited scheduling to craft your custom embroidery ahead of standard queues.',
       tag: 'PRIORITY_RUSH'
     };
@@ -31,7 +31,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Christmas & Year-End Peak Rush',
-      title: '🎄 Holiday Peak Season Order (Christmas & New Year)',
+      title: 'Holiday Peak Season Order (Christmas & New Year)',
       description: 'This order was processed during the peak holiday gift season in Lucena City. Thank you for your patience as our embroidery artisans dedicated extended machine shifts to your personalized items.',
       tag: 'CHRISTMAS_RUSH'
     };
@@ -44,7 +44,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Lucena City Charter Day & Quezon Festival Season',
-      title: '🎉 Lucena City Charter Day & Quezon Day Season',
+      title: 'Lucena City Charter Day & Quezon Day Season',
       description: 'Placed during the Araw ng Lucena & Quezon Province festival season (Aug 19–20). Our Pacific Mall workshop experienced high commemorative embroidery volume during this citywide holiday.',
       tag: 'LUCENA_CHARTER_DAY'
     };
@@ -55,7 +55,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Pahiyas & May Harvest Festival Season',
-      title: '🌾 May Fiesta & Pahiyas Festival Season',
+      title: 'May Fiesta & Pahiyas Festival Season',
       description: 'Processed during Quezon Province\'s celebrated Pahiyas & May festival rush. Extra artisan care was taken to meet festive regional demand.',
       tag: 'PAHIYAS_SEASON'
     };
@@ -66,7 +66,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Graduation & Holy Week Season',
-      title: '🎓 Academic Graduation & Summer Rush Season',
+      title: 'Academic Graduation & Summer Rush Season',
       description: 'Logged during Lucena graduation and batch custom embroidery rush. Personalized stoles, uniform monograms, and gift orders received priority workshop queueing.',
       tag: 'GRADUATION_RUSH'
     };
@@ -77,7 +77,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Undas Holiday Long Weekend',
-      title: '🕯️ Undas Holiday Season Schedule',
+      title: 'Undas Holiday Season Schedule',
       description: 'Processed during the nationwide All Saints & Souls Day holiday schedule in Quezon Province.',
       tag: 'UNDAS_HOLIDAY'
     };
@@ -88,7 +88,7 @@ function detectRushSeason(dateInput, isRushFlag = false) {
     return {
       isRushSeason: true,
       seasonName: 'Philippine Independence Day Season',
-      title: '🇵🇭 Philippine Independence Day Holiday',
+      title: 'Philippine Independence Day Holiday',
       description: 'Handled during the June 12 National Independence Day holiday window.',
       tag: 'INDEPENDENCE_DAY'
     };

@@ -27,7 +27,8 @@ interface AuthState {
   loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<AuthResponse & { needsPassword?: boolean; setupToken?: string; suggestedUsername?: string; email?: string }>;
   completeGoogleSignup: (setupToken: string, password: string, username?: string) => Promise<AuthResponse>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
-  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
+  validateResetToken: (token: string) => Promise<{ valid: boolean; maskedEmail?: string; username?: string; message?: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string; user?: any }>;
   changePassword: (currentPassword: string, newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
@@ -186,11 +187,28 @@ export const useAuthStore = create<AuthState>()(
         );
       },
 
+      validateResetToken: async (token) => {
+        try {
+          return await api.get<{ valid: boolean; maskedEmail?: string; username?: string; message?: string }>(
+            `/api/auth/password/validate-token?token=${encodeURIComponent(token)}`
+          );
+        } catch (err: any) {
+          return { valid: false, message: err.message || 'This reset link has expired or is invalid.' };
+        }
+      },
+
       resetPassword: async (token, password) => {
-        return await api.post<{ success: boolean; message: string }>(
+        const res = await api.post<{ success: boolean; message: string; user?: any }>(
           '/api/auth/password/reset',
           { token, password }
         );
+        if (res.success && res.user) {
+          set({ user: res.user, isAuthenticated: true });
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('stitch-session-active', 'true');
+          }
+        }
+        return res;
       },
 
       changePassword: async (currentPassword, newPassword, confirmPassword) => {

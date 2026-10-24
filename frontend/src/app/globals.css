@@ -684,6 +684,26 @@ select option {
   animation: aiCalloutPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
 }
 
+/* Tactile Error Shake for Input & Form Validation */
+@keyframes formShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: formShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes microFadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: microFadeIn 0.22s ease-out forwards;
+}
+
 /* ========================================
    Clean Print Rules (Thermal Labels & Manifests)
    ======================================== */

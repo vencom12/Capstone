@@ -333,6 +333,15 @@ export default function OfficialClaimSlip({
             <span className="text-zinc-600 shrink-0">Pickup Counter:</span>
             <span className="font-bold text-black text-right">Pacific Mall Studio</span>
           </div>
+          {(() => {
+            const staffName = order.processedBy || order.garmentsReceivedBy || (order.personalization?.statusHistory?.[0]?.actor) || '';
+            return staffName ? (
+              <div className="flex justify-between items-baseline">
+                <span className="text-zinc-600 shrink-0">Served By:</span>
+                <span className="font-bold text-black text-right truncate max-w-[190px]">{staffName}</span>
+              </div>
+            ) : null;
+          })()}
 
           {/* Stitched Items List */}
           <div className="border-t border-dashed border-zinc-300 pt-1.5 mt-1 flex flex-col gap-1.5">

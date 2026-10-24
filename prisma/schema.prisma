@@ -108,6 +108,7 @@ model Order {
   waiverSigned       Boolean   @default(false) // Legal waiver
   garmentsReceivedAt DateTime? // Physical counter drop-off timestamp for BYOG
   garmentsReceivedBy String?   // Staff username/ID who accepted garments
+  processedBy        String?   // Admin/Employee who processed or last updated the order
   stagingCubby       String?   // Physical shelf bin at Pacific Mall kiosk (e.g. "Bin B-3")
   giftPackaging      Boolean   @default(false) // Premium upsell
   calligraphyMessage String?   // Handwritten note
@@ -144,6 +145,7 @@ model Inventory {
   unit             String   @default("Cones")
   minThreshold     Int      @default(10)
   supplierUnitCost Float?   // Actual cost paid to supplier per unit (for real profit calculation)
+  packSize         Int      @default(1) // Units per supplier wholesale master pack (e.g. 8 for towels, 5 for fans)
   lastUpdated      DateTime @default(now()) @updatedAt
 
   logs           InventoryLog[]

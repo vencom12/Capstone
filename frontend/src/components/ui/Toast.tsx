@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from 'react';
 
+export type ToastType = 'info' | 'success' | 'error' | 'warning';
+
 export interface ToastMessage {
   id: number;
+  title?: string;
   message: string;
-  type: 'info' | 'success' | 'error';
+  type: ToastType;
+  toastKey?: string;
+}
+
+export interface ToastOptions {
+  title?: string;
+  message: string;
+  type?: ToastType;
   toastKey?: string;
 }
 
@@ -15,22 +25,39 @@ const recentToasts = new Map<string, number>();
 
 /**
  * Global toast function — can be called from anywhere.
+ * Supports:
+ *   showToast('Simple message', 'success')
+ *   showToast({ title: 'Validation Alert', message: 'Please check your input', type: 'warning' })
  */
 export function showToast(
-  message: string,
-  type: 'info' | 'success' | 'error' = 'info',
+  messageOrOptions: string | ToastOptions,
+  type: ToastType = 'info',
   toastKey?: string
 ) {
   const now = Date.now();
 
-  // Cleanup old keys (older than 1.5s) to prevent memory leak
+  // Cleanup old dedupe keys (older than 1.5s)
   recentToasts.forEach((timestamp, key) => {
     if (now - timestamp > 1500) {
       recentToasts.delete(key);
     }
   });
 
-  const dedupeKey = toastKey || message;
+  let message = '';
+  let title: string | undefined;
+  let resolvedType: ToastType = type;
+  let resolvedKey = toastKey;
+
+  if (typeof messageOrOptions === 'object') {
+    message = messageOrOptions.message;
+    title = messageOrOptions.title;
+    resolvedType = messageOrOptions.type || 'info';
+    resolvedKey = messageOrOptions.toastKey || resolvedKey;
+  } else {
+    message = messageOrOptions;
+  }
+
+  const dedupeKey = resolvedKey || `${title || ''}-${message}`;
 
   if (recentToasts.has(dedupeKey)) {
     return; // Suppress duplicate within 1.5s
@@ -38,7 +65,14 @@ export function showToast(
 
   recentToasts.set(dedupeKey, now);
 
-  const toast: ToastMessage = { id: ++toastId, message, type, toastKey };
+  const toast: ToastMessage = {
+    id: ++toastId,
+    title,
+    message,
+    type: resolvedType,
+    toastKey: resolvedKey,
+  };
+
   listeners.forEach((listener) => listener(toast));
 }
 
@@ -50,7 +84,7 @@ export default function ToastContainer() {
       setToasts((prev) => [...prev, toast]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
-      }, 4500);
+      }, 5000);
     };
 
     listeners.add(handler);
@@ -64,74 +98,77 @@ export default function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-6 sm:bottom-auto sm:top-6 left-1/2 -translate-x-1/2 z-[100000] flex flex-col items-center gap-2 pointer-events-none w-full max-w-md px-4"
+      className="fixed top-5 left-1/2 -translate-x-1/2 z-[100020] flex flex-col items-center gap-2.5 pointer-events-none w-full max-w-md px-4"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === 'success';
         const isError = toast.type === 'error';
+        const isWarning = toast.type === 'warning';
 
         return (
           <div
             key={toast.id}
-            className={`
+            role="status"
+            className="
               pointer-events-auto flex items-center justify-between gap-3 w-full
-              px-4 py-3 rounded-xl text-sm font-medium
-              bg-bg-surface/95 backdrop-blur-xl border shadow-2xl
-              transition-all duration-300 animate-slideUp sm:animate-slideDown
-              ${
-                isSuccess
-                  ? 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20'
-                  : isError
-                  ? 'border-rose-500/30 text-rose-400 bg-rose-950/20'
-                  : 'border-sky-500/30 text-sky-300 bg-sky-950/20'
-              }
-            `}
+              px-4 py-3 rounded-xl text-xs
+              bg-[#12151b] border border-white/10 text-white shadow-xl shadow-black/60
+              transition-all duration-200 animate-fadeIn
+            "
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {isSuccess ? (
-                <svg
-                  className="w-4 h-4 shrink-0 text-emerald-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : isError ? (
-                <svg
-                  className="w-4 h-4 shrink-0 text-rose-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-4 h-4 shrink-0 text-sky-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
+            {/* Status Vector Icon Badge */}
+            <div
+              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                isSuccess
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : isError
+                  ? 'bg-rose-500/15 text-rose-400'
+                  : isWarning
+                  ? 'bg-amber-500/15 text-amber-400'
+                  : 'bg-sky-500/15 text-sky-400'
+              }`}
+            >
+              {isSuccess && (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
-              <span className="truncate text-xs font-semibold leading-relaxed text-text-main">
-                {toast.message}
-              </span>
+              {isError && (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              )}
+              {isWarning && (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              )}
+              {!isSuccess && !isError && !isWarning && (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              )}
             </div>
 
+            {/* Notification Content */}
+            <div className="flex-1 min-w-0 pr-1 text-left">
+              {toast.title && (
+                <h4 className="font-bold text-xs text-text-main m-0 mb-0.5 tracking-tight">
+                  {toast.title}
+                </h4>
+              )}
+              <p className="m-0 text-[0.75rem] font-medium leading-relaxed text-zinc-300 break-words">
+                {toast.message}
+              </p>
+            </div>
+
+            {/* Close / Dismiss Action */}
             <button
               type="button"
               onClick={(e) => {
@@ -142,11 +179,12 @@ export default function ToastContainer() {
               onTouchEnd={(e) => {
                 e.stopPropagation();
               }}
-              className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 active:scale-90 transition shrink-0 cursor-pointer"
+              className="text-text-dim hover:text-text-main p-1 rounded-lg hover:bg-white/10 active:scale-95 transition shrink-0 cursor-pointer"
               aria-label="Dismiss notification"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>

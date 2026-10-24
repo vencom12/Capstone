@@ -158,25 +158,19 @@ exports.submitOrder = async (req, res) => {
                     socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
                 }
 
-                // If bypass or marked paid, trigger confirmation email
+                // If bypass or marked paid, trigger confirmation email to customer only
                 if (isBypassActive && user.email) {
                     const { sendOrderConfirmationEmail } = require('../../utils/emailService');
                     sendOrderConfirmationEmail(user.email, user.username, updatedOrder).catch(err => {
                         console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
                     });
-                    const adminEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
-                    if (adminEmail && adminEmail.toLowerCase() !== user.email.toLowerCase()) {
-                        sendOrderConfirmationEmail(adminEmail, `Store Owner (Order by ${user.username})`, updatedOrder).catch(err => {
-                            console.error('[EmailService] Admin order copy dispatch failed:', err.message);
-                        });
-                    }
                 }
 
                 return res.json({ message: 'Order reference number recorded successfully.', order: updatedOrder, receiptID: existingOrder.receipt?.receiptID });
             }
         }
 
-        if (!items || items.length === 0) return res.status(400).json({ message: 'Cart is empty' });
+        if (!items || items.length === 0) return res.status(400).json({ message: 'Your basket is empty. Please add items before checking out.' });
 
         // Fix B: Payment Method Whitelist (Only GCash for digital wallet per store policy)
         const VALID_PAYMENT_METHODS = ['wallet', 'cash_at_counter', 'gcash'];
@@ -185,7 +179,7 @@ exports.submitOrder = async (req, res) => {
             VALID_PAYMENT_METHODS.push('test_mode');
         }
         if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
-            return res.status(400).json({ message: 'Invalid payment method. Only GCash, Store Wallet, or Cash at Counter are accepted.' });
+            return res.status(400).json({ message: 'Please select a valid payment method (GCash, Store Wallet, or Cash at Counter).' });
         }
 
         // Instant approval for genuine wallet, admin test mode, or test bypass
@@ -194,7 +188,7 @@ exports.submitOrder = async (req, res) => {
         // User is already resolved at function start
 
         if (!user.isEmailVerified && !isBypassActive) {
-            return res.status(403).json({ message: 'Please verify your email address before placing an order.' });
+            return res.status(403).json({ message: 'Please check your email to verify your account before placing an order.' });
         }
 
         // Fix A: Server-side total recalculation (never trust client-sent total)
@@ -202,9 +196,9 @@ exports.submitOrder = async (req, res) => {
         let serverTotal = 0;
         for (const item of items) {
             const productId = item.productId || item.id;
-            if (!productId) return res.status(400).json({ message: `Invalid product in cart item: ${item.name || 'Unknown'}` });
+            if (!productId) return res.status(400).json({ message: 'One of the items in your basket is missing details. Please remove and re-add it.' });
             const product = await prisma.product.findUnique({ where: { id: productId } });
-            if (!product) return res.status(404).json({ message: `Product not found: ${item.name || productId}` });
+            if (!product) return res.status(404).json({ message: 'This product is currently unavailable.' });
 
             let itemUnitPrice = product.price;
             if (item.selectedVariant && Array.isArray(product.variants)) {
@@ -232,7 +226,7 @@ exports.submitOrder = async (req, res) => {
         const numTotal = Math.round(serverTotal * 100) / 100; // Round to 2 decimal places
 
         if (paymentMethod === 'wallet' && (user.walletBalance || 0) < numTotal) {
-            return res.status(400).json({ message: 'Insufficient wallet balance' });
+            return res.status(400).json({ message: 'Your store wallet balance is not enough for this order. Please top up or choose GCash or Cash at Counter.' });
         }
 
         // Anti-Replay Defense: Block using an already-verified receipt URL at checkout
@@ -386,30 +380,22 @@ exports.submitOrder = async (req, res) => {
                 personalization: orderPersonalization
             }));
 
-            // Calculate realistic pickup schedule based on current shop backlog & operating clock
-            const activeQueueOrders = await tx.order.findMany({
-                where: {
-                    status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
-                },
-                select: { estimatedTime: true }
-            });
-            const queueBacklogMins = activeQueueOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 2), 0);
-            const totalItemCount = sanitizedItems.reduce((acc, it) => acc + (it.quantity || 1), 0);
-            const isExpress = totalItemCount <= 3;
-
-            const pickupSchedule = calculatePickupSchedule({
+            // O(1) High-Efficiency Queue Watermark Scheduling
+            const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
+            const scheduling = await scheduleIncomingOrder({
                 orderDurationMinutes: calculatedEstTime,
-                queueBacklogMinutes: queueBacklogMins,
-                activeMachines: 1,
-                isExpress,
-                startTime: new Date()
+                prisma: tx
             });
 
-            const finalClaimSchedule = (deliveryTime && deliveryTime !== 'Store Pick-up') ? deliveryTime : pickupSchedule.readyLabel;
-            const finalDueDate = dueDate ? new Date(dueDate) : pickupSchedule.estimatedReadyDate;
+            const finalClaimSchedule = scheduling.readyLabel;
+            const finalDueDate = dueDate ? new Date(dueDate) : scheduling.estimatedReadyDate;
 
             orderPersonalization.readyLabel = finalClaimSchedule;
-            orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
+            orderPersonalization.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
+            orderPersonalization.queuePosition = scheduling.queuePosition;
+            orderPersonalization.ordersAhead = scheduling.ordersAhead;
+            orderPersonalization.queueWaitMinutes = scheduling.queueWaitMinutes;
+            orderPersonalization.estimatedStitchMinutes = calculatedEstTime;
 
             const order = await tx.order.create({
                 data: {
@@ -500,17 +486,11 @@ exports.submitOrder = async (req, res) => {
             socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedList);
         }
 
-        // Send Order Confirmation Email via Resend / SMTP asynchronously
+        // Send Order Confirmation Email via Resend / SMTP asynchronously (Customer only)
         const { sendOrderConfirmationEmail } = require('../../utils/emailService');
         if (user.email) {
             sendOrderConfirmationEmail(user.email, user.username, result).catch(err => {
                 console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
-            });
-        }
-        const adminEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
-        if (adminEmail && (!user.email || adminEmail.toLowerCase() !== user.email.toLowerCase())) {
-            sendOrderConfirmationEmail(adminEmail, `Store Owner (Order by ${user.username})`, result).catch(err => {
-                console.error('[EmailService] Admin order copy dispatch failed:', err.message);
             });
         }
 
@@ -534,12 +514,12 @@ exports.submitOrder = async (req, res) => {
         }
         if (err.message && err.message.startsWith('OutOfStock:')) {
             const productName = err.message.split('OutOfStock:')[1];
-            return res.status(400).json({ message: `Sorry, "${productName}" is currently out of stock (insufficient blank garments on hand).` });
+            return res.status(400).json({ message: `Sorry, "${productName}" is currently out of stock. Please check back soon!` });
         }
         if (err.message && err.message.startsWith('Product not found:')) {
             return res.status(404).json({ message: err.message });
         }
-        res.status(400).json({ message: err.message || 'Failed to place order' });
+        res.status(400).json({ message: err.message || 'We had trouble processing your order. Please try again.' });
     }
 };
 
@@ -610,7 +590,7 @@ exports.getReceipt = async (req, res) => {
             }
         }
 
-        if (!tx) return res.status(404).json({ message: 'Receipt not found' });
+        if (!tx) return res.status(404).json({ message: 'We could not find that receipt.' });
 
         if (tx.Order) {
             tx.order = tx.Order;
@@ -618,7 +598,7 @@ exports.getReceipt = async (req, res) => {
 
         // Check authorization if it's a customer
         if (req.user.role === 'customer' && tx.userId !== req.user.id) {
-            return res.status(403).json({ message: 'Unauthorized' });
+            return res.status(403).json({ message: 'You do not have permission to view this receipt.' });
         }
 
         res.json({
@@ -635,52 +615,15 @@ exports.getReceipt = async (req, res) => {
         });
     } catch (err) {
         console.error('Download error:', err);
-        res.status(500).json({ message: 'Error downloading receipt' });
+        res.status(500).json({ message: 'Could not load your receipt right now. Please try again.' });
     }
 };
 
 exports.getCapacity = async (req, res) => {
     try {
-        // Only real production orders actively waiting for or on the embroidery machines
-        const queuedOrders = await prisma.order.findMany({
-            where: {
-                status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
-            },
-            select: {
-                estimatedTime: true
-            }
-        });
-
-        const activeOrders = queuedOrders.length;
-
-        const activeMachines = await prisma.machine.count({
-            where: {
-                status: { in: ['Running', 'Idle'] } // Active machines available in the shop
-            }
-        });
-
-        const machineCount = Math.max(1, activeMachines);
-
-        // Sum actual estimated stitch times recorded on queued orders, fallback 2 mins per typical order
-        const totalQueueMinutes = queuedOrders.reduce((sum, ord) => sum + (ord.estimatedTime || 2), 0);
-        
-        // Express checkout benchmark (1-3 items)
-        const schedule = calculatePickupSchedule({
-            orderDurationMinutes: 2,
-            queueBacklogMinutes: totalQueueMinutes,
-            activeMachines: machineCount,
-            isExpress: true,
-            startTime: new Date()
-        });
-
-        res.json({
-            activeOrders,
-            activeMachines: machineCount,
-            estimatedMinutes: schedule.estimatedWaitMinutes,
-            readyLabel: schedule.readyLabel,
-            estimatedReadyDate: schedule.estimatedReadyDate,
-            isStoreOpenNow: schedule.isStoreOpenNow
-        });
+        const { getWorkshopCapacity } = require('../../utils/workshopQueueManager');
+        const capacity = await getWorkshopCapacity(prisma);
+        res.json(capacity);
     } catch (err) {
         console.error('Capacity error:', err);
         res.status(500).json({ message: 'Server error fetching capacity', error: err.message });
@@ -690,7 +633,7 @@ exports.getCapacity = async (req, res) => {
 exports.trackOrder = async (req, res) => {
     try {
         const rawCode = (req.params.code || '').trim();
-        if (!rawCode) return res.status(400).json({ error: 'Tracking code is required' });
+        if (!rawCode) return res.status(400).json({ error: 'Please enter your Order ID or claim code to track.' });
 
         const cleanCode = rawCode.replace(/^[#]/, '').trim();
         const strippedCode = cleanCode.replace(/^A-/i, '').replace(/^WI-/i, '').replace(/^ORD-/i, '').trim();
@@ -722,7 +665,7 @@ exports.trackOrder = async (req, res) => {
         });
 
         if (!order) {
-            return res.status(404).json({ error: `Order '${rawCode}' not found. Please check your claim stub.` });
+            return res.status(404).json({ error: `We couldn't find an order with tracking code "${rawCode}". Please check your claim stub and try again.` });
         }
 
         const sanitizeClient = (rawName) => {
@@ -856,6 +799,7 @@ exports.getLiveQueue = async (req, res) => {
                     estimatedTime: true,
                     personalization: true,
                     items: true,
+                    processedBy: true,
                     createdAt: true,
                     updatedAt: true
                 }
@@ -1191,7 +1135,8 @@ exports.downloadReceipt = async (req, res) => {
         drawDetail('RECEIPT', id);
         drawDetail('DATE', dateStr);
         drawDetail('TIME', timeStr);
-        drawDetail('CASHIER', 'StitchMaster AI');
+        const cashierName = tx.order?.processedBy || tx.order?.garmentsReceivedBy || (tx.order?.personalization?.statusHistory?.[0]?.actor) || 'Shop Counter';
+        drawDetail('CASHIER', cashierName);
         drawDetail('CUSTOMER', tx.user?.username || 'Valued Client');
 
         doc.moveDown(1);
@@ -1497,6 +1442,10 @@ exports.cancelOrder = async (req, res) => {
             });
             socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
         }
+
+        // Invalidate workshop queue watermark so capacity and scheduling recalculate cleanly
+        const { invalidateQueue } = require('../../utils/workshopQueueManager');
+        invalidateQueue();
 
         res.json({
             success: true,

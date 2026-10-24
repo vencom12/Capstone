@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail } = require('../../utils/emailService');
+const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangedAlertEmail } = require('../../utils/emailService');
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
@@ -23,6 +23,17 @@ exports.register = async (req, res) => {
         const cleanAddress = address ? address.trim() : '';
         const cleanEmail = (email || '').trim().toLowerCase();
         const cleanUsername = (username || '').trim();
+
+        // Validate email format and reject single-letter TLDs or common domain typos
+        const rfcEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!cleanEmail || !rfcEmailRegex.test(cleanEmail)) {
+            return res.status(400).json({ message: 'Please enter a valid email address with a valid domain extension (e.g. name@example.com).' });
+        }
+        const domain = cleanEmail.split('@')[1] || '';
+        const invalidTypos = ['gmail.c', 'gmail.co', 'gmail.con', 'gmail.cm', 'gmai.com', 'gamil.com', 'yahoo.c', 'yahoo.co', 'yahoo.con', 'hotmail.c', 'hotmail.co', 'outlook.c'];
+        if (invalidTypos.includes(domain)) {
+            return res.status(400).json({ message: `"${domain}" is not a valid email domain. Did you mean @${domain.replace(/\.[a-z0-9]+$/, '.com')}?` });
+        }
 
         // Check if user exists (case-insensitive)
         const existingUser = await prisma.user.findFirst({
@@ -140,23 +151,23 @@ exports.login = async (req, res) => {
             }
         });
 
-        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!user) return res.status(400).json({ message: 'Wrong username or password. Please check your spelling and try again.' });
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!isMatch) return res.status(400).json({ message: 'Wrong username or password. Please check your spelling and try again.' });
 
         if (user.isActive === false) {
             return res.status(403).json({ 
-                message: 'Your account has been deactivated. Please contact support or store management.' 
+                message: 'Your account is currently inactive. Please contact store support for assistance.' 
             });
         }
 
         if (portal) {
             if (portal === 'admin' && user.role !== 'admin') {
-                return res.status(403).json({ message: 'Unauthorized: This account does not have administrator privileges.' });
+                return res.status(403).json({ message: 'This account does not have administrator access.' });
             }
             if (portal === 'employee' && user.role !== 'employee' && user.role !== 'admin') {
-                return res.status(403).json({ message: 'Unauthorized: This account does not have staff privileges.' });
+                return res.status(403).json({ message: 'This account does not have staff access.' });
             }
         }
 
@@ -201,7 +212,7 @@ exports.login = async (req, res) => {
         });
     } catch (err) {
         console.error('Login Error:', err);
-        res.status(500).json({ message: 'Server error during login' });
+        res.status(500).json({ message: 'Something went wrong while signing you in. Please try again.' });
     }
 };
 
@@ -239,10 +250,10 @@ exports.me = async (req, res) => {
                 tenantId: true 
             }
         });
-        if (!user) return res.status(401).json({ message: 'User not found' });
+        if (!user) return res.status(401).json({ message: 'We could not find your account. Please sign in again.' });
         res.json({ user });
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Something went wrong. Please try again.' });
     }
 };
 
@@ -252,7 +263,7 @@ exports.updateProfile = async (req, res) => {
         const userId = req.user.id;
 
         const currentUser = await prisma.user.findUnique({ where: { id: userId } });
-        if (!currentUser) return res.status(404).json({ message: 'User not found' });
+        if (!currentUser) return res.status(404).json({ message: 'We could not find your account.' });
 
         const searchCriteria = [];
         if (username) searchCriteria.push({ username: username.trim() });
@@ -267,7 +278,7 @@ exports.updateProfile = async (req, res) => {
             });
 
             if (existingUser) {
-                return res.status(400).json({ message: 'Username or Email already in use' });
+                return res.status(400).json({ message: 'That username or email address is already taken. Please choose another.' });
             }
         }
 
@@ -818,12 +829,20 @@ exports.resetPassword = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        await prisma.user.update({
+        const updatedUser = await prisma.user.update({
             where: { id: user.id },
             data: {
                 password: hashedPassword,
                 isEmailVerified: true,
                 tokenVersion: { increment: 1 }
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                role: true,
+                isEmailVerified: true,
+                tokenVersion: true
             }
         });
 
@@ -837,10 +856,99 @@ exports.resetPassword = async (req, res) => {
             }
         }).catch(() => {});
 
-        res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
+        // Security: Dispatch password-changed alert email to user
+        sendPasswordChangedAlertEmail(updatedUser.email, updatedUser.username).catch((mailErr) => {
+            console.error('[resetPassword] Failed to send password changed alert email:', mailErr?.message || mailErr);
+        });
+
+        // Auto-login: Issue JWT session cookie so the user doesn't have to re-enter credentials
+        const authToken = jwt.sign(
+            { id: updatedUser.id, role: updatedUser.role, tokenVersion: updatedUser.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        res.cookie('token', authToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            path: '/'
+        });
+
+        const safeUser = {
+            id: updatedUser.id,
+            username: updatedUser.username,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            isEmailVerified: updatedUser.isEmailVerified
+        };
+
+        res.json({
+            success: true,
+            message: 'Password updated successfully! You have been automatically signed in.',
+            user: safeUser,
+            token: authToken
+        });
     } catch (err) {
         console.error('resetPassword error:', err);
         res.status(500).json({ success: false, message: 'Server error resetting password.' });
+    }
+};
+
+/**
+ * GET/POST /auth/password/validate-token — Pre-validates a reset token on page load for instant UX feedback
+ */
+exports.validateResetToken = async (req, res) => {
+    try {
+        const token = String(req.query?.token || req.body?.token || '').trim();
+        if (!token || !token.startsWith('rst_')) {
+            return res.status(400).json({ valid: false, message: 'Invalid or missing reset link.' });
+        }
+
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        const record = await prisma.emailVerification.findFirst({
+            where: {
+                OR: [
+                    { token: hashedToken },
+                    { token }
+                ]
+            }
+        });
+
+        if (!record) {
+            return res.status(400).json({ valid: false, message: 'This reset link has already been used or has expired. Please request a new one.' });
+        }
+
+        if (new Date() > new Date(record.expiresAt)) {
+            await prisma.emailVerification.deleteMany({ where: { id: record.id } }).catch(() => {});
+            return res.status(400).json({ valid: false, message: 'This reset link has expired. Please request a new one.' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: record.userId },
+            select: { id: true, email: true, username: true, isActive: true }
+        });
+
+        if (!user || user.isActive === false) {
+            return res.status(400).json({ valid: false, message: 'The associated user account is unavailable or deactivated.' });
+        }
+
+        const maskEmail = (em) => {
+            if (!em || !em.includes('@')) return '';
+            const [u, d] = em.split('@');
+            if (u.length <= 2) return `${u[0]}*@${d}`;
+            return `${u[0]}${'*'.repeat(Math.min(u.length - 2, 5))}${u[u.length - 1]}@${d}`;
+        };
+
+        return res.json({
+            valid: true,
+            maskedEmail: maskEmail(user.email),
+            username: user.username,
+            expiresAt: record.expiresAt
+        });
+    } catch (err) {
+        console.error('validateResetToken error:', err);
+        return res.status(500).json({ valid: false, message: 'Server error validating reset token.' });
     }
 };
 
@@ -925,5 +1033,55 @@ exports.changePassword = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server error while changing password.' });
     }
 };
+
+/**
+ * Industry-standard real-time availability check for usernames & emails
+ * Prevents account collision before full form submission
+ */
+exports.checkAvailability = async (req, res) => {
+    try {
+        const { username, email } = req.query;
+        if (!username && !email) {
+            return res.status(400).json({ message: 'Please provide a username or email parameter to check.' });
+        }
+
+        if (username) {
+            const cleanUser = String(username).trim();
+            if (cleanUser.length < 3) {
+                return res.json({ field: 'username', available: false, message: 'Username must be at least 3 characters.' });
+            }
+            const exists = await prisma.user.findFirst({
+                where: { username: { equals: cleanUser, mode: 'insensitive' } },
+                select: { id: true }
+            });
+            return res.json({
+                field: 'username',
+                available: !exists,
+                message: exists ? `Username "${cleanUser}" is already taken.` : 'Username is available'
+            });
+        }
+
+        if (email) {
+            const cleanEmail = String(email).trim().toLowerCase();
+            const rfcEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!rfcEmailRegex.test(cleanEmail)) {
+                return res.json({ field: 'email', available: false, message: 'Please enter a valid email address (e.g. name@example.com).' });
+            }
+            const exists = await prisma.user.findFirst({
+                where: { email: { equals: cleanEmail, mode: 'insensitive' } },
+                select: { id: true }
+            });
+            return res.json({
+                field: 'email',
+                available: !exists,
+                message: exists ? 'An account with this email already exists.' : 'Email is available'
+            });
+        }
+    } catch (err) {
+        console.error('[checkAvailability] Error:', err);
+        return res.status(500).json({ message: 'Could not check availability. Please try again.' });
+    }
+};
+
 
 

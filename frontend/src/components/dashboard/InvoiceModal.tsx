@@ -314,6 +314,15 @@ export default function InvoiceModal({
                       <td style={{ textAlign: 'right', padding: '1.5px 0', color: '#000000', fontFamily: 'monospace' }}>{clientPhone}</td>
                     </tr>
                   )}
+                  {(() => {
+                    const staffName = order?.processedBy || order?.garmentsReceivedBy || (order?.personalization as any)?.statusHistory?.[0]?.actor || fetchedData?.processedBy || '';
+                    return staffName ? (
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>SERVED BY:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000' }}>{staffName}</td>
+                      </tr>
+                    ) : null;
+                  })()}
                 </tbody>
               </table>
 

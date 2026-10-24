@@ -162,7 +162,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
 export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReorder }: OrderListProps) {
   const [tab, setTab] = useState<'active' | 'completed' | 'cancelled'>('active');
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const [pageSize, setPageSize] = useState(6);
 
   const sorted = [...orders].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -234,6 +234,11 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
             totalItems={visible.length}
             pageSize={pageSize}
             onPageChange={setPage}
+            pageSizeOptions={[6, 12, 24]}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
             itemLabel={
               tab === 'active'
                 ? 'active orders'

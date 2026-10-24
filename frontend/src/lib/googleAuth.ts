@@ -71,6 +71,18 @@ function describeFirebaseError(err: any): string {
   if (err?.code === 'auth/unauthorized-domain') {
     return `Domain "${window.location.hostname}" is not authorized in Firebase Console > Authentication > Settings > Authorized domains.`;
   }
+  if (err?.code === 'auth/internal-error') {
+    return 'Firebase authentication service error or network timeout. Please check your internet connection or verify the local server is running.';
+  }
+  if (err?.code === 'auth/network-request-failed') {
+    return 'Network request failed. Please check your internet connection.';
+  }
+  if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+    return 'Google sign-in was cancelled.';
+  }
+  if (err?.code === 'auth/popup-blocked') {
+    return 'Popup was blocked by your browser. Please allow popups for this site.';
+  }
   return err?.message || 'Google sign-in failed.';
 }
 

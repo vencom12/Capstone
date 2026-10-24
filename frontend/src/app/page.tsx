@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import RightPanel from '@/components/dashboard/RightPanel';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
+import OrderSuccessModal from '@/components/checkout/OrderSuccessModal';
 import AiAttendant from '@/components/products/AiAttendant';
 import { API_BASE } from '@/lib/api';
 import type { Product } from '@/lib/types';
@@ -25,6 +26,7 @@ export default function StorefrontPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [successOrder, setSuccessOrder] = useState<any | null>(null);
 
   // Computed staff check: immediately true if logged in as staff, false otherwise
   const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'employee');
@@ -199,9 +201,29 @@ export default function StorefrontPage() {
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        onSuccess={() => {
+        onSuccess={(createdOrder) => {
           setIsCheckoutOpen(false);
-          router.push('/dashboard');
+          if (createdOrder) {
+            setSuccessOrder(createdOrder);
+          } else {
+            router.push('/dashboard');
+          }
+        }}
+      />
+
+      {/* Shopee-style Post-Payment Order Success Modal */}
+      <OrderSuccessModal
+        isOpen={Boolean(successOrder)}
+        onClose={() => setSuccessOrder(null)}
+        order={successOrder}
+        onViewOrders={() => {
+          setSuccessOrder(null);
+          router.push('/dashboard?tab=orders');
+        }}
+        onSelectProduct={(prod) => {
+          setSuccessOrder(null);
+          setSelectedProduct(prod);
+          setIsModalOpen(true);
         }}
       />
 

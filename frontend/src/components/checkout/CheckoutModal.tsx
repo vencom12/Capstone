@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import GlassModal from '@/components/ui/GlassModal';
-import GlassButton from '@/components/ui/GlassButton';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
@@ -17,7 +16,7 @@ interface CheckoutModalProps {
   onClose: () => void;
   checkoutItems?: BasketItem[];
   initialFulfillmentType?: 'delivery' | 'pickup';
-  onSuccess?: () => void;
+  onSuccess?: (createdOrder?: any) => void;
 }
 
 type PaymentMethod = 'gcash';
@@ -38,6 +37,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [latestCreatedOrder, setLatestCreatedOrder] = useState<any | null>(null);
   const [isBypassing, setIsBypassing] = useState(false);
 
   const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
@@ -45,6 +45,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
   const [readyLabel, setReadyLabel] = useState<string | null>(null);
   const [estimatedReadyDate, setEstimatedReadyDate] = useState<string | null>(null);
+  const [activeQueueOrdersCount, setActiveQueueOrdersCount] = useState<number>(0);
 
   // PSA/Retail Style Appointment Window Selection (Option 1: Modern Retail Model)
   // Claim Date Selection (Customer chooses target day; pick up anytime during store hours)
@@ -65,13 +66,16 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           }
         })
         .catch(console.error);
-      api.get<{ estimatedMinutes: number; readyLabel?: string; estimatedReadyDate?: string }>('/api/customer/capacity')
+      api.get<{ estimatedMinutes: number; readyLabel?: string; estimatedReadyDate?: string; activeOrders?: number }>('/api/customer/capacity')
         .then(res => {
           if (res) {
             setEstimatedMinutes(res.estimatedMinutes);
             if (res.readyLabel) setReadyLabel(res.readyLabel);
             if (res.estimatedReadyDate) {
               setEstimatedReadyDate(res.estimatedReadyDate);
+            }
+            if (typeof res.activeOrders === 'number') {
+              setActiveQueueOrdersCount(res.activeOrders);
             }
           }
         })
@@ -139,7 +143,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     const chosen = new Date(year, month - 1, day, 10, 0, 0);
 
     const dateLabel = dateObj.friendlyLabel;
-    const label = `${dateLabel} • Store Hours (10 AM–8 PM)`;
+    const label = `${dateLabel} (Estimated completion${readyLabel ? `: ${readyLabel}` : ''})`;
 
     return {
       chosenDueDate: chosen.toISOString(),
@@ -164,7 +168,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
 
     if (user && !user.isEmailVerified) {
-      showToast('Please verify your email address before placing an order.', 'error');
+      showToast('Please check your email to verify your account before placing an order.', 'error');
       return;
     }
 
@@ -226,6 +230,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
       if (orderRes?.order?.orderId) {
         setPendingOrderId(orderRes.order.orderId);
+        setLatestCreatedOrder(orderRes.order);
       }
 
       // Step 3: Call AI verification with the uploaded receipt
@@ -260,7 +265,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
           } catch (cleanErr) {
             console.error('[Checkout Cleanup Notice]:', cleanErr);
           }
-          handleModalClose(true);
+          handleModalClose(true, orderRes.order);
         }
       } else {
         // Auto-fill extracted reference ID so customer doesn't have to manually retype 13 digits!
@@ -285,7 +290,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
   const handleSubmitManualRef = async () => {
     const cleanRef = manualRef.trim();
     if (!cleanRef) {
-      showToast('Please enter your GCash Reference Number.', 'error');
+      showToast('Please enter your GCash reference number.', 'error');
       return;
     }
 
@@ -294,7 +299,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     setIsProcessing(true);
     try {
       const firstPersonalizedItem = items.find((i) => i.personalization?.text);
-      await api.post('/api/customer/order/submit', {
+      const res = await api.post<{ order: any; receiptID: string }>('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
         address: currentAddress,
@@ -320,41 +325,37 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       });
 
       setPaymentVerified(true);
+      setLatestCreatedOrder(res?.order);
       setAiVerificationResult(`GCash Reference Saved: ${cleanRef}`);
       showToast('Order received! Thank you for your payment.', 'success');
-      await refreshUser();
-      await fetchDashboardState();
-      try {
-        await refreshUser();
-        await fetchDashboardState();
-        handleClearProcessedItems();
-      } catch (cleanErr) {
-        console.error('[Manual Ref Cleanup Notice]:', cleanErr);
-      }
-      handleModalClose(true);
+      handleModalClose(true, res?.order);
+      refreshUser().catch(() => {});
+      fetchDashboardState().catch(() => {});
+      handleClearProcessedItems();
     } catch (err: any) {
       console.error('[Manual Ref Order Submit Catch]:', err);
-      showToast(err.message || 'Failed to submit order. Please try again.', 'error');
+      showToast(err.message || 'We could not submit your order right now. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleModalClose = (wasSuccessful = false) => {
+  const handleModalClose = (wasSuccessful = false, createdOrder: any = null) => {
     setPendingOrderId(null);
     setReceiptFile(null);
     setAiVerificationResult(null);
     setManualRef('');
     setPaymentVerified(false);
+    setLatestCreatedOrder(null);
     onClose();
     if (wasSuccessful && onSuccess) {
-      onSuccess();
+      onSuccess(createdOrder);
     }
   };
 
   const handleBypassGCash = async () => {
     if (items.length === 0) {
-      showToast('Your cart is empty.', 'error');
+      showToast('Your basket is empty. Please add items before checking out.', 'error');
       return;
     }
 
@@ -365,7 +366,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
 
     try {
       const firstPersonalizedItem = items.find((i) => i.personalization?.text);
-      await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
+      const bypassRes = await api.post<{ order: any; receiptID: string }>('/api/customer/order/submit', {
         items,
         totalAmount: finalTotal,
         address: currentAddress,
@@ -392,40 +393,19 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
       });
 
       setPaymentVerified(true);
+      setLatestCreatedOrder(bypassRes?.order);
       setAiVerificationResult(`Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
       showToast('Test Mode: GCash Payment Bypassed & Order Placed!', 'success');
-
-      try {
-        await refreshUser();
-        await fetchDashboardState();
-        handleClearProcessedItems();
-      } catch (cleanErr) {
-        console.error('[Bypass Cleanup Notice]:', cleanErr);
-      }
-
-      handleModalClose(true);
+      handleModalClose(true, bypassRes?.order);
+      refreshUser().catch(() => {});
+      fetchDashboardState().catch(() => {});
+      handleClearProcessedItems();
     } catch (err: any) {
       console.error('[Bypass Order Error]:', err);
       showToast(err.message || 'Failed to bypass payment.', 'error');
     } finally {
       setIsBypassing(false);
     }
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!paymentVerified) {
-      showToast('Please upload your receipt or enter your GCash reference number.', 'error');
-      return;
-    }
-    showToast('Order confirmed! We have received your order.', 'success');
-    try {
-      await refreshUser();
-      await fetchDashboardState();
-      handleClearProcessedItems();
-    } catch (cleanErr) {
-      console.error('[Place Order Cleanup Notice]:', cleanErr);
-    }
-    handleModalClose(true);
   };
 
   return (
@@ -513,18 +493,22 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               </div>
 
               {/* Dynamic Status Bar */}
-              <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass/50 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                  <span className="text-[0.7rem] font-medium text-text-main truncate">
-                    {selectedDateStr === (availableDates[0]?.dateStr)
-                      ? (readyLabel ? `Ready starting ${readyLabel}` : 'Ready for counter claim')
-                      : `Held for you all day (10:00 AM – 8:00 PM)`}
+              <div className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-border-glass/50 flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center min-w-0">
+                    <span className="text-[0.7rem] font-medium text-text-main truncate">
+                      {selectedDateStr === (availableDates[0]?.dateStr)
+                        ? `Production Target: Today (~${estimatedMinutes || 15} mins active artisan time)`
+                        : `Target claim date: ${availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}`}
+                    </span>
+                  </div>
+                  <span className="text-[0.58rem] px-1.5 py-0.5 rounded border border-border-glass/50 text-text-dim font-medium shrink-0 ml-2">
+                    {activeQueueOrdersCount > 0 ? `${activeQueueOrdersCount} orders ahead in queue` : 'Workshop Ready'}
                   </span>
                 </div>
-                <span className="text-[0.58rem] px-1.5 py-0.5 rounded border border-border-glass/50 text-text-dim font-medium shrink-0 ml-2">
-                  Counter Claim
-                </span>
+                <p className="text-[0.62rem] text-amber-400/90 m-0 leading-normal">
+                  ⏱️ Note: Your exact queue placement &amp; ready time will be locked in immediately once payment is verified.
+                </p>
               </div>
             </div>
 
@@ -605,18 +589,6 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
               onBypassPayment={handleBypassGCash}
               isBypassing={isBypassing}
             />
-
-            {paymentVerified && (
-              <GlassButton
-                variant="primary"
-                fullWidth
-                size="md"
-                onClick={handlePlaceOrder}
-                className="shadow-sm hover:shadow-md"
-              >
-                Confirm &amp; Place Order
-              </GlassButton>
-            )}
           </div>
         </div>
       </div>

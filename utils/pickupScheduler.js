@@ -266,14 +266,14 @@ function calculatePickupSchedule({
 }) {
     const machines = Math.max(1, activeMachines);
     
-    // Cooperative Preemption at Unit Granularity:
-    // Express orders (1-3 items) never wait behind a 50-piece bulk batch.
-    // They only wait for the single garment currently hooped on the machine (~1.5-3 mins)
-    const effectiveBacklog = isExpress 
-        ? Math.min(3, Math.ceil(queueBacklogMinutes / machines))
-        : Math.ceil(queueBacklogMinutes / machines);
+    // Real workshop FIFO queue calculation:
+    // Every order placed ahead in the queue requires active artisan machine time.
+    // Total backlog minutes are distributed across functional embroidery machines.
+    const effectiveBacklog = Math.ceil(Math.max(0, queueBacklogMinutes) / machines);
 
-    const activeMinutesNeeded = effectiveBacklog + Math.max(2, Math.ceil(orderDurationMinutes));
+    // Total production time = waiting in queue + time to embroider incoming order
+    const orderStitchMinutes = Math.max(2, Math.ceil(orderDurationMinutes));
+    const activeMinutesNeeded = effectiveBacklog + orderStitchMinutes;
     const estimatedReadyDate = addActiveProductionMinutes(startTime, activeMinutesNeeded);
 
     const nowMs = startTime.getTime();

@@ -9,6 +9,8 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   className?: string;
   itemLabel?: string;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (newPageSize: number) => void;
 }
 
 export default function Pagination({
@@ -17,7 +19,9 @@ export default function Pagination({
   pageSize,
   onPageChange,
   className = '',
-  itemLabel = 'items'
+  itemLabel = 'items',
+  pageSizeOptions,
+  onPageSizeChange
 }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   if (totalItems <= 0) return null;
@@ -44,16 +48,43 @@ export default function Pagination({
 
   return (
     <div
-      className={`flex items-center justify-between flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass/40 text-xs text-text-dim ${className}`}
+      className={`flex items-center justify-between flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass/40 text-xs text-text-dim w-full ${className}`}
     >
-      <div className="flex items-center gap-1.5 font-medium">
-        <span>Showing</span>
-        <span className="font-semibold text-text-main font-mono">{from}</span>
-        <span>–</span>
-        <span className="font-semibold text-text-main font-mono">{to}</span>
-        <span>of</span>
-        <span className="font-semibold text-text-main font-mono">{totalItems}</span>
-        <span>{itemLabel}</span>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 font-medium">
+          <span>Showing</span>
+          <span className="font-semibold text-text-main font-mono">{from}</span>
+          <span>–</span>
+          <span className="font-semibold text-text-main font-mono">{to}</span>
+          <span>of</span>
+          <span className="font-semibold text-text-main font-mono">{totalItems}</span>
+          <span>{itemLabel}</span>
+        </div>
+
+        {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange && (
+          <div className="flex items-center gap-1 text-[11px] text-text-dim/80 pl-2 border-l border-white/10">
+            <span>Per page:</span>
+            <div className="flex items-center gap-1">
+              {pageSizeOptions.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => {
+                    onPageSizeChange(opt);
+                    onPageChange(1);
+                  }}
+                  className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition cursor-pointer border ${
+                    pageSize === opt
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {totalPages > 1 && (

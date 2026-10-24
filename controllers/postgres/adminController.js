@@ -18,7 +18,7 @@ exports.getDashboardState = async (req, res) => {
                 skip,
                 take: limit
             }),
-            prisma.inventory.findMany(),
+            prisma.inventory.findMany({ orderBy: { item: 'asc' } }),
             prisma.product.findMany({ orderBy: { createdAt: 'desc' } }),
             prisma.user.count(),
             prisma.order.count(),
@@ -663,7 +663,7 @@ exports.deleteProduct = async (req, res) => {
 
 exports.updateInventoryItem = async (req, res) => {
     try {
-        const { count, minThreshold, action, amount, userId, item, unit, supplierUnitCost } = req.body;
+        const { count, minThreshold, action, amount, userId, item, unit, supplierUnitCost, packSize } = req.body;
 
         // Find existing to know what changed
         const existing = await prisma.inventory.findUnique({ where: { id: req.params.id } });
@@ -686,6 +686,7 @@ exports.updateInventoryItem = async (req, res) => {
             if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
             if (item !== undefined) updateData.item = item;
             if (unit !== undefined) updateData.unit = unit;
+            if (packSize !== undefined) updateData.packSize = Math.max(1, parseInt(packSize) || 1);
             // Allow admins to set/update the actual supplier cost per unit
             if (supplierUnitCost !== undefined) {
                 updateData.supplierUnitCost = supplierUnitCost === '' || supplierUnitCost === null ? null : parseFloat(supplierUnitCost);
@@ -781,7 +782,7 @@ exports.updateInventoryItem = async (req, res) => {
 
 exports.createInventoryItem = async (req, res) => {
     try {
-        const { item, count, unit, minThreshold, supplierUnitCost } = req.body;
+        const { item, count, unit, minThreshold, supplierUnitCost, packSize } = req.body;
         if (!item) return res.status(400).json({ message: 'Item name is required' });
 
         const inventory = await prisma.inventory.create({
@@ -790,7 +791,8 @@ exports.createInventoryItem = async (req, res) => {
                 count: parseInt(count) || 0,
                 unit: unit || 'Cones',
                 minThreshold: parseInt(minThreshold) || 10,
-                supplierUnitCost: supplierUnitCost ? parseFloat(supplierUnitCost) : null
+                supplierUnitCost: supplierUnitCost ? parseFloat(supplierUnitCost) : null,
+                packSize: Math.max(1, parseInt(packSize) || 1)
             }
         });
 
@@ -826,7 +828,7 @@ exports.updateGlobalThreshold = async (req, res) => {
             data: { minThreshold: parseInt(minThreshold) }
         });
 
-        const updatedInventory = await prisma.inventory.findMany();
+        const updatedInventory = await prisma.inventory.findMany({ orderBy: { item: 'asc' } });
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, 'INVENTORY_BATCH', updatedInventory);
         res.json(updatedInventory);
     } catch (err) {
@@ -857,6 +859,16 @@ exports.updateOrdersStatus = async (req, res) => {
         const results = [];
         const errors = [];
         const username = req.user?.username || 'Admin';
+
+        // Stamp the operator name on each order for receipt/claim slip accountability
+        try {
+            await prisma.order.updateMany({
+                where: { id: { in: ids } },
+                data: { processedBy: username }
+            });
+        } catch (stampErr) {
+            console.warn('[processedBy stamp]:', stampErr.message);
+        }
 
         for (const orderId of ids) {
             try {
@@ -925,22 +937,6 @@ exports.updateOrdersStatus = async (req, res) => {
                 recalculateQueuePriorities(io).catch(err => {
                     console.error('[AI Queue Background Error] Recalculation failed:', err);
                 });
-
-                // Send order ready / in-transit email notifications asynchronously
-                const NOTIFY_STATUSES = ['ready for pick up', 'ready for pickup', 'in transit', 'out for delivery', 'order delivered'];
-                if (NOTIFY_STATUSES.includes(status?.toLowerCase())) {
-                    const { sendOrderStatusReadyEmail } = require('../../utils/emailService');
-                    results.forEach(updatedOrder => {
-                        if (!updatedOrder || !updatedOrder.userId) return;
-                        prisma.user.findUnique({ where: { id: updatedOrder.userId } }).then(cust => {
-                            if (cust && cust.email) {
-                                sendOrderStatusReadyEmail(cust.email, cust.username || cust.name, updatedOrder, status).catch(err => {
-                                    console.error('[EmailService] Ready email failed:', err.message);
-                                });
-                            }
-                        }).catch(() => {});
-                    });
-                }
             } catch (bgErr) {
                 console.error('[Background Broadcast Error]:', bgErr);
             }
@@ -1699,7 +1695,8 @@ exports.createWalkInOrder = async (req, res) => {
                             : `Walk-in order registered at counter. Payment: ${paymentMethod || 'Cash'} (${isPaid ? 'Paid' : 'Unpaid'}).`
                     }
                 ]
-            }
+            },
+            processedBy: req.user?.username || 'Shop Counter'
         };
 
         // Estimate production time using our local AI scheduler

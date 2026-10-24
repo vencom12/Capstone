@@ -35,7 +35,7 @@ if "!ENABLE_LOGGING!"=="true" (
 ) else (
     echo [CONFIG] Console-only logging. Use '--log' flag to enable file logging.
 )
-
+                                                                                
 :: ---------------------------------------------------------------------------------
 :: Step 1: Clean up existing server processes (Port lookup + PID file lookup)
 :: ---------------------------------------------------------------------------------

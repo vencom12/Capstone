@@ -32,6 +32,7 @@ const profileValidation = [
     validate
 ];
 
+router.get('/check-availability', authController.checkAvailability);
 router.post('/register', registerValidation, authController.register);
 router.post('/email/verify', authController.verifyEmail);
 router.post('/email/resend', auth(), authController.resendVerificationEmail);
@@ -40,6 +41,8 @@ router.post('/google', authController.googleAuth);
 router.post('/google/complete', authController.googleComplete);
 router.post('/password/forgot', authController.forgotPassword);
 router.post('/password/reset', authController.resetPassword);
+router.get('/password/validate-token', authController.validateResetToken);
+router.post('/password/validate-token', authController.validateResetToken);
 router.put('/password/change', auth(), authController.changePassword);
 router.post('/password/change', auth(), authController.changePassword);
 router.post('/login', loginValidation, authController.login);

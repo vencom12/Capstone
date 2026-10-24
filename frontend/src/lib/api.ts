@@ -246,7 +246,7 @@ export function apiFetch<T = unknown>(
 // there is a reason why the system is not switching to the mongodb if the system is opened offline
 // Convenience methods
 export const api = {
-  get: <T = unknown>(url: string) => apiFetch<T>(url),
+  get: <T = unknown>(url: string, options?: RequestInit) => apiFetch<T>(url, options),
 
   post: <T = unknown>(url: string, body: unknown) =>
     apiFetch<T>(url, {

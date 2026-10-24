@@ -207,6 +207,17 @@ const dashboardLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+// Anti-enumeration Rate Limiter: Max 60 live availability checks per minute per IP
+const availabilityLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many availability checks from this IP. Please slow down.' }
+});
+app.use('/api/auth/check-availability', availabilityLimiter);
+app.use('/api/v1/auth/check-availability', availabilityLimiter);
+
 // Strict Checkout Rate Limiter: Max 5 checkout requests per minute
 const checkoutLimiter = rateLimit({
     windowMs: 60 * 1000,

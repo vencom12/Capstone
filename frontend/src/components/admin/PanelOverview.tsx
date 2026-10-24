@@ -226,11 +226,11 @@ export default function PanelOverview({
 
   // Pagination for Active Orders Queue Table
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, dateFilter, queueTab]);
+  }, [searchQuery, dateFilter, queueTab, pageSize]);
 
   const paginatedOrders = activeOrders.slice(
     (currentPage - 1) * pageSize,
@@ -854,6 +854,11 @@ export default function PanelOverview({
           totalItems={activeOrders.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="orders in queue"
         />
       </div>

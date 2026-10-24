@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
 
 interface GCashPaymentProps {
   receiptFile?: File | null;
@@ -43,6 +44,9 @@ export default function GCashPayment({
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [refTouched, setRefTouched] = useState(false);
+  const [refError, setRefError] = useState('');
+  const [shakeManualRef, setShakeManualRef] = useState(false);
 
   const accountNo = "09288103928";
   const displayAccountNo = "0928 810 3928";
@@ -52,6 +56,44 @@ export default function GCashPayment({
   const analyzing = Boolean(aiAnalyzing ?? isAnalyzing);
   const verified = Boolean(paymentVerified ?? isVerified);
   const handleRefChange = setManualRef || onManualRefChange || (() => {});
+
+  const validateManualRef = (val: string) => {
+    const clean = val.trim();
+    if (!clean) {
+      const err = 'Please enter your GCash reference number';
+      setRefError(err);
+      return err;
+    }
+    const cleanChars = clean.replace(/[\s-]/g, '');
+    if (cleanChars.length < 9) {
+      const err = 'Please enter at least 9 characters from your GCash reference number';
+      setRefError(err);
+      return err;
+    }
+    setRefError('');
+    return '';
+  };
+
+  const handleManualRefBlur = () => {
+    setRefTouched(true);
+    validateManualRef(manualRef);
+  };
+
+  const handleConfirmManualRef = () => {
+    setRefTouched(true);
+    const err = validateManualRef(manualRef);
+    if (err) {
+      setShakeManualRef(true);
+      setTimeout(() => setShakeManualRef(false), 600);
+      showToast({
+        title: 'Reference Number Needed',
+        message: err,
+        type: 'warning'
+      });
+      return;
+    }
+    onSubmitManualRef();
+  };
 
   const copyToClipboard = (text: string, type: 'number' | 'amount') => {
     navigator.clipboard.writeText(text);
@@ -185,26 +227,42 @@ export default function GCashPayment({
               </button>
             </div>
           ) : !verified ? (
-            <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1">
-              <span className="text-[0.75rem] text-text-main font-bold">
-                Can't read clearly? You can also type your GCash Reference Number below:
-              </span>
+            <div className={`flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1 ${shakeManualRef ? 'animate-shake' : ''}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[0.75rem] text-text-main font-bold">
+                  Can't read clearly? You can also type your GCash Reference Number below:
+                </span>
+                {refTouched && !refError && manualRef.trim() && (
+                  <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Ready</span>
+                )}
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="e.g. 1002 9384 1029"
                   value={manualRef}
-                  onChange={(e) => handleRefChange(e.target.value)}
-                  className="flex-1 bg-bg-surface border border-border-glass px-3 py-2 rounded-lg text-text-main font-mono text-[0.85rem] outline-none focus:border-primary"
+                  onChange={(e) => {
+                    handleRefChange(e.target.value);
+                    if (refTouched) validateManualRef(e.target.value);
+                  }}
+                  onBlur={handleManualRefBlur}
+                  className={`flex-1 bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.85rem] outline-none transition-all ${
+                    refTouched && refError
+                      ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                      : 'border-border-glass focus:border-primary'
+                  }`}
                 />
                 <button
                   type="button"
-                  onClick={onSubmitManualRef}
+                  onClick={handleConfirmManualRef}
                   className="bg-primary text-white font-bold px-4 py-2 rounded-lg text-[0.78rem] hover:bg-primary/90 transition-all cursor-pointer shadow-sm shrink-0"
                 >
                   Confirm Order →
                 </button>
               </div>
+              {refTouched && refError && (
+                <InlineError message={refError} variant="field" />
+              )}
             </div>
           ) : null}
         </div>

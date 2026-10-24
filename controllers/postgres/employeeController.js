@@ -14,7 +14,7 @@ exports.getDashboardState = async (req, res) => {
                 ], 
                 take: 100 
             }),
-            prisma.inventory.findMany(),
+            prisma.inventory.findMany({ orderBy: { item: 'asc' } }),
             prisma.product.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
             prisma.machine.findMany({ include: { assignedUser: true } })
         ]);
@@ -87,6 +87,10 @@ exports.updateOrderStatus = async (req, res) => {
         const enrichedProducts = await enrichProductsWithStock(productsList);
         socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
+        // Invalidate workshop queue watermark so capacity and scheduling recalculate cleanly
+        const { invalidateQueue } = require('../../utils/workshopQueueManager');
+        invalidateQueue();
+
         // Recalculate AI Queue priorities asynchronously
         const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
         setImmediate(() => {
@@ -94,19 +98,6 @@ exports.updateOrderStatus = async (req, res) => {
                 console.error('[AI Queue Background Error] Recalculation failed:', err);
             });
         });
-
-        // Send ready for pick up email notification asynchronously
-        if (['ready for pick up', 'ready for pickup'].includes(status?.toLowerCase())) {
-            prisma.user.findUnique({ where: { id: updatedOrder.userId } }).then(cust => {
-                if (cust && cust.email) {
-                    const { sendOrderStatusReadyEmail } = require('../../utils/emailService');
-                    sendOrderStatusReadyEmail(cust.email, cust.username, updatedOrder, status).catch(err => {
-                        console.error('[EmailService] Order ready status email dispatch failed:', err.message);
-                    });
-                }
-            }).catch(() => {});
-        }
-
         res.json(updatedOrder);
     } catch (err) {
         console.error('Employee Order Update Error:', err);

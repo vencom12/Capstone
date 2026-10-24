@@ -249,6 +249,12 @@ def create_non_technical_doc(filename):
                     "The customer expects items added in Tab 1 to appear in Tab 2 without refreshing.",
                     "The system synchronizes shopping cart items across all open tabs in real-time.",
                     "Synchronized Browser Tabs"
+                ),
+                (
+                    "What if an administrator rapidly switches between Customer Reviews, Audit Trail, and Order History tabs?",
+                    "The admin expects the screens to appear instantly without staring at 'Loading...' text or wireframe skeleton placeholders on every click.",
+                    "The system implements Stale-While-Revalidate (SWR) in-memory caching. It remembers previously fetched records, rendering the entire table in zero milliseconds (<16ms). Behind the scenes, it quietly synchronizes with the server and updates without visual interruption.",
+                    "Instant Tab Navigation (SWR)"
                 )
             ]
         }
@@ -460,6 +466,12 @@ def create_technical_doc(filename):
                     "Staff leaves browser open and closes device.",
                     "Admin and Employee tokens omit persistent `maxAge` and check `sessionStorage`. Browser exit destroys authentication.",
                     "useAuthStore.ts"
+                ),
+                (
+                    "Dashboard Tab Hopping & Layout Thrashing (SWR Architecture)",
+                    "Admin repeatedly navigates between Customer Reviews, Audit Ledger, and Order History tabs.",
+                    "Implements module-level Stale-While-Revalidate (SWR) in-memory caching. Returning to visited tabs instantly serves existing dataset (0ms latency, zero skeleton flash) while quietly dispatching an asynchronous background revalidation query. Skeletons and loading spinners are strictly isolated to active user search queries, page resizing, or date filter mutations.",
+                    "PanelCustomerReviews.tsx, PanelAuditTrail.tsx, app/admin/page.tsx"
                 )
             ]
         }

@@ -1927,6 +1927,21 @@ Output ONLY a JSON object:
                 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
                 socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { orderId, status: 'In Queue' });
             }
+
+            // Dispatch verified order confirmation email with estimated ready date & attendant
+            prisma.order.findFirst({
+                where: { orderId: orderId },
+                include: { user: { select: { email: true, username: true } } }
+            }).then(verifiedOrder => {
+                if (verifiedOrder && verifiedOrder.user?.email) {
+                    const { sendOrderConfirmationEmail } = require('../../utils/emailService');
+                    sendOrderConfirmationEmail(verifiedOrder.user.email, verifiedOrder.user.username, verifiedOrder).catch(mailErr => {
+                        console.error('[AI Vision] Order confirmation email dispatch failed:', mailErr?.message || mailErr);
+                    });
+                }
+            }).catch(fetchErr => {
+                console.error('[AI Vision] Order fetch for email notification failed:', fetchErr?.message || fetchErr);
+            });
         } else if (isHighValue && allChecksPassed) {
             // For high value orders that passed OCR/AI checks: notify staff on socket for 1-click ledger approval
             const io = req.app.get('io');

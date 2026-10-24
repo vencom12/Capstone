@@ -11,6 +11,7 @@ import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import OptimizedImage from '@/components/ui/OptimizedImage';
+import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
 
 interface ProductModalProps {
   product: Product | null;
@@ -191,10 +192,21 @@ export default function ProductModal({
     }
   }, [product, isOpen]);
 
+  // Lettering extra pricing rule:
+  // First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
+  const isBig = isBigGarment(product?.category, product?.name);
+  const lettering = useMemo(() => {
+    if (!product || !isPersonalized) {
+      return { extraCost: 0, extraLettersCount: 0, ratePerLetter: isBig ? 10 : 7, explanation: '' };
+    }
+    return calculateLetteringCost(customText, isBig);
+  }, [product, isPersonalized, customText, isBig]);
+
   if (!product) return null;
 
   const productId = product.id || product._id || '';
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
+  const finalUnitPrice = effectivePrice + (isPersonalized ? lettering.extraCost : 0);
 
   // Check if product actually has defined variants
   const hasVariants = Boolean(product.variants && Array.isArray(product.variants) && product.variants.length > 0);
@@ -212,14 +224,12 @@ export default function ProductModal({
   const effectiveStock = hasVariants ? selectedVariantStock : 0;
   const isOutOfStock = !hasVariants || effectiveStock <= 0;
 
-
-
   const handleAdd = () => {
     setActionError(null);
     setMonogramError(null);
 
     if (isOutOfStock) {
-      const err = `${product.name} is out of stock`;
+      const err = `${product.name} is currently out of stock. Please check back soon!`;
       setActionError(err);
       showToast(err, 'error');
       return false;
@@ -227,9 +237,9 @@ export default function ProductModal({
 
     const trimmedCustomText = customText.trim();
     if (isPersonalized && !trimmedCustomText) {
-      setMonogramError('Please enter text to embroider.');
-      setActionError('Personalization text is required.');
-      showToast('Please enter text to embroider.', 'error');
+      setMonogramError('Please enter the name or text you would like embroidered.');
+      setActionError('Please enter your embroidery text.');
+      showToast('Please enter the name or text you would like embroidered.', 'error');
       return false;
     }
 
@@ -242,7 +252,7 @@ export default function ProductModal({
     );
     const existingQty = existing ? existing.quantity : 0;
     if (existingQty + quantity > effectiveStock) {
-      const err = `Only ${effectiveStock} in stock`;
+      const err = `Only ${effectiveStock} left in stock. Please reduce your quantity.`;
       setActionError(err);
       showToast(err, 'error');
       return false;
@@ -251,7 +261,7 @@ export default function ProductModal({
     addItem({
       productId,
       name: product.name,
-      price: effectivePrice,
+      price: finalUnitPrice,
       quantity,
       imageUrl: selectedVariant?.imageUrl || product.imageUrl,
       selectedVariant: selectedVariant?.name,
@@ -263,6 +273,8 @@ export default function ProductModal({
             font: DEFAULT_FONT.name,
             threadColor: threadColor.name,
             threadHex: threadColor.hex,
+            extraLetteringCost: lettering.extraCost,
+            extraLettersCount: lettering.extraLettersCount,
           }
         : undefined,
     });
@@ -272,7 +284,7 @@ export default function ProductModal({
 
   const handleAddToBasket = () => {
     if (handleAdd()) {
-      showToast(`Added ${quantity}x ${product.name} to basket`, 'success');
+      showToast(`Added ${quantity}x ${product.name} to your basket!`, 'success');
       onClose();
     }
   };
@@ -283,8 +295,8 @@ export default function ProductModal({
     }
 
     if (!isAuthenticated) {
-      setActionError('Please sign in to proceed with checkout and place your order.');
-      showToast('Please sign in to proceed with checkout', 'info');
+      setActionError('Please sign in to place your order.');
+      showToast('Please sign in to continue with checkout', 'info');
       setAuthOpen(true, 'login');
       return;
     }
@@ -492,10 +504,15 @@ export default function ProductModal({
 
           <div className="flex justify-between items-baseline">
             <div className="text-2xl font-bold text-text-main font-mono max-[700px]:text-xl tracking-tight">
-              ₱{(effectivePrice * (isOutOfStock ? 1 : quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₱{(finalUnitPrice * (isOutOfStock ? 1 : quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               {quantity > 1 && !isOutOfStock && (
                 <span className="text-xs text-text-dim font-sans font-normal ml-2">
-                  (₱{effectivePrice.toFixed(2)} each)
+                  (₱{finalUnitPrice.toFixed(2)} each)
+                </span>
+              )}
+              {isPersonalized && lettering.extraCost > 0 && (
+                <span className="block text-[11px] font-sans font-normal text-text-dim mt-0.5">
+                  Includes +₱{lettering.extraCost.toFixed(2)} for additional lettering
                 </span>
               )}
             </div>
@@ -705,13 +722,39 @@ export default function ProductModal({
                       if (monogramError) setMonogramError(null);
                       if (actionError) setActionError(null);
                     }}
+                    onBlur={() => {
+                      if (isPersonalized && !customText.trim()) {
+                        setMonogramError('Please enter text to embroider or disable lettering');
+                      }
+                    }}
                     placeholder="e.g. Dr. Rafael Santos or R.S."
                     className={`w-full bg-bg-surface border ${
-                      monogramError ? 'border-rose-500/60 ring-1 ring-rose-500/30' : 'border-border-glass'
-                    } focus:border-white/40 p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
+                      monogramError
+                        ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                        : 'border-border-glass focus:border-white/40'
+                    } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
                   />
-                  <InlineError message={monogramError} className="mt-1" />
+                  <InlineError message={monogramError} className="mt-1" variant="field" />
                 </div>
+
+                {/* Real-time Lettering Cost Breakdown Notice */}
+                {isPersonalized && customText.trim() && (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-text-dim text-[11px]">
+                        {lettering.extraCost > 0
+                          ? `Additional name lettering (${lettering.extraLettersCount} letters after space × ₱${lettering.ratePerLetter}):`
+                          : 'First name / word:'}
+                      </span>
+                      <span className="text-[10px] text-text-dim/70">
+                        {isBig ? 'Big Garment rate (₱10/letter after 1st word)' : 'Small Garment rate (₱7/letter after 1st word)'}
+                      </span>
+                    </div>
+                    <span className={`font-mono font-bold text-xs ${lettering.extraCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
+                      {lettering.extraCost > 0 ? `+₱${lettering.extraCost.toFixed(2)}` : 'Included in price (₱0)'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Live Stitch Typography Preview */}
                 {customText.trim() && (

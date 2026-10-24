@@ -196,6 +196,14 @@ export function printBagSlip(order: any): void {
             <span class="field-label">CLAIM CODE:</span>
             <span class="field-value">${claimCode}</span>
           </div>
+          ${(() => {
+            const staffName = order.processedBy || order.garmentsReceivedBy || order.personalization?.statusHistory?.[0]?.actor || '';
+            return staffName ? `
+          <div class="field-row">
+            <span class="field-label">PROCESSED BY:</span>
+            <span class="field-value">${staffName}</span>
+          </div>` : '';
+          })()}
 
           <div class="dashed-divider"></div>
 

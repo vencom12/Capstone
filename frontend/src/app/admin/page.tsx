@@ -93,17 +93,20 @@ export default function AdminPage() {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedTotal, setArchivedTotal] = useState(0);
   const [archivedPage, setArchivedPage] = useState(1);
+  const [archivedPageSize, setArchivedPageSize] = useState(15);
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
-  const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1) => {
+  const hasLoadedHistoryOnceRef = useRef(false);
+
+  const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1, limit = archivedPageSize, silent = false) => {
     if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
-    setIsLoadingArchived(true);
+    if (!silent) setIsLoadingArchived(true);
     try {
       const params = new URLSearchParams();
       if (query && query.trim()) params.append('search', query.trim());
       if (date && date.trim()) params.append('date', date.trim());
       params.append('page', String(page));
-      params.append('limit', '50');
+      params.append('limit', String(limit));
 
       const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
@@ -282,12 +285,22 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || !checkAccess('admin')) return;
     if (activeTab === 'history') {
-      const timer = setTimeout(() => {
-        fetchArchivedOrders(historySearch, historyDate, 1);
-      }, 250);
-      return () => clearTimeout(timer);
+      const alreadyLoaded = hasLoadedHistoryOnceRef.current;
+      hasLoadedHistoryOnceRef.current = true;
+      // If already loaded before, fetch silently in background: 0ms skeleton!
+      fetchArchivedOrders(historySearch, historyDate, archivedPage, archivedPageSize, alreadyLoaded);
     }
-  }, [activeTab, historySearch, historyDate, isHydrated, isAuthenticated]);
+  }, [activeTab, isHydrated, isAuthenticated]);
+
+  // When search or date filter actually changes, debounce and show loading indicator
+  useEffect(() => {
+    if (!isHydrated || !isAuthenticated || !checkAccess('admin')) return;
+    if (activeTab !== 'history' || !hasLoadedHistoryOnceRef.current) return;
+    const timer = setTimeout(() => {
+      fetchArchivedOrders(historySearch, historyDate, 1, archivedPageSize, false);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [historySearch, historyDate]);
 
   // Dynamic Live Socket.IO Event Handler & Tab Sync
   useEffect(() => {
@@ -673,8 +686,13 @@ export default function AdminPage() {
                   <Pagination
                     currentPage={archivedPage}
                     totalItems={archivedTotal}
-                    pageSize={50}
-                    onPageChange={(p) => fetchArchivedOrders(historySearch, historyDate, p)}
+                    pageSize={archivedPageSize}
+                    onPageChange={(p) => fetchArchivedOrders(historySearch, historyDate, p, archivedPageSize)}
+                    pageSizeOptions={[10, 15, 25, 50]}
+                    onPageSizeChange={(newSize) => {
+                      setArchivedPageSize(newSize);
+                      fetchArchivedOrders(historySearch, historyDate, 1, newSize);
+                    }}
                     itemLabel="archived orders"
                   />
                 </>

@@ -5,11 +5,19 @@ import GlassModal from '@/components/ui/GlassModal';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
+import InlineError from '@/components/ui/InlineError';
+import { validateEmail } from '@/lib/emailValidator';
 
 interface CustomerHelpModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultOrderId?: string;
+}
+
+interface FieldErrors {
+  message?: string;
+  customerName?: string;
+  customerEmail?: string;
 }
 
 const FAQS = [
@@ -56,6 +64,55 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
   const [customerName, setCustomerName] = useState<string>(user?.username || '');
   const [customerEmail, setCustomerEmail] = useState<string>(user?.email || '');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formShaking, setFormShaking] = useState(false);
+
+  const validateField = (name: keyof FieldErrors, customVal?: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (name === 'message') {
+        const val = (customVal !== undefined ? customVal : message).trim();
+        if (!val) {
+          next.message = 'Please describe your inquiry or feedback.';
+        } else {
+          delete next.message;
+        }
+      } else if (name === 'customerName') {
+        const val = (customVal !== undefined ? customVal : customerName).trim();
+        if (!user && !val) {
+          next.customerName = 'Please enter your name.';
+        } else {
+          delete next.customerName;
+        }
+      } else if (name === 'customerEmail') {
+        const val = (customVal !== undefined ? customVal : customerEmail).trim();
+        if (!user) {
+          if (!val) {
+            next.customerEmail = 'Please enter your email address.';
+          } else {
+            const check = validateEmail(val);
+            if (!check.isValid) {
+              next.customerEmail = check.error || 'Please enter a valid email address.';
+            } else {
+              delete next.customerEmail;
+            }
+          }
+        } else {
+          delete next.customerEmail;
+        }
+      }
+      return next;
+    });
+  };
+
+  const getInputCls = (hasError?: boolean) => `
+    bg-bg-surface border p-2.5 rounded-lg text-text-main text-xs outline-none transition-all
+    ${hasError 
+      ? 'border-rose-500/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25 bg-rose-500/[0.04]' 
+      : 'border-border-glass focus:border-primary focus:ring-2 focus:ring-primary/20'
+    }
+  `;
 
   useEffect(() => {
     if (defaultOrderId) {
@@ -78,8 +135,34 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors: FieldErrors = {};
     if (!message.trim()) {
-      showToast('Please enter your inquiry details', 'error');
+      errors.message = 'Please describe your inquiry or feedback.';
+    }
+    if (!user) {
+      if (!customerName.trim()) {
+        errors.customerName = 'Please enter your name.';
+      }
+      if (!customerEmail.trim()) {
+        errors.customerEmail = 'Please enter your email address.';
+      } else {
+        const check = validateEmail(customerEmail.trim());
+        if (!check.isValid) {
+          errors.customerEmail = check.error || 'Please enter a valid email address.';
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormShaking(true);
+      setTimeout(() => setFormShaking(false), 450);
+      showToast({
+        title: 'Please Complete Your Inquiry',
+        message: 'Please fill in the required fields before sending.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -94,14 +177,23 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
         customerEmail: customerEmail.trim() || undefined
       });
 
-      showToast('Inquiry sent! Our Pacific Mall workshop staff will review your message.', 'success');
+      showToast({
+        title: 'Inquiry Sent',
+        message: 'Our Pacific Mall workshop staff will review your message shortly.',
+        type: 'success',
+      });
       setMessage('');
+      setFieldErrors({});
       if (!defaultOrderId) setOrderId('');
       setActiveTab('faqs');
       onClose();
     } catch (err: any) {
       console.warn('Inquiry submit error:', err);
-      showToast(err.message || 'Failed to submit inquiry', 'error');
+      showToast({
+        title: 'Could Not Send Inquiry',
+        message: err.message || 'Failed to submit inquiry to workshop.',
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -233,7 +325,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
           </>
         ) : (
           /* Workshop Inquiry & Support Form */
-          <form onSubmit={handleSubmitFeedback} className="flex flex-col gap-3.5 animate-fade">
+          <form noValidate onSubmit={handleSubmitFeedback} className={`flex flex-col gap-3.5 animate-fade ${formShaking ? 'animate-shake' : ''}`}>
             <p className="text-xs text-text-dim m-0 leading-relaxed">
               Send a direct inquiry to our Pacific Mall workshop operators regarding custom text embroidery, rush turnaround, store pick-up, or active orders.
             </p>
@@ -272,26 +364,48 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
             {!user && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-text-dim">Your Name *</label>
+                  <div className="flex items-center justify-between min-w-0 gap-2">
+                    <label className="text-xs font-bold text-text-dim whitespace-nowrap shrink-0">Your Name *</label>
+                    <div className="shrink min-w-0 justify-end">
+                      {fieldErrors.customerName && (
+                        <InlineError variant="label" message={fieldErrors.customerName} />
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="text"
-                    required
                     placeholder="e.g. Maria Santos"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
+                    onBlur={() => validateField('customerName')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomerName(val);
+                      if (fieldErrors.customerName) validateField('customerName', val);
+                    }}
+                    className={getInputCls(Boolean(fieldErrors.customerName))}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-text-dim">Contact Email *</label>
+                  <div className="flex items-center justify-between min-w-0 gap-2">
+                    <label className="text-xs font-bold text-text-dim whitespace-nowrap shrink-0">Contact Email *</label>
+                    <div className="shrink min-w-0 justify-end">
+                      {fieldErrors.customerEmail && (
+                        <InlineError variant="label" message={fieldErrors.customerEmail} />
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="email"
-                    required
                     placeholder="e.g. maria@gmail.com"
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none"
+                    onBlur={() => validateField('customerEmail')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomerEmail(val);
+                      if (fieldErrors.customerEmail) validateField('customerEmail', val);
+                    }}
+                    className={getInputCls(Boolean(fieldErrors.customerEmail))}
                   />
                 </div>
               </div>
@@ -299,14 +413,29 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
 
             {/* Message Comment */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-text-dim">Message Details *</label>
+              <div className="flex items-center justify-between min-w-0 gap-2">
+                <label className="text-xs font-bold text-text-dim whitespace-nowrap shrink-0">Message Details *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {fieldErrors.message && (
+                    <InlineError variant="label" message={fieldErrors.message} />
+                  )}
+                </div>
+              </div>
               <textarea
-                required
                 rows={4}
                 placeholder="Describe your custom embroidery requirements, questions, or order instructions in detail..."
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main text-xs outline-none focus:border-primary leading-relaxed"
+                onBlur={() => validateField('message')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMessage(val);
+                  if (fieldErrors.message) validateField('message', val);
+                }}
+                className={`bg-bg-surface border p-3 rounded-lg text-text-main text-xs outline-none leading-relaxed transition-all ${
+                  fieldErrors.message
+                    ? 'border-rose-500/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25 bg-rose-500/[0.04]'
+                    : 'border-border-glass focus:border-primary focus:ring-2 focus:ring-primary/20'
+                }`}
               />
             </div>
 

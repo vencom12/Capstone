@@ -49,6 +49,7 @@ export interface Product {
   _id?: string; // MongoDB compatibility
   name: string;
   price: number;
+  category?: string;
   tag: string;
   tags?: string[];
   description?: string;
@@ -112,6 +113,8 @@ export interface OrderItem {
     font?: string;
     threadColor?: string;
     threadHex?: string;
+    extraLetteringCost?: number;
+    extraLettersCount?: number;
   };
 }
 
@@ -133,6 +136,8 @@ export interface Order {
   date: string;
   createdAt: string;
   updatedAt: string;
+  processedBy?: string;
+  garmentsReceivedBy?: string;
   personalization?: {
     fulfillmentType?: 'pickup' | string;
     courier?: string;
@@ -196,6 +201,8 @@ export interface BasketItem {
     font?: string;
     threadColor?: string;
     threadHex?: string;
+    extraLetteringCost?: number;
+    extraLettersCount?: number;
   };
 }
 
