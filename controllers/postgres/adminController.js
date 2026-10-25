@@ -815,6 +815,52 @@ exports.createInventoryItem = async (req, res) => {
             }
         });
 
+        // Auto-link any matching unlinked product variants to this new inventory material
+        try {
+            const invNameLower = (inventory.item || '').trim().toLowerCase();
+            const allProducts = await prisma.product.findMany();
+            for (const prod of allProducts) {
+                if (!prod.variants) continue;
+                let vList = prod.variants;
+                if (typeof vList === 'string') {
+                    try { vList = JSON.parse(vList); } catch (e) { vList = []; }
+                }
+                if (!Array.isArray(vList) || vList.length === 0) continue;
+
+                let hasChange = false;
+                const updatedVariants = vList.map(v => {
+                    if (!v || v.materialId) return v;
+                    const vName = (v.name || '').trim().toLowerCase();
+                    const prodName = (prod.name || '').trim().toLowerCase();
+                    if (
+                        invNameLower === `${vName} ${prodName}` ||
+                        invNameLower === `${prodName} ${vName}` ||
+                        invNameLower === `${prodName} - ${vName}` ||
+                        invNameLower === vName ||
+                        invNameLower === prodName
+                    ) {
+                        hasChange = true;
+                        return {
+                            ...v,
+                            materialId: inventory.id,
+                            materialName: inventory.item,
+                            stock: inventory.count || 0
+                        };
+                    }
+                    return v;
+                });
+
+                if (hasChange) {
+                    await prisma.product.update({
+                        where: { id: prod.id },
+                        data: { variants: updatedVariants }
+                    });
+                }
+            }
+        } catch (linkErr) {
+            console.warn('[Auto-Link Material Warning]:', linkErr?.message || linkErr);
+        }
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.INVENTORY, inventory);
         res.json(inventory);
     } catch (err) {
