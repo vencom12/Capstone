@@ -478,9 +478,6 @@ export default function ProductModal({
         {/* Product Customization & Info Section */}
         <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3">
           <div>
-            <span className="inline-block px-2.5 py-0.5 bg-white/5 border border-border-glass text-text-dim rounded-md text-[11px] font-mono font-medium uppercase tracking-wider mb-2">
-              {product.tag || 'Design'}
-            </span>
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[700px]:text-lg">
               {product.name}
             </h2>
