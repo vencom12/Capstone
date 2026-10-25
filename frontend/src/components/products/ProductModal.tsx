@@ -282,10 +282,21 @@ export default function ProductModal({
     return true;
   };
 
+  const [isOrderSubmitted, setIsOrderSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsOrderSubmitted(false);
+    }
+  }, [isOpen]);
+
   const handleAddToBasket = () => {
     if (handleAdd()) {
+      setIsOrderSubmitted(true);
       showToast(`Added ${quantity}x ${product.name} to your basket!`, 'success');
-      onClose();
+      setTimeout(() => {
+        onClose();
+      }, 400);
     }
   };
 
@@ -301,11 +312,41 @@ export default function ProductModal({
       return;
     }
 
-    onClose();
-    if (onBuyNow) {
-      onBuyNow();
-    }
+    setIsOrderSubmitted(true);
+    setTimeout(() => {
+      onClose();
+      if (onBuyNow) {
+        onBuyNow();
+      }
+    }, 400);
   };
+
+  // 4-Step Customer Product Ordering Progress (Style/Variant -> Lettering -> Quantity -> Order/Basket)
+  const isOrderStep1Done = !hasVariants || Boolean(selectedVariant && effectiveStock > 0);
+  const isOrderStep2Done = !isPersonalized || Boolean(customText.trim() && !monogramError);
+  const isOrderStep3Done = quantity >= 1 && !isOutOfStock;
+  // Step 4 is ONLY marked done when the customer clicks Add to Basket or Buy Now!
+  const isOrderStep4Done = isOrderSubmitted;
+
+  const orderActiveStep = !isOrderStep1Done ? 1 : !isOrderStep2Done ? 2 : !isOrderStep3Done ? 3 : 4;
+  const orderPercentage = isOrderStep4Done ? 100 : orderActiveStep === 4 ? 75 : orderActiveStep * 25;
+
+  const orderTrackFillPercent = isOrderStep4Done
+    ? 100
+    : orderActiveStep === 1
+    ? 0
+    : orderActiveStep === 2
+    ? 33
+    : orderActiveStep === 3
+    ? 66
+    : 66;
+
+  const orderSteps = [
+    { id: 1, label: 'Style & Color', shortLabel: 'Style', done: isOrderStep1Done },
+    { id: 2, label: 'Embroidery Text', shortLabel: 'Lettering', done: isOrderStep2Done },
+    { id: 3, label: 'Quantity', shortLabel: 'Quantity', done: isOrderStep3Done },
+    { id: 4, label: 'Order / Basket', shortLabel: 'Finish', done: isOrderStep4Done },
+  ];
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
@@ -501,8 +542,82 @@ export default function ProductModal({
 
           {activeModalTab === 'configure' ? (
             <>
+              {/* 4-Step Sticky Ordering Progress Bar with Checkpoints (Fixed on scroll) */}
+              <div className="sticky top-0 z-20 -mx-6 max-[700px]:-mx-4 px-6 max-[700px]:px-4 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-2 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[11px] font-bold text-text-main">
+                      Step {orderActiveStep} of 4:
+                    </span>
+                    <span className="text-[11px] text-text-dim font-medium">
+                      {orderSteps[orderActiveStep - 1]?.label || 'Customize'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-full">
+                    <span className="font-mono font-bold text-[11px] text-primary">
+                      {orderPercentage}%
+                    </span>
+                  </div>
+                </div>
 
-          <div className="flex justify-between items-baseline">
+                {/* Checkpoints & Connecting Progress Line (Finish checkpoint sits precisely on the end of the bar) */}
+                <div className="relative flex items-center justify-between px-3 pt-1 pb-0.5">
+                  {/* Connected Track: Bounded strictly between center of node 1 (x=24px) and center of node 4 (x=calc(100%-24px)) */}
+                  <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
+                    <div 
+                      className={`h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500 ease-out z-0 ${
+                        isOrderStep4Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
+                      }`}
+                      style={{
+                        width: `${orderTrackFillPercent}%`
+                      }}
+                    />
+                  </div>
+
+                  {/* 4 Checkpoints */}
+                  {orderSteps.map((s) => {
+                    const isCompleted = s.done;
+                    const isCurrent = orderActiveStep === s.id && !s.done;
+
+                    return (
+                      <div key={s.id} className="relative z-10 flex flex-col items-center">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                            isCompleted
+                              ? 'bg-primary text-white shadow-[0_0_8px_var(--color-primary-glow)] scale-105'
+                              : isCurrent
+                              ? 'bg-bg-card border-2 border-primary text-primary shadow-[0_0_10px_var(--color-primary-glow)] ring-2 ring-primary/25 scale-110'
+                              : 'bg-bg-surface border border-border-glass text-text-dim'
+                          }`}
+                          title={`Step ${s.id}: ${s.label}`}
+                        >
+                          {isCompleted ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <span>{s.id}</span>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[9px] mt-1 font-semibold tracking-tight uppercase whitespace-nowrap transition-colors ${
+                            isCompleted
+                              ? 'text-primary font-bold'
+                              : isCurrent
+                              ? 'text-primary font-black'
+                              : 'text-text-dim/60'
+                          }`}
+                        >
+                          {s.shortLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-baseline">
             <div className="text-2xl font-bold text-text-main font-mono max-[700px]:text-xl tracking-tight">
               ₱{(finalUnitPrice * (isOutOfStock ? 1 : quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               {quantity > 1 && !isOutOfStock && (

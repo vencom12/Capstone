@@ -69,36 +69,47 @@ exports.updateOrderStatus = async (req, res) => {
             });
         }
 
-        // Broadcast both products and raw materials changes along with order update
+        // Broadcast order update immediately to staff and user
         const io = req.app.get('io');
         if (io) {
-            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
-            io.to(`user:${updatedOrder.userId}`).to('staff').emit('ordersUpdated', {
+            const orderPayload = {
                 orderId: updatedOrder.orderId,
                 status: updatedOrder.status,
+                progress: updatedOrder.progress,
                 id: updatedOrder.id,
                 order: updatedOrder
-            });
+            };
+            io.emit('ordersUpdated', orderPayload);
+            io.to(`user:${updatedOrder.userId}`).to('staff').emit('ordersUpdated', orderPayload);
             socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
         }
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-        const productsList = await prisma.product.findMany();
-        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const enrichedProducts = await enrichProductsWithStock(productsList);
-        socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
 
-        // Invalidate workshop queue watermark so capacity and scheduling recalculate cleanly
-        const { invalidateQueue } = require('../../utils/workshopQueueManager');
-        invalidateQueue();
-
-        // Recalculate AI Queue priorities asynchronously
-        const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
-        setImmediate(() => {
-            recalculateQueuePriorities(io).catch(err => {
-                console.error('[AI Queue Background Error] Recalculation failed:', err);
-            });
-        });
+        // Return immediately to client so UI feels instantaneous (sub-50ms)
         res.json(updatedOrder);
+
+        // Run heavy inventory queries, product enrichment, and queue recalculations in the background
+        setImmediate(async () => {
+            try {
+                if (io) {
+                    const invList = await prisma.inventory.findMany();
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.INVENTORY, invList);
+                    const productsList = await prisma.product.findMany();
+                    const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+                    const enrichedProducts = await enrichProductsWithStock(productsList);
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProducts);
+                }
+
+                // Invalidate workshop queue watermark so capacity and scheduling recalculate cleanly
+                const { invalidateQueue } = require('../../utils/workshopQueueManager');
+                invalidateQueue();
+
+                // Recalculate AI Queue priorities asynchronously
+                const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+                await recalculateQueuePriorities(io);
+            } catch (bgErr) {
+                console.error('[AI Queue / Inventory Background Error]:', bgErr);
+            }
+        });
     } catch (err) {
         console.error('Employee Order Update Error:', err);
         res.status(500).json({ message: 'Server error' });
@@ -254,43 +265,49 @@ exports.scanClaimHandover = async (req, res) => {
         const upperCode = cleanCode.toUpperCase();
         const codeWithHash = upperCode.startsWith('#') ? upperCode : `#${upperCode}`;
         const codeWithoutHash = upperCode.startsWith('#') ? upperCode.slice(1) : upperCode;
+        const pureSuffix = codeWithoutHash.replace(/^A-?/i, '');
+        const standardClaimCode = `#A-${pureSuffix}`;
         const username = req.user?.username || 'Counter Staff';
 
-        // Match by orderId, claimCode (#A-XXXX), trackingNumber, or database id
-        const order = await prisma.order.findFirst({
+        // 1. Try matching active staged order first (Ready For Pick Up / In Queue / Preparing)
+        let order = await prisma.order.findFirst({
             where: {
                 OR: [
                     { orderId: { equals: upperCode, mode: 'insensitive' } },
                     { orderId: { equals: codeWithoutHash, mode: 'insensitive' } },
+                    { orderId: { endsWith: pureSuffix, mode: 'insensitive' } },
                     { id: cleanCode },
-                    {
-                        personalization: {
-                            path: ['claimCode'],
-                            equals: upperCode
-                        }
-                    },
-                    {
-                        personalization: {
-                            path: ['claimCode'],
-                            equals: codeWithHash
-                        }
-                    },
-                    {
-                        personalization: {
-                            path: ['claimCode'],
-                            equals: codeWithoutHash
-                        }
-                    },
-                    {
-                        personalization: {
-                            path: ['trackingNumber'],
-                            equals: upperCode
-                        }
-                    }
-                ]
+                    { personalization: { path: ['claimCode'], equals: upperCode } },
+                    { personalization: { path: ['claimCode'], equals: codeWithHash } },
+                    { personalization: { path: ['claimCode'], equals: codeWithoutHash } },
+                    { personalization: { path: ['claimCode'], equals: standardClaimCode } },
+                    { personalization: { path: ['claimCode'], equals: `#${pureSuffix}` } },
+                    { personalization: { path: ['trackingNumber'], equals: upperCode } },
+                    { personalization: { path: ['trackingNumber'], equals: standardClaimCode } }
+                ],
+                status: { notIn: ['Completed', 'Order Delivered', 'Order Canceled'] }
             },
-            include: { transaction: true }
+            include: { transaction: true },
+            orderBy: { createdAt: 'desc' }
         });
+
+        // 2. If no active order matches, check if it was an already-completed order to inform staff
+        if (!order) {
+            order = await prisma.order.findFirst({
+                where: {
+                    OR: [
+                        { orderId: { equals: upperCode, mode: 'insensitive' } },
+                        { orderId: { equals: codeWithoutHash, mode: 'insensitive' } },
+                        { orderId: { endsWith: pureSuffix, mode: 'insensitive' } },
+                        { id: cleanCode },
+                        { personalization: { path: ['claimCode'], equals: standardClaimCode } },
+                        { personalization: { path: ['claimCode'], equals: upperCode } }
+                    ]
+                },
+                include: { transaction: true },
+                orderBy: { createdAt: 'desc' }
+            });
+        }
 
         if (!order) {
             return res.status(404).json({ message: `No active order found matching code: ${cleanCode}` });

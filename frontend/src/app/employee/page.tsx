@@ -134,6 +134,11 @@ export default function EmployeePage() {
   const [handoverScanInput, setHandoverScanInput] = useState('');
   const [isClaimingHandover, setIsClaimingHandover] = useState(false);
   const [lastClaimedOrder, setLastClaimedOrder] = useState<any>(null);
+  const [confirmingHandoverOrder, setConfirmingHandoverOrder] = useState<any>(null);
+
+  // In-flight status update locks to prevent double-clicks & state reverting
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Record<string, boolean>>({});
+  const fetchSeqRef = useRef(0);
 
   // Receipt Modal State
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
@@ -147,10 +152,12 @@ export default function EmployeePage() {
       return;
     }
 
+    const currentSeq = ++fetchSeqRef.current;
     setIsSyncing(true);
     try {
       const data = await api.get<any>('/api/employee/dashboard-state');
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
+      if (currentSeq !== fetchSeqRef.current) return; // Stale fetch discarded
       if (data) {
         const nextOrders = data.orders || [];
         if (hasInitialDataLoaded && prevOrdersCountRef.current > 0 && nextOrders.length > prevOrdersCountRef.current) {
@@ -174,7 +181,9 @@ export default function EmployeePage() {
         return;
       }
     } finally {
-      setIsSyncing(false);
+      if (currentSeq === fetchSeqRef.current) {
+        setIsSyncing(false);
+      }
       setHasInitialDataLoaded(true);
       useUIStore.getState().markDashboardReady();
     }
@@ -271,7 +280,12 @@ export default function EmployeePage() {
 
       const handleInPlaceOrderUpdate = (payload: any) => {
         if (!payload) return;
-        if (Array.isArray(payload.results)) {
+        if (Array.isArray(payload)) {
+          setOrders((prev) => prev.map((o) => {
+            const match = payload.find((r: any) => (r.id === o.id || r.orderId === o.orderId));
+            return match ? { ...o, ...match } : o;
+          }));
+        } else if (Array.isArray(payload.results)) {
           setOrders((prev) => prev.map((o) => {
             const match = payload.results.find((r: any) => (r.id === o.id || r.orderId === o.orderId));
             return match ? { ...o, ...match } : o;
@@ -301,8 +315,8 @@ export default function EmployeePage() {
             fetchEmployeeData();
             playOrderChime();
             showToast('New customer order ticket received!', 'info');
-          } else if (data.action === 'UPDATE' && data.data) {
-            handleInPlaceOrderUpdate(data.data);
+          } else if (data.action === 'UPDATE' && (data.payload || data.data)) {
+            handleInPlaceOrderUpdate(data.payload || data.data);
           }
         } else if (['PRODUCT', 'INVENTORY', 'MACHINE'].includes(data.entity) && (data.action === 'CREATE' || data.action === 'DELETE')) {
           fetchEmployeeData();
@@ -363,36 +377,78 @@ export default function EmployeePage() {
         progress: parseInt(orderProgressInput)
       };
 
-      await api.patch(url, payload);
+      // Instant optimistic update
+      setOrders(prev => prev.map(o => (o.id === orderId || o.orderId === selectedOrder.orderId) ? { ...o, status: orderStatusInput, progress: parseInt(orderProgressInput) } : o));
+
+      const res: any = await api.patch(url, payload);
 
       showToast('Order status updated successfully', 'success');
       setIsProcessModalOpen(false);
-      fetchEmployeeData();
+
+      if (res && (res.id || res.orderId)) {
+        setOrders(prev => prev.map(o => (o.id === orderId || o.orderId === selectedOrder.orderId) ? { ...o, ...res } : o));
+      }
     } catch (err) {
       showToast('Failed to update status', 'error');
+      fetchEmployeeData();
     }
   };
 
   const advanceOrderStatus = async (order: any, nextStatus: string, customProgress?: number) => {
+    const orderId = order.id || order._id;
+    if (!orderId || updatingOrderIds[orderId]) return;
+
+    // Prevent duplicate spam clicks
+    setUpdatingOrderIds(prev => ({ ...prev, [orderId]: true }));
+    const previousStatus = order.status;
+    const previousProgress = order.progress;
+    const progress = customProgress !== undefined 
+      ? customProgress 
+      : (nextStatus === 'Preparing Order' ? 50 : 100);
+
+    // 1. Instant optimistic UI transition (0ms UI lag)
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId || o.orderId === order.orderId) {
+        return { ...o, status: nextStatus, progress };
+      }
+      return o;
+    }));
+
     try {
-      const orderId = order.id || order._id;
       const url = `/api/employee/orders/${orderId}/status`;
-
-      const progress = customProgress !== undefined 
-        ? customProgress 
-        : (nextStatus === 'Preparing Order' ? 50 : 100);
-
       const payload = {
         status: nextStatus,
         progress
       };
 
-      await api.patch(url, payload);
+      const res: any = await api.patch(url, payload);
 
       showToast(`Order #${order.orderId} marked as ${nextStatus}`, 'success');
-      fetchEmployeeData();
+
+      // Update in-place with server-confirmed row (no full refetch wipes)
+      if (res && (res.id || res.orderId)) {
+        setOrders(prev => prev.map(o => {
+          if (o.id === orderId || o.orderId === order.orderId) {
+            return { ...o, ...res };
+          }
+          return o;
+        }));
+      }
     } catch (err) {
+      // Revert only this specific order if network/stock error occurred
+      setOrders(prev => prev.map(o => {
+        if (o.id === orderId || o.orderId === order.orderId) {
+          return { ...o, status: previousStatus, progress: previousProgress };
+        }
+        return o;
+      }));
       showToast('Failed to advance order status', 'error');
+    } finally {
+      setUpdatingOrderIds(prev => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
     }
   };
 
@@ -420,9 +476,13 @@ export default function EmployeePage() {
       });
       if (res && res.success) {
         showToast(res.message || 'Counter handover complete! Order marked Completed.', 'success');
-        setLastClaimedOrder(res.order);
+        setLastClaimedOrder({ ...res.order, stagingCubby: res.cubby || res.order?.stagingCubby });
         setHandoverScanInput('');
+        if (res.order && (res.order.id || res.order.orderId)) {
+          setOrders(prev => prev.map(o => (o.id === res.order.id || o.orderId === res.order.orderId) ? { ...o, ...res.order, status: 'Completed', stagingCubby: null } : o));
+        }
         fetchEmployeeData();
+        return res;
       } else {
         showToast(res?.message || 'Handover failed', 'error');
       }
@@ -755,10 +815,11 @@ export default function EmployeePage() {
                                     ) : (
                                       <button
                                         onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
-                                        className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                                        disabled={updatingOrderIds[o.id]}
+                                        className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer disabled:opacity-50"
                                         title="Load to embroidery machine and start stitching"
                                       >
-                                        <span>Start Stitching</span>
+                                        <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Start Stitching'}</span>
                                       </button>
                                     )
                                   )}
@@ -766,22 +827,21 @@ export default function EmployeePage() {
                                   {o.status === 'Preparing Order' && (
                                     <button
                                       onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
-                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                                      disabled={updatingOrderIds[o.id]}
+                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
                                       title="Finish stitching and auto-assign staging shelf"
                                     >
-                                      <span>Finish &amp; Stage</span>
+                                      <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Stage'}</span>
                                     </button>
                                   )}
 
                                   {o.status === 'Ready For Pick Up' && (
                                     <button
                                       onClick={() => {
-                                        setHandoverScanInput(o.claimCode || o.orderId);
-                                        setLastClaimedOrder(null);
-                                        setIsHandoverModalOpen(true);
+                                        setConfirmingHandoverOrder(o);
                                       }}
-                                      className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
-                                      title="Open handover verification"
+                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                                      title={`1-Click Handover from ${o.stagingCubby || 'Counter Shelf'}`}
                                     >
                                       <span>Handover</span>
                                     </button>
@@ -930,35 +990,36 @@ export default function EmployeePage() {
                           o.isByog && !o.garmentsReceivedAt ? (
                             <button
                               onClick={() => handleReceiveGarments(o)}
-                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
+                              disabled={updatingOrderIds[o.id]}
+                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center disabled:opacity-50"
                             >
                               Intake
                             </button>
                           ) : (
                             <button
                               onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
-                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
+                              disabled={updatingOrderIds[o.id]}
+                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center disabled:opacity-50"
                             >
-                              Start Stitching
+                              {updatingOrderIds[o.id] ? 'Updating...' : 'Start Stitching'}
                             </button>
                           )
                         )}
                         {o.status === 'Preparing Order' && (
                           <button
                             onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
-                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
+                            disabled={updatingOrderIds[o.id]}
+                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center disabled:opacity-50"
                           >
-                            Finish &amp; Stage
+                            {updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Stage'}
                           </button>
                         )}
                         {o.status === 'Ready For Pick Up' && (
                           <button
                             onClick={() => {
-                              setHandoverScanInput(o.claimCode || o.orderId);
-                              setLastClaimedOrder(null);
-                              setIsHandoverModalOpen(true);
+                              setConfirmingHandoverOrder(o);
                             }}
-                            className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center"
+                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                           >
                             Handover
                           </button>
@@ -1482,22 +1543,32 @@ export default function EmployeePage() {
               e.preventDefault();
               handleScanClaimHandover();
             }}
-            className="flex flex-col gap-2"
+            className="flex flex-col gap-2.5"
           >
-            <label className="text-xs font-bold uppercase tracking-wider text-text-dim">
-              Customer QR / Claim Code / Order ID
+            <label className="text-xs font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
+              <span>Customer QR / Claim Code / Order ID</span>
+              <span className="text-[10px] text-primary lowercase font-normal">Auto-claims on 4 digits (e.g. 4D0B)</span>
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Scan QR barcode or type #A-4821 / ORD-..."
+                  placeholder="Scan QR or type 4-digit code (e.g. 4D0B)..."
                   value={handoverScanInput}
-                  onChange={(e) => setHandoverScanInput(e.target.value)}
-                  className="w-full bg-bg-surface border border-border-glass focus:border-primary/60 rounded-xl py-3 px-4 text-text-main font-mono text-base outline-none transition-all placeholder:text-text-dim/50"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setHandoverScanInput(val);
+                    const clean = val.trim().toUpperCase();
+                    const rawAlphanumeric = clean.replace(/[^A-Z0-9]/g, '');
+                    // Auto-claim when 4 characters entered or #A-XXXX (7 chars)
+                    if (rawAlphanumeric.length === 4 || (clean.startsWith('#A-') && clean.length === 7)) {
+                      handleScanClaimHandover(clean);
+                    }
+                  }}
+                  className="w-full bg-bg-surface border border-border-glass focus:border-primary/60 rounded-xl py-3 pl-4 pr-36 text-text-main font-mono text-sm outline-none transition-all placeholder:text-text-dim/40"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-primary/70 bg-primary/10 px-2 py-0.5 rounded">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/25 px-2 py-0.5 rounded pointer-events-none select-none">
                   SCANNER ACTIVE
                 </span>
               </div>
@@ -1513,6 +1584,40 @@ export default function EmployeePage() {
                 )}
               </button>
             </div>
+
+            {/* Quick Live Preview Match if typing */}
+            {(() => {
+              const query = handoverScanInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+              if (!query || query.length < 2) return null;
+              const match = orders.find(o => {
+                if (o.status !== 'Ready For Pick Up') return false;
+                const c = (o.claimCode || o.personalization?.claimCode || o.orderId || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const client = (o.client || '').toUpperCase();
+                return c.includes(query) || client.includes(query);
+              });
+              if (!match) return null;
+              return (
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs animate-[fadeIn_0.15s_ease-out]">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+                    <span className="font-mono font-bold text-text-main shrink-0">{match.orderId}</span>
+                    <span className="text-text-dim truncate">&bull; {match.client}</span>
+                    {match.stagingCubby && (
+                      <span className="font-mono font-bold text-primary bg-primary/20 px-2 py-0.5 rounded text-[11px] shrink-0">
+                        {match.stagingCubby}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleScanClaimHandover(match.claimCode || match.orderId)}
+                    className="ml-2 px-2.5 py-1 rounded bg-primary hover:bg-primary-light text-white font-bold text-[11px] transition-all cursor-pointer shrink-0"
+                  >
+                    Claim &rarr;
+                  </button>
+                </div>
+              );
+            })()}
           </form>
 
           {/* Success Banner & Released Cubby details */}
@@ -1610,6 +1715,73 @@ export default function EmployeePage() {
             </div>
           </div>
         </div>
+      </GlassModal>
+
+      {/* 1-Click Direct Handover Confirmation Modal */}
+      <GlassModal
+        isOpen={!!confirmingHandoverOrder}
+        onClose={() => setConfirmingHandoverOrder(null)}
+        title="Confirm Counter Handover"
+        maxWidth="max-w-[440px]"
+      >
+        {confirmingHandoverOrder && (
+          <div className="flex flex-col gap-4 text-left">
+            <div className="p-4 rounded-xl bg-white/5 border border-border-glass flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Release From Shelf</span>
+                <span className="px-3 py-1 rounded-lg bg-primary/20 border border-primary/40 font-mono font-bold text-primary text-sm">
+                  {confirmingHandoverOrder.stagingCubby || confirmingHandoverOrder.personalization?.stagingCubby || 'Counter Shelf'}
+                </span>
+              </div>
+
+              <div className="border-t border-white/5 pt-3 flex flex-col gap-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-text-dim">Customer:</span>
+                  <span className="font-bold text-text-main">{confirmingHandoverOrder.client || 'Counter Customer'}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-text-dim">Order ID:</span>
+                  <span className="font-mono font-bold text-text-main">{confirmingHandoverOrder.orderId}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-text-dim">Claim Code:</span>
+                  <span className="font-mono font-bold text-primary">
+                    {confirmingHandoverOrder.claimCode || confirmingHandoverOrder.personalization?.claimCode || `#A-${confirmingHandoverOrder.orderId.slice(-4)}`}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-text-dim">Total Paid:</span>
+                  <span className="font-mono font-bold text-emerald-400">
+                    ₱{parseFloat(confirmingHandoverOrder.totalAmount || confirmingHandoverOrder.amount || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingHandoverOrder(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClaimingHandover}
+                onClick={async () => {
+                  const target = confirmingHandoverOrder;
+                  const code = target.claimCode || target.personalization?.claimCode || target.orderId;
+                  setConfirmingHandoverOrder(null);
+                  await handleScanClaimHandover(code);
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-50"
+              >
+                {isClaimingHandover ? 'Completing...' : '✓ Confirm Handover'}
+              </button>
+            </div>
+          </div>
+        )}
       </GlassModal>
 
       {/* Process Order Modal */}

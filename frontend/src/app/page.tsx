@@ -14,6 +14,7 @@ import RightPanel from '@/components/dashboard/RightPanel';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
 import OrderSuccessModal from '@/components/checkout/OrderSuccessModal';
 import AiAttendant from '@/components/products/AiAttendant';
+import CustomerTour from '@/components/landing/CustomerTour';
 import { API_BASE } from '@/lib/api';
 import type { Product } from '@/lib/types';
 import { isGoogleAuthPending } from '@/lib/googleAuth';
@@ -229,6 +230,9 @@ export default function StorefrontPage() {
 
       {/* Virtual Store Attendant Modal */}
       <AiAttendant />
+
+      {/* Interactive New Customer Onboarding Tour */}
+      <CustomerTour />
     </div>
   );
 }

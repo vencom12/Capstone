@@ -420,6 +420,33 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
     }
   };
 
+  // 4-Step Customer Checkout Progress (Schedule -> Store Pickup/Review -> GCash Payment -> Place Order)
+  const isCheckoutStep1Done = Boolean(selectedDateStr);
+  const isCheckoutStep2Done = Boolean(selectedDateStr && items.length > 0);
+  const isCheckoutStep3Done = Boolean(paymentVerified || receiptUrl || manualRef.trim());
+  // Step 4 is ONLY done when the customer clicks Place Order or payment is completed!
+  const isCheckoutStep4Done = Boolean(paymentVerified || isProcessing || isBypassing);
+
+  const checkoutActiveStep = !isCheckoutStep1Done ? 1 : !isCheckoutStep2Done ? 2 : !isCheckoutStep3Done ? 3 : 4;
+  const checkoutPercentage = isCheckoutStep4Done ? 100 : checkoutActiveStep === 4 ? 75 : checkoutActiveStep * 25;
+
+  const checkoutTrackFillPercent = isCheckoutStep4Done
+    ? 100
+    : checkoutActiveStep === 1
+    ? 0
+    : checkoutActiveStep === 2
+    ? 33
+    : checkoutActiveStep === 3
+    ? 66
+    : 66;
+
+  const checkoutSteps = [
+    { id: 1, label: 'Claim Date', shortLabel: 'Date', done: isCheckoutStep1Done },
+    { id: 2, label: 'Store Pickup', shortLabel: 'Review', done: isCheckoutStep2Done },
+    { id: 3, label: 'GCash Payment', shortLabel: 'GCash', done: isCheckoutStep3Done },
+    { id: 4, label: 'Place Order', shortLabel: 'Finish', done: isCheckoutStep4Done },
+  ];
+
   return (
     <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[880px]" noPadding>
       <div className="p-4 sm:p-5 flex flex-col">
@@ -439,6 +466,81 @@ export default function CheckoutModal({ isOpen, onClose, checkoutItems, initialF
             <span className="text-[0.62rem] font-medium text-text-dim px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border-glass/50">
               Pick-up &amp; GCash
             </span>
+          </div>
+        </div>
+
+        {/* 4-Step Sticky Checkout Progress Bar with Checkpoints (Fixed on scroll) */}
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-3 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-[11px] font-bold text-text-main">
+                Step {checkoutActiveStep} of 4:
+              </span>
+              <span className="text-[11px] text-text-dim font-medium">
+                {isCheckoutStep4Done ? 'Order Placed!' : checkoutActiveStep === 4 ? 'Click Place Order' : checkoutSteps[checkoutActiveStep - 1]?.label || 'Checkout'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-primary/25 bg-primary/10 text-primary transition-all">
+              <span className="font-mono font-bold text-[11px]">
+                {checkoutPercentage}%
+              </span>
+            </div>
+          </div>
+
+          {/* Checkpoints & Connecting Progress Line (Finish checkpoint sits precisely at the end of the bar) */}
+          <div className="relative flex items-center justify-between px-3 pt-1 pb-0.5">
+            {/* Connected Track: Bounded strictly between center of node 1 (x=24px) and center of node 4 (x=calc(100%-24px)) */}
+            <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
+              <div 
+                className={`h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500 ease-out z-0 ${
+                  isCheckoutStep4Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
+                }`}
+                style={{
+                  width: `${checkoutTrackFillPercent}%`
+                }}
+              />
+            </div>
+
+            {/* 4 Checkpoints */}
+            {checkoutSteps.map((s) => {
+              const isCompleted = s.done;
+              const isCurrent = checkoutActiveStep === s.id && !s.done;
+
+              return (
+                <div key={s.id} className="relative z-10 flex flex-col items-center">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                      isCompleted
+                        ? 'bg-primary text-white shadow-[0_0_8px_var(--color-primary-glow)] scale-105'
+                        : isCurrent
+                        ? 'bg-bg-card border-2 border-primary text-primary shadow-[0_0_10px_var(--color-primary-glow)] ring-2 ring-primary/25 scale-110'
+                        : 'bg-bg-surface border border-border-glass text-text-dim'
+                    }`}
+                    title={`Step ${s.id}: ${s.label}`}
+                  >
+                    {isCompleted ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <span>{s.id}</span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[9px] mt-1 font-semibold tracking-tight uppercase whitespace-nowrap transition-colors ${
+                      isCompleted
+                        ? 'text-primary font-bold'
+                        : isCurrent
+                        ? 'text-primary font-black'
+                        : 'text-text-dim/60'
+                    }`}
+                  >
+                    {s.shortLabel}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

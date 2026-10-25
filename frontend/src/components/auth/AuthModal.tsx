@@ -62,6 +62,7 @@ export default function AuthModal() {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
+  const [isRegistrationSuccess, setIsRegistrationSuccess] = useState(false);
 
   const checkUsernameTimer = useRef<NodeJS.Timeout | null>(null);
   const checkEmailTimer = useRef<NodeJS.Timeout | null>(null);
@@ -81,6 +82,7 @@ export default function AuthModal() {
     setIsEmailAvailable(null);
     setCheckingUsername(false);
     setCheckingEmail(false);
+    setIsRegistrationSuccess(false);
   }, [mode, view, isAuthOpen]);
 
   const checkUsernameAvailability = (rawVal: string) => {
@@ -379,15 +381,19 @@ export default function AuthModal() {
       );
 
       if (res.success) {
-        handleClose(true);
+        setIsRegistrationSuccess(true);
         showToast({
           title: 'Welcome to Eds Towels & Caps!',
           message: `Account created successfully for ${res.user?.username || 'Customer'}.`,
           type: 'success',
         });
-        if (authParam) {
-          router.replace('/');
-        }
+        setTimeout(() => {
+          handleClose(true);
+          useUIStore.getState().startCustomerTour();
+          if (authParam) {
+            router.replace('/');
+          }
+        }, 700);
       } else {
         setFormError(res.message || 'We could not complete your registration. Please try again.');
         showToast({
@@ -576,14 +582,18 @@ export default function AuthModal() {
     try {
       const res = await completeGoogleSignup(googleSetup.token, newPassword, googleSetup.username);
       if (res.success) {
+        setIsRegistrationSuccess(true);
         showToast({
           title: 'Account Ready',
           message: `Welcome, ${res.user?.username || 'Customer'}! Your password has been set.`,
           type: 'success',
         });
-        handleClose();
-        router.replace('/');
-        router.refresh();
+        setTimeout(() => {
+          handleClose();
+          useUIStore.getState().startCustomerTour();
+          router.replace('/');
+          router.refresh();
+        }, 700);
       } else {
         setSetupError(res.message || 'Could not finish sign-up.');
         showToast({
@@ -678,7 +688,7 @@ export default function AuthModal() {
   };
 
   const getInputCls = (hasError?: boolean) => `
-    w-full bg-bg-surface border px-4 py-2.5 rounded-lg text-text-main text-sm outline-none transition-all placeholder:text-text-dim/40
+    w-full bg-bg-surface border px-3.5 py-2 rounded-lg text-text-main text-sm outline-none transition-all placeholder:text-text-dim/40
     ${hasError 
       ? 'border-rose-500/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25 bg-rose-500/[0.04]' 
       : 'border-border-glass focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -763,20 +773,105 @@ export default function AuthModal() {
   }
 
   if (view === 'googleSetup' && googleSetup) {
+    const isGoogleStep1Done = Boolean(googleSetup.username.trim().length >= 3);
+    const isGoogleStep2Done = Boolean(newPassword.length >= 6 && !fieldErrors.googlePassword);
+    const isGoogleStep3Done = Boolean(confirmPassword.length >= 6 && confirmPassword === newPassword && !fieldErrors.googleConfirm);
+    const isGoogleStep4Done = Boolean(isFormSubmitting || isRegistrationSuccess);
+
+    const activeGoogleStep = !isGoogleStep1Done ? 1 : !isGoogleStep2Done ? 2 : !isGoogleStep3Done ? 3 : 4;
+    const googlePercentage = isGoogleStep4Done ? 100 : activeGoogleStep === 4 ? 75 : activeGoogleStep === 3 ? 50 : activeGoogleStep === 2 ? 25 : 0;
+
+    const googleTrackFillPercent = isGoogleStep4Done
+      ? 100
+      : activeGoogleStep === 1
+      ? 0
+      : activeGoogleStep === 2
+      ? 33.33
+      : activeGoogleStep === 3
+      ? 66.66
+      : 66.66;
+
+    const googleSteps = [
+      { id: 1, label: 'Google Username', shortLabel: 'User', done: isGoogleStep1Done },
+      { id: 2, label: 'Create Password', shortLabel: 'Pass', done: isGoogleStep2Done },
+      { id: 3, label: 'Confirm Password', shortLabel: 'Confirm', done: isGoogleStep3Done },
+      { id: 4, label: 'Create My Account', shortLabel: 'Finish', done: isGoogleStep4Done },
+    ];
+
     return (
       <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]" isDirty={false}>
-        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
-          <div className="text-center">
-            <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Create a Password</h2>
-            <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
-              Welcome! Set a password for <strong className="text-text-main">{googleSetup.email}</strong> so you can sign in with Google or with your email and password.
-            </p>
+        <div className="flex flex-col gap-2.5 font-sans text-left pt-0 pb-0.5">
+          {/* Modal Top Header */}
+          <div className="text-center pt-0 pb-1 px-8">
+            <h2 className="text-xl sm:text-2xl font-black text-text-main m-0 tracking-tight">
+              Create Account
+            </h2>
           </div>
-          <form noValidate onSubmit={handleGoogleSetupSubmit} className={`flex flex-col gap-3.5 ${formShaking ? 'animate-shake' : ''}`}>
+
+          {/* 4-Step Sticky Google Setup Progress Bar with Checkpoints */}
+          <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-2 pb-2.5 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all">
+            {/* Checkpoints & Connecting Progress Line (Finish checkpoint sits precisely at the end of the bar) */}
+            <div className="relative flex items-center justify-between px-3 pt-0.5 pb-0.5">
+              {/* Enclosed Track: Bounded strictly between center of node 1 (x=24px) and center of node 4 (x=calc(100%-24px)) */}
+              <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
+                <div 
+                  className={`h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500 ease-out z-0 ${
+                    isGoogleStep4Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
+                  }`}
+                  style={{
+                    width: `${googleTrackFillPercent}%`
+                  }}
+                />
+              </div>
+
+              {/* Checkpoints */}
+              {googleSteps.map((s) => {
+                const isCompleted = s.done;
+                const isCurrent = activeGoogleStep === s.id && !s.done;
+
+                return (
+                  <div key={s.id} className="relative z-10 flex flex-col items-center">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                        isCompleted
+                          ? 'bg-primary text-white shadow-[0_0_8px_var(--color-primary-glow)] scale-105'
+                          : isCurrent
+                          ? 'bg-bg-card border-2 border-primary text-primary shadow-[0_0_10px_var(--color-primary-glow)] ring-2 ring-primary/25 scale-110'
+                          : 'bg-bg-surface border border-border-glass text-text-dim'
+                      }`}
+                      title={`Step ${s.id}: ${s.label}`}
+                    >
+                      {isCompleted ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <span>{s.id}</span>
+                      )}
+                    </div>
+                    <span
+                      className={`text-[9px] mt-1 font-semibold tracking-tight uppercase whitespace-nowrap transition-colors ${
+                        isCompleted
+                          ? 'text-primary font-bold'
+                          : isCurrent
+                          ? 'text-primary font-black'
+                          : 'text-text-dim/60'
+                      }`}
+                    >
+                      {s.shortLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <form noValidate autoComplete="off" onSubmit={handleGoogleSetupSubmit} className={`flex flex-col gap-2.5 ${formShaking ? 'animate-shake' : ''}`}>
             <div className="flex flex-col gap-1">
-              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username</label>
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username *</label>
               <input 
                 type="text" 
+                autoComplete="off"
                 value={googleSetup.username} 
                 onChange={(e) => { 
                   setGoogleSetup({ ...googleSetup, username: e.target.value }); 
@@ -785,6 +880,7 @@ export default function AuthModal() {
                 className={getInputCls()} 
               />
             </div>
+
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
                 <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">Password *</label>
@@ -794,20 +890,42 @@ export default function AuthModal() {
                   )}
                 </div>
               </div>
-              <input 
-                type={showPassword ? 'text' : 'password'} 
-                placeholder="At least 6 characters" 
-                value={newPassword} 
-                onBlur={() => validateField('googlePassword')}
-                onChange={(e) => { 
-                  const val = e.target.value;
-                  setNewPassword(val); 
-                  if (fieldErrors.googlePassword) validateField('googlePassword', val);
-                  if (setupError) setSetupError(null); 
-                }} 
-                className={getInputCls(Boolean(fieldErrors.googlePassword))} 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  autoComplete="new-password"
+                  placeholder="At least 6 characters" 
+                  value={newPassword} 
+                  onBlur={() => validateField('googlePassword')}
+                  onChange={(e) => { 
+                    const val = e.target.value;
+                    setNewPassword(val); 
+                    if (fieldErrors.googlePassword) validateField('googlePassword', val);
+                    if (setupError) setSetupError(null); 
+                  }} 
+                  className={`${getInputCls(Boolean(fieldErrors.googlePassword))} pr-9`} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-main bg-transparent border-none p-0 cursor-pointer flex items-center"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
+
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
                 <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">Confirm Password *</label>
@@ -817,59 +935,172 @@ export default function AuthModal() {
                   )}
                 </div>
               </div>
-              <input 
-                type={showPassword ? 'text' : 'password'} 
-                placeholder="Re-enter password" 
-                value={confirmPassword} 
-                onBlur={() => validateField('googleConfirm')}
-                onChange={(e) => { 
-                  const val = e.target.value;
-                  setConfirmPassword(val); 
-                  if (fieldErrors.googleConfirm) validateField('googleConfirm', val);
-                  if (setupError) setSetupError(null); 
-                }} 
-                className={getInputCls(Boolean(fieldErrors.googleConfirm))} 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder="Re-enter password" 
+                  value={confirmPassword} 
+                  onBlur={() => validateField('googleConfirm')}
+                  onChange={(e) => { 
+                    const val = e.target.value;
+                    setConfirmPassword(val); 
+                    if (fieldErrors.googleConfirm) validateField('googleConfirm', val);
+                    if (setupError) setSetupError(null); 
+                  }} 
+                  className={`${getInputCls(Boolean(fieldErrors.googleConfirm))} pr-9`} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-main bg-transparent border-none p-0 cursor-pointer flex items-center"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer ml-1 select-none text-xs text-text-dim">
-              <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} className="accent-primary rounded cursor-pointer w-4 h-4" />
-              <span>Show password</span>
-            </label>
-            <GlassButton type="submit" variant="primary" fullWidth size="lg" className="mt-1 font-bold text-sm" disabled={isSubmitting}>
-              {isFormSubmitting ? 'Creating Account...' : 'Create Account'}
+
+            <GlassButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="md"
+              className="mt-1 font-bold text-sm tracking-wide shadow-sm py-2.5"
+              disabled={isSubmitting}
+            >
+              {isFormSubmitting ? 'Creating My Account...' : 'Create My Account'}
             </GlassButton>
             <InlineError variant="banner" message={setupError} />
           </form>
-          <button type="button" onClick={handleClose} className="bg-transparent border-none text-text-dim hover:underline cursor-pointer p-0 text-xs">
-            Cancel
-          </button>
+
+          <div className="text-center pt-1 border-t border-border-glass">
+            <button type="button" onClick={handleClose} className="bg-transparent border-none text-text-dim hover:underline cursor-pointer p-0 text-xs">
+              Cancel setup
+            </button>
+          </div>
         </div>
       </GlassModal>
     );
   }
 
+  // 5-Step Customer Registration Progress (Username -> Email -> Password -> Policies -> Create My Account)
+  const isStep1Done = Boolean(username.trim().length >= 3 && !fieldErrors.username);
+  const isStep2Done = Boolean(email.trim().length > 0 && !fieldErrors.email && email.includes('@'));
+  const isStep3Done = Boolean(password.length >= 6 && !fieldErrors.password);
+  const isStep4Done = Boolean(agreedToTerms);
+  // Step 5 is ONLY done when the user clicks Create My Account and submission is in progress or completed!
+  const isStep5Done = Boolean(isFormSubmitting || isRegistrationSuccess);
+
+  const activeStep = !isStep1Done ? 1 : !isStep2Done ? 2 : !isStep3Done ? 3 : !isStep4Done ? 4 : 5;
+  const regPercentage = isStep5Done ? 100 : activeStep === 5 ? 80 : activeStep * 20;
+
+  // Track fill strictly between node 1 (0%) and node 5 (100%)
+  const trackFillPercent = isStep5Done
+    ? 100
+    : activeStep === 1
+    ? 0
+    : activeStep === 2
+    ? 25
+    : activeStep === 3
+    ? 50
+    : 75;
+
+  const regSteps = [
+    { id: 1, label: 'Username', shortLabel: 'User', done: isStep1Done },
+    { id: 2, label: 'Email Address', shortLabel: 'Email', done: isStep2Done },
+    { id: 3, label: 'Password', shortLabel: 'Pass', done: isStep3Done },
+    { id: 4, label: 'Studio Policies', shortLabel: 'Terms', done: isStep4Done },
+    { id: 5, label: 'Create My Account', shortLabel: 'Finish', done: isStep5Done },
+  ];
+
   return (
     <>
       <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[99999]" isDirty={false}>
-        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
-        
-        {/* Header & Subtitle */}
-        <div className="text-center">
-          <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
-            {mode === 'login' 
-              ? 'Sign in to access your orders, designs & custom projects' 
-              : 'Join Eds Towels & Caps for custom embroidery orders & tracking'}
-          </p>
-        </div>
+        <div className="flex flex-col gap-2.5 font-sans text-left pt-0 pb-0.5">
+
+          {/* Modal Top Header */}
+          <div className="text-center pt-0 pb-1 px-8">
+            <h2 className="text-xl sm:text-2xl font-black text-text-main m-0 tracking-tight">
+              {mode === 'login' ? 'Sign In' : 'Create Account'}
+            </h2>
+          </div>
+
+          {/* 5-Step Sticky Registration Progress Bar with Checkpoints (Stays fixed regardless of scrolling) */}
+          {mode === 'register' && (
+          <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-2 pb-2.5 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all">
+            {/* Checkpoints & Connecting Progress Line (Finish checkpoint sits precisely at the end of the bar) */}
+            <div className="relative flex items-center justify-between px-3 pt-0.5 pb-0.5">
+              {/* Enclosed Track: Bounded strictly between center of node 1 (x=24px) and center of node 5 (x=calc(100%-24px)) */}
+              <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
+                <div 
+                  className={`h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500 ease-out z-0 ${
+                    isStep5Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
+                  }`}
+                  style={{
+                    width: `${trackFillPercent}%`
+                  }}
+                />
+              </div>
+
+              {/* Checkpoints */}
+              {regSteps.map((s) => {
+                const isCompleted = s.done;
+                const isCurrent = activeStep === s.id && !s.done;
+
+                return (
+                  <div key={s.id} className="relative z-10 flex flex-col items-center">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                        isCompleted
+                          ? 'bg-primary text-white shadow-[0_0_8px_var(--color-primary-glow)] scale-105'
+                          : isCurrent
+                          ? 'bg-bg-card border-2 border-primary text-primary shadow-[0_0_10px_var(--color-primary-glow)] ring-2 ring-primary/25 scale-110'
+                          : 'bg-bg-surface border border-border-glass text-text-dim'
+                      }`}
+                      title={`Step ${s.id}: ${s.label}`}
+                    >
+                      {isCompleted ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <span>{s.id}</span>
+                      )}
+                    </div>
+                    <span
+                      className={`text-[9px] mt-1 font-semibold tracking-tight uppercase whitespace-nowrap transition-colors ${
+                        isCompleted
+                          ? 'text-primary font-bold'
+                          : isCurrent
+                          ? 'text-primary font-black'
+                          : 'text-text-dim/60'
+                      }`}
+                    >
+                      {s.shortLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Credentials Form */}
         <form 
           noValidate 
+          autoComplete="off"
           onSubmit={mode === 'login' ? handleLoginSubmit : handleRegisterSubmit} 
-          className={`flex flex-col gap-3.5 ${formShaking ? 'animate-shake' : ''}`}
+          className={`flex flex-col gap-2.5 ${formShaking ? 'animate-shake' : ''}`}
         >
           {mode === 'register' && (
             <div className="flex flex-col gap-1">
@@ -891,6 +1122,7 @@ export default function AuthModal() {
               <div className="relative">
                 <input 
                   type="text" 
+                  autoComplete="off"
                   placeholder="e.g. johndoe"
                   value={username}
                   onBlur={() => {
@@ -956,6 +1188,7 @@ export default function AuthModal() {
             <div className="relative">
               <input 
                 type={mode === 'login' ? 'text' : 'email'} 
+                autoComplete={mode === 'register' ? 'off' : 'username'}
                 placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
                 value={email}
                 onBlur={() => {
@@ -1011,6 +1244,7 @@ export default function AuthModal() {
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 placeholder="••••••••"
                 value={password}
                 onBlur={() => validateField('password')}
@@ -1045,23 +1279,25 @@ export default function AuthModal() {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer ml-1 select-none text-xs text-text-dim">
-            <input 
-              type="checkbox" 
-              checked={rememberMe} 
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="accent-primary rounded cursor-pointer w-4 h-4"
-            />
-            <span>Keep me signed in on this device</span>
-          </label>
+          {mode === 'login' && (
+            <label className="flex items-center gap-2 cursor-pointer ml-1 select-none text-xs text-text-dim">
+              <input 
+                type="checkbox" 
+                checked={rememberMe} 
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="accent-primary rounded cursor-pointer w-4 h-4"
+              />
+              <span>Keep me signed in on this device</span>
+            </label>
+          )}
 
           {mode === 'register' && (
-            <div className="flex flex-col gap-2.5 pt-1">
+            <div className="flex flex-col gap-1 pt-0.5">
               <div 
-                className={`flex items-start gap-2.5 ml-1 select-none text-xs text-text-dim p-2.5 rounded-lg border transition-all duration-200 ${
+                className={`flex items-center gap-2 select-none text-xs text-text-dim px-2.5 py-1.5 rounded-lg border transition-all duration-200 ${
                   fieldErrors.terms 
-                    ? 'bg-rose-500/10 border-rose-500/60 ring-2 ring-rose-500/20' 
-                    : 'bg-white/[0.03] border-border-glass hover:border-white/20'
+                    ? 'bg-rose-500/10 border-rose-500/60 ring-1 ring-rose-500/30' 
+                    : 'bg-white/[0.02] border-border-glass hover:border-white/20'
                 }`}
               >
                 <input 
@@ -1073,10 +1309,10 @@ export default function AuthModal() {
                     if (fieldErrors.terms) setFieldErrors((prev) => ({ ...prev, terms: undefined }));
                     if (formError) setFormError(null);
                   }}
-                  className="accent-primary rounded cursor-pointer w-4 h-4 mt-0.5 shrink-0"
+                  className="accent-primary rounded cursor-pointer w-4 h-4 shrink-0"
                 />
-                <label htmlFor="register-terms-agree" className="text-[0.72rem] text-text-dim text-left leading-relaxed cursor-pointer">
-                  I have read and agree to the{' '}
+                <label htmlFor="register-terms-agree" className="text-[0.72rem] text-text-dim text-left cursor-pointer flex-1 flex flex-wrap items-center gap-1">
+                  <span>I agree to the</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1086,19 +1322,14 @@ export default function AuthModal() {
                     }}
                     className="text-primary hover:underline font-bold bg-transparent border-none p-0 cursor-pointer inline text-[0.72rem]"
                   >
-                    Terms of Service &amp; Studio Policies
+                    Terms &amp; Studio Policies
                   </button>
-                  , including non-cancellation terms once custom machine stitching begins.
+                  <span className="text-[0.68rem] text-text-dim/60">(Non-cancellation on stitching)</span>
                 </label>
               </div>
               {fieldErrors.terms && (
                 <InlineError variant="field" message={fieldErrors.terms} className="ml-1" />
               )}
-
-              <div className="text-[0.68rem] text-emerald-500/90 font-medium ml-1 flex items-center gap-1.5">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Order receipts, tracking, &amp; notices are sent directly to your Gmail/Email.</span>
-              </div>
             </div>
           )}
 
@@ -1106,13 +1337,13 @@ export default function AuthModal() {
             type="submit"
             variant="primary"
             fullWidth
-            size="lg"
-            className="mt-2 font-bold text-sm tracking-wide shadow-sm"
+            size="md"
+            className="mt-1 font-bold text-sm tracking-wide shadow-sm py-2.5"
             disabled={isSubmitting}
           >
             {isFormSubmitting 
-              ? (mode === 'login' ? 'Signing In...' : 'Creating Account...') 
-              : (mode === 'login' ? 'Sign In' : 'Create Account')}
+              ? (mode === 'login' ? 'Signing In...' : 'Creating My Account...') 
+              : (mode === 'login' ? 'Sign In' : 'Create My Account')}
           </GlassButton>
           <InlineError variant="banner" message={formError} />
         </form>
@@ -1120,7 +1351,7 @@ export default function AuthModal() {
         {/* 1-Click Google Sign-In */}
         <div className="relative flex items-center justify-center my-0.5">
           <div className="border-t border-border-glass w-full" />
-          <span className="bg-bg-card px-3 text-[0.7rem] font-bold text-text-dim uppercase tracking-wider shrink-0">
+          <span className="bg-bg-card px-3 text-[0.68rem] font-bold text-text-dim uppercase tracking-wider shrink-0">
             or continue with
           </span>
           <div className="border-t border-border-glass w-full" />
@@ -1130,7 +1361,7 @@ export default function AuthModal() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isSubmitting}
-          className="w-full py-2.5 px-4 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
+          className="w-full py-2 px-4 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16] border border-white/15 text-text-main font-bold text-sm flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-primary/40 disabled:opacity-50"
         >
           {isGoogleSubmitting ? (
             <>

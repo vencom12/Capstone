@@ -742,46 +742,8 @@ export default function PanelSettings({
                       1. Additional Name Lettering Pricing
                     </h4>
                     <p className="text-xs text-text-dim">
-                      The customer gets the <strong>first word / name free</strong> (included in base item price). Any extra name or word added after a space is charged per letter:
+                      The customer gets the <strong>first word / name free</strong> (included in base item price). Any extra name or word added after a space is charged at <strong>₱7.00/letter</strong> (small items) or <strong>₱10.00/letter</strong> (big items).
                     </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Small Garment Card */}
-                    <div className="bg-white/5 border border-border-glass rounded-xl p-4 flex flex-col justify-between gap-3">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-sm text-text-main">Small Items</span>
-                          <span className="font-mono font-bold text-sm text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                            ₱7.00 / letter
-                          </span>
-                        </div>
-                        <span className="text-xs text-text-dim block">
-                          Caps, hats, hand towels, face towels, handkerchiefs, and hand fans.
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-text-dim/80 bg-white/[0.03] p-2.5 rounded-lg border border-white/5">
-                        Example: <strong className="text-text-main">"RYVEN REVINA"</strong> on a cap charges 6 letters of "REVINA" × ₱7 = <strong className="text-emerald-400">₱42.00 extra</strong>.
-                      </div>
-                    </div>
-
-                    {/* Big Garment Card */}
-                    <div className="bg-white/5 border border-border-glass rounded-xl p-4 flex flex-col justify-between gap-3">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-sm text-text-main">Big Items</span>
-                          <span className="font-mono font-bold text-sm text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                            ₱10.00 / letter
-                          </span>
-                        </div>
-                        <span className="text-xs text-text-dim block">
-                          Bath towels, T-shirts, polo shirts, jackets, hoodies, robes, and umbrellas.
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-text-dim/80 bg-white/[0.03] p-2.5 rounded-lg border border-white/5">
-                        Example: <strong className="text-text-main">"RYVEN REVINA"</strong> on a bath towel charges 6 letters × ₱10 = <strong className="text-emerald-400">₱60.00 extra</strong>.
-                      </div>
-                    </div>
                   </div>
                 </div>
 
