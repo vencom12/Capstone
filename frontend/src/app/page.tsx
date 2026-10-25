@@ -16,7 +16,7 @@ import OrderSuccessModal from '@/components/checkout/OrderSuccessModal';
 import AiAttendant from '@/components/products/AiAttendant';
 import CustomerTour from '@/components/landing/CustomerTour';
 import { API_BASE } from '@/lib/api';
-import type { Product } from '@/lib/types';
+import type { Product, BasketItem } from '@/lib/types';
 import { isGoogleAuthPending } from '@/lib/googleAuth';
 
 export default function StorefrontPage() {
@@ -27,6 +27,7 @@ export default function StorefrontPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [expressCheckoutItems, setExpressCheckoutItems] = useState<BasketItem[] | undefined>(undefined);
   const [successOrder, setSuccessOrder] = useState<any | null>(null);
 
   // Computed staff check: immediately true if logged in as staff, false otherwise
@@ -170,7 +171,10 @@ export default function StorefrontPage() {
         product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onBuyNow={() => setIsCheckoutOpen(true)}
+        onBuyNow={(expressItem) => {
+          setExpressCheckoutItems(expressItem ? [expressItem] : undefined);
+          setIsCheckoutOpen(true);
+        }}
       />
 
       {/* Right Panel / Drawer */}
@@ -184,6 +188,7 @@ export default function StorefrontPage() {
               useUIStore.getState().setAuthOpen(true, 'login');
               return;
             }
+            setExpressCheckoutItems(undefined);
             setIsCheckoutOpen(true);
           }}
           onCloseMobile={() => setBasketOpen(false)}
@@ -201,9 +206,15 @@ export default function StorefrontPage() {
       {/* Checkout Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setExpressCheckoutItems(undefined);
+        }}
+        checkoutItems={expressCheckoutItems}
+        onSwitchToFullBasket={() => setExpressCheckoutItems(undefined)}
         onSuccess={(createdOrder) => {
           setIsCheckoutOpen(false);
+          setExpressCheckoutItems(undefined);
           if (createdOrder) {
             setSuccessOrder(createdOrder);
           } else {
@@ -219,7 +230,8 @@ export default function StorefrontPage() {
         order={successOrder}
         onViewOrders={() => {
           setSuccessOrder(null);
-          router.push('/dashboard?tab=orders');
+          useUIStore.getState().setBasketOpen(false);
+          router.push('/dashboard?tab=tracking');
         }}
         onSelectProduct={(prod) => {
           setSuccessOrder(null);

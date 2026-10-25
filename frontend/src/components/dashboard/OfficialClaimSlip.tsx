@@ -16,14 +16,13 @@ export default function OfficialClaimSlip({
 
   const orderId = order.orderId || order.id || 'N/A';
   const cleanId = orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-  
+
   // Personalization & Fulfillment details
   const pers = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
   const clientName = pers.claimantName || order.client || order.clientName || 'Customer';
-  const clientPhone = pers.claimantPhone || order.phoneNumber || order.user?.phoneNumber || order.clientPhone || '';
 
   // Verification anti-fraud claim code
-  const verificationCode = order.verificationCode || pers.claimCode || (
+  const claimCode = order.verificationCode || pers.claimCode || (
     orderId.startsWith('WI-')
       ? `#${orderId.replace('WI-', 'A-')}`
       : `#A-${cleanId.slice(-4)}`
@@ -43,7 +42,7 @@ export default function OfficialClaimSlip({
     itemsList = [{
       name: order.itemName,
       quantity: order.quantity || 1,
-      price: order.grandTotal ? order.grandTotal / (order.quantity || 1) : undefined,
+      selectedVariant: order.selectedVariant || pers.variant || '',
       personalization: {
         text: order.personalizationText || pers.text || '',
         threadColor: { name: order.threadColor || pers.color || '' },
@@ -55,21 +54,8 @@ export default function OfficialClaimSlip({
     ? itemsList.reduce((sum: number, i: any) => sum + (Number(i.quantity) || 1), 0)
     : (order.quantity || 1);
 
-  const grandTotal = parseFloat(order.grandTotal ?? order.totalAmount ?? order.amount ?? 0);
-  const paymentMethod = (order.paymentMethod || 'GCash').toUpperCase();
-  const isPaid = (order.paymentStatus || 'paid').toLowerCase() === 'paid';
-  const paymentRef = pers.referenceNumber || order.receipt?.referenceId || (order as any).referenceNumber || '';
-
   const rawStatus = (order.status || '').toLowerCase();
-  const orderStatus = (order.status || 'In Queue').toUpperCase();
   const isCanceled = rawStatus.includes('cancel');
-  const isReadyForPickup = !isCanceled && rawStatus.includes('ready');
-  const isClaimed = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || Number(order.progress) >= 100);
-  const isInProduction = !isCanceled && !isReadyForPickup && !isClaimed;
-
-  const readyEstimate = isCanceled ? 'CANCELLED (VOID)' : (order.readyBy || (order.estimatedTime
-    ? `~${order.estimatedTime} mins`
-    : '~15–20 mins'));
 
   const orderDate = new Date(order.date || (order as any).createdAt || Date.now());
   const formattedDate = isNaN(orderDate.getTime())
@@ -83,9 +69,37 @@ export default function OfficialClaimSlip({
         hour12: true,
       });
 
-  const trackUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/track?id=${encodeURIComponent(orderId)}`
-    : `http://localhost:3000/track?id=${encodeURIComponent(orderId)}`;
+  // Estimated Ready to Pick Up Time
+  const createdTime = orderDate.getTime();
+  const rawDue = order.dueDate || pers.estimatedReadyDate;
+  const isCorruptedDue = rawDue && !isNaN(createdTime) && new Date(rawDue).getTime() < createdTime;
+  const effectiveDue = isCorruptedDue ? pers.estimatedReadyDate : (rawDue || pers.estimatedReadyDate);
+
+  let estimatedReadyFormatted = '';
+  if (effectiveDue) {
+    const dueDateObj = new Date(effectiveDue);
+    if (!isNaN(dueDateObj.getTime())) {
+      estimatedReadyFormatted = dueDateObj.toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }
+
+  if (!estimatedReadyFormatted) {
+    const estMinutes = Number(order.estimatedTime) || (order.isRush ? 15 : 30);
+    const fallbackDueDate = new Date((!isNaN(createdTime) ? createdTime : Date.now()) + estMinutes * 60 * 1000);
+    estimatedReadyFormatted = fallbackDueDate.toLocaleDateString('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
 
   const handlePrint = () => {
     const slipElement = document.getElementById(`official-claim-slip-${orderId}`);
@@ -114,7 +128,7 @@ export default function OfficialClaimSlip({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Claim Slip - ${orderId}</title>
+          <title>Claim Slip - ${claimCode}</title>
           <style>
             @page {
               size: 80mm auto;
@@ -141,38 +155,24 @@ export default function OfficialClaimSlip({
               max-width: 100%;
               background: #fff;
               color: #000;
-              padding: 8px 6px;
+              padding: 10px 8px;
               font-family: monospace;
-              font-size: 11px;
-              line-height: 1.3;
+              font-size: 12px;
+              line-height: 1.35;
               text-align: center;
             }
-            .border-b-dashed { border-bottom: 1px dashed #555; }
-            .border-t-dashed { border-top: 1px dashed #555; }
-            .py-1 { padding-top: 4px; padding-bottom: 4px; }
+            .border-b-dashed { border-bottom: 1.5px dashed #333; }
             .py-2 { padding-top: 8px; padding-bottom: 8px; }
-            .pb-2 { padding-bottom: 8px; }
-            .pt-2 { padding-top: 8px; }
+            .my-2 { margin-top: 8px; margin-bottom: 8px; }
             .flex { display: flex; }
             .flex-col { flex-direction: column; }
             .justify-between { justify-content: space-between; }
             .items-center { align-items: center; }
             .text-left { text-align: left; }
-            .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
-            .font-extrabold { font-weight: 800; }
             .font-black { font-weight: 900; }
             .uppercase { text-transform: uppercase; }
-            .text-xs { font-size: 11px; }
-            .text-sm { font-size: 13px; }
-            .text-base { font-size: 15px; }
-            .text-2xl { font-size: 22px; }
-            .text-zinc-600 { color: #52525b; }
-            .text-zinc-700 { color: #3f3f46; }
-            .text-zinc-800 { color: #27272a; }
-            .bg-emerald-100 { background-color: #d1fae5; }
-            .text-emerald-800 { color: #065f46; }
-            .qr-code { width: 90px; height: 90px; margin: 4px auto; display: block; }
+            .text-2xl { font-size: 26px; }
           </style>
         </head>
         <body>
@@ -201,28 +201,18 @@ export default function OfficialClaimSlip({
       {showPrintAction && (
         <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-xs flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2.5">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted shrink-0">
-              <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-              <path d="M6 14h12v8H6z" />
-            </svg>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <div>
               <p className="font-bold text-text-main m-0">
-                {isCanceled
-                  ? 'Order Voided (Cancelled)'
-                  : isReadyForPickup
-                    ? 'Counter Claim Slip (Ready for Pick-up)'
-                    : isClaimed
-                      ? 'Order Receipt & Claim Record'
-                      : 'Order Ticket & Intake Receipt'}
+                Counter Claim Slip
               </p>
               <p className="text-[0.7rem] text-text-dim m-0">
-                {isCanceled
-                  ? 'Order cancelled • Production stopped'
-                  : isReadyForPickup
-                    ? 'Items ready for claiming at Pacific Mall Lucena ground floor counter'
-                    : isClaimed
-                      ? 'Order completed and released to customer'
-                      : 'Standard 80mm thermal receipt • Keep for counter pick-up'}
+                Claim code: <strong className="text-emerald-400 font-mono">{claimCode}</strong> • Order #{orderId}
               </p>
             </div>
           </div>
@@ -234,226 +224,121 @@ export default function OfficialClaimSlip({
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-text-main font-bold text-xs transition-all cursor-pointer border border-border-glass shadow-sm flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-bold text-xs transition-all cursor-pointer border border-emerald-500/30 shadow-sm flex items-center gap-1.5"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
                 <rect x="6" y="14" width="12" height="8" />
               </svg>
-              <span>{isClaimed ? 'Print Receipt' : isReadyForPickup ? 'Print Claim Slip' : 'Print Ticket'}</span>
+              <span>Print Claim Slip</span>
             </button>
           )}
         </div>
       )}
 
-      {/* Official Standard 80mm Thermal Claim Slip Card */}
+      {/* Official Pure Claim Slip Card (No Receipts / Financial clutter) */}
       <div
         id={`official-claim-slip-${orderId}`}
-        className="bg-white text-zinc-950 p-5 rounded-xl font-mono text-center flex flex-col gap-2.5 text-xs border border-zinc-300 shadow-md select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
+        className="bg-white text-zinc-950 p-6 rounded-2xl font-mono text-center flex flex-col gap-3 text-xs border border-zinc-300 shadow-md select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
       >
-        {/* Brand Header */}
-        <div className="border-b border-dashed border-zinc-400 pb-2 flex flex-col items-center">
-          <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-700">
-            CLAIM STUB &amp; INTAKE RECEIPT
+        {/* Header */}
+        <div className="border-b border-dashed border-zinc-400 pb-2.5 flex flex-col items-center">
+          <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">
+            COUNTER CLAIM SLIP
           </div>
-          <div className="text-base font-extrabold text-black mt-0.5 tracking-wider">
+          <div className="text-lg font-black text-black mt-0.5 tracking-wider">
             EDS TOWELS &amp; CAPS
           </div>
           <div className="text-[10px] text-zinc-600">
-            Pacific Mall Lucena • Ground Floor
-          </div>
-          <div className="text-[9px] text-zinc-500 mt-0.5">
-            M.L. Tagarao St., Lucena City • Tel: 0928 810 3928
+            Pacific Mall Lucena • Ground Floor Counter
           </div>
         </div>
 
-        {/* Claim Ticket & Queue Status */}
-        <div className="py-2 border-b border-dashed border-zinc-400 flex flex-col items-center">
-          <div className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">
-            {isClaimed ? 'TRANSACTION RECORD' : isReadyForPickup ? 'CLAIM TICKET NUMBER' : 'ORDER TICKET NUMBER'}
+        {/* Claim Code Section */}
+        <div className="py-2.5 border-b border-dashed border-zinc-400 flex flex-col items-center">
+          <span className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">
+            CLAIM CODE / NUMBER
+          </span>
+          <div className="text-3xl font-black text-black font-mono tracking-wider my-1 bg-zinc-100 border border-zinc-300 px-4 py-1.5 rounded-lg w-full">
+            {claimCode}
           </div>
-          <div className="text-2xl font-black text-black tracking-widest my-0.5">
-            #{orderId}
-          </div>
-
-          {isCanceled ? (
-            <div className="bg-red-50 border border-red-300 text-red-700 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
-              VOID — ORDER CANCELLED
-              <div className="text-[9px] font-normal normal-case text-red-600 mt-0.5">
-                Production stopped. Not valid for pickup or fulfillment.
-              </div>
-            </div>
-          ) : isReadyForPickup ? (
-            <div className="bg-zinc-100 border border-zinc-400 text-zinc-950 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
-              STATUS: READY FOR PICK-UP
-              <div className="text-[9.5px] font-normal normal-case text-zinc-700 mt-0.5">
-                Present this Claim Ticket &amp; Counter Claim Code at Eds Towels &amp; Caps, Ground Floor, Pacific Mall Lucena.
-              </div>
-            </div>
-          ) : isClaimed ? (
-            <div className="bg-zinc-100 border border-zinc-300 text-zinc-900 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
-              STATUS: CLAIMED &amp; COMPLETED
-              <div className="text-[9.5px] font-normal normal-case text-zinc-600 mt-0.5">
-                Order fulfilled and released at Eds Towels counter. This document serves as your receipt.
-              </div>
-            </div>
-          ) : (
-            <div className="bg-zinc-50 border border-zinc-200 text-zinc-800 font-bold p-2 my-1.5 rounded text-xs tracking-wider uppercase w-full">
-              STATUS: IN PRODUCTION
-              <div className="text-[9.5px] font-normal normal-case text-zinc-600 mt-0.5">
-                Stitching in progress. Please wait for the ready notification before claiming at the counter.
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-semibold text-zinc-800">
-              Status: <strong className="uppercase">{orderStatus}</strong>
-            </span>
-            <span className="text-[9px] text-zinc-500">• Ready: {readyEstimate}</span>
-          </div>
-          <div className="text-[9px] text-zinc-500 mt-0.5">
-            Placed: {formattedDate}
+          <div className="text-[11px] font-mono text-zinc-700 mt-0.5">
+            Order Ref: <strong>#{orderId}</strong>
           </div>
         </div>
 
-        {/* Claimant & Stitched Items Block */}
+        {/* Customer, Placed Time & Estimated Ready Time */}
         <div className="text-left flex flex-col gap-1.5 py-2 text-[11px] border-b border-dashed border-zinc-400">
           <div className="flex justify-between items-baseline">
-            <span className="text-zinc-600 shrink-0">Customer:</span>
+            <span className="text-zinc-600">Customer:</span>
             <span className="font-bold text-black text-right truncate max-w-[190px]">{clientName}</span>
           </div>
-          {clientPhone && (
-            <div className="flex justify-between items-baseline">
-              <span className="text-zinc-600 shrink-0">Phone:</span>
-              <span className="font-bold text-black font-mono">{clientPhone}</span>
-            </div>
-          )}
           <div className="flex justify-between items-baseline">
-            <span className="text-zinc-600 shrink-0">Pickup Counter:</span>
-            <span className="font-bold text-black text-right">Pacific Mall Studio</span>
+            <span className="text-zinc-600">Order Placed:</span>
+            <span className="text-zinc-800 text-right">{formattedDate}</span>
           </div>
-          {(() => {
-            const staffName = order.processedBy || order.garmentsReceivedBy || (order.personalization?.statusHistory?.[0]?.actor) || '';
-            return staffName ? (
-              <div className="flex justify-between items-baseline">
-                <span className="text-zinc-600 shrink-0">Served By:</span>
-                <span className="font-bold text-black text-right truncate max-w-[190px]">{staffName}</span>
-              </div>
-            ) : null;
-          })()}
-
-          {/* Stitched Items List */}
-          <div className="border-t border-dashed border-zinc-300 pt-1.5 mt-1 flex flex-col gap-1.5">
-            <span className="text-[9px] uppercase font-bold text-zinc-500 tracking-wider">
-              Stitched Item Details ({totalQuantity} total):
+          <div className="flex justify-between items-baseline bg-zinc-100/80 p-1.5 rounded border border-zinc-300 mt-0.5">
+            <span className="font-bold text-zinc-900 flex items-center gap-1">
+              <span>⏱</span> Estimated Ready:
             </span>
-            {itemsList.length > 0 ? (
-              itemsList.map((item: any, idx: number) => {
-                const itemPers = item.personalization || {};
-                const customText = itemPers.text || pers.text || '';
-                const threadName = itemPers.threadColor?.name || itemPers.color || pers.color || '';
-                const fontName = itemPers.font?.name || pers.font || '';
-                const variantName = item.selectedVariant || item.variant || '';
-
-                return (
-                  <div key={idx} className="flex flex-col gap-0.5 bg-zinc-50 p-1.5 rounded border border-zinc-200">
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-bold text-black">
-                        {item.quantity || 1}x {item.name || 'Embroidered Item'}
-                      </span>
-                      {item.price !== undefined && (
-                        <span className="font-mono text-zinc-800">
-                          ₱{(Number(item.price) * (Number(item.quantity) || 1)).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                    {variantName && (
-                      <span className="text-[9px] text-zinc-600">
-                        Option: {variantName}
-                      </span>
-                    )}
-                    {customText && (
-                      <div className="text-[9.5px] text-zinc-800 font-semibold italic">
-                        Embroidery: "{customText}"
-                        {threadName && <span className="not-italic text-zinc-500 text-[9px]"> ({threadName})</span>}
-                        {fontName && <span className="not-italic text-zinc-500 text-[9px]"> • {fontName}</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex justify-between">
-                <span className="font-bold text-black">{order.design || 'Custom Embroidery'}</span>
-                <span className="font-mono text-black">1x</span>
-              </div>
-            )}
-          </div>
-
-          {/* Anti-Fraud Verification Box */}
-          <div className="flex justify-between items-center bg-zinc-100 p-1.5 rounded border border-zinc-300 mt-1">
-            <span className="text-[10px] font-bold text-zinc-700">Counter Claim Code:</span>
-            <span className="font-mono font-black text-xs text-black px-1.5 py-0.5 bg-white border border-zinc-400 rounded">
-              {verificationCode}
+            <span className="font-bold text-black text-right font-mono">
+              {estimatedReadyFormatted}
             </span>
           </div>
         </div>
 
-        {/* Financial & Payment Summary */}
-        <div className="flex flex-col gap-1 py-1.5 text-[11px] border-b border-dashed border-zinc-400">
-          <div className="flex justify-between font-bold text-xs">
-            <span>TOTAL AMOUNT:</span>
-            <span className="font-mono font-black text-sm text-black">₱{grandTotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-zinc-700 text-[10px]">
-            <span>Payment Method:</span>
-            <span className="font-bold text-black">{paymentMethod}</span>
-          </div>
-          <div className="flex justify-between text-zinc-700 text-[10px]">
-            <span>Payment Status:</span>
-            <span className={`font-bold ${isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {isPaid ? 'PAID IN FULL' : 'PENDING PAYMENT'}
+        {/* Items Ordered List */}
+        <div className="text-left flex flex-col gap-2 py-2 border-b border-dashed border-zinc-400">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] uppercase font-bold text-zinc-700 tracking-wider">
+              ITEMS ORDERED ({totalQuantity}):
             </span>
           </div>
-          {paymentRef && (
-            <div className="flex justify-between text-zinc-600 text-[9px]">
-              <span>Payment Reference:</span>
-              <span className="font-mono text-zinc-800">{paymentRef}</span>
+          {itemsList.length > 0 ? (
+            itemsList.map((item: any, idx: number) => {
+              const itemPers = item.personalization || {};
+              const customText = itemPers.text || pers.text || '';
+              const threadName = itemPers.threadColor?.name || itemPers.color || pers.color || '';
+              const fontName = itemPers.font?.name || pers.font || '';
+              const variantName = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+
+              return (
+                <div key={idx} className="flex flex-col gap-0.5 bg-zinc-50 p-2 rounded border border-zinc-200">
+                  <span className="font-bold text-black text-xs">
+                    {item.quantity || 1}x {item.name || 'Embroidered Item'}
+                  </span>
+                  {variantName && (
+                    <span className="text-[10px] text-zinc-600">
+                      Option: {variantName}
+                    </span>
+                  )}
+                  {customText && (
+                    <div className="text-[10px] text-zinc-800 font-semibold italic mt-0.5">
+                      Embroidery: "{customText}"
+                      {threadName && <span className="not-italic text-zinc-500"> ({threadName})</span>}
+                      {fontName && <span className="not-italic text-zinc-500"> • {fontName}</span>}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex justify-between bg-zinc-50 p-2 rounded border border-zinc-200">
+              <span className="font-bold text-black">{order.design || 'Custom Embroidery'}</span>
+              <span className="font-mono text-black">1x</span>
             </div>
           )}
         </div>
 
-        {/* Dynamic Live Mobile Tracking QR Code */}
-        <div className="py-2 border-b border-dashed border-zinc-400 flex flex-col items-center justify-center gap-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data=${encodeURIComponent(trackUrl)}`}
-            alt="Track Order QR Code"
-            className="w-20 h-20 border border-zinc-300 p-0.5 bg-white rounded shadow-xs"
-          />
-          <div className="text-[9px] font-bold text-zinc-800 uppercase tracking-wider mt-0.5">
-            Scan to Track Live Queue on Phone
-          </div>
-          <div className="text-[8px] text-zinc-500 font-mono">
-            /track?id={orderId}
-          </div>
-        </div>
-
-        {/* Official Store Policy Footer */}
-        <div className={`pt-1 text-[9.5px] font-bold uppercase leading-snug ${isCanceled ? 'text-red-600' : 'text-zinc-700'}`}>
-          {isCanceled
-            ? 'THIS CLAIM SLIP HAS BEEN VOIDED — ORDER CANCELLED'
-            : isReadyForPickup
-              ? 'Ready for pickup • Please present counter claim code upon arrival'
-              : isClaimed
-                ? 'Official Transaction & Claim Record • Order Completed'
-                : 'Intake Receipt • Present counter claim code once notified ready'}
-          <div className="font-normal normal-case text-zinc-500 text-[8.5px] mt-0.5">
-            {isCanceled
-              ? 'Order cancelled • Not valid for pickup at Pacific Mall Lucena Counter'
-              : 'Strict anti-fraud counter protection • Eds Towels & Caps, Ground Floor, Pacific Mall Lucena'}
-          </div>
+        {/* Counter Instructions Footer */}
+        <div className="pt-1.5 flex flex-col items-center gap-1">
+          <p className="text-[10px] font-bold text-zinc-800 uppercase m-0 leading-tight">
+            Present this slip or Claim Code upon pickup
+          </p>
+          <p className="text-[9px] text-zinc-500 m-0 leading-tight">
+            Eds Towels &amp; Caps Counter • Pacific Mall Lucena
+          </p>
         </div>
       </div>
     </div>

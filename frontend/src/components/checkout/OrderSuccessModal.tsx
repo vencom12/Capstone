@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import GlassModal from '@/components/ui/GlassModal';
 import { useProductStore } from '@/stores/useProductStore';
 import type { Product } from '@/lib/types';
 import { showToast } from '@/components/ui/Toast';
+import { API_BASE } from '@/lib/api';
 
 interface OrderSuccessModalProps {
   isOpen: boolean;
@@ -21,28 +23,92 @@ export default function OrderSuccessModal({
   onViewOrders,
   onSelectProduct,
 }: OrderSuccessModalProps) {
+  const router = useRouter();
   const { products } = useProductStore();
   const [copiedCode, setCopiedCode] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<string>(order?.status || 'In Queue');
+  const [liveStage, setLiveStage] = useState<'queue' | 'stitching' | 'ready' | 'completed'>(() => {
+    const s = (order?.status || '').toLowerCase();
+    if (s.includes('complete') || s.includes('ready')) return 'ready';
+    if (s.includes('process') || s.includes('stitch')) return 'stitching';
+    return 'queue';
+  });
 
-  if (!order) return null;
-
-  const orderId = order.orderId || order.id || 'N/A';
+  const orderId = order?.orderId || order?.id || 'N/A';
   const cleanId = orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
-  const claimCode = order.personalization?.claimCode || (
+  const claimCode = order?.personalization?.claimCode || (
     orderId.startsWith('WI-') ? `#${orderId.replace('WI-', 'A-')}` : `#A-${cleanId}`
   );
 
-  const readyLabel = order.personalization?.readyLabel || order.deliveryTime || 'Scheduled for production';
-  const queuePosition = order.personalization?.queuePosition;
-  const ordersAhead = order.personalization?.ordersAhead;
-  const items = Array.isArray(order.items) ? order.items : [];
-  const totalAmount = parseFloat(order.totalAmount || 0).toFixed(2);
+  const readyLabel = order?.personalization?.readyLabel || order?.deliveryTime || 'Scheduled for production';
+  const queuePosition = order?.personalization?.queuePosition;
+  const ordersAhead = order?.personalization?.ordersAhead;
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const totalAmount = parseFloat(order?.totalAmount || 0).toFixed(2);
 
-  // Extract similar/recommended products from store catalog (excluding purchased items)
-  const orderedProductNames = items.map((i: any) => (i.name || '').toLowerCase());
-  const recommendedProducts = products
-    .filter((p) => !orderedProductNames.includes((p.name || '').toLowerCase()))
-    .slice(0, 4);
+  // Real-time socket sync for live status progression
+  useEffect(() => {
+    if (!isOpen || !order) return;
+    const currentId = order.orderId || order.id;
+    if (!currentId) return;
+
+    let activeSocket: any = null;
+
+    const handleUpdate = (data: any) => {
+      if (!data) return;
+      const target = data.order || data;
+      const matches = (target.id && (target.id === currentId || target.orderId === currentId)) ||
+                      (target.orderId && (target.orderId === currentId || target.id === currentId)) ||
+                      (data.orderId && data.orderId === currentId);
+
+      if (matches) {
+        const newStatus = target.status || data.status;
+        if (newStatus) {
+          setLiveStatus(newStatus);
+          const lower = newStatus.toLowerCase();
+          if (lower.includes('complete') || lower.includes('ready')) {
+            setLiveStage('ready');
+            showToast('Your item is ready for pickup at the counter!', 'success');
+          } else if (lower.includes('process') || lower.includes('stitch')) {
+            setLiveStage('stitching');
+            showToast('Artisan started stitching your design!', 'info');
+          }
+        }
+      }
+    };
+
+    const connectSocket = () => {
+      const io = (window as any).io;
+      if (!io) return;
+      const socket = io(API_BASE, {
+        withCredentials: true,
+        transports: ['websocket', 'polling']
+      });
+      activeSocket = socket;
+      socket.on('dataChanged', (data: any) => {
+        if (!data || !data.entity || data.entity === 'ORDER') {
+          handleUpdate(data?.data);
+        }
+      });
+      socket.on('ordersUpdated', handleUpdate);
+    };
+
+    if ((window as any).io) {
+      connectSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = connectSocket;
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (activeSocket) activeSocket.close();
+    };
+  }, [isOpen, order]);
+
+  if (!order) return null;
 
   const handleCopyClaimCode = () => {
     if (claimCode) {
@@ -129,22 +195,25 @@ export default function OrderSuccessModal({
           </div>
         </div>
 
-        {/* Claim Code & Workshop Card */}
-        <div className="bg-white/[0.02] border border-border-glass/60 rounded-xl p-3.5 flex flex-col gap-3">
-          {/* Top Row: Claim Code & Copy Action */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-border-glass/40">
+        {/* Clean Digital Claim Slip Card */}
+        <div className="bg-white/[0.03] border border-border-glass rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl">
+          {/* Claim Slip Code Block */}
+          <div className="flex items-center justify-between pb-3.5 border-b border-border-glass/50">
             <div className="flex flex-col">
-              <span className="text-[0.58rem] font-bold text-text-dim uppercase tracking-wider">
-                Counter Claim Code
+              <span className="text-[0.62rem] font-bold text-text-dim uppercase tracking-wider">
+                Claim Slip Code
               </span>
-              <span className="font-mono text-xl sm:text-2xl font-extrabold text-text-main tracking-wider mt-0.5">
+              <span className="font-mono text-2xl sm:text-3xl font-black text-text-main tracking-wider mt-0.5">
                 {claimCode}
+              </span>
+              <span className="text-[0.68rem] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+                <span>✓</span> Present this code at the Pacific Mall counter to pick up
               </span>
             </div>
             <button
               type="button"
               onClick={handleCopyClaimCode}
-              className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-border-glass text-text-main text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-border-glass text-text-main text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
             >
               {copiedCode ? (
                 <>
@@ -153,7 +222,7 @@ export default function OrderSuccessModal({
                 </>
               ) : (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                   </svg>
@@ -163,94 +232,73 @@ export default function OrderSuccessModal({
             </button>
           </div>
 
-          {/* Middle Row: Ready Time & Pickup Counter Details */}
-          <div className="grid grid-cols-2 gap-3 text-xs max-sm:grid-cols-1">
-            <div>
-              <span className="text-[0.62rem] text-text-dim block font-medium">Estimated Ready Time</span>
-              <span className="text-text-main text-xs font-semibold block mt-0.5">
-                {readyLabel}
-              </span>
-              <span className="text-[0.58rem] text-text-dim/70">
-                {ordersAhead !== undefined ? (ordersAhead === 0 ? 'Next in line for setup' : `#${queuePosition || (ordersAhead + 1)} in workshop queue`) : 'In queue'}
-              </span>
-            </div>
-            <div>
-              <span className="text-[0.62rem] text-text-dim block font-medium">Store Pick-up Counter</span>
-              <span className="text-text-main text-xs font-semibold block mt-0.5">
-                Eds Towels &amp; Caps (Ground Floor)
-              </span>
-              <span className="text-[0.58rem] text-text-dim/70">Pacific Mall Lucena • Daily 10 AM – 8 PM</span>
-            </div>
-          </div>
+          {/* Ordered Items List */}
+          <div className="flex flex-col gap-2">
+            <span className="text-[0.65rem] font-bold text-text-dim uppercase tracking-wider">
+              Items Ordered ({items.length})
+            </span>
+            <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto pr-1">
+              {items.map((item: any, idx: number) => {
+                const itemPers = item.personalization || {};
+                const customText = itemPers.text || '';
+                const threadName = typeof itemPers.threadColor === 'object' ? itemPers.threadColor?.name : (itemPers.threadColor || itemPers.color || '');
+                const variantName = item.selectedVariant || item.variant || '';
 
-          {/* Bottom Note: Clean, professional notice */}
-          <div className="pt-2 border-t border-border-glass/30 flex items-center gap-2 text-[0.68rem] text-text-dim">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-dim shrink-0">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-            <span>Handcrafted in queue order. Monitor live progress in your Orders tab before heading to the counter.</span>
-          </div>
-        </div>
-
-        {/* Similar / Recommended Products Section */}
-        {recommendedProducts.length > 0 && (
-          <div className="flex flex-col gap-2 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-text-main tracking-wide">
-                You May Also Like
-              </span>
-              <span className="text-[0.62rem] text-text-dim">Similar custom products</span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2.5 max-sm:grid-cols-2">
-              {recommendedProducts.map((prod) => {
-                const prodId = prod.id || prod._id;
                 return (
                   <div
-                    key={prodId}
-                    onClick={() => onSelectProduct?.(prod)}
-                    className="group bg-white/[0.02] hover:bg-white/[0.06] border border-border-glass/50 hover:border-border-glass rounded-xl p-2 flex flex-col gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5"
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-white/[0.02] border border-border-glass/40 flex items-center justify-between gap-3"
                   >
-                    <div className="relative w-full aspect-[4/3] bg-bg-surface rounded-lg overflow-hidden border border-border-glass/30">
-                      <img
-                        src={prod.imageUrl}
-                        alt={prod.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {prod.tag && (
-                        <span className="absolute top-1 left-1 bg-black/60 backdrop-blur-sm text-[0.55rem] font-medium text-text-dim px-1.5 py-0.2 rounded">
-                          {prod.tag}
-                        </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {item.imageUrl && (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-glass/50 bg-black/30 shrink-0">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
                       )}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-medium text-text-main truncate group-hover:text-primary transition-colors leading-tight">
-                        {prod.name}
-                      </span>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-xs font-mono font-semibold text-text-main">
-                          ₱{parseFloat(String(prod.price || 0)).toFixed(2)}
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-text-main truncate">
+                          {item.quantity || 1}x {item.name}
                         </span>
-                        <span className="text-[0.65rem] text-text-dim group-hover:text-text-main font-medium">
-                          View ›
-                        </span>
+                        {variantName && (
+                          <span className="text-[0.68rem] text-text-dim truncate">
+                            Variant: {variantName}
+                          </span>
+                        )}
+                        {customText && (
+                          <span className="text-[0.68rem] text-text-main font-semibold italic truncate">
+                            Embroidery: "{customText}"{threadName ? ` (${threadName})` : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
+                    {item.price !== undefined && (
+                      <span className="font-mono font-bold text-xs text-text-main shrink-0">
+                        ₱{(Number(item.price) * (Number(item.quantity) || 1)).toFixed(2)}
+                      </span>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
+
+          {/* Total Row */}
+          <div className="pt-2.5 border-t border-border-glass/50 flex items-center justify-between text-xs">
+            <span className="font-bold text-text-dim uppercase tracking-wider text-[0.68rem]">
+              Total Paid
+            </span>
+            <span className="font-mono font-extrabold text-sm sm:text-base text-text-main">
+              ₱{totalAmount}
+            </span>
+          </div>
+        </div>
 
         {/* Action Buttons matching theme */}
         <div className="pt-3 border-t border-border-glass/40 flex items-center gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-border-glass text-text-main font-medium text-xs transition-all cursor-pointer"
+            className="flex-1 py-2.5 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-border-glass text-text-main font-medium text-xs transition-all cursor-pointer"
           >
             Continue Shopping
           </button>
@@ -260,9 +308,10 @@ export default function OrderSuccessModal({
               onClose();
               onViewOrders?.();
             }}
-            className="flex-1 py-2 px-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
           >
-            Track in Orders Tab ›
+            <span>Track in My Orders</span>
+            <span>→</span>
           </button>
         </div>
       </div>

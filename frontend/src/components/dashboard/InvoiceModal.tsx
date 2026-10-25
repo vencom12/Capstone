@@ -315,13 +315,18 @@ export default function InvoiceModal({
                     </tr>
                   )}
                   {(() => {
-                    const staffName = order?.processedBy || order?.garmentsReceivedBy || (order?.personalization as any)?.statusHistory?.[0]?.actor || fetchedData?.processedBy || '';
-                    return staffName ? (
+                    const rawStaff = order?.processedBy || order?.garmentsReceivedBy || (order?.personalization as any)?.statusHistory?.[0]?.actor || fetchedData?.processedBy || '';
+                    if (!rawStaff) return null;
+                    const isSystemOrCustomer = /customer\s*checkout|system|self-service/i.test(rawStaff);
+                    const label = isSystemOrCustomer ? 'ORDER CHANNEL:' : 'SERVED BY:';
+                    const displayStaff = isSystemOrCustomer ? 'Online Web Store' : rawStaff;
+
+                    return (
                       <tr>
-                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>SERVED BY:</td>
-                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000' }}>{staffName}</td>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b' }}>{label}</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000' }}>{displayStaff}</td>
                       </tr>
-                    ) : null;
+                    );
                   })()}
                 </tbody>
               </table>

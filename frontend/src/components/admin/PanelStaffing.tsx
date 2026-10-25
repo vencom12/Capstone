@@ -90,12 +90,18 @@ export default function PanelStaffing({
   const isTargetAdmin = (u: any) => u?.role === 'admin';
   const isCurrentAdmin = (u: any) => Boolean(u && currentAdmin?.id && (u.id || u._id) === currentAdmin.id);
   const isCustomer = (u: any) => u?.role === 'customer';
+  const isDeletedUser = (u: any) => Boolean(
+    (u?.email && u.email.endsWith('@stitchopt.local') && u.email.startsWith('deleted_')) ||
+    (u?.username && u.username.startsWith('Deleted User #')) ||
+    (u?.disabledReason && u.disabledReason.toLowerCase().includes('deleted'))
+  );
 
-  // Counts for tabs
-  const staffUsers = users.filter((u) => u.role === 'admin' || u.role === 'employee');
-  const customerUsers = users.filter((u) => u.role === 'customer');
+  // Counts for tabs (exclude anonymized deleted users from regular active staff/customer counts)
+  const staffUsers = users.filter((u) => (u.role === 'admin' || u.role === 'employee') && !isDeletedUser(u));
+  const customerUsers = users.filter((u) => u.role === 'customer' && !isDeletedUser(u));
+  const deletedUsers = users.filter((u) => isDeletedUser(u));
   const onShiftCount = staffUsers.filter((u) => u.shiftStatus === 'clocked_in').length;
-  const disabledCount = users.filter((u) => u.isActive === false).length;
+  const disabledCount = users.filter((u) => u.isActive === false && !isDeletedUser(u)).length;
 
   // Segmented counts for active / disabled / all
   const disabledStaffCount = staffUsers.filter((u) => u.isActive === false).length;
@@ -121,13 +127,29 @@ export default function PanelStaffing({
 
   // 1. Filter Personnel list based on activeTab, statusFilter, and searchQuery
   const filteredUsers = users.filter((u) => {
-    // Tab filter
-    if (activeTab === 'staff' && u.role === 'customer') return false;
-    if (activeTab === 'customers' && u.role !== 'customer') return false;
+    const isDeleted = isDeletedUser(u);
 
-    // Status filter
-    if (statusFilter === 'active' && u.isActive === false) return false;
-    if (statusFilter === 'disabled' && u.isActive !== false) return false;
+    // If viewing staff tab, never show deleted customers or regular customers
+    if (activeTab === 'staff') {
+      if (u.role === 'customer' || isDeleted) return false;
+      if (statusFilter === 'active' && u.isActive === false) return false;
+      if (statusFilter === 'disabled' && u.isActive !== false) return false;
+    }
+
+    // If viewing customers tab:
+    if (activeTab === 'customers') {
+      if (u.role !== 'customer') return false;
+
+      // By default ('all' or 'active'), hide deleted/anonymized accounts so they don't pollute customer registry
+      if (statusFilter === 'active') {
+        if (u.isActive === false || isDeleted) return false;
+      } else if (statusFilter === 'all') {
+        if (isDeleted) return false;
+      } else if (statusFilter === 'disabled') {
+        // Disabled filter shows both manually deactivated and deleted accounts
+        if (u.isActive !== false && !isDeleted) return false;
+      }
+    }
 
     // Search filter
     const query = searchQuery.toLowerCase();
@@ -426,7 +448,7 @@ export default function PanelStaffing({
                 : 'text-text-dim hover:text-text-main bg-transparent'
             }`}
           >
-            All ({users.length})
+            Active &amp; Inactive ({activeTab === 'staff' ? staffUsers.length : customerUsers.length})
           </button>
           <button
             type="button"
@@ -437,7 +459,7 @@ export default function PanelStaffing({
                 : 'text-text-dim hover:text-emerald-500 bg-transparent'
             }`}
           >
-            Active ({users.length - disabledCount})
+            Active ({activeTab === 'staff' ? activeStaffCount : activeCustomerCount})
           </button>
           <button
             type="button"
@@ -448,7 +470,7 @@ export default function PanelStaffing({
                 : 'text-text-dim hover:text-rose-500 bg-transparent'
             }`}
           >
-            Disabled ({disabledCount})
+            Disabled {activeTab === 'customers' && deletedUsers.length > 0 ? `& Archived (${disabledCustomerCount + deletedUsers.length})` : `(${disabledStaffCount})`}
           </button>
         </div>
       </div>
@@ -517,22 +539,22 @@ export default function PanelStaffing({
           </div>
         ) : (
           <div className="glass-table-container max-[650px]:hidden overflow-x-auto w-full">
-            <table className="glass-table w-full min-w-[960px]">
+            <table className="glass-table w-full">
               <thead>
                 <tr>
-                  <th className="glass-th text-left min-w-[180px] whitespace-nowrap">{activeTab === 'staff' ? 'Staff & Role' : 'Customer'}</th>
-                  <th className="glass-th text-left min-w-[200px] whitespace-nowrap">Contact Info</th>
+                  <th className="glass-th text-left w-[20%]">{activeTab === 'staff' ? 'Staff & Role' : 'Customer'}</th>
+                  <th className="glass-th text-left w-[24%]">Contact Info</th>
                   {activeTab === 'staff' ? (
-                    <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Shift Status</th>
+                    <th className="glass-th text-left w-[14%]">Shift Status</th>
                   ) : (
                     <>
-                      <th className="glass-th text-left min-w-[120px] whitespace-nowrap">Orders Placed</th>
-                      <th className="glass-th text-left min-w-[140px] whitespace-nowrap">Lifetime Spend</th>
+                      <th className="glass-th text-left w-[10%]">Orders</th>
+                      <th className="glass-th text-left w-[14%]">Lifetime Spend</th>
                     </>
                   )}
-                  <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Last Active</th>
-                  <th className="glass-th text-left min-w-[110px] whitespace-nowrap">Status</th>
-                  <th className="glass-th text-right min-w-[180px] whitespace-nowrap">Actions</th>
+                  <th className="glass-th text-left w-[14%]">Last Active</th>
+                  <th className="glass-th text-left w-[10%]">Status</th>
+                  <th className="glass-th text-right w-[18%]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,11 +569,14 @@ export default function PanelStaffing({
                   const id = u.id || u._id;
                   const isSelf = isCurrentAdmin(u);
                   const customer = isCustomer(u);
+                  const isDeleted = isDeletedUser(u);
 
                   return (
-                    <tr key={id} className="glass-tr hover:bg-white/5 transition-all">
-                      <td className="glass-td font-bold text-sm text-text-main text-left whitespace-nowrap">
-                        <div className="font-bold text-sm text-text-main">{u.username}</div>
+                    <tr key={id} className={`glass-tr hover:bg-white/5 transition-all ${isDeleted ? 'opacity-60 bg-white/[0.02]' : ''}`}>
+                      <td className="glass-td font-bold text-sm text-text-main text-left">
+                        <div className="font-bold text-sm text-text-main truncate max-w-[180px]" title={u.username}>
+                          {isDeleted ? `Deleted Customer (#${id.slice(0, 6)})` : u.username}
+                        </div>
                         {activeTab === 'staff' ? (
                           <div
                             className={`text-[0.68rem] font-bold tracking-wide ${
@@ -562,27 +587,35 @@ export default function PanelStaffing({
                           >
                             {u.role === 'admin' ? 'Administrator' : 'Artisan / Employee'}
                           </div>
+                        ) : isDeleted ? (
+                          <span className="text-[0.65rem] text-rose-400 font-semibold inline-block">
+                            Account Closed &bull; Data Scrubbed
+                          </span>
                         ) : (
                           u.address ? (
-                            <div className="text-[0.68rem] text-text-dim truncate max-w-[240px]" title={u.address}>
+                            <div className="text-[0.68rem] text-text-dim truncate max-w-[180px]" title={u.address}>
                               {u.address}
                             </div>
                           ) : null
                         )}
                       </td>
-                      <td className="glass-td font-medium text-sm text-text-main text-left whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span>{u.email}</span>
-                          {customer && (
-                            <span className={`text-[0.65rem] font-semibold ${u.isEmailVerified ? 'text-success' : 'text-text-dim'}`}>
+                      <td className="glass-td font-medium text-sm text-text-main text-left">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate max-w-[180px] font-mono text-xs text-text-main" title={u.email}>
+                            {isDeleted ? 'privacy-scrubbed@anonymized' : u.email}
+                          </span>
+                          {customer && !isDeleted && (
+                            <span className={`text-[0.65rem] font-semibold shrink-0 ${u.isEmailVerified ? 'text-success' : 'text-text-dim'}`}>
                               {u.isEmailVerified ? 'Verified' : 'Unverified'}
                             </span>
                           )}
                         </div>
-                        {u.phoneNumber && <div className="text-[0.7rem] text-text-dim">{u.phoneNumber}</div>}
+                        {u.phoneNumber && !isDeleted && (
+                          <div className="text-[0.7rem] text-text-dim font-mono">{u.phoneNumber}</div>
+                        )}
                       </td>
                       {activeTab === 'staff' && (
-                        <td className="glass-td text-left whitespace-nowrap">
+                        <td className="glass-td text-left">
                           <span
                             className={`text-xs ${
                               u.shiftStatus === 'clocked_in' ? 'text-success font-semibold' : 'text-text-dim'
@@ -594,32 +627,36 @@ export default function PanelStaffing({
                       )}
 
                       {activeTab === 'customers' && (
-                        <td className="glass-td text-left whitespace-nowrap">
+                        <td className="glass-td text-left">
                           <div className="font-mono font-bold text-xs text-text-main">
                             {u.totalOrders || 0}
                           </div>
                         </td>
                       )}
                       {activeTab === 'customers' && (
-                        <td className="glass-td text-left font-mono font-extrabold text-xs text-success whitespace-nowrap">
+                        <td className="glass-td text-left font-mono font-extrabold text-xs text-success">
                           ₱{(u.totalSpent || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
                       )}
-                      <td className="glass-td text-left text-xs font-mono text-text-dim whitespace-nowrap">
+                      <td className="glass-td text-left text-xs font-mono text-text-dim">
                         <span title={u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never logged in')}>
                           {formatLastActive(u.lastActiveAt || u.lastLoginAt)}
                         </span>
                       </td>
-                      <td className="glass-td text-left whitespace-nowrap">
+                      <td className="glass-td text-left">
                         <span
                           className={`text-xs font-semibold ${
-                            u.isActive === false ? 'text-danger' : 'text-success'
+                            isDeleted
+                              ? 'text-text-dim bg-white/5 border border-white/10 px-2 py-0.5 rounded'
+                              : u.isActive === false
+                                ? 'text-danger'
+                                : 'text-success'
                           }`}
                         >
-                          {u.isActive === false ? 'Disabled' : 'Active'}
+                          {isDeleted ? 'Archived' : u.isActive === false ? 'Disabled' : 'Active'}
                         </span>
                       </td>
-                      <td className="glass-td text-right whitespace-nowrap">
+                      <td className="glass-td text-right">
                         <div className="flex gap-2 justify-end items-center">
                           <button
                             onClick={() => setViewingProfileUser(u)}
@@ -628,7 +665,7 @@ export default function PanelStaffing({
                           >
                             Profile
                           </button>
-                          {!customer && (
+                          {!customer && !isDeleted && (
                             <button
                               onClick={() => openModal(u)}
                               className="w-14 py-1.5 rounded-lg text-xs font-bold bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all text-center cursor-pointer"
@@ -643,6 +680,13 @@ export default function PanelStaffing({
                               title="You cannot deactivate your own active session"
                             >
                               (You)
+                            </span>
+                          ) : isDeleted ? (
+                            <span
+                              className="w-16 py-1.5 text-[0.68rem] text-text-dim text-center font-mono select-none"
+                              title="Account was permanently scrubbed & closed upon customer request"
+                            >
+                              Closed
                             </span>
                           ) : (
                             <button

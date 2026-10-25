@@ -823,3 +823,10 @@
 {"timestamp":"2026-10-25T12:53:10.396Z","event":"dataChanged","sizeBytes":505,"entity":"PRODUCT","action":"CREATE"}
 {"timestamp":"2026-10-25T12:56:46.724Z","event":"dataChanged","sizeBytes":177,"entity":"PRODUCT","action":"DELETE"}
 {"timestamp":"2026-10-25T12:58:23.168Z","event":"dataChanged","sizeBytes":882,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-10-25T13:54:17.510Z","event":"dataChanged","sizeBytes":61,"entity":"WALLET","action":"UPDATE"}
+{"timestamp":"2026-10-25T13:54:17.511Z","event":"dataChanged","sizeBytes":1938,"entity":"ORDER","action":"CREATE"}
+{"timestamp":"2026-10-25T13:54:21.061Z","event":"dataChanged","sizeBytes":87375,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-25T13:54:24.235Z","event":"dataChanged","sizeBytes":16450,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-10-25T14:33:54.798Z","event":"dataChanged","sizeBytes":2348,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-25T14:33:56.154Z","event":"dataChanged","sizeBytes":2568,"entity":"INVENTORY","action":"UPDATE"}
+{"timestamp":"2026-10-25T14:34:02.262Z","event":"dataChanged","sizeBytes":16446,"entity":"PRODUCT","action":"UPDATE"}

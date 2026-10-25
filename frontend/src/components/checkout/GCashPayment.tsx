@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 
@@ -47,6 +47,46 @@ export default function GCashPayment({
   const [refTouched, setRefTouched] = useState(false);
   const [refError, setRefError] = useState('');
   const [shakeManualRef, setShakeManualRef] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (receiptFile) {
+      const url = URL.createObjectURL(receiptFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [receiptFile]);
+
+  // Global & Local clipboard listener for Ctrl+V instant screenshot paste
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const clipboardItems = e.clipboardData?.items;
+      if (!clipboardItems) return;
+
+      for (let i = 0; i < clipboardItems.length; i++) {
+        const item = clipboardItems[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            showToast('Receipt screenshot pasted from clipboard!', 'success');
+            const syntheticEvent = {
+              target: {
+                files: [file]
+              }
+            } as unknown as React.ChangeEvent<HTMLInputElement>;
+            onFileSelect(syntheticEvent);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [onFileSelect]);
 
   const accountNo = "09288103928";
   const displayAccountNo = "0928 810 3928";
@@ -165,24 +205,72 @@ export default function GCashPayment({
 
       {/* Upload Zone */}
       <div className="flex flex-col gap-1.5">
-        <h4 className="text-[0.72rem] font-bold m-0 flex items-center gap-1.5 text-text-main uppercase tracking-wider">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-          Upload GCash Receipt Screenshot
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-[0.72rem] font-bold m-0 flex items-center gap-1.5 text-text-main uppercase tracking-wider">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+            Upload GCash Receipt Screenshot
+          </h4>
+          <span className="text-[0.62rem] text-primary font-bold flex items-center gap-1">
+            <span>⚡ Paste (Ctrl+V) Supported</span>
+          </span>
+        </div>
         <div 
           onClick={() => document.getElementById('gcash-upload')?.click()}
-          className="border border-dashed border-border-glass hover:border-white/40 rounded-xl p-3 text-center cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.03]"
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file && file.type.startsWith('image/')) {
+              showToast('Receipt file dropped!', 'success');
+              const syntheticEvent = {
+                target: { files: [file] }
+              } as unknown as React.ChangeEvent<HTMLInputElement>;
+              onFileSelect(syntheticEvent);
+            }
+          }}
+          className={`border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all ${
+            isDragging
+              ? 'border-primary bg-primary/10 ring-2 ring-primary/40'
+              : 'border-border-glass hover:border-white/40 bg-white/[0.01] hover:bg-white/[0.03]'
+          }`}
         >
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
           {receiptFile ? (
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-[0.78rem] text-text-main font-bold truncate max-w-[200px]">{receiptFile.name}</span>
+            <div className="flex items-center gap-3 p-1">
+              {previewUrl && (
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-black/40 shrink-0">
+                  <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex flex-col text-left min-w-0 flex-1">
+                <span className="text-[0.78rem] text-text-main font-bold truncate">{receiptFile.name}</span>
+                <span className="text-[0.62rem] text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>✓</span>
+                  <span>{(receiptFile.size / 1024).toFixed(0)} KB • Ready for scan</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.getElementById('gcash-upload')?.click();
+                }}
+                className="text-[0.65rem] text-text-dim hover:text-text-main bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-border-glass cursor-pointer shrink-0"
+              >
+                Replace
+              </button>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-0.5">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-              <span className="text-[0.75rem] text-text-main font-semibold">Click or tap to upload receipt</span>
-              <span className="text-[0.62rem] text-text-dim">Supports JPG, PNG, WEBP</span>
+            <div className="flex flex-col items-center gap-1">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              <span className="text-[0.78rem] text-text-main font-semibold">Click to upload, drag &amp; drop, or press Ctrl+V</span>
+              <span className="text-[0.62rem] text-text-dim">Auto-detects pasted screenshot from clipboard • JPG, PNG, WEBP</span>
             </div>
           )}
         </div>

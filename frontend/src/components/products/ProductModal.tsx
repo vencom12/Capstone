@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Product, ProductVariant, ProductReviewsResponse } from '@/lib/types';
+import type { Product, ProductVariant, ProductReviewsResponse, BasketItem } from '@/lib/types';
 import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -17,7 +17,7 @@ interface ProductModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
-  onBuyNow?: () => void;
+  onBuyNow?: (expressItem?: BasketItem) => void;
   initialMode?: 'basket' | 'buy_now';
 }
 
@@ -231,7 +231,7 @@ export default function ProductModal({
   const effectiveStock = hasVariants ? selectedVariantStock : 0;
   const isOutOfStock = !hasVariants || effectiveStock <= 0;
 
-  const handleAdd = () => {
+  const validateAndBuildBasketItem = (): BasketItem | null => {
     setActionError(null);
     setMonogramError(null);
 
@@ -239,7 +239,7 @@ export default function ProductModal({
       const err = `${product.name} is currently out of stock. Please check back soon!`;
       setActionError(err);
       showToast(err, 'error');
-      return false;
+      return null;
     }
 
     const trimmedCustomText = customText.trim();
@@ -247,7 +247,7 @@ export default function ProductModal({
       setMonogramError('Please enter the name or text you would like embroidered.');
       setActionError('Please enter your embroidery text.');
       showToast('Please enter the name or text you would like embroidered.', 'error');
-      return false;
+      return null;
     }
 
     const existing = items.find(
@@ -262,10 +262,11 @@ export default function ProductModal({
       const err = `Only ${effectiveStock} left in stock. Please reduce your quantity.`;
       setActionError(err);
       showToast(err, 'error');
-      return false;
+      return null;
     }
 
-    addItem({
+    return {
+      id: `express-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       productId,
       name: product.name,
       price: finalUnitPrice,
@@ -284,27 +285,35 @@ export default function ProductModal({
             extraLettersCount: lettering.extraLettersCount,
           }
         : undefined,
-    });
-
-    return true;
+    };
   };
 
-
-
   const handleAddToBasket = () => {
-    if (handleAdd()) {
-      setIsOrderSubmitted(true);
-      showToast(`Added ${quantity}x ${product.name} to your basket!`, 'success');
-      setTimeout(() => {
-        onClose();
-      }, 400);
-    }
+    const item = validateAndBuildBasketItem();
+    if (!item) return;
+
+    addItem({
+      productId: item.productId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      imageUrl: item.imageUrl,
+      selectedVariant: item.selectedVariant,
+      selectedColor: item.selectedColor,
+      selectedSize: item.selectedSize,
+      personalization: item.personalization,
+    });
+
+    setIsOrderSubmitted(true);
+    showToast(`Added ${quantity}x ${product.name} to your basket!`, 'success');
+    setTimeout(() => {
+      onClose();
+    }, 400);
   };
 
   const handleBuyNow = () => {
-    if (!handleAdd()) {
-      return;
-    }
+    const item = validateAndBuildBasketItem();
+    if (!item) return;
 
     if (!isAuthenticated) {
       setActionError('Please sign in to place your order.');
@@ -317,9 +326,9 @@ export default function ProductModal({
     setTimeout(() => {
       onClose();
       if (onBuyNow) {
-        onBuyNow();
+        onBuyNow(item);
       }
-    }, 400);
+    }, 350);
   };
 
   // 4-Step Customer Product Ordering Progress (Style/Variant -> Lettering -> Quantity -> Order/Basket)

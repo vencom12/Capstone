@@ -39,11 +39,6 @@ export default function PanelOverview({
   const [receiptDetails, setReceiptDetails] = useState<any>(null);
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
-  // Edit Order Modal State
-  const [editingOrder, setEditingOrder] = useState<any>(null);
-  const [editStatus, setEditStatus] = useState('');
-  const [editTrackingNumber, setEditTrackingNumber] = useState('');
-  const [editNote, setEditNote] = useState('');
   const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
   const isOrderPickup = (_o?: any) => true;
 
@@ -165,34 +160,7 @@ export default function PanelOverview({
     }, 250);
   };
 
-  const openEditModal = (order: any) => {
-    setEditingOrder(order);
-    setEditStatus(order.status || 'In Queue');
-    const isPickup = isOrderPickup(order);
-    if (isPickup) {
-      setEditTrackingNumber(getOrderClaimCode(order));
-    } else {
-      const existingTracking = (order.personalization && typeof order.personalization === 'object' && order.personalization.trackingNumber)
-        ? order.personalization.trackingNumber
-        : '';
-      setEditTrackingNumber(existingTracking || '');
-    }
-    setEditNote('');
-  };
 
-  const generateTrackingCode = () => {
-    if (!editingOrder) return;
-    if (isOrderPickup(editingOrder)) {
-      const code = getOrderClaimCode(editingOrder);
-      setEditTrackingNumber(code);
-      showToast(`Counter claim code: ${code}`, 'info');
-      return;
-    }
-    const cleanId = (editingOrder.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-    const code = `JNT-PH-78${cleanId}`;
-    setEditTrackingNumber(code);
-    showToast(`Generated J&T Express code: ${code}`, 'info');
-  };
 
   // 1. Filtering & Queue Priority Sorting Logic
   const activeOrders = orders
@@ -340,99 +308,7 @@ export default function PanelOverview({
     }
   };
 
-  // 4. Single Edit Order Status
-  const handleEditOrderSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingOrder) return;
 
-    const prevOrders = [...orders];
-    const orderId = editingOrder.id || editingOrder._id;
-    const targetStatus = editStatus;
-    const targetNote = editNote.trim();
-
-    // 1. Optimistic instant UI update (0ms)
-    if (setOrders) {
-      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: targetStatus, notes: targetNote || o.notes } : o));
-    }
-    showToast('Order operational status updated!', 'success');
-    setEditingOrder(null);
-
-    // 2. Dispatch to server in background
-    try {
-      const hub = 'Eds Towels Pacific Mall Lucena Hub';
-
-      await api.post('/api/admin/orders/batch-status', {
-        ids: [orderId],
-        status: editStatus,
-        trackingNumber: editTrackingNumber.trim() || undefined,
-        note: targetNote || undefined,
-        hub,
-        courier: 'Store Pick-up'
-      });
-      refreshData().catch(() => { });
-    } catch (err) {
-      // 3. Rollback on error
-      if (setOrders) setOrders(prevOrders);
-      console.error(err);
-      showToast('Failed to save status update. Reverted.', 'error');
-    }
-  };
-
-  const handleCancelOrderAdmin = async () => {
-    if (!editingOrder) return;
-    const orderId = editingOrder.id || editingOrder._id;
-    const confirmed = window.confirm(`Are you sure you want to cancel order #${editingOrder.orderId || orderId}?\n\nThis will mark it as 'Order Canceled' and immediately release any reserved blanks/materials.`);
-    if (!confirmed) return;
-
-    const prevOrders = [...orders];
-    if (setOrders) {
-      setOrders(prev => prev.map(o => (o.id === orderId || o._id === orderId) ? { ...o, status: 'Order Canceled' } : o));
-    }
-    showToast('Order cancelled and reserved stock released.', 'success');
-    setEditingOrder(null);
-
-    try {
-      await api.post('/api/admin/orders/batch-status', {
-        ids: [orderId],
-        status: 'Order Canceled',
-        note: 'Cancelled by Admin/Staff'
-      });
-      refreshData().catch(() => { });
-    } catch (err) {
-      if (setOrders) setOrders(prevOrders);
-      console.error(err);
-      showToast('Failed to cancel order. Reverted.', 'error');
-    }
-  };
-
-  const handleReceiveGarmentsAdmin = async () => {
-    if (!editingOrder) return;
-    const orderId = editingOrder.id || editingOrder.orderId;
-    try {
-      const res: any = await api.patch(`/api/employee/orders/${orderId}/garments-received`, {});
-      showToast(res?.message || `Garments received for Order #${editingOrder.orderId}!`, 'success');
-      const nowIso = new Date().toISOString();
-      if (setOrders) {
-        setOrders(prev => prev.map(o => (o.id === orderId || o.orderId === orderId) ? {
-          ...o,
-          garmentsReceivedAt: nowIso,
-          status: 'In Queue',
-          dueDate: res?.order?.dueDate || o.dueDate
-        } : o));
-      }
-      setEditingOrder((prev: any) => ({
-        ...prev,
-        garmentsReceivedAt: nowIso,
-        status: 'In Queue',
-        dueDate: res?.order?.dueDate || prev.dueDate
-      }));
-      setEditStatus('In Queue');
-      refreshData().catch(() => { });
-    } catch (err: any) {
-      console.error(err);
-      showToast(err?.message || 'Failed to record garments received', 'error');
-    }
-  };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === activeOrders.length) {
@@ -696,12 +572,26 @@ export default function PanelOverview({
                         <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2 justify-end">
                             <button
-                              onClick={() => {
-                                openEditModal(o);
-                              }}
-                              className="bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer"
+                              onClick={() => setClaimStubOrder(o)}
+                              className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                              title="Print thermal claim slip / bag stub"
                             >
-                              Update
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                                <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <span>Claim Slip</span>
+                            </button>
+                            <button
+                              onClick={() => viewReceipt(o)}
+                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+                              title="Inspect full invoice & payment details"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                              <span>Receipt</span>
                             </button>
                           </div>
                         </td>
@@ -847,16 +737,31 @@ export default function PanelOverview({
                     </div>
                   </div>
 
-                  {/* Edit Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditModal(o);
-                    }}
-                    className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer mt-auto text-center"
-                  >
-                    Edit Status Panel
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setClaimStubOrder(o)}
+                      className="flex-1 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 py-2 rounded-lg text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Claim Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => viewReceipt(o)}
+                      className="flex-1 bg-white/5 border border-border-glass text-text-main py-2 rounded-lg text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span>Receipt</span>
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -887,188 +792,7 @@ export default function PanelOverview({
         transactionId={receiptDetails?.transactionID || selectedReceipt?.orderId}
       />
 
-      {/* Modal: Edit Status */}
-      <GlassModal
-        isOpen={!!editingOrder}
-        onClose={() => setEditingOrder(null)}
-        title={isOrderPickup(editingOrder) ? "Update Operational Status" : "Update Operational & Logistics Status"}
-      >
-        {editingOrder && (() => {
-          const isPickup = isOrderPickup(editingOrder);
-          const claimCode = getOrderClaimCode(editingOrder);
 
-          return (
-            <form onSubmit={handleEditOrderSubmit} className="modal-stack text-left flex flex-col gap-4">
-              <div className="modal-box bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center flex-wrap gap-2">
-                <div>
-                  <span className="modal-label text-text-dim text-xs">Active Order ID</span>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <p className="font-mono font-bold text-text-main text-sm m-0">{editingOrder.orderId}</p>
-                    {isPickup && (
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/30">
-                        {claimCode}
-                      </span>
-                    )}
-                    {editingOrder.isRush && (
-                      <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30">
-                        RUSH
-                      </span>
-                    )}
-                  </div>
-                  {(editingOrder.estimatedTime || editingOrder.dueDate) && (
-                    <div className="text-[11px] text-text-dim mt-1.5 flex items-center gap-2 flex-wrap">
-                      {editingOrder.estimatedTime && (
-                        <span className="bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          ⏱ Est. Stitch: ~{editingOrder.estimatedTime} mins
-                        </span>
-                      )}
-                      {editingOrder.dueDate && (
-                        <span className="text-primary font-medium">
-                          Due: {new Date(editingOrder.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClaimStubOrder(editingOrder);
-                  }}
-                  className="font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer border bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
-                    <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span>Print Claim Slip</span>
-                </button>
-              </div>
-
-              {/* BYOG Counter Reception Banner & Action */}
-              {editingOrder.isByog && (
-                <div className={`p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                  editingOrder.garmentsReceivedAt
-                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                    : 'bg-amber-500/10 border-amber-500/30'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${editingOrder.garmentsReceivedAt ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {editingOrder.garmentsReceivedAt ? '✓ Garments Dropped Off & Received' : '⚠ BYOG Drop-off Pending'}
-                      </span>
-                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-text-dim">
-                        Bring Your Own Garment
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-text-dim mt-0.5 mb-0">
-                      {editingOrder.garmentsReceivedAt
-                        ? `Received on ${new Date(editingOrder.garmentsReceivedAt).toLocaleString()}${editingOrder.garmentsReceivedBy ? ` by ${editingOrder.garmentsReceivedBy}` : ''}`
-                        : 'Customer has not handed over their physical garments yet. Confirm drop-off at Pacific Mall counter.'}
-                    </p>
-                  </div>
-                  {!editingOrder.garmentsReceivedAt && (
-                    <button
-                      type="button"
-                      onClick={handleReceiveGarmentsAdmin}
-                      className="bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap shadow-sm shrink-0 flex items-center gap-1.5"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span>Mark Garments Received</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-text-main">
-                  Production &amp; Pick-up Status
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    'In Queue',
-                    'Preparing Order',
-                    'Ready For Pick Up',
-                    'Order Delivered'
-                  ].map((status) => {
-                    const isActive = editStatus === status;
-                    const displayLabel = status === 'Order Delivered'
-                      ? 'Claimed / Completed'
-                      : status;
-                    return (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setEditStatus(status)}
-                        className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border text-center
-                          ${isActive
-                            ? 'bg-primary text-white border-transparent shadow-sm'
-                            : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                          }
-                        `}
-                      >
-                        {displayLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* In-Store Counter Claim Code */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Anti-Fraud Counter Claim Code
-                  </label>
-                  <span className="text-[0.7rem] text-emerald-400 font-mono font-bold">{claimCode}</span>
-                </div>
-                <input
-                  type="text"
-                  value={editTrackingNumber || claimCode}
-                  onChange={(e) => setEditTrackingNumber(e.target.value)}
-                  placeholder="e.g. #A-9632"
-                  className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 transition-all"
-                />
-                <span className="text-[0.68rem] text-text-dim">
-                  Customer presents this claim code at Pacific Mall Lucena counter to collect items.
-                </span>
-              </div>
-
-              {/* Milestone Note */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-text-main">Milestone Log Note (Visible to Customer)</label>
-                <input
-                  type="text"
-                  value={editNote}
-                  onChange={(e) => setEditNote(e.target.value)}
-                  placeholder="e.g. Stitched and placed on Shelf A ready for counter pick-up"
-                  className="w-full bg-bg-surface border border-border-glass rounded-lg px-3 py-2 text-xs text-text-main focus:outline-none focus:border-primary transition-all"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={handleCancelOrderAdmin}
-                  className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold py-3 px-4 rounded-lg transition-all cursor-pointer text-xs font-sans flex items-center justify-center gap-1.5 shrink-0"
-                >
-                  <span>✕</span>
-                  <span>Cancel Order</span>
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center text-sm font-sans"
-                >
-                  Save Operational Status
-                </button>
-              </div>
-            </form>
-          );
-        })()}
-      </GlassModal>
 
 
 

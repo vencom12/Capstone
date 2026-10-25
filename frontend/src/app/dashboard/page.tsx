@@ -216,18 +216,27 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // 1. Handle Hydration, URL Query, & Tab Persistence (Orders hub now unifies tracking & receipts)
+    // 1. Handle Hydration, URL Query, & Tab Persistence (Orders hub unifies tracking & history)
     const params = new URLSearchParams(window.location.search);
     const rawTab = params.get('tab');
-    const queryTab = rawTab === 'history' ? 'tracking' : rawTab;
+    let queryTab = rawTab;
+    if (rawTab === 'orders' || rawTab === 'order' || rawTab === 'history') {
+      queryTab = 'tracking';
+    }
     const validTabs = ['tracking', 'settings', 'favs', 'basket'];
 
     if (queryTab && validTabs.includes(queryTab)) {
       setActiveTab(queryTab);
       localStorage.setItem('stitch-dashboard-tab', queryTab);
+      if (queryTab === 'tracking') {
+        useUIStore.getState().setBasketOpen(false);
+      }
     } else {
       const rawSaved = localStorage.getItem('stitch-dashboard-tab');
-      const savedTab = rawSaved === 'history' ? 'tracking' : rawSaved;
+      let savedTab = rawSaved;
+      if (rawSaved === 'orders' || rawSaved === 'order' || rawSaved === 'history') {
+        savedTab = 'tracking';
+      }
       if (savedTab && validTabs.includes(savedTab)) {
         setActiveTab(savedTab);
       } else {
@@ -931,7 +940,10 @@ export default function DashboardPage() {
         product={selectedProduct ? products.find(p => (p.id || p._id) === (selectedProduct.id || selectedProduct._id)) || selectedProduct : null}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onBuyNow={() => setIsCheckoutOpen(true)}
+        onBuyNow={(expressItem) => {
+          setSelectedCheckoutItems(expressItem ? [expressItem] : undefined);
+          setIsCheckoutOpen(true);
+        }}
       />
 
       {/* Checkout Modal */}
@@ -942,6 +954,7 @@ export default function DashboardPage() {
           setSelectedCheckoutItems(undefined);
         }}
         checkoutItems={selectedCheckoutItems}
+        onSwitchToFullBasket={() => setSelectedCheckoutItems(undefined)}
         initialFulfillmentType={selectedFulfillmentType}
         onSuccess={(createdOrder) => {
           setIsCheckoutOpen(false);
@@ -960,6 +973,8 @@ export default function DashboardPage() {
         onViewOrders={() => {
           setSuccessOrder(null);
           setActiveTab('tracking');
+          localStorage.setItem('stitch-dashboard-tab', 'tracking');
+          useUIStore.getState().setBasketOpen(false);
         }}
         onSelectProduct={(prod) => {
           setSuccessOrder(null);
