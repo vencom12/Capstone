@@ -29,6 +29,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [emergencyNotice, setEmergencyNotice] = useState<any>(null);
   const categories = getCategories();
 
   // Spotlight Inline AI State
@@ -237,6 +238,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.emergencyNotice?.active) setEmergencyNotice(res.emergencyNotice);
       }).catch(() => { });
     });
   }, []);
@@ -265,6 +267,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
+      {emergencyNotice?.active && (
+        <div className="w-full bg-white/5 border-b border-white/10 px-4 py-1.5 text-center text-xs text-text-main flex items-center justify-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span className="truncate">
+            <strong>Workshop Notice:</strong> Production schedule adjusted ({emergencyNotice.reason}). In-queue orders updated.
+          </span>
+        </div>
+      )}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">

@@ -87,17 +87,34 @@ async function resyncQueueFromDatabase(prisma) {
         });
 
         const now = new Date();
+        const settings = await prisma.systemSettings.findUnique({
+            where: { id: 'global' },
+            select: {
+                emergencyNoticeActive: true,
+                emergencyNoticeResumeDate: true,
+                emergencyNoticeReason: true,
+                emergencyOrderingPolicy: true
+            }
+        });
+
+        const isEmergencyOn = Boolean(
+            settings?.emergencyNoticeActive &&
+            settings.emergencyNoticeResumeDate &&
+            new Date(settings.emergencyNoticeResumeDate).getTime() > now.getTime()
+        );
+        const effectiveStartTime = isEmergencyOn ? new Date(settings.emergencyNoticeResumeDate) : now;
+
         const benchmarkIncomingMins = 3; // Standard 1-piece baseline benchmark
         const schedule = calculatePickupSchedule({
             orderDurationMinutes: benchmarkIncomingMins,
             queueBacklogMinutes: totalBacklogMins,
             activeMachines: machineCount,
-            startTime: now
+            startTime: effectiveStartTime
         });
 
         // The nextAvailableSlot is when all existing queued orders will finish
         const existingQueueMinutesNeeded = Math.ceil(totalBacklogMins / machineCount);
-        const nextAvailableSlot = addActiveProductionMinutes(now, existingQueueMinutesNeeded);
+        const nextAvailableSlot = addActiveProductionMinutes(effectiveStartTime, existingQueueMinutesNeeded);
 
         cachedSnapshot = {
             activeOrders: queuedOrders.length,
@@ -105,11 +122,19 @@ async function resyncQueueFromDatabase(prisma) {
             totalQueueMinutes: totalBacklogMins,
             queueWaitMinutes: Math.ceil(totalBacklogMins / machineCount),
             estimatedMinutes: schedule.estimatedWaitMinutes,
-            readyLabel: schedule.readyLabel,
+            readyLabel: isEmergencyOn
+                ? `Reopening ${schedule.readyLabel}`
+                : schedule.readyLabel,
             estimatedReadyDate: schedule.estimatedReadyDate.toISOString(),
             nextAvailableSlot,
             isOvernightRollover: schedule.isOvernightRollover,
             isStoreOpenNow: schedule.isStoreOpenNow,
+            emergencyNotice: settings?.emergencyNoticeActive ? {
+                active: true,
+                policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
+                resumeDate: settings.emergencyNoticeResumeDate,
+                reason: settings.emergencyNoticeReason
+            } : null,
             cachedAt: Date.now()
         };
 

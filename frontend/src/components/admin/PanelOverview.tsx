@@ -6,6 +6,7 @@ import GlassSelect from '@/components/ui/GlassSelect';
 import GlassModal from '@/components/ui/GlassModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import ClaimStubModal from '@/components/admin/ClaimStubModal';
+import EmergencyDelayNoticeModal from '@/components/admin/EmergencyDelayNoticeModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
@@ -32,6 +33,35 @@ export default function PanelOverview({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState('');
   const [queueTab, setQueueTab] = useState<string>('all');
+
+  // Emergency Delay Notice Protocol State
+  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
+  const [delayNoticeStatus, setDelayNoticeStatus] = useState<any>(null);
+
+  const fetchDelayNoticeStatus = async () => {
+    try {
+      const res = await api.get<any>('/api/admin/delay-notice');
+      if (res) setDelayNoticeStatus(res);
+    } catch (err) {
+      console.warn('Failed to fetch delay notice status:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDelayNoticeStatus();
+  }, []);
+
+  const handleDirectLiftNotice = async () => {
+    if (!window.confirm('Are you sure you want to lift the active delay notice and resume regular workshop pace?')) return;
+    try {
+      await api.post('/api/admin/delay-notice/lift', {});
+      showToast('Delay notice lifted. Normal workshop operations resumed.', 'success');
+      fetchDelayNoticeStatus();
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to lift delay notice', 'error');
+    }
+  };
 
   // Receipt Modal State
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
@@ -338,6 +368,23 @@ export default function PanelOverview({
             </span>
           </div>
           <div className="flex gap-3 items-center flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsDelayModalOpen(true)}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                delayNoticeStatus?.active
+                  ? 'bg-white/15 hover:bg-white/25 text-text-main border-white/40 shadow-xs'
+                  : 'bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main border-border-glass'
+              }`}
+              title="Broadcast or manage temporary workshop operational delay notice"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{delayNoticeStatus?.active ? 'Delay Notice Active' : 'Delay Notice'}</span>
+            </button>
             <GlassDatePicker
               value={dateFilter}
               onChange={(val) => setDateFilter(val)}
@@ -352,6 +399,54 @@ export default function PanelOverview({
             />
           </div>
         </div>
+
+        {/* Operational Delay Notice Banner (When Active) */}
+        {delayNoticeStatus?.active && (
+          <div className="mb-4 p-3.5 rounded-xl bg-white/5 border border-white/20 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-text-main border border-white/20 shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-text-main">
+                    Active Operational Delay Notice: {delayNoticeStatus.reason}
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-text-main font-bold">
+                    +{delayNoticeStatus.delayHours || 24}h Shifted
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-dim mt-0.5">
+                  {delayNoticeStatus.message || 'Workshop schedule adjusted for active in-queue orders.'} 
+                  {delayNoticeStatus.resumeDate && ` Target resumption: ${new Date(delayNoticeStatus.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDelayModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-main text-xs font-semibold border border-white/20 transition cursor-pointer"
+              >
+                Edit Notice
+              </button>
+              <button
+                type="button"
+                onClick={handleDirectLiftNotice}
+                className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-white/90 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-sm"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Lift Notice
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Status Tab Navigation */}
         {(() => {
@@ -801,6 +896,18 @@ export default function PanelOverview({
         isOpen={!!claimStubOrder}
         onClose={() => setClaimStubOrder(null)}
         order={claimStubOrder}
+      />
+
+      {/* Workshop Emergency Delay Notice Management Modal */}
+      <EmergencyDelayNoticeModal
+        isOpen={isDelayModalOpen}
+        onClose={() => setIsDelayModalOpen(false)}
+        onSuccess={() => {
+          fetchDelayNoticeStatus();
+          refreshData().catch(() => {});
+        }}
+        activeOrdersCount={orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)).length}
+        initialNotice={delayNoticeStatus}
       />
 
       {/* Batch Thermal Dispatch Labels Modal (Continuous 4x6 Roll Printing) */}

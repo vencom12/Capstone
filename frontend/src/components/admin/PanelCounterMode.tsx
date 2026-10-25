@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
@@ -15,6 +16,35 @@ interface PanelCounterModeProps {
   isSyncing?: boolean;
   setOrders?: React.Dispatch<React.SetStateAction<any[]>>;
 }
+
+export interface CounterTicketItem {
+  id: string;
+  productId?: string;
+  name: string;
+  category: string;
+  isByog: boolean;
+  byogType?: 'small' | 'big';
+  variantName?: string;
+  text: string;
+  threadColor: string;
+  quantity: number;
+  basePrice: number;
+  extraLetteringCost: number;
+  ratePerLetter: number;
+  extraLettersCount: number;
+  totalPrice: number;
+}
+
+export const THREAD_COLORS = [
+  { name: 'Metallic Gold', hex: '#d4af37' },
+  { name: 'Pure White', hex: '#ffffff' },
+  { name: 'Obsidian Black', hex: '#1c1917' },
+  { name: 'Silver Platinum', hex: '#e2e8f0' },
+  { name: 'Royal Navy', hex: '#1e3a8a' },
+  { name: 'Crimson Red', hex: '#b91c1c' },
+  { name: 'Emerald Green', hex: '#047857' },
+  { name: 'Rose Blush', hex: '#fb7185' },
+];
 
 // Fallback items if API is unreachable
 const FALLBACK_STORE_ITEMS = [
@@ -57,6 +87,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [customerContact, setCustomerContact] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [threadColor, setThreadColor] = useState('Metallic Gold');
+
+  // Multi-Item Ticket Cart & Visual Verification
+  const [ticketItems, setTicketItems] = useState<CounterTicketItem[]>([]);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   // Quick Slip Punch Form fields (Solution 1: Nanay Slips)
   const [quickProductId, setQuickProductId] = useState<string>('');
@@ -198,13 +232,57 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     return storeCatalog.filter(i => i.category === selectedCategory);
   }, [storeCatalog, selectedCategory]);
 
+  const byogItem = useMemo(() => {
+    return storeCatalog.find(i => i.isByog) || storeCatalog[storeCatalog.length - 1];
+  }, [storeCatalog]);
+
   const activeSelectedItem = useMemo(() => {
+    if (selectedCategory === 'Custom') {
+      return byogItem;
+    }
     return storeCatalog.find(i => i.id === selectedProductId) || storeCatalog[0];
-  }, [storeCatalog, selectedProductId]);
+  }, [storeCatalog, selectedProductId, selectedCategory, byogItem]);
 
   const activeQuickItem = useMemo(() => {
+    if (selectedCategory === 'Custom') {
+      return byogItem;
+    }
     return storeCatalog.find(i => i.id === quickProductId) || storeCatalog[0];
-  }, [storeCatalog, quickProductId]);
+  }, [storeCatalog, quickProductId, selectedCategory, byogItem]);
+
+  const handleSelectCategory = (cat: 'Towels' | 'Fans' | 'Custom' | 'All') => {
+    setSelectedCategory(cat);
+    if (cat === 'Custom') {
+      if (byogItem) {
+        setSelectedProductId(byogItem.id);
+        setSelectedVariant(null);
+        setUnitPrice(byogItem.price);
+      }
+    } else if (cat !== 'All') {
+      const firstInCat = storeCatalog.find(i => i.category === cat && !i.isByog);
+      if (firstInCat && (!activeSelectedItem || activeSelectedItem.isByog || activeSelectedItem.category !== cat)) {
+        setSelectedProductId(firstInCat.id);
+        setSelectedVariant(null);
+        setUnitPrice(firstInCat.price);
+      }
+    }
+  };
+
+  const handleSelectQuickCategory = (cat: 'Towels' | 'Fans' | 'Custom' | 'All') => {
+    setSelectedCategory(cat);
+    if (cat === 'Custom') {
+      if (byogItem) {
+        setQuickProductId(byogItem.id);
+        setQuickPrice(byogItem.price);
+      }
+    } else if (cat !== 'All') {
+      const firstInCat = storeCatalog.find(i => i.category === cat && !i.isByog);
+      if (firstInCat && (!activeQuickItem || activeQuickItem.isByog || activeQuickItem.category !== cat)) {
+        setQuickProductId(firstInCat.id);
+        setQuickPrice(firstInCat.price);
+      }
+    }
+  };
 
   const handleSelectItem = (item: any) => {
     setSelectedProductId(item.id);
@@ -255,6 +333,63 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     return readyDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
+  const ticketGrandTotal = useMemo(() => {
+    if (ticketItems.length > 0) {
+      return ticketItems.reduce((sum, it) => sum + it.totalPrice, 0);
+    }
+    return grandTotal;
+  }, [ticketItems, grandTotal]);
+
+  const ticketTotalPieces = useMemo(() => {
+    if (ticketItems.length > 0) {
+      return ticketItems.reduce((sum, it) => sum + it.quantity, 0);
+    }
+    return quantity;
+  }, [ticketItems, quantity]);
+
+  const handleAddCurrentItemToTicket = () => {
+    const isByog = Boolean(activeSelectedItem.isByog);
+    const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
+    const itemName = isByog
+      ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
+      : selectedVariant
+        ? `${activeSelectedItem.name} - ${selectedVariant.name}`
+        : activeSelectedItem.name;
+
+    const cleanText = monogramText.trim().toUpperCase();
+
+    const newItem: CounterTicketItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      productId: isByog ? undefined : activeSelectedItem.id,
+      name: itemName,
+      category: activeSelectedItem.category,
+      isByog,
+      byogType: byogGarmentType,
+      variantName: selectedVariant?.name,
+      text: cleanText,
+      threadColor: threadColor,
+      quantity: Math.max(1, quantity),
+      basePrice: unitPrice,
+      extraLetteringCost: counterLettering.extraCost,
+      ratePerLetter: counterLettering.ratePerLetter,
+      extraLettersCount: counterLettering.extraLettersCount,
+      totalPrice: effectiveUnitPrice * Math.max(1, quantity)
+    };
+
+    setTicketItems(prev => [...prev, newItem]);
+    showToast(`Added ${newItem.quantity}x ${newItem.name}${cleanText ? ` ("${cleanText}")` : ''} to ticket`, 'success');
+
+    // Reset input fields for next garment
+    setMonogramText('');
+    setCustomByogName('');
+    setQuantity(1);
+    setSelectedVariant(null);
+  };
+
+  const handleRemoveTicketItem = (itemId: string) => {
+    setTicketItems(prev => prev.filter(it => it.id !== itemId));
+  };
+
   const handleResetForm = () => {
     setMonogramText('');
     setCustomerName('');
@@ -264,6 +399,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setSelectedVariant(null);
     setCustomByogName('');
     setCreatedOrderTicket(null);
+    setTicketItems([]);
   };
 
   // Submit Intake Order
@@ -273,24 +409,45 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
     setIsSubmitting(true);
     try {
-      const isByog = activeSelectedItem.isByog;
-      const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
-      const itemName = isByog
-        ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
-        : selectedVariant
-          ? `${activeSelectedItem.name} - ${selectedVariant.name}`
-          : activeSelectedItem.name;
+      const isMulti = ticketItems.length > 0;
+      let finalItems: any[] = [];
+      let totalAmountToSubmit = 0;
+      let primaryDesign = '';
+      let defaultClientName = '';
 
-      const cleanText = monogramText.trim().toUpperCase();
-      const isEmail = customerContact.includes('@');
-      const isPhone = customerContact.replace(/\D/g, '').length >= 7;
+      if (isMulti) {
+        finalItems = ticketItems.map(item => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.totalPrice / item.quantity,
+          isByog: item.isByog,
+          selectedVariant: item.variantName || null,
+          personalization: {
+            text: item.text,
+            threadColor: { name: item.threadColor },
+            color: item.threadColor,
+            placement: item.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
+            variant: item.variantName || null,
+            extraLetteringCost: item.extraLetteringCost,
+            extraLettersCount: item.extraLettersCount,
+          }
+        }));
+        totalAmountToSubmit = ticketGrandTotal;
+        primaryDesign = ticketItems.map(it => `${it.name}${it.text ? ` — "${it.text}"` : ''}`).join(' + ');
+        defaultClientName = `Walk-In (${ticketItems.map(i => i.text).filter(Boolean).slice(0, 2).join(' & ')}${ticketItems.length > 2 ? ' +' : ''})`;
+      } else {
+        const isByog = activeSelectedItem.isByog;
+        const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
+        const itemName = isByog
+          ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
+          : selectedVariant
+            ? `${activeSelectedItem.name} - ${selectedVariant.name}`
+            : activeSelectedItem.name;
 
-      const payload = {
-        clientName: customerName.trim() || (cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer'),
-        clientPhone: isPhone ? customerContact.trim() : undefined,
-        clientEmail: isEmail ? customerContact.trim() : undefined,
-        design: cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`,
-        items: [
+        const cleanText = monogramText.trim().toUpperCase();
+
+        finalItems = [
           {
             productId: activeSelectedItem.isByog ? undefined : activeSelectedItem.id,
             name: itemName,
@@ -300,24 +457,39 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             selectedVariant: selectedVariant?.name || null,
             personalization: {
               text: cleanText,
-              threadColor,
+              threadColor: { name: threadColor },
+              color: threadColor,
               placement: activeSelectedItem.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
               variant: selectedVariant?.name || null,
               extraLetteringCost: counterLettering.extraCost,
               extraLettersCount: counterLettering.extraLettersCount,
             }
           }
-        ],
-        totalAmount: grandTotal,
+        ];
+        totalAmountToSubmit = grandTotal;
+        primaryDesign = cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`;
+        defaultClientName = cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer';
+      }
+
+      const isEmail = customerContact.includes('@');
+      const isPhone = customerContact.replace(/\D/g, '').length >= 7;
+
+      const payload = {
+        clientName: customerName.trim() || defaultClientName,
+        clientPhone: isPhone ? customerContact.trim() : undefined,
+        clientEmail: isEmail ? customerContact.trim() : undefined,
+        design: primaryDesign,
+        items: finalItems,
+        totalAmount: totalAmountToSubmit,
         paymentMethod,
         paymentStatus: 'paid',
-        isByog,
+        isByog: finalItems.some(i => i.isByog),
         isImmediate: true,
         executionMode: 'immediate',
-        personalizationText: cleanText,
-        threadColor,
+        personalizationText: finalItems[0]?.personalization?.text || '',
+        threadColor: finalItems[0]?.personalization?.threadColor || threadColor,
         notes: [
-          selectedVariant ? `Color: ${selectedVariant.name}` : '',
+          finalItems.length > 1 ? `Multi-item batch (${finalItems.length} items)` : '',
           customerContact ? `Contact: ${customerContact}` : '',
           gcashRef.trim() ? `GCash Ref: ${gcashRef.trim()}` : '',
           `Counter Intake Ticket (Pacific Mall)`
@@ -331,15 +503,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         setCreatedOrderTicket({
           ...res.order,
           clientName: payload.clientName,
-          itemName,
-          quantity,
-          personalizationText: cleanText,
-          threadColor,
-          grandTotal,
+          items: finalItems,
+          totalAmount: totalAmountToSubmit,
           paymentMethod,
           readyBy: estimatedReadyTime,
           verificationCode: `#${res.order.orderId.replace('WI-', 'A-')}`
         });
+        setTicketItems([]);
+        handleResetForm();
         await refreshData();
       }
     } catch (err: any) {
@@ -652,14 +823,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               {/* Category Pills Header */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                  1. Pick Store Item
+                  {selectedCategory === 'Custom' ? '1. Customer Garment (BYOG)' : '1. Pick Store Item'}
                 </span>
                 <div className="flex gap-1">
                   {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => (
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setSelectedCategory(cat)}
+                      onClick={() => handleSelectCategory(cat)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${selectedCategory === cat
                           ? 'bg-primary text-white shadow-sm'
                           : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main'
@@ -671,79 +842,25 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               </div>
 
-              {/* Spacious, Un-Truncated Item Cards */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {displayedCatalog.map((item) => {
-                  const isSelected = selectedProductId === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleSelectItem(item)}
-                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                          ? 'bg-primary/10 border-primary text-text-main shadow-sm ring-1 ring-primary/40'
-                          : 'bg-bg-card border-border-glass text-text-main hover:border-primary/40'
-                        }`}
-                    >
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-xs leading-snug">{item.name}</span>
-                        <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
+              {/* If Custom is selected: Directly show BYOG Garment Size & Rate without redundant card selection! */}
+              {selectedCategory === 'Custom' ? (
+                <div className="space-y-3">
+                  {/* Clean BYOG Status & Base Price Header */}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <div>
+                        <span className="font-bold text-xs text-text-main block">Client-Provided Garment (BYOG)</span>
+                        <span className="text-[11px] text-text-dim">Customer brings their own item (Cap, Shirt, Towel, Uniform)</span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">
-                        <span>{item.category}</span>
-                        <span>{item.isByog ? 'Customer Item' : `${item.stock} in stock`}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Variant Swatches (if available) */}
-              {activeSelectedItem.variants && activeSelectedItem.variants.length > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-border-glass flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-text-dim">Color:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeSelectedItem.variants.map((v: ProductVariant, vIdx: number) => {
-                      const isVarSelected = selectedVariant?.name === v.name;
-                      const vStock = (v as any).availableStock !== undefined ? (v as any).availableStock : (v.stock ?? 0);
-                      const isVarOutOfStock = vStock <= 0;
-                      return (
-                        <button
-                          key={vIdx}
-                          type="button"
-                          disabled={isVarOutOfStock}
-                          onClick={() => {
-                            if (isVarOutOfStock) return;
-                            setSelectedVariant(v);
-                            if (v.priceOverride) setUnitPrice(v.priceOverride);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${isVarOutOfStock
-                              ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
-                              : isVarSelected
-                                ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
-                                : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
-                            }`}
-                        >
-                          {v.color && (
-                            <span
-                              className="w-3 h-3 rounded-full border border-white/30"
-                              style={{ backgroundColor: v.color }}
-                            />
-                          )}
-                          <span>{v.name}</span>
-                          <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-rose-400 font-bold' : 'opacity-75'}`}>
-                            ({isVarOutOfStock ? '0' : vStock})
-                          </span>
-                        </button>
-                      );
-                    })}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-text-dim block uppercase font-bold">Base Service</span>
+                      <span className="font-mono font-bold text-xs text-primary">₱{activeSelectedItem?.price || 100}</span>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* BYOG Custom Note & Garment Size */}
-              {activeSelectedItem.isByog && (
-                <div className="mt-3 pt-2.5 border-t border-border-glass space-y-2.5">
+                  {/* Garment Size & Lettering Rate Buttons - Instantly Available */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
@@ -784,14 +901,143 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       </button>
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
-                    value={customByogName}
-                    onChange={(e) => setCustomByogName(e.target.value)}
-                    className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary/50"
-                  />
+
+                  {/* Description Input */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
+                      value={customByogName}
+                      onChange={(e) => setCustomByogName(e.target.value)}
+                      className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary/50"
+                    />
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {/* Spacious, Un-Truncated Item Cards */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {displayedCatalog.map((item) => {
+                      const isSelected = selectedProductId === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectItem(item)}
+                          className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
+                              ? 'bg-primary/10 border-primary text-text-main shadow-sm ring-1 ring-primary/40'
+                              : 'bg-bg-card border-border-glass text-text-main hover:border-primary/40'
+                            }`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-bold text-xs leading-snug">{item.name}</span>
+                            <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">
+                            <span>{item.category}</span>
+                            <span>{item.isByog ? 'Customer Item' : `${item.stock} in stock`}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Variant Swatches (if available) */}
+                  {activeSelectedItem.variants && activeSelectedItem.variants.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-border-glass flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-text-dim">Color:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeSelectedItem.variants.map((v: ProductVariant, vIdx: number) => {
+                          const isVarSelected = selectedVariant?.name === v.name;
+                          const vStock = (v as any).availableStock !== undefined ? (v as any).availableStock : (v.stock ?? 0);
+                          const isVarOutOfStock = vStock <= 0;
+                          return (
+                            <button
+                              key={vIdx}
+                              type="button"
+                              disabled={isVarOutOfStock}
+                              onClick={() => {
+                                if (isVarOutOfStock) return;
+                                setSelectedVariant(v);
+                                if (v.priceOverride) setUnitPrice(v.priceOverride);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${isVarOutOfStock
+                                  ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
+                                  : isVarSelected
+                                    ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
+                                    : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
+                                }`}
+                            >
+                              {v.color && (
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/30"
+                                  style={{ backgroundColor: v.color }}
+                                />
+                              )}
+                              <span>{v.name}</span>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-rose-400 font-bold' : 'opacity-75'}`}>
+                                ({isVarOutOfStock ? '0' : vStock})
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BYOG Custom Note & Garment Size (if user clicked BYOG card in 'All' tab) */}
+                  {activeSelectedItem.isByog && (
+                    <div className="mt-3 pt-2.5 border-t border-border-glass space-y-2.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                            Garment Size &amp; Lettering Rate
+                          </label>
+                          <span className="text-[10px] text-text-dim">1st word included in base price</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setByogGarmentType('small')}
+                            className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                              byogGarmentType === 'small'
+                                ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                                : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                            }`}
+                          >
+                            <div className="font-bold text-xs flex items-center justify-between">
+                              <span>Small Garment</span>
+                              <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                            </div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Cap, Face Towel, Hand Towel, Fan, Handkerchief</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setByogGarmentType('big')}
+                            className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                              byogGarmentType === 'big'
+                                ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                                : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                            }`}
+                          >
+                            <div className="font-bold text-xs flex items-center justify-between">
+                              <span>Big Garment</span>
+                              <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                            </div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel, Hoodie</div>
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
+                        value={customByogName}
+                        onChange={(e) => setCustomByogName(e.target.value)}
+                        className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary/50"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {/* STEP 2: EMBROIDERY TEXT */}
@@ -835,6 +1081,62 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     )}
                   </div>
                 )}
+
+                {/* Thread Color Selector */}
+                <div className="mt-3 pt-3 border-t border-border-glass">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                      Thread Color
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-text-main">
+                      {threadColor}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                    {THREAD_COLORS.map(tc => {
+                      const isSelected = threadColor === tc.name;
+                      return (
+                        <button
+                          key={tc.name}
+                          type="button"
+                          onClick={() => setThreadColor(tc.name)}
+                          title={tc.name}
+                          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary'
+                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20'
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
+                            style={{ backgroundColor: tc.hex }}
+                          />
+                          <span className="truncate w-full text-center text-[10px] leading-tight">
+                            {tc.name.split(' ')[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Staging / Add to Ticket Action Button */}
+                <div className="mt-3.5 pt-3 border-t border-border-glass flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-text-dim">
+                    <span className="font-medium text-text-main">Multi-Item Order?</span>
+                    <span className="block text-[10px] text-text-dim/70">Stage multiple towels/fans into 1 receipt</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddCurrentItemToTicket}
+                    className="py-2 px-3.5 rounded-lg bg-bg-surface hover:bg-white/10 active:scale-[0.98] border border-border-glass text-text-main text-xs font-extrabold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>+ Add to Order Ticket</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -842,37 +1144,110 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {/* Right Column: Payment & Ticket Actions (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
-              <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                3. Payment &amp; Queue Ticket
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  3. Payment &amp; Queue Ticket
+                </span>
+                {ticketItems.length > 0 && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold font-mono">
+                    {ticketItems.length} {ticketItems.length === 1 ? 'item' : 'items'} staged
+                  </span>
+                )}
+              </div>
+
+              {/* Multi-Item Staged Basket */}
+              {ticketItems.length > 0 ? (
+                <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
+                  <div className="text-[11px] font-bold text-text-dim flex justify-between items-center px-1">
+                    <span>Staged Items ({ticketTotalPieces} pcs total)</span>
+                    <button
+                      type="button"
+                      onClick={() => setTicketItems([])}
+                      className="text-[10px] text-text-dim hover:text-red-400 underline cursor-pointer"
+                    >
+                      Clear Staged
+                    </button>
+                  </div>
+                  {ticketItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="bg-bg-card border border-border-glass rounded-lg p-2.5 flex items-start justify-between gap-2 text-xs"
+                    >
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-text-dim">#{idx + 1}</span>
+                          <span className="font-bold text-text-main truncate">{item.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/5 border border-border-glass text-text-dim font-mono">
+                            {item.quantity}x
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          {item.text ? (
+                            <span className="font-mono font-bold text-primary truncate">"{item.text}"</span>
+                          ) : (
+                            <span className="italic text-text-dim/60">Plain item</span>
+                          )}
+                          {item.threadColor && (
+                            <span className="text-[10px] text-text-dim/70">• {item.threadColor}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono font-bold text-emerald-500 text-xs">
+                          ₱{item.totalPrice.toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTicketItem(item.id)}
+                          title="Remove item"
+                          className="text-text-dim hover:text-red-400 p-1 cursor-pointer transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               {/* Compact Quantity & Price Block */}
               <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-dim font-medium">Qty:</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                      className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
-                    >
-                      -
-                    </button>
-                    <span className="font-mono font-bold text-sm px-2 text-text-main">{quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(q => q + 1)}
-                      className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
-                    >
-                      +
-                    </button>
+                {ticketItems.length === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-dim font-medium">Qty:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono font-bold text-sm px-2 text-text-main">{quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(q => q + 1)}
+                        className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-text-dim">Combined Total:</span>
+                    <span className="text-xs font-bold text-text-main">
+                      {ticketItems.length} items ({ticketTotalPieces} pcs)
+                    </span>
+                  </div>
+                )}
 
                 <div className="text-right">
                   <span className="text-[11px] text-text-dim block">Total Due:</span>
                   <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                    ₱{grandTotal.toFixed(2)}
+                    ₱{ticketGrandTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -926,7 +1301,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         Customer scans printed counter QR standee
                       </span>
                       <span className="text-[11px] text-text-dim">
-                        Customer scans counter QR Ph, pays ₱{grandTotal.toFixed(2)}, and shows receipt.
+                        Customer scans counter QR Ph, pays ₱{ticketGrandTotal.toFixed(2)}, and shows receipt.
                       </span>
                     </div>
                   </div>
@@ -951,6 +1326,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 />
               </div>
 
+              {/* Double-Check Spelling with Customer (Foolproof Verification) */}
+              <button
+                type="button"
+                onClick={() => setIsVerificationModalOpen(true)}
+                className="w-full py-2 px-3 rounded-lg bg-bg-card hover:bg-white/5 border border-border-glass text-text-main text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Double-Check Spelling with Customer</span>
+              </button>
+
               {/* Big Action Button */}
               <button
                 type="submit"
@@ -960,7 +1347,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                <span>{isSubmitting ? 'Queueing...' : 'Punch Order & Print Claim Stub'}</span>
+                <span>
+                  {isSubmitting
+                    ? 'Queueing...'
+                    : ticketItems.length > 0
+                      ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Print Claim Stub`
+                      : 'Punch Order & Print Claim Stub'}
+                </span>
               </button>
               <InlineError error={intakeError} />
             </div>
@@ -979,14 +1372,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               {/* Header with Category Pills */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                  1. Pick Stitched Item from Slip
+                  {selectedCategory === 'Custom' ? '1. Customer Garment from Slip (BYOG)' : '1. Pick Stitched Item from Slip'}
                 </span>
                 <div className="flex gap-1">
                   {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => (
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setSelectedCategory(cat)}
+                      onClick={() => handleSelectQuickCategory(cat)}
                       className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
                           ? 'bg-primary text-white shadow-sm'
                           : 'bg-white/5 text-text-dim hover:text-text-main'
@@ -998,72 +1391,126 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               </div>
 
-              {/* Spacious, Un-Truncated Item Cards */}
-              <div className="grid grid-cols-2 gap-2.5 mb-3.5">
-                {displayedCatalog.map((item) => {
-                  const isSelected = quickProductId === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleSelectQuickItem(item)}
-                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                          ? 'bg-primary/10 border-primary text-white shadow-sm ring-1 ring-primary/40'
-                          : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
-                        }`}
-                    >
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-xs leading-snug">{item.name}</span>
-                        <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
-                      </div>
-                      <span className="text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">{item.category}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Step 2: Monogram text from slip */}
-              {activeQuickItem?.isByog && (
-                <div className="mb-2.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                      Slip Garment Rate
-                    </span>
-                    <span className="text-[10px] text-text-dim">1st word included</span>
+              {selectedCategory === 'Custom' ? (
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/30">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="font-bold text-xs text-text-main">Client-Provided Garment (BYOG)</span>
+                    </div>
+                    <span className="font-mono font-bold text-xs text-primary">Base: ₱{activeQuickItem?.price || 100}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setQuickByogGarmentType('small')}
-                      className={`p-2 rounded-lg border text-left cursor-pointer transition ${
-                        quickByogGarmentType === 'small'
-                          ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                          : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      <div className="font-bold text-xs flex items-center justify-between">
-                        <span>Small Item</span>
-                        <span className="font-mono text-primary text-[11px]">₱7/letter</span>
-                      </div>
-                      <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickByogGarmentType('big')}
-                      className={`p-2 rounded-lg border text-left cursor-pointer transition ${
-                        quickByogGarmentType === 'big'
-                          ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                          : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      <div className="font-bold text-xs flex items-center justify-between">
-                        <span>Big Item</span>
-                        <span className="font-mono text-primary text-[11px]">₱10/letter</span>
-                      </div>
-                      <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
-                    </button>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                        Slip Garment Rate
+                      </span>
+                      <span className="text-[10px] text-text-dim">1st word included</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQuickByogGarmentType('small')}
+                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                          quickByogGarmentType === 'small'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center justify-between">
+                          <span>Small Item</span>
+                          <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                        </div>
+                        <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickByogGarmentType('big')}
+                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                          quickByogGarmentType === 'big'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center justify-between">
+                          <span>Big Item</span>
+                          <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                        </div>
+                        <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <>
+                  {/* Spacious, Un-Truncated Item Cards */}
+                  <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+                    {displayedCatalog.map((item) => {
+                      const isSelected = quickProductId === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectQuickItem(item)}
+                          className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
+                              ? 'bg-primary/10 border-primary text-white shadow-sm ring-1 ring-primary/40'
+                              : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
+                            }`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-bold text-xs leading-snug">{item.name}</span>
+                            <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
+                          </div>
+                          <span className="text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">{item.category}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Step 2: Monogram text from slip */}
+                  {activeQuickItem?.isByog && (
+                    <div className="mb-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                          Slip Garment Rate
+                        </span>
+                        <span className="text-[10px] text-text-dim">1st word included</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuickByogGarmentType('small')}
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                            quickByogGarmentType === 'small'
+                              ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                          }`}
+                        >
+                          <div className="font-bold text-xs flex items-center justify-between">
+                            <span>Small Item</span>
+                            <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                          </div>
+                          <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQuickByogGarmentType('big')}
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${
+                            quickByogGarmentType === 'big'
+                              ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                          }`}
+                        >
+                          <div className="font-bold text-xs flex items-center justify-between">
+                            <span>Big Item</span>
+                            <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                          </div>
+                          <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <div className="mb-3.5">
                 <input
@@ -1558,6 +2005,110 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           )}
         </div>
       )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* CUSTOMER VERIFICATION MODAL (ANTI-ERROR / ANTI-SPOILAGE)      */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <GlassModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        title="Double-Check Order with Customer"
+        maxWidth="max-w-lg"
+      >
+        <div className="flex flex-col gap-4 text-text-main">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs flex items-start gap-2.5">
+            <svg className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div>
+              <span className="font-bold text-amber-300 block">Show screen to customer for sign-off</span>
+              <span className="text-text-dim text-[11px]">
+                Once threads are machine-stitched into the garment fabric, they cannot be undone. Verify all names, letters, and thread colors with customer before submitting.
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 max-h-72 overflow-y-auto pr-1">
+            {(ticketItems.length > 0 ? ticketItems : [{
+              id: 'current_preview',
+              name: activeSelectedItem.isByog
+                ? `BYOG [${byogGarmentType === 'big' ? 'Big Item' : 'Small Item'}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
+                : selectedVariant
+                  ? `${activeSelectedItem.name} - ${selectedVariant.name}`
+                  : activeSelectedItem.name,
+              text: monogramText.trim().toUpperCase(),
+              threadColor: threadColor,
+              quantity: quantity,
+              totalPrice: grandTotal
+            }]).map((item, idx) => (
+              <div key={item.id || idx} className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-text-main">
+                    #{idx + 1}: {item.name}
+                  </span>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/5 border border-border-glass text-text-dim">
+                    Qty: {item.quantity}
+                  </span>
+                </div>
+
+                <div className="bg-bg-surface border border-border-glass rounded-lg p-2.5 flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold text-text-dim tracking-wider">
+                    Embroidery Name / Word:
+                  </span>
+                  {item.text ? (
+                    <span className="text-lg font-black font-mono tracking-widest text-primary break-all bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20">
+                      "{item.text}"
+                    </span>
+                  ) : (
+                    <span className="text-xs italic text-text-dim py-1">
+                      (No embroidery text — plain blank item)
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass/50">
+                  <div className="flex items-center gap-1.5 text-text-dim">
+                    <span>Thread:</span>
+                    <span className="font-semibold text-text-main">{item.threadColor || 'Standard'}</span>
+                  </div>
+                  <span className="font-mono font-bold text-emerald-400">
+                    ₱{item.totalPrice.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border-glass text-xs">
+            <span className="text-text-dim font-bold">Total Pieces: {ticketTotalPieces} pcs</span>
+            <span className="text-base font-black font-mono text-emerald-400">
+              Total Due: ₱{ticketGrandTotal.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsVerificationModalOpen(false)}
+              className="flex-1 py-2.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 text-text-main text-xs font-bold transition cursor-pointer"
+            >
+              Make Corrections
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsVerificationModalOpen(false)}
+              className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>Customer Confirmed ✓</span>
+            </button>
+          </div>
+        </div>
+      </GlassModal>
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* THERMAL CLAIM STUB MODAL (ANTI-FRAUD PROTECTION)            */}

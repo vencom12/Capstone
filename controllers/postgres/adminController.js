@@ -1830,4 +1830,276 @@ exports.createWalkInOrder = async (req, res) => {
     }
 };
 
+/**
+ * Retrieves the current workshop delay / emergency notice status and count of affected queued orders.
+ */
+exports.getDelayNoticeStatus = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findUnique({
+            where: { id: 'global' },
+            select: {
+                emergencyNoticeActive: true,
+                emergencyNoticeReason: true,
+                emergencyNoticeMessage: true,
+                emergencyNoticeDelayHours: true,
+                emergencyNoticeResumeDate: true,
+                emergencyNoticeCreatedAt: true,
+                emergencyNoticeUpdatedBy: true,
+                emergencyOrderingPolicy: true,
+            }
+        });
+
+        const affectedOrdersCount = await prisma.order.count({
+            where: {
+                status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+            }
+        });
+
+        res.json({
+            active: Boolean(settings?.emergencyNoticeActive),
+            reason: settings?.emergencyNoticeReason || null,
+            message: settings?.emergencyNoticeMessage || '',
+            delayHours: settings?.emergencyNoticeDelayHours || 0,
+            resumeDate: settings?.emergencyNoticeResumeDate || null,
+            createdAt: settings?.emergencyNoticeCreatedAt || null,
+            updatedBy: settings?.emergencyNoticeUpdatedBy || null,
+            orderingPolicy: settings?.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
+            affectedOrdersCount
+        });
+    } catch (err) {
+        console.error('getDelayNoticeStatus error:', err);
+        res.status(500).json({ message: 'Error retrieving delay notice status' });
+    }
+};
+
+/**
+ * Broadcasts an emergency delay notice (e.g., solo artisan illness, mechanical breakdown),
+ * adjusts the estimated completion schedule of all in-queue orders, and notifies customers via Brevo.
+ */
+exports.broadcastDelayNotice = async (req, res) => {
+    try {
+        const { reason, message, delayHours = 24, resumeDate, orderingPolicy = 'ALLOW_WITH_DELAY', notifyCustomers = true } = req.body;
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({ message: 'A reason for the workshop delay notice is required.' });
+        }
+
+        const hours = Math.max(1, parseInt(delayHours) || 24);
+        const resumeDateTime = resumeDate ? new Date(resumeDate) : new Date(Date.now() + hours * 3600 * 1000);
+        const now = new Date();
+        const updatedBy = req.user?.username || 'Admin';
+        const sanitizedPolicy = orderingPolicy === 'PAUSE_ORDERS' ? 'PAUSE_ORDERS' : 'ALLOW_WITH_DELAY';
+
+        // 1. Update SystemSettings in DB
+        await prisma.systemSettings.upsert({
+            where: { id: 'global' },
+            update: {
+                emergencyNoticeActive: true,
+                emergencyNoticeReason: reason.trim(),
+                emergencyNoticeMessage: (message || '').trim(),
+                emergencyNoticeDelayHours: hours,
+                emergencyNoticeResumeDate: resumeDateTime,
+                emergencyNoticeCreatedAt: now,
+                emergencyNoticeUpdatedBy: updatedBy,
+                emergencyOrderingPolicy: sanitizedPolicy
+            },
+            create: {
+                id: 'global',
+                emergencyNoticeActive: true,
+                emergencyNoticeReason: reason.trim(),
+                emergencyNoticeMessage: (message || '').trim(),
+                emergencyNoticeDelayHours: hours,
+                emergencyNoticeResumeDate: resumeDateTime,
+                emergencyNoticeCreatedAt: now,
+                emergencyNoticeUpdatedBy: updatedBy,
+                emergencyOrderingPolicy: sanitizedPolicy
+            }
+        });
+
+        // 2. Fetch affected active queued orders
+        const activeOrders = await prisma.order.findMany({
+            where: {
+                status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+            },
+            include: { user: { select: { email: true, username: true } } }
+        });
+
+        const { sendDelayNotificationEmail } = require('../../utils/emailService');
+        const affectedUpdatedOrders = [];
+
+        // 3. Atomically shift each order's schedule
+        for (const ord of activeOrders) {
+            const currentPers = (ord.personalization && typeof ord.personalization === 'object') ? { ...ord.personalization } : {};
+            const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+
+            let newReadyDate = null;
+            if (currentPers.estimatedReadyDate) {
+                newReadyDate = new Date(new Date(currentPers.estimatedReadyDate).getTime() + (hours * 3600 * 1000));
+            } else if (ord.dueDate) {
+                newReadyDate = new Date(new Date(ord.dueDate).getTime() + (hours * 3600 * 1000));
+            } else {
+                newReadyDate = resumeDateTime;
+            }
+
+            currentPers.estimatedReadyDate = newReadyDate.toISOString();
+            currentPers.delayNotice = {
+                active: true,
+                reason: reason.trim(),
+                message: (message || '').trim(),
+                delayHours: hours,
+                appliedAt: now.toISOString(),
+                newReadyDate: newReadyDate.toISOString()
+            };
+
+            history.push({
+                status: ord.status,
+                timestamp: now.toISOString(),
+                actor: updatedBy,
+                hub: 'Eds Towels Pacific Mall Lucena Hub',
+                note: `Workshop Delay Notice: ${reason.trim()} (+${hours}h). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+            });
+            currentPers.statusHistory = history;
+
+            let updatedDueDate = ord.dueDate;
+            if (ord.dueDate) {
+                updatedDueDate = new Date(new Date(ord.dueDate).getTime() + (hours * 3600 * 1000));
+            }
+
+            const updatedOrder = await prisma.order.update({
+                where: { id: ord.id },
+                data: {
+                    personalization: currentPers,
+                    dueDate: updatedDueDate
+                }
+            });
+            affectedUpdatedOrders.push(updatedOrder);
+
+            // Send notification email if requested and customer email exists
+            if (notifyCustomers && typeof sendDelayNotificationEmail === 'function') {
+                const targetEmail = currentPers.customerEmail || ord.user?.email;
+                const targetName = ord.client || ord.user?.username || 'Customer';
+                if (targetEmail && targetEmail.includes('@')) {
+                    sendDelayNotificationEmail(targetEmail, targetName, updatedOrder, {
+                        reason: reason.trim(),
+                        message: (message || '').trim(),
+                        delayHours: hours,
+                        newReadyDate
+                    }).catch(emailErr => {
+                        console.warn(`[Delay Notice Email Fail for ${ord.orderId}]:`, emailErr.message);
+                    });
+                }
+            }
+        }
+
+        // 4. Invalidate Queue Watermark Cache
+        try {
+            const { invalidateQueue } = require('../../utils/workshopQueueManager');
+            if (typeof invalidateQueue === 'function') invalidateQueue();
+        } catch (invQErr) {
+            console.warn('[Queue Invalidation Warning]:', invQErr.message);
+        }
+
+        // 5. Broadcast real-time socket events
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('emergency_delay_notice', {
+                active: true,
+                reason: reason.trim(),
+                message: (message || '').trim(),
+                delayHours: hours,
+                resumeDate: resumeDateTime.toISOString()
+            });
+            io.emit('ordersUpdated', { reason: 'emergency_delay_notice' });
+        }
+
+        res.json({
+            success: true,
+            message: `Emergency delay notice posted. Shifted ${affectedUpdatedOrders.length} active orders by ${hours} hours.`,
+            affectedCount: affectedUpdatedOrders.length,
+            resumeDate: resumeDateTime
+        });
+    } catch (err) {
+        console.error('broadcastDelayNotice error:', err);
+        res.status(500).json({ message: 'Failed to broadcast delay notice', error: err.message });
+    }
+};
+
+/**
+ * Lifts an active emergency delay notice and resumes standard workshop operation pace.
+ */
+exports.liftDelayNotice = async (req, res) => {
+    try {
+        const now = new Date();
+        const updatedBy = req.user?.username || 'Admin';
+
+        // 1. Update SystemSettings in DB
+        await prisma.systemSettings.upsert({
+            where: { id: 'global' },
+            update: {
+                emergencyNoticeActive: false,
+                emergencyNoticeUpdatedBy: updatedBy
+            },
+            create: {
+                id: 'global',
+                emergencyNoticeActive: false,
+                emergencyNoticeUpdatedBy: updatedBy
+            }
+        });
+
+        // 2. Fetch active orders with delay notice active
+        const activeOrders = await prisma.order.findMany({
+            where: {
+                status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
+            }
+        });
+
+        for (const ord of activeOrders) {
+            const currentPers = (ord.personalization && typeof ord.personalization === 'object') ? { ...ord.personalization } : {};
+            if (currentPers.delayNotice && currentPers.delayNotice.active) {
+                currentPers.delayNotice.active = false;
+                currentPers.delayNotice.liftedAt = now.toISOString();
+
+                const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+                history.push({
+                    status: ord.status,
+                    timestamp: now.toISOString(),
+                    actor: updatedBy,
+                    hub: 'Eds Towels Pacific Mall Lucena Hub',
+                    note: 'Workshop emergency notice lifted. Regular production pace restored.'
+                });
+                currentPers.statusHistory = history;
+
+                await prisma.order.update({
+                    where: { id: ord.id },
+                    data: { personalization: currentPers }
+                });
+            }
+        }
+
+        // 3. Invalidate Queue Watermark
+        try {
+            const { invalidateQueue } = require('../../utils/workshopQueueManager');
+            if (typeof invalidateQueue === 'function') invalidateQueue();
+        } catch (invQErr) {
+            console.warn('[Queue Invalidation Warning]:', invQErr.message);
+        }
+
+        // 4. Socket broadcast
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('emergency_delay_notice_lifted', { active: false });
+            io.emit('ordersUpdated', { reason: 'emergency_delay_notice_lifted' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Emergency delay notice lifted. Normal workshop operations resumed.'
+        });
+    } catch (err) {
+        console.error('liftDelayNotice error:', err);
+        res.status(500).json({ message: 'Failed to lift delay notice', error: err.message });
+    }
+};
+
+
 

@@ -18,6 +18,14 @@ interface TrackedOrder {
   readyLabel?: string;
   totalAmount: number;
   paymentStatus: string;
+  paymentMethod?: string;
+  delayNotice?: {
+    active: boolean;
+    reason?: string;
+    message?: string;
+    delayHours?: number;
+    newReadyDate?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,7 +39,33 @@ function OrderTrackerContent() {
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const prevStageRef = useRef<string>('');
+
+  const handleRequestRefundAndCancel = async () => {
+    if (!order) return;
+    const confirmCancel = window.confirm(
+      `Request immediate cancellation and full refund of ₱${order.totalAmount?.toFixed(2)} for Order #${order.orderId}?`
+    );
+    if (!confirmCancel) return;
+
+    setIsCancelling(true);
+    try {
+      await api.post(`/api/customer/orders/${order.orderId}/cancel`, {
+        reason: `Full refund requested due to workshop operational delay (${order.delayNotice?.reason || 'Schedule adjusted'}).`
+      });
+      alert('Your cancellation and full refund request has been registered.');
+      // Refresh order
+      const res = await api.get<{ success: boolean; order: TrackedOrder }>(`/api/customer/track/${order.orderId}`);
+      if (res && res.success) {
+        setOrder(res.order);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to request cancellation and refund.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Audio chime when order transitions to ready
   const playClaimReadyChime = () => {
@@ -274,6 +308,78 @@ function OrderTrackerContent() {
 
   return (
     <main className="flex-1 p-4 max-w-md w-full mx-auto flex flex-col gap-4 animate-fade">
+      {/* Workshop Operational Delay Notice (Monochrome, transparent card) */}
+      {order.delayNotice?.active && order.status !== 'Order Canceled' && (
+        <div className="bg-bg-card border border-white/20 rounded-xl p-4 flex flex-col gap-3 shadow-md text-left">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-main">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-main">
+                Workshop Operational Update
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-text-main font-bold">
+              +{order.delayNotice.delayHours || 24}h Shifted
+            </span>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-xs flex flex-col gap-1">
+            <span className="font-bold text-text-main">
+              Reason: {order.delayNotice.reason}
+            </span>
+            {order.delayNotice.message && (
+              <p className="text-text-dim text-[11px] leading-relaxed">
+                "{order.delayNotice.message}"
+              </p>
+            )}
+            {order.delayNotice.newReadyDate && (
+              <span className="text-[11px] text-text-dim mt-1 pt-1 border-t border-white/10">
+                Revised Target Ready Time: <strong className="text-text-main">{new Date(order.delayNotice.newReadyDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+              </span>
+            )}
+          </div>
+
+          <p className="text-[11.5px] text-text-dim leading-relaxed">
+            Your garments are safely held in our Pacific Mall studio. If you are comfortable waiting, no action is needed — we will fulfill your stitching at the revised target time.
+          </p>
+
+          <div className="flex flex-col gap-1.5 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={handleRequestRefundAndCancel}
+              disabled={isCancelling}
+              className="w-full py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-white/20 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              {isCancelling ? 'Processing Cancellation...' : 'Request Full Refund & Cancel Order'}
+            </button>
+            <span className="text-[10px] text-text-dim text-center">
+              100% full refund guaranteed. No penalty fees or deductions.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation Notice Banner */}
+      {order.status === 'Order Canceled' && (
+        <div className="bg-bg-card border border-white/20 rounded-xl p-4 text-center">
+          <div className="text-sm font-bold text-text-main mb-1">
+            Order Canceled &amp; Refund Registered
+          </div>
+          <p className="text-xs text-text-dim leading-relaxed">
+            This order has been cancelled. Any pre-paid balance is credited or queued for full payout by our Pacific Mall counter.
+          </p>
+        </div>
+      )}
+
       {/* HERO STATUS CARD */}
       <div
         className={`rounded-xl p-6 border transition-all flex flex-col gap-4 ${

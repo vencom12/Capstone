@@ -603,10 +603,104 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
   });
 }
 
+/**
+ * Sends an urgent workshop delay update email to affected customers.
+ * @param {string} recipientEmail 
+ * @param {string} recipientName 
+ * @param {Object} order 
+ * @param {Object} delayInfo 
+ */
+async function sendDelayNotificationEmail(recipientEmail, recipientName, order, delayInfo) {
+  if (!recipientEmail) return null;
+
+  const orderId = order.orderId || order.id || 'N/A';
+  const reason = delayInfo?.reason || 'Temporary Workshop Maintenance';
+  const customMessage = delayInfo?.message || 'Our workshop is experiencing a brief operational delay.';
+  const newReadyDate = delayInfo?.newReadyDate || order.personalization?.estimatedReadyDate || order.dueDate;
+  const readyFormatted = newReadyDate ? new Date(newReadyDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Updated shortly on your tracking page';
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const trackingUrl = `${baseUrl}/?track=${encodeURIComponent(orderId)}`;
+
+  const statusBadge = `
+    <div style="display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
+      Schedule Update • Temporary Delay
+    </div>
+  `;
+
+  const contentHtml = `
+    <div style="font-size: 14px; font-weight: 600; color: #ffffff; margin-bottom: 6px;">
+      Dear ${recipientName || 'Valued Customer'},
+    </div>
+
+    <div style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 14px;">
+      We are writing to provide a transparent update regarding your custom embroidery order 
+      <strong style="color: #ffffff; font-family: monospace;">#${orderId}</strong>. 
+      Due to <strong>${reason}</strong>, our production schedule has been temporarily adjusted.
+    </div>
+
+    <!-- Delay Reason & Message Card -->
+    <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fbbf24; margin-bottom: 4px;">
+        Workshop Notice
+      </div>
+      <div style="font-size: 12px; color: #f1f5f9; line-height: 1.5;">
+        ${customMessage}
+      </div>
+    </div>
+
+    <!-- New Estimated Schedule -->
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+        <tr>
+          <td style="font-size: 11px; color: #94a3b8; font-weight: 600;">NEW ESTIMATED PICK-UP TIME:</td>
+          <td align="right" style="font-size: 13px; font-weight: 800; color: #38bdf8; font-family: monospace;">
+            ${readyFormatted}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Options for the Customer -->
+    <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.5; margin-bottom: 16px;">
+      Your garments are safe in our Pacific Mall workshop. If you are happy to wait for the updated schedule, no action is needed. 
+      However, if this delay conflicts with an urgent deadline, you can request an immediate full refund or cancellation directly through your live tracking page.
+    </div>
+
+    <!-- CTA Button -->
+    <div style="text-align: center; margin-bottom: 14px;">
+      <a href="${trackingUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; font-size: 12px; font-weight: 700; text-decoration: none; padding: 10px 22px; border-radius: 8px; letter-spacing: 0.3px;">
+        View Live Claim Slip &amp; Order Options
+      </a>
+    </div>
+
+    <!-- Pick-Up Location -->
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 8px 12px; text-align: center;">
+      <div style="font-size: 10.5px; color: #94a3b8;">
+        Eds Towels &amp; Caps • Ground Floor, Pacific Mall Lucena, Quezon Province
+      </div>
+    </div>
+  `;
+
+  const htmlContent = renderEmailShell({
+    title: '',
+    statusBadge,
+    contentHtml,
+  });
+
+  return dispatchEmail({
+    to: recipientEmail,
+    subject: `Schedule Update: Order #${orderId} — Eds Towels & Caps`,
+    html: htmlContent,
+    simulationInfo: { tag: 'DELAY NOTIFICATION', url: trackingUrl }
+  });
+}
+
 module.exports = {
   generateVerificationToken,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendPasswordChangedAlertEmail,
   sendOrderConfirmationEmail,
+  sendDelayNotificationEmail,
 };

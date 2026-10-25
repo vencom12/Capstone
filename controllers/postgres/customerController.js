@@ -219,6 +219,17 @@ exports.submitOrder = async (req, res) => {
             serverTotal += itemUnitPrice * (item.quantity || 1);
         }
         const globalSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+
+        // Emergency delay notice / leave policy guard:
+        if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS' && !isBypassActive) {
+            const resumeDateStr = globalSettings.emergencyNoticeResumeDate
+                ? new Date(globalSettings.emergencyNoticeResumeDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : 'soon';
+            return res.status(400).json({
+                message: `Online ordering is temporarily paused while our workshop is closed (${globalSettings.emergencyNoticeReason || 'Scheduled Leave'}). Ordering will resume on ${resumeDateStr}.`
+            });
+        }
+
         // Add gift packaging if selected
         if (giftPackaging) {
             serverTotal += globalSettings ? globalSettings.giftPackagingPrice : 5.00;
@@ -348,6 +359,18 @@ exports.submitOrder = async (req, res) => {
 
             if (orderPersonalization.text && typeof orderPersonalization.text === 'string') {
                 orderPersonalization.text = orderPersonalization.text.trim().slice(0, 25);
+            }
+
+            if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'ALLOW_WITH_DELAY') {
+                orderPersonalization.delayNotice = {
+                    active: true,
+                    reason: globalSettings.emergencyNoticeReason || 'Workshop Leave',
+                    message: globalSettings.emergencyNoticeMessage || '',
+                    resumeDate: globalSettings.emergencyNoticeResumeDate,
+                    delayHours: globalSettings.emergencyNoticeDelayHours || 0,
+                    policy: 'ALLOW_WITH_DELAY',
+                    acknowledgedAt: new Date().toISOString()
+                };
             }
 
             // Sanitize items and enforce 25-character embroidery hoop limit
@@ -557,70 +580,120 @@ exports.removeFavorite = async (req, res) => {
 
 exports.getReceipt = async (req, res) => {
     try {
-        const id = req.params.id;
-        // 1. Try Receipt table first (by receiptID)
-        let receiptData = await prisma.receipt.findFirst({
-            where: { receiptID: id },
+        const rawId = (req.params.id || '').trim();
+        if (!rawId || rawId === 'undefined' || rawId === 'null') {
+            return res.status(404).json({ message: 'We could not find that receipt.' });
+        }
+
+        const cleanCode = rawCodeToClean = rawId.replace(/^[#]/, '').trim();
+
+        // 1. Try finding transaction directly by any known identifier
+        let tx = await prisma.transaction.findFirst({
+            where: {
+                OR: [
+                    { transactionID: cleanCode },
+                    { receiptId: cleanCode },
+                    { orderID: cleanCode },
+                    { id: cleanCode }
+                ]
+            },
             include: { user: true }
         });
 
-        let tx;
-        if (receiptData) {
-            tx = await prisma.transaction.findFirst({
-                where: { orderID: receiptData.orderID },
-                include: { Order: true, user: true }
-            });
-        } else {
-            // 2. Try finding by transactionID or id (UUID)
-            tx = await prisma.transaction.findFirst({
+        // 2. If not found, try searching Receipt table (by receiptID, id, or orderID)
+        let receiptData = null;
+        if (!tx) {
+            receiptData = await prisma.receipt.findFirst({
                 where: {
                     OR: [
-                        { transactionID: id },
-                        { id: id }
+                        { receiptID: cleanCode },
+                        { id: cleanCode },
+                        { orderID: cleanCode }
                     ]
                 },
-                include: { Order: true, user: true }
+                include: { user: true }
             });
 
-            // 3. Try finding by orderId
-            if (!tx) {
-                const order = await prisma.order.findFirst({
-                    where: { orderId: id },
-                    include: { transaction: true, user: true }
+            if (receiptData) {
+                tx = await prisma.transaction.findFirst({
+                    where: {
+                        OR: [
+                            { orderID: receiptData.orderID },
+                            { receiptId: receiptData.receiptID }
+                        ]
+                    },
+                    include: { user: true }
                 });
-                if (order && order.transaction) {
-                    tx = order.transaction;
-                    tx.order = order;
-                    tx.user = order.user;
-                }
             }
         }
 
-        if (!tx) return res.status(404).json({ message: 'We could not find that receipt.' });
-
-        if (tx.Order) {
-            tx.order = tx.Order;
+        // 3. Try finding linked Order
+        let linkedOrder = null;
+        const orderSearchQuery = tx?.orderID || receiptData?.orderID || cleanCode;
+        if (orderSearchQuery) {
+            linkedOrder = await prisma.order.findFirst({
+                where: {
+                    OR: [
+                        { orderId: orderSearchQuery },
+                        { id: orderSearchQuery },
+                        { transactionId: cleanCode },
+                        { receiptId: cleanCode }
+                    ]
+                },
+                include: { user: true }
+            });
         }
 
-        // Check authorization if it's a customer
-        if (req.user.role === 'customer' && tx.userId !== req.user.id) {
+        // If tx is still missing but we found the order, try resolving tx via order's transactionId
+        if (!tx && linkedOrder) {
+            if (linkedOrder.transactionId) {
+                tx = await prisma.transaction.findFirst({
+                    where: {
+                        OR: [
+                            { id: linkedOrder.transactionId },
+                            { orderID: linkedOrder.orderId },
+                            { transactionID: linkedOrder.transactionId }
+                        ]
+                    },
+                    include: { user: true }
+                });
+            }
+        }
+
+        // If neither transaction nor order can be found, return 404
+        if (!tx && !linkedOrder) {
+            return res.status(404).json({ message: 'We could not find that receipt.' });
+        }
+
+        // Authorization check for customer role
+        const targetUserId = tx?.userId || linkedOrder?.userId || receiptData?.userId;
+        if (req.user?.role === 'customer' && targetUserId && req.user?.id && targetUserId !== req.user.id) {
             return res.status(403).json({ message: 'You do not have permission to view this receipt.' });
         }
 
+        // Prepare clean non-circular order object
+        let cleanOrder = null;
+        if (linkedOrder) {
+            const { transaction: _t, ...restOrder } = linkedOrder;
+            cleanOrder = restOrder;
+        }
+
+        const clientName = tx?.user?.username || cleanOrder?.user?.username || cleanOrder?.client || 'Customer';
+
         res.json({
-            transactionID: tx.transactionID,
-            orderID: tx.orderID,
-            receiptId: tx.receiptId,
-            amount: tx.amount,
-            status: tx.status,
-            timestamp: tx.timestamp,
-            paymentMethod: tx.paymentMethod || tx.order?.paymentMethod || 'GCash',
-            items: tx.order ? tx.order.items : [],
-            order: tx.order || null,
-            client: tx.user?.username || tx.order?.client || 'Customer'
+            transactionID: tx?.transactionID || cleanOrder?.transactionId || `TX-${cleanOrder?.orderId || cleanCode}`,
+            orderID: tx?.orderID || cleanOrder?.orderId || cleanCode,
+            receiptId: tx?.receiptId || receiptData?.receiptID || cleanOrder?.receiptId || `RCP-${cleanOrder?.orderId || cleanCode}`,
+            amount: tx?.amount ?? cleanOrder?.totalAmount ?? 0,
+            status: tx?.status || cleanOrder?.paymentStatus || 'completed',
+            timestamp: tx?.timestamp || receiptData?.timestamp || cleanOrder?.createdAt || new Date(),
+            paymentMethod: tx?.paymentMethod || cleanOrder?.paymentMethod || receiptData?.paymentMethod || 'GCash',
+            items: cleanOrder?.items || [],
+            order: cleanOrder,
+            client: clientName
         });
     } catch (err) {
-        console.error('Download error:', err);
+        console.error('getReceipt error:', err);
         res.status(500).json({ message: 'Could not load your receipt right now. Please try again.' });
     }
 };
@@ -758,6 +831,29 @@ exports.trackOrder = async (req, res) => {
             readyLabel = 'Completed';
         }
 
+        let delayNotice = null;
+        if (order.personalization && typeof order.personalization === 'object' && order.personalization.delayNotice) {
+            delayNotice = order.personalization.delayNotice;
+        } else {
+            try {
+                const settings = await prisma.systemSettings.findUnique({
+                    where: { id: 'global' },
+                    select: { emergencyNoticeActive: true, emergencyNoticeReason: true, emergencyNoticeMessage: true, emergencyNoticeDelayHours: true, emergencyNoticeResumeDate: true }
+                });
+                if (settings?.emergencyNoticeActive && ['In Queue', 'Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
+                    delayNotice = {
+                        active: true,
+                        reason: settings.emergencyNoticeReason,
+                        message: settings.emergencyNoticeMessage,
+                        delayHours: settings.emergencyNoticeDelayHours || 0,
+                        newReadyDate: settings.emergencyNoticeResumeDate
+                    };
+                }
+            } catch (setErr) {
+                console.warn('[trackOrder] Settings check notice:', setErr.message);
+            }
+        }
+
         res.json({
             success: true,
             order: {
@@ -773,6 +869,9 @@ exports.trackOrder = async (req, res) => {
                 readyLabel,
                 totalAmount: order.totalAmount,
                 paymentStatus: order.paymentStatus,
+                paymentMethod: order.paymentMethod,
+                personalization: order.personalization,
+                delayNotice,
                 createdAt: order.createdAt,
                 updatedAt: order.updatedAt
             }
@@ -939,7 +1038,16 @@ exports.getPublicSettings = async (req, res) => {
             businessContact: settings?.businessContact || '0928 810 3928',
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: settings?.businessLogoUrl || null,
-            gcashQrCodeUrl: settings?.gcashQrCodeUrl || null
+            gcashQrCodeUrl: settings?.gcashQrCodeUrl || null,
+            emergencyNotice: settings?.emergencyNoticeActive ? {
+                active: true,
+                policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
+                reason: settings.emergencyNoticeReason,
+                message: settings.emergencyNoticeMessage,
+                delayHours: settings.emergencyNoticeDelayHours || 0,
+                resumeDate: settings.emergencyNoticeResumeDate,
+                createdAt: settings.emergencyNoticeCreatedAt
+            } : { active: false }
         });
     } catch (err) {
         console.error('[getPublicSettings] Unexpected error:', err);
@@ -952,7 +1060,8 @@ exports.getPublicSettings = async (req, res) => {
             businessContact: '0928 810 3928',
             receiptTagline: 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: null,
-            gcashQrCodeUrl: null
+            gcashQrCodeUrl: null,
+            emergencyNotice: { active: false }
         });
     }
 };
@@ -1387,46 +1496,87 @@ exports.cancelOrder = async (req, res) => {
             return res.status(404).json({ message: 'Order not found.' });
         }
 
-        // Strict rule: Orders cannot be cancelled if in Preparing Order or beyond
-        const NON_CANCELLABLE_STATES = [
-            'Preparing Order',
-            'In Transit',
-            'Ready For Pick Up',
-            'Ready For Pick-Up',
-            'Ready for Pickup',
-            'Out for Delivery',
-            'Order Delivered',
-            'Completed',
-            'Order Canceled'
-        ];
-
-        if (NON_CANCELLABLE_STATES.includes(order.status)) {
-            return res.status(400).json({
-                message: order.status === 'Order Canceled'
-                    ? 'This order has already been canceled.'
-                    : 'Cannot cancel order: custom embroidery production is already underway (Preparing Order).'
-            });
+        let isDelayImpacted = false;
+        try {
+            if (order.personalization && typeof order.personalization === 'object' && order.personalization.delayNotice?.active) {
+                isDelayImpacted = true;
+            } else {
+                const settings = await prisma.systemSettings.findUnique({
+                    where: { id: 'global' },
+                    select: { emergencyNoticeActive: true }
+                });
+                if (settings?.emergencyNoticeActive && ['In Queue', 'Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
+                    isDelayImpacted = true;
+                }
+            }
+        } catch (setErr) {
+            console.warn('[cancelOrder] Delay check notice:', setErr.message);
         }
 
-        // Paid orders (e.g. via GCash, Maya, Cash) cannot be self-cancelled via API; requires staff mediation for refund
+        if (isDelayImpacted) {
+            const FINAL_STATES = ['Order Delivered', 'Delivered', 'Completed', 'Order Canceled'];
+            if (FINAL_STATES.includes(order.status)) {
+                return res.status(400).json({
+                    message: order.status === 'Order Canceled'
+                        ? 'This order has already been canceled.'
+                        : 'Cannot cancel an order that has already been delivered or completed.'
+                });
+            }
+        } else {
+            // Strict rule: Orders cannot be cancelled if in Preparing Order or beyond
+            const NON_CANCELLABLE_STATES = [
+                'Preparing Order',
+                'In Transit',
+                'Ready For Pick Up',
+                'Ready For Pick-Up',
+                'Ready for Pickup',
+                'Out for Delivery',
+                'Order Delivered',
+                'Completed',
+                'Order Canceled'
+            ];
+
+            if (NON_CANCELLABLE_STATES.includes(order.status)) {
+                return res.status(400).json({
+                    message: order.status === 'Order Canceled'
+                        ? 'This order has already been canceled.'
+                        : 'Cannot cancel order: custom embroidery production is already underway (Preparing Order).'
+                });
+            }
+
+            // Standard paid orders cannot be self-cancelled via API outside delay notice
+            const isPaidOrder = order.paymentStatus === 'paid' || 
+                (order.paymentMethod && !['none', 'unpaid', 'pending'].includes(order.paymentMethod.toLowerCase()) && order.paymentStatus !== 'unpaid');
+
+            if (isPaidOrder && order.paymentMethod !== 'wallet') {
+                return res.status(400).json({
+                    message: `This order has already been paid via ${(order.paymentMethod || 'digital payment').toUpperCase()}. Please contact workshop support or visit our Pacific Mall studio counter for cancellation and refund processing.`
+                });
+            }
+        }
+
         const isPaidOrder = order.paymentStatus === 'paid' || 
             (order.paymentMethod && !['none', 'unpaid', 'pending'].includes(order.paymentMethod.toLowerCase()) && order.paymentStatus !== 'unpaid');
-
-        if (isPaidOrder && order.paymentMethod !== 'wallet') {
-            return res.status(400).json({
-                message: `This order has already been paid via ${(order.paymentMethod || 'digital payment').toUpperCase()}. Please contact workshop support or visit our Pacific Mall studio counter for cancellation and refund processing.`
-            });
-        }
 
         const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 
         const updatedOrder = await prisma.$transaction(async (tx) => {
             // If order was paid via customer wallet, auto-refund wallet balance
-            if (order.paymentMethod === 'wallet' && order.paymentStatus === 'paid' && order.totalAmount > 0) {
+            if (order.paymentMethod === 'wallet' && isPaidOrder && order.totalAmount > 0) {
                 await tx.user.update({
                     where: { id: userId },
                     data: { walletBalance: { increment: order.totalAmount } }
                 });
+            }
+
+            const currentPers = (order.personalization && typeof order.personalization === 'object') ? { ...order.personalization } : {};
+            if (isDelayImpacted && isPaidOrder && order.paymentMethod !== 'wallet') {
+                currentPers.refundClaim = {
+                    requestedAt: new Date().toISOString(),
+                    amount: order.totalAmount,
+                    paymentMethod: order.paymentMethod,
+                    status: 'Pending Workshop Refund'
+                };
             }
 
             return await handleOrderStateTransition(
@@ -1435,7 +1585,10 @@ exports.cancelOrder = async (req, res) => {
                 'Order Canceled',
                 req.user.username || 'Customer',
                 {
-                    note: reason ? `Customer canceled: ${reason}` : 'Customer requested order cancellation before production.'
+                    note: isDelayImpacted
+                        ? `Customer requested cancellation & full refund due to workshop delay notice. Reason: ${reason || 'Workshop delay'}`
+                        : (reason ? `Customer canceled: ${reason}` : 'Customer requested order cancellation before production.'),
+                    personalizationUpdates: currentPers
                 }
             );
         });

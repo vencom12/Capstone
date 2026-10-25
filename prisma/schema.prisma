@@ -8,127 +8,96 @@ datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
-  extensions = [vector]
-}
-
-enum Role {
-  admin
-  employee
-  customer
-}
-
-enum OrderStatus {
-  Pending_Payment
-  Processing
-  Completed
-  Cancelled
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
 model User {
-  id            String   @id @default(uuid())
-  username      String   @unique
-  email         String   @unique
-  password      String
-  role          Role     @default(customer)
-  walletBalance Float    @default(0)
-  phoneNumber   String?
-  isPhoneVerified Boolean @default(false)
-  isEmailVerified Boolean @default(false)
-  address       String?
-  preferredDeliveryTime String?
-  savedAddresses Json?   @default("[]")
-  tokenVersion  Int      @default(0)
-  createdAt     DateTime @default(now())
-  shiftStatus   String   @default("offline") // clocked_in, offline
-  isActive      Boolean  @default(true)
-  disabledAt    DateTime?
-  disabledReason String?
-  lastLoginAt   DateTime?
-  lastActiveAt  DateTime?
-
-  orders       Order[]
-  transactions Transaction[]
-  receipts     Receipt[]
-  favorites    Product[]     @relation("UserFavorites")
-  machines     Machine[]
+  id              String        @id @default(uuid())
+  username        String        @unique
+  email           String        @unique
+  password        String
+  role            Role          @default(customer)
+  createdAt       DateTime      @default(now())
+  tokenVersion    Int           @default(0)
+  shiftStatus     String        @default("offline")
+  isEmailVerified Boolean       @default(false)
+  disabledAt      DateTime?
+  disabledReason  String?
+  isActive        Boolean       @default(true)
+  lastActiveAt    DateTime?
+  lastLoginAt     DateTime?
+  machines        Machine[]
+  orders          Order[]
+  receipts        Receipt[]
+  transactions    Transaction[]
+  favorites       Product[]     @relation("UserFavorites")
 }
 
 model Product {
-  id            String                      @id @default(uuid())
-  name          String
-  price         Float
-  tag           String                      @default("General")
-  tags          String[]                    @default([]) // For AI Recommendations
-  description   String?
-  imageUrl      String                      @default("https://via.placeholder.com/200")
-  recipe        Json? // Array of { inventoryId, name, quantity }
-  variants      Json? // Array of { name, color, imageUrl?, priceOverride? }
-  embedding     Unsupported("vector(384)")? // RAG Semantic Search
-  views         Int                         @default(0)
-  count         Int                         @default(0)
-  reservedCount Int                         @default(0)
-  minThreshold  Int                         @default(5)
-  createdAt     DateTime                    @default(now())
-
-  // A/B Testing Fields
-  isAbTesting    Boolean @default(false)
+  id             String                 @id @default(uuid())
+  name           String
+  price          Float
+  tag            String                 @default("General")
+  description    String?
+  imageUrl       String                 @default("https://via.placeholder.com/200")
+  views          Int                    @default(0)
+  createdAt      DateTime               @default(now())
+  tags           String[]               @default([])
+  recipe         Json?
+  count          Int                    @default(0)
+  minThreshold   Int                    @default(5)
+  reservedCount  Int                    @default(0)
+  embedding      Unsupported("vector")?
+  isAbTesting    Boolean                @default(false)
+  variantAOrders Int                    @default(0)
   variantAPrice  Float?
+  variantAViews  Int                    @default(0)
+  variantBOrders Int                    @default(0)
   variantBPrice  Float?
-  variantAViews  Int     @default(0)
-  variantBViews  Int     @default(0)
-  variantAOrders Int     @default(0)
-  variantBOrders Int     @default(0)
-
-  favoritedBy User[] @relation("UserFavorites")
+  variantBViews  Int                    @default(0)
+  variants       Json?
+  favoritedBy    User[]                 @relation("UserFavorites")
 
   @@index([createdAt])
 }
 
 model Order {
-  id            String    @id @default(uuid())
-  orderId       String    @unique
-  client        String
-  design        String
-  items         Json // Storing as JSON to maintain MongoDB-like structure for now, or use relation
-  status        String    @default("Pending Payment")
-  progress      Int       @default(0)
-  paymentStatus String    @default("unpaid")
-  paymentMethod String    @default("none")
-  address       String?
-  deliveryTime  String?
-  notes         String?
-  totalAmount   Float     @default(0)
-  priorityScore Float     @default(0) // For AI Queuing
-  isRush        Boolean   @default(false) // For AI Queuing
-  estimatedTime Int? // For AI Queuing (minutes)
-  dueDate       DateTime? // For AI Queuing (due date/time)
-
-  // Business Solutions Fields
-  isByog             Boolean   @default(false) // Bring Your Own Garment
-  waiverSigned       Boolean   @default(false) // Legal waiver
-  garmentsReceivedAt DateTime? // Physical counter drop-off timestamp for BYOG
-  garmentsReceivedBy String?   // Staff username/ID who accepted garments
-  processedBy        String?   // Admin/Employee who processed or last updated the order
-  stagingCubby       String?   // Physical shelf bin at Pacific Mall kiosk (e.g. "Bin B-3")
-  giftPackaging      Boolean   @default(false) // Premium upsell
-  calligraphyMessage String?   // Handwritten note
-  personalization    Json?     // Custom cursive data { text, font, color }
-
-  date DateTime @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  machineId String?
-
-  transaction   Transaction? @relation(fields: [transactionId], references: [id])
-  transactionId String?      @unique
-
-  receipt   Receipt? @relation(fields: [receiptId], references: [id])
-  receiptId String?  @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id                 String       @id @default(uuid())
+  orderId            String       @unique
+  client             String
+  design             String
+  items              Json
+  status             String       @default("Pending Payment")
+  progress           Int          @default(0)
+  paymentStatus      String       @default("unpaid")
+  paymentMethod      String       @default("none")
+  address            String?
+  deliveryTime       String?
+  notes              String?
+  totalAmount        Float        @default(0)
+  date               DateTime     @default(now())
+  userId             String
+  transactionId      String?      @unique
+  receiptId          String?      @unique
+  estimatedTime      Int?
+  isRush             Boolean      @default(false)
+  priorityScore      Float        @default(0)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now()) @updatedAt
+  calligraphyMessage String?
+  giftPackaging      Boolean      @default(false)
+  isByog             Boolean      @default(false)
+  personalization    Json?
+  waiverSigned       Boolean      @default(false)
+  machineId          String?
+  dueDate            DateTime?
+  garmentsReceivedAt DateTime?
+  garmentsReceivedBy String?
+  stagingCubby       String?
+  processedBy        String?
+  receipt            Receipt?     @relation(fields: [receiptId], references: [id])
+  transaction        Transaction? @relation(fields: [transactionId], references: [id])
+  user               User         @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([machineId])
@@ -138,29 +107,28 @@ model Order {
 }
 
 model Inventory {
-  id               String   @id @default(uuid())
-  item             String   @unique
-  count            Int      @default(0)
-  reservedCount    Int      @default(0)
-  unit             String   @default("Cones")
-  minThreshold     Int      @default(10)
-  supplierUnitCost Float?   // Actual cost paid to supplier per unit (for real profit calculation)
-  packSize         Int      @default(1) // Units per supplier wholesale master pack (e.g. 8 for towels, 5 for fans)
-  lastUpdated      DateTime @default(now()) @updatedAt
-
-  logs           InventoryLog[]
-  purchaseOrders PurchaseOrder[]
+  id               String          @id @default(uuid())
+  item             String          @unique
+  count            Int             @default(0)
+  unit             String          @default("Cones")
+  lastUpdated      DateTime        @default(now()) @updatedAt
+  minThreshold     Int             @default(10)
+  reservedCount    Int             @default(0)
+  supplierUnitCost Float?
+  packSize         Int             @default(1)
+  logs             InventoryLog[]
+  purchaseOrders   PurchaseOrder[]
 }
 
 model InventoryLog {
   id          String    @id @default(uuid())
   inventoryId String
-  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  action      String // "Add", "Deduct", "Update"
-  amount      Int // Quantity changed
-  newTotal    Int // Total after change
-  userId      String // Who made the change (username or ID)
+  action      String
+  amount      Int
+  newTotal    Int
+  userId      String
   timestamp   DateTime  @default(now())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 
   @@index([inventoryId])
   @@index([timestamp])
@@ -169,44 +137,38 @@ model InventoryLog {
 model Transaction {
   id            String   @id @default(uuid())
   transactionID String   @unique
-  orderID       String // External order ID
+  orderID       String
   amount        Float
   status        String   @default("pending")
   receiptLink   String?
   receiptId     String?  @unique
   timestamp     DateTime @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-  Order  Order?
+  userId        String
+  Order         Order?
+  user          User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
 model Receipt {
-  id            String   @id @default(uuid())
-  receiptID     String   @unique
-  orderID       String
-  paymentMethod String
-  amount        Float
-  status        String   @default("Pending")
-  timestamp     DateTime @default(now())
-  metadata      Json?
-
-  // AI Vision Fields
-  imageUrl             String?
+  id                   String   @id @default(uuid())
+  receiptID            String   @unique
+  orderID              String
+  paymentMethod        String
+  amount               Float
+  status               String   @default("Pending")
+  timestamp            DateTime @default(now())
+  metadata             Json?
+  userId               String
+  aiVerificationStatus String   @default("pending")
+  confidenceScore      Float    @default(0)
   ocrData              Json?
-  confidenceScore      Float   @default(0)
-  aiVerificationStatus String  @default("pending")
-
-  // Anti-Replay Fraud Fields
-  imageHash     String? @unique // SHA-256 fingerprint of uploaded image (Defense 1)
-  referenceId   String? // OCR-extracted transaction reference ID (Defense 2)
-  flaggedReason String? // Human-readable reason if flagged
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-  Order  Order?
+  imageUrl             String?
+  flaggedReason        String?
+  imageHash            String?  @unique
+  referenceId          String?
+  Order                Order?
+  user                 User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([orderID])
@@ -224,40 +186,40 @@ model SiteTraffic {
 }
 
 model SystemSettings {
-  id                 String  @id @default("global")
-  inventoryAuditLog  Boolean @default(true)
-  giftPackagingPrice Float   @default(5.00)
-  deliveryEnabled    Boolean @default(false)
-  autoReplyReviews   Boolean @default(true)
-
-  // Dynamic AI Configuration (Phase 1: AI Sustainability)
-  aiChatModel        String @default("llama-3.3-70b-versatile")
-  aiVisionModel      String @default("llama-3.2-11b-vision-preview")
-  aiProviderUrl      String @default("https://api.groq.com/openai/v1/chat/completions")
-  minConfidenceScore Float  @default(0.75)
-
-  // Dynamic Business Profile & Printed Receipts
-  businessName    String @default("STITCH-OPT DESIGNS")
-  receiptTagline  String @default("Premium Embroidery Services")
-  businessAddress String @default("123 Digital Thread Lane, Manila")
-  businessContact String @default("0928 810 3928")
-  businessEmail   String @default("contact@stitch-opt.com")
-  businessWebsite String @default("www.stitch-opt.com")
-  businessLogoUrl String?
-  gcashQrCodeUrl  String?
-
-  // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
-  artisanSecondsPerLetter Float   @default(12.0)
-  artisanHandlingMinutes  Float   @default(1.0)
-  artisanCapOffsetMinutes Float   @default(0.5)
-  artisanDailyMinutes     Float   @default(500.0)
-  expressLanePercent      Float   @default(35.0)
-  efficiencyFactor        Float   @default(0.85)
-
-  // Bulk Order & Batch Intake Throttling
-  maxBulkPiecesPerDay      Int     @default(50)
-  batchThrottlePeriod      String  @default("day") // "day" or "week"
-  largeOrderQuoteThreshold Int     @default(100)
+  id                       String  @id @default("global")
+  inventoryAuditLog        Boolean @default(true)
+  giftPackagingPrice       Float   @default(5.00)
+  aiChatModel              String  @default("llama-3.3-70b-versatile")
+  aiProviderUrl            String  @default("https://api.groq.com/openai/v1/chat/completions")
+  aiVisionModel            String  @default("llama-3.2-11b-vision-preview")
+  minConfidenceScore       Float   @default(0.75)
+  businessAddress          String  @default("123 Digital Thread Lane, Manila")
+  businessContact          String  @default("0928 810 3928")
+  businessEmail            String  @default("contact@stitch-opt.com")
+  businessName             String  @default("STITCH-OPT DESIGNS")
+  receiptTagline           String  @default("Premium Embroidery Services")
+  businessWebsite          String  @default("www.stitch-opt.com")
+  businessLogoUrl          String?
+  gcashQrCodeUrl           String?
+  deliveryEnabled          Boolean @default(false)
+  autoReplyReviews         Boolean @default(true)
+  artisanCapOffsetMinutes  Float   @default(0.5)
+  artisanDailyMinutes      Float   @default(500.0)
+  artisanHandlingMinutes   Float   @default(1.0)
+  artisanSecondsPerLetter  Float   @default(12.0)
+  efficiencyFactor         Float   @default(0.85)
+  expressLanePercent       Float   @default(35.0)
+  batchThrottlePeriod      String  @default("day")
+  largeOrderQuoteThreshold Int       @default(100)
+  maxBulkPiecesPerDay      Int       @default(50)
+  emergencyNoticeActive    Boolean   @default(false)
+  emergencyNoticeReason    String?
+  emergencyNoticeMessage   String?
+  emergencyNoticeDelayHours Int      @default(0)
+  emergencyNoticeResumeDate DateTime?
+  emergencyNoticeCreatedAt  DateTime?
+  emergencyNoticeUpdatedBy  String?
+  emergencyOrderingPolicy  String    @default("ALLOW_WITH_DELAY") // "ALLOW_WITH_DELAY" | "PAUSE_ORDERS"
 }
 
 model GlobalAuditLog {
@@ -276,16 +238,14 @@ model GlobalAuditLog {
 }
 
 model Machine {
-  id     String @id @default(uuid())
-  name   String @unique
-  type   String @default("Embroidery")
-  status String @default("Idle") // Idle, Running, Maintenance, Offline
-
+  id             String   @id @default(uuid())
+  name           String   @unique
+  type           String   @default("Embroidery")
+  status         String   @default("Idle")
   assignedUserId String?
-  assignedUser   User?   @relation(fields: [assignedUserId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  assignedUser   User?    @relation(fields: [assignedUserId], references: [id])
 
   @@index([assignedUserId])
   @@index([status])
@@ -300,24 +260,12 @@ model DeclinedRecommendation {
 model PurchaseOrder {
   id            String    @id @default(uuid())
   inventoryId   String
-  inventory     Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
   quantity      Int
-  status        String    @default("Draft") // Draft, Approved, Ordered, Received
+  status        String    @default("Draft")
   estimatedCost Float?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
-}
-
-model PhoneVerification {
-  id          String   @id @default(uuid())
-  phoneNumber String   @unique
-  codeHash    String
-  expiresAt   DateTime
-  attempts    Int      @default(0)
-  lastSentAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  @@index([phoneNumber, expiresAt])
+  inventory     Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 }
 
 model EmailVerification {
@@ -333,16 +281,18 @@ model EmailVerification {
 }
 
 model Feedback {
-  id            String   @id @default(uuid())
-  category      String   @default("General") // Order Quality, Embroidery Stitching, Delivery & Turnaround, Customer Support, General
-  rating        Int      @default(5) // 1 to 5 stars
-  message       String
-  status        String   @default("Pending") // Pending, Reviewed, Resolved
-  staffNotes    String?
-  customerName  String?
-  customerEmail String?
-  orderId       String?
-  userId        String?
+  id               String    @id @default(uuid())
+  category         String    @default("General")
+  rating           Int       @default(5)
+  message          String
+  status           String    @default("Pending")
+  staffNotes       String?
+  customerName     String?
+  customerEmail    String?
+  orderId          String?
+  userId           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
   productId        String?
   merchantReply    String?
   merchantReplyAt  DateTime?
@@ -350,8 +300,6 @@ model Feedback {
   rootCause        String?
   resolutionAction String?
   resolvedBy       String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @default(now()) @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -364,11 +312,11 @@ model MaintenanceTicket {
   id              String    @id @default(uuid())
   machineId       String
   machineName     String
-  issueType       String    @default("Mechanical Jam") // Mechanical Jam, Needle / Thread Fault, Tension / Hook, Motor / Power, Routine Service, Other
-  severity        String    @default("Warning") // Critical, Warning, Routine
+  issueType       String    @default("Mechanical Jam")
+  severity        String    @default("Warning")
   description     String
-  status          String    @default("Open") // Open, In_Progress, Resolved
-  reportedBy      String    // Username
+  status          String    @default("Open")
+  reportedBy      String
   reportedById    String?
   resolutionNotes String?
   resolvedAt      DateTime?
@@ -381,3 +329,15 @@ model MaintenanceTicket {
   @@index([createdAt])
 }
 
+enum Role {
+  admin
+  employee
+  customer
+}
+
+enum OrderStatus {
+  Pending_Payment
+  Processing
+  Completed
+  Cancelled
+}

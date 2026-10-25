@@ -84,4 +84,10 @@ router.patch('/feedback/:id/feature', adminAuth(), auditLogger('Feedback', 'TOGG
 // Walk-In Counter Mode Order Creation (Staff permitted)
 router.post('/orders/walk-in', staffAuth(), auditLogger('Order', 'CREATE_WALKIN_ORDER'), adminController.createWalkInOrder);
 
+// Workshop Delay & Emergency Notice Protocol
+router.get('/delay-notice', staffAuth(), adminController.getDelayNoticeStatus);
+router.post('/delay-notice', adminAuth(), auditLogger('Settings', 'BROADCAST_DELAY_NOTICE'), adminController.broadcastDelayNotice);
+router.post('/delay-notice/lift', adminAuth(), auditLogger('Settings', 'LIFT_DELAY_NOTICE'), adminController.liftDelayNotice);
+
 module.exports = router;
+
