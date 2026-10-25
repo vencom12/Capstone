@@ -46,6 +46,13 @@ export default function ProductModal({
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [imageFit, setImageFit] = useState<'cover' | 'contain'>('cover');
   const [customActiveImage, setCustomActiveImage] = useState<string | null>(null);
+  const [isOrderSubmitted, setIsOrderSubmitted] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsOrderSubmitted(false);
+    }
+  }, [isOpen]);
 
   // Collect distinct gallery photos from product and its variants
   const galleryItems = useMemo(() => {
@@ -282,13 +289,7 @@ export default function ProductModal({
     return true;
   };
 
-  const [isOrderSubmitted, setIsOrderSubmitted] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setIsOrderSubmitted(false);
-    }
-  }, [isOpen]);
 
   const handleAddToBasket = () => {
     if (handleAdd()) {
