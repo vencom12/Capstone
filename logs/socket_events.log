@@ -816,3 +816,10 @@
 {"timestamp":"2026-10-24T17:33:20.435Z","event":"dataChanged","sizeBytes":1797,"entity":"ORDER","action":"UPDATE"}
 {"timestamp":"2026-10-24T17:33:20.839Z","event":"dataChanged","sizeBytes":880,"entity":"INVENTORY","action":"UPDATE"}
 {"timestamp":"2026-10-24T17:33:25.725Z","event":"dataChanged","sizeBytes":8815,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-10-25T12:41:23.620Z","event":"dataChanged","sizeBytes":510,"entity":"PRODUCT","action":"CREATE"}
+{"timestamp":"2026-10-25T12:41:32.927Z","event":"dataChanged","sizeBytes":177,"entity":"PRODUCT","action":"DELETE"}
+{"timestamp":"2026-10-25T12:42:01.875Z","event":"dataChanged","sizeBytes":1134,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-10-25T12:49:50.294Z","event":"dataChanged","sizeBytes":270,"entity":"INVENTORY","action":"UPDATE"}
+{"timestamp":"2026-10-25T12:53:10.396Z","event":"dataChanged","sizeBytes":505,"entity":"PRODUCT","action":"CREATE"}
+{"timestamp":"2026-10-25T12:56:46.724Z","event":"dataChanged","sizeBytes":177,"entity":"PRODUCT","action":"DELETE"}
+{"timestamp":"2026-10-25T12:58:23.168Z","event":"dataChanged","sizeBytes":882,"entity":"PRODUCT","action":"UPDATE"}

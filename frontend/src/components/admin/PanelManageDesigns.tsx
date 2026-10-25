@@ -375,23 +375,30 @@ export default function PanelManageDesigns({
       return;
     }
 
-    // Derive total stock from variants:
-    // Only variants linked to a material in Materials tab provide stock!
+    // Derive total stock from variants (deduplicating shared raw materials):
+    const countedMatIds = new Set<string>();
     const totalVariantStock = variants.length === 0
-      ? 0
+      ? (parseInt(count, 10) || 0)
       : variants.reduce((sum, v) => {
           if (v.materialId) {
-            const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
-            return sum + (mat ? (mat.count || 0) : 0);
+            if (!countedMatIds.has(v.materialId)) {
+              countedMatIds.add(v.materialId);
+              const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
+              return sum + (mat ? (mat.count || 0) : (typeof v.stock === 'number' ? v.stock : (parseInt(v.stock?.toString() || '0', 10) || 0)));
+            }
+            return sum; // Shared material already counted once
           }
-          return sum; // unlinked variants contribute 0
+          const s = typeof v.stock === 'number' ? v.stock : (parseInt(v.stock?.toString() || '0', 10) || 0);
+          return sum + Math.max(0, s);
         }, 0);
 
     const formattedVariants = variants.map((v) => {
       let resolvedStock = 0;
       if (v.materialId) {
         const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
-        resolvedStock = mat ? (mat.count || 0) : 0;
+        resolvedStock = mat ? (mat.count || 0) : (typeof v.stock === 'number' ? v.stock : (parseInt(v.stock?.toString() || '0', 10) || 0));
+      } else {
+        resolvedStock = typeof v.stock === 'number' ? v.stock : (parseInt(v.stock?.toString() || '0', 10) || 0);
       }
       return {
         name: v.name,
@@ -919,13 +926,20 @@ export default function PanelManageDesigns({
               </div>
               <div className="bg-bg-surface border border-border-glass h-9 px-2.5 rounded-lg flex items-center justify-between">
                 <span className="font-mono font-bold text-xs text-text-main">
-                  {variants.length === 0 ? 0 : variants.reduce((sum, v) => {
-                    if (v.materialId) {
-                      const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
-                      return sum + (mat?.count ?? 0);
-                    }
-                    return sum + (typeof v.stock === 'number' ? v.stock : parseInt(v.stock?.toString() || '0', 10) || 0);
-                  }, 0)} pcs
+                  {variants.length === 0 ? (count || '0') : (() => {
+                    const counted = new Set<string>();
+                    return variants.reduce((sum, v) => {
+                      if (v.materialId) {
+                        if (!counted.has(v.materialId)) {
+                          counted.add(v.materialId);
+                          const mat = inventory.find((i) => (i.id || i._id) === v.materialId);
+                          return sum + (mat?.count ?? 0);
+                        }
+                        return sum;
+                      }
+                      return sum + (typeof v.stock === 'number' ? v.stock : parseInt(v.stock?.toString() || '0', 10) || 0);
+                    }, 0);
+                  })()} pcs
                 </span>
                 <span className="text-[0.68rem] text-text-dim">
                   {variants.length} var{variants.length === 1 ? '' : 's'}
@@ -991,8 +1005,8 @@ export default function PanelManageDesigns({
                 {/* Compact Variant Configuration Form Fields */}
                 <div className="bg-bg-surface/60 border border-border-glass rounded-lg p-2.5 flex flex-col gap-2">
                   {/* Row 1: Name & Color Swatch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-8 flex flex-col gap-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                    <div className="sm:col-span-7 flex flex-col gap-1">
                       <label className="text-[0.68rem] text-text-dim font-bold block">
                         Variant Name <span className="text-primary">*</span>
                       </label>
@@ -1001,14 +1015,14 @@ export default function PanelManageDesigns({
                         placeholder="e.g. Royal Blue / 30x60cm"
                         value={variantName}
                         onChange={(e) => handleVariantNameInput(e.target.value)}
-                        className="bg-bg-surface border border-border-glass h-8 px-2.5 rounded-lg text-text-main text-xs outline-none w-full focus:border-primary/50 transition-all font-medium"
+                        className="bg-bg-surface border border-border-glass h-9 min-h-[36px] px-3 rounded-lg text-text-main text-xs outline-none w-full focus:border-primary/50 transition-all font-medium leading-normal"
                       />
                     </div>
-                    <div className="sm:col-span-4 flex flex-col gap-1">
+                    <div className="sm:col-span-5 flex flex-col gap-1">
                       <label className="text-[0.68rem] text-text-dim font-bold block">
                         Color Swatch
                       </label>
-                      <div className="flex items-center gap-2 bg-bg-surface border border-border-glass px-2 rounded-lg h-8">
+                      <div className="flex items-center gap-2 bg-bg-surface border border-border-glass px-2.5 rounded-lg h-9 min-h-[36px]">
                         <input
                           type="color"
                           value={variantColor}
@@ -1024,14 +1038,14 @@ export default function PanelManageDesigns({
                     </div>
                   </div>
 
-                  {/* Row 2: Linked Material (8 cols) & Price Override (4 cols) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-8 flex flex-col gap-1">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[0.68rem] text-text-dim font-bold block">
+                  {/* Row 2: Linked Material (7 cols) & Price Override (5 cols) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                    <div className="sm:col-span-7 flex flex-col gap-1">
+                      <div className="flex justify-between items-center gap-1">
+                        <label className="text-[0.68rem] text-text-dim font-bold block whitespace-nowrap">
                           Linked Blank Material <span className="text-primary">*</span>
                         </label>
-                        <span className="text-[0.62rem] text-primary font-bold">Supplies Stock</span>
+                        <span className="text-[0.62rem] text-primary font-bold whitespace-nowrap">Supplies Stock</span>
                       </div>
                       {inventory.length === 0 ? (
                         <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[0.72rem]">
@@ -1041,7 +1055,7 @@ export default function PanelManageDesigns({
                         <select
                           value={variantMaterialId}
                           onChange={(e) => setVariantMaterialId(e.target.value)}
-                          className="bg-bg-surface border border-border-glass h-8 px-2 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all font-medium"
+                          className="bg-bg-surface border border-border-glass h-9 min-h-[36px] py-1.5 px-2.5 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer focus:border-primary/50 transition-all font-medium leading-normal"
                         >
                           <option value="">— No Material Linked (0 Stock) —</option>
                           {inventory.map((item) => (
@@ -1053,8 +1067,8 @@ export default function PanelManageDesigns({
                       )}
                     </div>
 
-                    <div className="sm:col-span-4 flex flex-col gap-1">
-                      <label className="text-[0.68rem] text-text-dim font-bold block">
+                    <div className="sm:col-span-5 flex flex-col gap-1">
+                      <label className="text-[0.68rem] text-text-dim font-bold block whitespace-nowrap truncate" title="Price Override (₱ Optional)">
                         Price Override (₱ Optional)
                       </label>
                       <input
@@ -1063,7 +1077,7 @@ export default function PanelManageDesigns({
                         placeholder="e.g. 250.00"
                         value={variantPrice}
                         onChange={(e) => setVariantPrice(e.target.value)}
-                        className="bg-bg-surface border border-border-glass h-8 px-2.5 rounded-lg text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all"
+                        className="bg-bg-surface border border-border-glass h-9 min-h-[36px] px-2.5 rounded-lg text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all leading-normal"
                       />
                     </div>
                   </div>

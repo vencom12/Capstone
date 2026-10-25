@@ -514,22 +514,23 @@ exports.createProduct = async (req, res) => {
         const variants = req.body.variants ? (typeof req.body.variants === 'string' ? JSON.parse(req.body.variants) : req.body.variants) : [];
 
         // Dynamic Variant Stock:
-        // If 0 variants, stock is strictly 0.
-        // If variants exist, calculate count as sum of variant stocks (or linked raw materials).
+        // Deduplicate shared raw materials so linking the same material across multiple variants does not artificially multiply stock
         let initialCount = 0;
-        if (Array.isArray(variants)) {
-            if (variants.length === 0) {
-                initialCount = 0;
-            } else {
-                const inventory = await prisma.inventory.findMany();
-                initialCount = variants.reduce((sum, v) => {
-                    if (v && v.materialId) {
+        if (Array.isArray(variants) && variants.length > 0) {
+            const inventory = await prisma.inventory.findMany();
+            const countedMaterials = new Set();
+            initialCount = variants.reduce((sum, v) => {
+                if (v && v.materialId) {
+                    if (!countedMaterials.has(v.materialId)) {
+                        countedMaterials.add(v.materialId);
                         const mat = inventory.find(i => i.id === v.materialId);
-                        return sum + (mat ? (mat.count || 0) : 0);
+                        return sum + (mat ? (mat.count || 0) : (typeof v.stock === 'number' ? v.stock : (parseInt(v.stock, 10) || 0)));
                     }
                     return sum;
-                }, 0);
-            }
+                }
+                const s = typeof v?.stock === 'number' ? v.stock : (parseInt(v?.stock, 10) || 0);
+                return sum + Math.max(0, s);
+            }, 0);
         } else if (count !== undefined) {
             initialCount = parseInt(count, 10) || 0;
         }
@@ -592,16 +593,23 @@ exports.updateProduct = async (req, res) => {
 
             if (Array.isArray(parsedVariants)) {
                 if (parsedVariants.length === 0) {
-                    updateData.count = 0;
-                    updateData.reservedCount = 0;
+                    if (count !== undefined) {
+                        updateData.count = parseInt(count, 10) || 0;
+                    }
                 } else {
                     const inventory = await prisma.inventory.findMany();
+                    const countedMaterials = new Set();
                     updateData.count = parsedVariants.reduce((sum, v) => {
                         if (v && v.materialId) {
-                            const mat = inventory.find(i => i.id === v.materialId);
-                            return sum + (mat ? (mat.count || 0) : 0);
+                            if (!countedMaterials.has(v.materialId)) {
+                                countedMaterials.add(v.materialId);
+                                const mat = inventory.find(i => i.id === v.materialId);
+                                return sum + (mat ? (mat.count || 0) : (typeof v.stock === 'number' ? v.stock : (parseInt(v.stock, 10) || 0)));
+                            }
+                            return sum;
                         }
-                        return sum;
+                        const s = typeof v?.stock === 'number' ? v.stock : (parseInt(v?.stock, 10) || 0);
+                        return sum + Math.max(0, s);
                     }, 0);
                 }
             }

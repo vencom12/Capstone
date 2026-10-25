@@ -589,8 +589,19 @@ async function enrichProductsWithStock(products, tx = prisma) {
                     }
                     if (Array.isArray(vList)) {
                         const matchedV = vList.find(v => v && v.name && v.name.trim().toLowerCase() === String(variantName).trim().toLowerCase());
-                        if (matchedV && matchedV.materialId) {
-                            reservedByMaterial[matchedV.materialId] = (reservedByMaterial[matchedV.materialId] || 0) + quantity;
+                        if (matchedV) {
+                            let resolvedMatId = matchedV.materialId;
+                            if (!resolvedMatId && matchedV.materialName) {
+                                const found = inventory.find(i => i.item && i.item.trim().toLowerCase() === matchedV.materialName.trim().toLowerCase());
+                                if (found) resolvedMatId = found.id;
+                            }
+                            if (!resolvedMatId && prod.name) {
+                                const found = inventory.find(i => i.item && i.item.trim().toLowerCase() === prod.name.trim().toLowerCase());
+                                if (found) resolvedMatId = found.id;
+                            }
+                            if (resolvedMatId) {
+                                reservedByMaterial[resolvedMatId] = (reservedByMaterial[resolvedMatId] || 0) + quantity;
+                            }
                         }
                     }
                 }
@@ -604,44 +615,101 @@ async function enrichProductsWithStock(products, tx = prisma) {
             try { variantsList = JSON.parse(variantsList); } catch(e) { variantsList = []; }
         }
 
-        // RULE: Products with 0 variants strictly have 0 stock
+        // Helper: Resolve raw material item with intelligent fallbacks
+        const resolveMaterialForVariant = (v) => {
+            let invItem = null;
+            if (v.materialId) {
+                invItem = inventory.find(i => i.id === v.materialId);
+            }
+            if (!invItem && v.materialName) {
+                invItem = inventory.find(i => i.item && i.item.trim().toLowerCase() === v.materialName.trim().toLowerCase());
+            }
+            if (!invItem && v.name && product.name) {
+                const c1 = `${v.name} ${product.name}`.toLowerCase();
+                const c2 = `${product.name} ${v.name}`.toLowerCase();
+                const c3 = `${product.name} - ${v.name}`.toLowerCase();
+                invItem = inventory.find(i => {
+                    if (!i.item) return false;
+                    const it = i.item.trim().toLowerCase();
+                    return it === c1 || it === c2 || it === c3;
+                });
+            }
+            if (!invItem && product.name) {
+                invItem = inventory.find(i => i.item && i.item.trim().toLowerCase() === product.name.trim().toLowerCase());
+            }
+            return invItem;
+        };
+
+        // Standard products with 0 variants: support direct inventory matching or product.count
         if (!Array.isArray(variantsList) || variantsList.length === 0) {
+            const matchingInv = inventory.find(i => i.item && i.item.trim().toLowerCase() === (product.name || '').trim().toLowerCase());
+            const dynamicReserved = reservedGarments[product.id] || 0;
+            if (matchingInv) {
+                const matReserved = (reservedByMaterial[matchingInv.id] || 0) + dynamicReserved;
+                const directCount = matchingInv.count || 0;
+                const available = Math.max(0, directCount - matReserved);
+                return {
+                    ...product,
+                    count: directCount,
+                    dynamicReserved: matReserved,
+                    availableStock: available,
+                    isOutOfStock: available <= 0,
+                    variants: []
+                };
+            }
+
+            const directCount = typeof product.count === 'number' ? product.count : (parseInt(product.count, 10) || 0);
+            const available = Math.max(0, directCount - dynamicReserved);
             return {
                 ...product,
-                count: 0,
-                dynamicReserved: 0,
-                availableStock: 0,
-                isOutOfStock: true,
+                count: directCount,
+                dynamicReserved,
+                availableStock: available,
+                isOutOfStock: available <= 0,
                 variants: []
             };
         }
 
+        // Shared material tracking to prevent double-counting when multiple variants share the same material
+        const countedMaterialPhysical = new Set();
+        const countedMaterialAvailable = new Set();
         let totalVariantPhysical = 0;
         let totalVariantAvailable = 0;
 
         const enrichedVariants = variantsList.map(v => {
             if (!v) return v;
+            const invItem = resolveMaterialForVariant(v);
             let rawPhysical = 0;
             let available = 0;
 
-            if (v.materialId) {
-                // Dynamically linked to Materials tab
-                const invItem = inventory.find(i => i.id === v.materialId);
-                const matCount = invItem ? (invItem.count || 0) : 0;
-                const matReserved = reservedByMaterial[v.materialId] || 0;
+            if (invItem) {
+                const matCount = invItem.count || 0;
+                const matReserved = reservedByMaterial[invItem.id] || 0;
                 rawPhysical = matCount;
                 available = Math.max(0, matCount - matReserved);
-            } else {
-                // If variant has no material link, it strictly has 0 stock
-                rawPhysical = 0;
-                available = 0;
-            }
 
-            totalVariantPhysical += rawPhysical;
-            totalVariantAvailable += available;
+                // Shared Material Pool: add the material count only once to total product capacity
+                if (!countedMaterialPhysical.has(invItem.id)) {
+                    countedMaterialPhysical.add(invItem.id);
+                    totalVariantPhysical += rawPhysical;
+                }
+                if (!countedMaterialAvailable.has(invItem.id)) {
+                    countedMaterialAvailable.add(invItem.id);
+                    totalVariantAvailable += available;
+                }
+            } else {
+                // Independent unlinked variant: fallback to saved v.stock
+                const s = typeof v.stock === 'number' ? v.stock : (parseInt(v.stock, 10) || 0);
+                rawPhysical = Math.max(0, s);
+                available = Math.max(0, s);
+                totalVariantPhysical += rawPhysical;
+                totalVariantAvailable += available;
+            }
 
             return {
                 ...v,
+                materialId: invItem ? invItem.id : v.materialId,
+                materialName: invItem ? invItem.item : v.materialName,
                 stock: rawPhysical,
                 availableStock: available,
                 isOutOfStock: available <= 0
