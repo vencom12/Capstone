@@ -18,6 +18,8 @@ interface PanelManageDesignsProps {
   setProducts?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
+const DEFAULT_CATEGORIES = ['Towel', 'Bath Towel', 'Fan', 'Clothing', 'Custom'];
+
 export default function PanelManageDesigns({
   products,
   inventory,
@@ -33,10 +35,28 @@ export default function PanelManageDesigns({
   const [isOpen, setIsOpen] = useState(false);
   const [editingDesign, setEditingDesign] = useState<any>(null);
 
+  // Dynamic available categories list aggregated from existing products + defaults
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>();
+    DEFAULT_CATEGORIES.forEach((c) => set.add(c));
+    (products || []).forEach((p) => {
+      if (p.tag) {
+        const trimmed = p.tag.trim();
+        if (trimmed) {
+          const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+          set.add(formatted);
+        }
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
   // Form Fields
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [tag, setTag] = useState('towel');
+  const [tag, setTag] = useState('Towel');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [count, setCount] = useState('');
@@ -152,7 +172,11 @@ export default function PanelManageDesigns({
       setEditingDesign(design);
       setName(design.name || '');
       setPrice(design.price?.toString() || '');
-      setTag(design.tag || 'towel');
+      const rawTag = design.tag ? design.tag.trim() : 'Towel';
+      const formattedTag = rawTag.charAt(0).toUpperCase() + rawTag.slice(1);
+      setTag(formattedTag);
+      setIsCustomCategory(false);
+      setCustomCategory('');
       setDescription(design.description || '');
       setRecipe(design.recipe || []);
       setVariants(design.variants || []);
@@ -162,7 +186,9 @@ export default function PanelManageDesigns({
       setEditingDesign(null);
       setName('');
       setPrice('');
-      setTag('towel');
+      setTag(availableCategories[0] || 'Towel');
+      setIsCustomCategory(false);
+      setCustomCategory('');
       setDescription('');
       setRecipe([]);
       setVariants([]);
@@ -377,9 +403,20 @@ export default function PanelManageDesigns({
       };
     });
 
+    const resolvedTag = (isCustomCategory ? customCategory : tag).trim();
+    if (!resolvedTag) {
+      setShakeKey((k) => k + 1);
+      showToast({
+        title: 'Form Validation Error',
+        message: 'Product category is required',
+        type: 'error'
+      });
+      return;
+    }
+
     // Auto-capitalize first letter of name and tag
     const capitalizedName = name.trim().charAt(0).toUpperCase() + name.trim().slice(1);
-    const capitalizedTag = tag.trim().charAt(0).toUpperCase() + tag.trim().slice(1);
+    const capitalizedTag = resolvedTag.charAt(0).toUpperCase() + resolvedTag.slice(1);
 
     const formData = new FormData();
     formData.append('name', capitalizedName);
@@ -717,7 +754,9 @@ export default function PanelManageDesigns({
           setEditingDesign(null);
           setName('');
           setPrice('');
-          setTag('towel');
+          setTag(availableCategories[0] || 'Towel');
+          setIsCustomCategory(false);
+          setCustomCategory('');
           setDescription('');
           setRecipe([]);
           setVariants([]);
@@ -769,21 +808,74 @@ export default function PanelManageDesigns({
             </div>
 
             <div className="sm:col-span-4 flex flex-col gap-1">
-              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
-                Category
-              </label>
-              <select
-                value={tag}
-                disabled={!isAdmin}
-                onChange={(e) => setTag(e.target.value)}
-                className="bg-bg-surface border border-border-glass h-9 px-2.5 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans disabled:opacity-75 disabled:cursor-not-allowed"
-              >
-                <option value="towel">Towel</option>
-                <option value="bath towel">Bath Towel</option>
-                <option value="fan">Fan</option>
-                <option value="clothing">Custom Clothing</option>
-                <option value="custom">General Custom</option>
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim block">
+                  Category
+                </label>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory((prev) => !prev);
+                      if (!isCustomCategory && !customCategory) {
+                        setCustomCategory('');
+                      }
+                    }}
+                    className="text-[0.65rem] text-primary hover:underline font-bold cursor-pointer transition-colors bg-transparent border-none p-0"
+                  >
+                    {isCustomCategory ? '← Existing' : '+ New Category'}
+                  </button>
+                )}
+              </div>
+
+              {isCustomCategory ? (
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    disabled={!isAdmin}
+                    autoFocus
+                    placeholder="e.g. Tote Bag, Hoodies"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    className="bg-bg-surface border border-primary/50 h-9 px-2.5 pr-7 rounded-lg text-text-main text-xs outline-none w-full font-sans focus:border-primary focus:ring-1 focus:ring-primary/30"
+                  />
+                  {customCategory && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomCategory('')}
+                      className="absolute right-2 text-text-dim hover:text-text-main text-xs cursor-pointer bg-transparent border-none"
+                      title="Clear"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <select
+                  value={tag}
+                  disabled={!isAdmin}
+                  onChange={(e) => {
+                    if (e.target.value === '__NEW_CATEGORY__') {
+                      setIsCustomCategory(true);
+                      setCustomCategory('');
+                    } else {
+                      setTag(e.target.value);
+                    }
+                  }}
+                  className="bg-bg-surface border border-border-glass h-9 px-2.5 rounded-lg text-text-main text-xs outline-none w-full cursor-pointer font-sans disabled:opacity-75 disabled:cursor-not-allowed"
+                >
+                  {availableCategories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                  {isAdmin && (
+                    <option value="__NEW_CATEGORY__" className="font-bold text-primary">
+                      + Add New Category...
+                    </option>
+                  )}
+                </select>
+              )}
             </div>
           </div>
 
