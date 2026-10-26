@@ -55,25 +55,71 @@ export default function PanelManageDesigns({
   const [newColorHex, setNewColorHex] = useState('#8B5CF6');
   const [isSubmittingColor, setIsSubmittingColor] = useState(false);
 
+  const broadcastThreadColors = (colors: StudioThreadColor[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { availableThreadColors: colors } }));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('stitch_app_events');
+        bc.postMessage({ type: 'SETTINGS_UPDATED', availableThreadColors: colors });
+        bc.close();
+      }
+      localStorage.setItem('stitch_thread_colors_sync', JSON.stringify({ colors, time: Date.now() }));
+    } catch (e) {
+      console.warn('Broadcast notice:', e);
+    }
+  };
+
   useEffect(() => {
+    const handleSync = (colorsList: any) => {
+      if (colorsList && Array.isArray(colorsList) && colorsList.length > 0) {
+        const loaded = colorsList.map((c: any) => {
+          if (typeof c === 'string') {
+            const matched = DEFAULT_STUDIO_THREAD_COLORS.find(d => d.name === c);
+            return { name: c, hex: matched ? matched.hex : '#999999', isAvailable: true };
+          }
+          return {
+            name: String(c.name || 'Custom Color'),
+            hex: String(c.hex || '#ffffff'),
+            isAvailable: c.isAvailable !== false
+          };
+        });
+        setThreadColors(loaded);
+      }
+    };
+
     api.get<any>('/api/customer/settings')
       .then((res) => {
-        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors) && res.availableThreadColors.length > 0) {
-          const loaded = res.availableThreadColors.map((c: any) => {
-            if (typeof c === 'string') {
-              const matched = DEFAULT_STUDIO_THREAD_COLORS.find(d => d.name === c);
-              return { name: c, hex: matched ? matched.hex : '#999999', isAvailable: true };
-            }
-            return {
-              name: String(c.name || 'Custom Color'),
-              hex: String(c.hex || '#ffffff'),
-              isAvailable: c.isAvailable !== false
-            };
-          });
-          setThreadColors(loaded);
+        if (res?.availableThreadColors) {
+          handleSync(res.availableThreadColors);
         }
       })
       .catch(() => {});
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('stitch_app_events');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED' && event.data?.availableThreadColors) {
+          handleSync(event.data.availableThreadColors);
+        }
+      };
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'stitch_thread_colors_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.colors) handleSync(parsed.colors);
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const handleToggleThreadColor = async (index: number) => {
@@ -81,6 +127,7 @@ export default function PanelManageDesigns({
       idx === index ? { ...tc, isAvailable: !tc.isAvailable } : tc
     );
     setThreadColors(nextColors);
+    broadcastThreadColors(nextColors);
     const toggled = nextColors[index];
 
     try {
@@ -111,6 +158,7 @@ export default function PanelManageDesigns({
       { name: cleanName, hex: newColorHex, isAvailable: true }
     ];
     setThreadColors(nextColors);
+    broadcastThreadColors(nextColors);
     setIsSubmittingColor(true);
 
     try {
@@ -137,6 +185,7 @@ export default function PanelManageDesigns({
     const toRemove = threadColors[index];
     const nextColors = threadColors.filter((_, idx) => idx !== index);
     setThreadColors(nextColors);
+    broadcastThreadColors(nextColors);
 
     try {
       await api.put('/api/admin/settings', {
@@ -679,7 +728,7 @@ export default function PanelManageDesigns({
               >
                 {!tc.isAvailable && (
                   <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="w-full h-[1.5px] bg-rose-500 rotate-45 transform" />
+                    <span className="w-full h-[1.5px] bg-white/70 rotate-45 transform" />
                   </span>
                 )}
               </span>
@@ -687,9 +736,9 @@ export default function PanelManageDesigns({
                 {tc.name}
               </span>
               {tc.isAvailable ? (
-                <span className="text-[10px] text-emerald-400 font-bold">✓</span>
+                <span className="text-[10px] text-white/80 font-medium">✓</span>
               ) : (
-                <span className="text-[10px] text-rose-400/80 font-bold">✕</span>
+                <span className="text-[10px] text-white/30 font-medium">✕</span>
               )}
             </button>
 
@@ -699,7 +748,7 @@ export default function PanelManageDesigns({
                 type="button"
                 onClick={(e) => handleDeleteThreadColor(idx, e)}
                 title={`Delete ${tc.name} from studio palette`}
-                className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 p-0.5 rounded hover:bg-rose-500/20 text-text-dim hover:text-rose-400 cursor-pointer border-none bg-transparent text-[11px] leading-none"
+                className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 p-0.5 rounded hover:bg-white/10 text-text-dim hover:text-white cursor-pointer border-none bg-transparent text-[11px] leading-none"
               >
                 &times;
               </button>
@@ -713,7 +762,7 @@ export default function PanelManageDesigns({
             type="button"
             onClick={() => setShowAddColorModal(true)}
             title="Add a new embroidery thread color"
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 cursor-pointer transition-all shrink-0 whitespace-nowrap shadow-xs"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-white/20 bg-white/5 hover:bg-white/10 text-text-main flex items-center gap-1 cursor-pointer transition-all shrink-0 whitespace-nowrap shadow-xs"
           >
             <span className="text-sm font-bold leading-none">+</span>
             <span>Add Color</span>

@@ -2098,11 +2098,14 @@ exports.storefrontChat = async (req, res) => {
             });
         }
 
-        // 8. Turnaround Time
-        if (/\b(how long|turnaround|lead time|how many (minutes|hours|days)|when (will it be|ready))\b/i.test(cleanMsg)) {
+        // 8. Turnaround Time & Production Schedule
+        if (/\b(how long|turnaround|lead time|how many (minutes|hours|days|weeks)|when (will it be|ready)|kailan|gaano katagal)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Standard personalized name and text stitching takes just **15 to 45 minutes** depending on the queue. Larger bulk batches (schools/events) take 24–48 hours. You can track real-time queue status in your dashboard!",
+                reply: "Here is how our production turnaround works:\n\n" +
+                    "• **Single-Piece Orders**: For a single towel, cap, or garment with a name or monogram, actual machine stitching takes **under a minute** up to just a couple of minutes! Depending on how many orders are ahead in our live store queue, small orders are typically ready for pickup in **15 to 45 minutes**.\n\n" +
+                    "• **Bulk Batch Orders (Schools, Events, Organizations)**: Large volume orders require extensive preparation and machine run-time. Depending on total quantity, existing bulk orders in the queue, and incoming daily small orders, bulk production can take anywhere from **several days to a few weeks**.\n\n" +
+                    "You can track your live machine queue position in your dashboard, or consult our counter team at Pacific Mall Lucena for bulk schedule planning!",
                 suggestedProducts: []
             });
         }
@@ -2489,7 +2492,7 @@ exports.storefrontChat = async (req, res) => {
                     reply += `\n*(Note: Our ${catLabel} lines are currently awaiting workshop replenishment.)*\n`;
                 }
 
-                reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, monograms, or initials) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                reply += `\nAll in-stock items can be customized with premium Madeira threads (names, monograms, or initials). Single pieces take under a minute of stitching (ready in 15–45 minutes depending on the live store queue)!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2534,7 +2537,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(custom|customize|customization|embroidery|burda|magpaburda|paburda|stitch|stitching|name embroidery|monogram|initials|madeira|thread)\b/i.test(cleanMsg)) {
             let reply = `Yes! We specialize in custom machine embroidery at our Pacific Mall Lucena workshop!\n\n` +
                 `• **Personalized Text & Monograms**: Stitched using premium German Madeira Rayon and metallic threads (Gold, Silver, Crimson, Navy, etc.).\n` +
-                `• **Turnaround**: Just 15–45 minutes for single orders, or same-day pickup.\n`;
+                `• **Turnaround**: Single items take under a minute of active stitching (typically ready in 15–45 minutes depending on the store queue). Bulk batch orders can take several days up to weeks depending on order size and queued workshop volume.\n`;
             if (inStockProducts.length > 0) {
                 const topP = inStockProducts[0];
                 const topVb = getProductVariantBreakdown(topP);
@@ -2653,7 +2656,10 @@ CRITICAL RULES:
 4. NO RESERVATIONS: NEVER promise or offer to 'reserve' items or notify customers when back in stock. Stitch-Opt does NOT offer chat reservations.
 5. RELEVANT RECOMMENDATIONS ONLY: When recommending an in-stock item, append [PRODUCTS:id1,id2] at the very END. Only include product IDs that have in-stock variants.
 6. For naive or first-time shoppers: Be warm, simple, helpful, and direct (2-3 short sentences).
-7. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.`;
+7. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.
+8. TURNAROUND TIMES & QUEUE SCHEDULE:
+- For single items (1 cap, 1 towel, simple text/monogram): actual machine stitching takes under a minute up to 1-2 minutes. When retail orders are ahead in the live counter queue, small orders typically take 15 to 45 minutes for same-day pickup.
+- For bulk batch orders (schools, corporate events, teams): production takes anywhere from several days up to a few weeks depending on piece count, active bulk queue, and incoming small order volume. NEVER quote a flat 24-48 hours for bulk orders. Encourage customers to check live dashboard queue tracking or consult our workshop staff for custom bulk scheduling.`;
 
         // Efficient history window: last 4 messages, trimmed text length
         const messages = [

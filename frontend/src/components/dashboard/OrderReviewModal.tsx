@@ -166,7 +166,7 @@ export default function OrderReviewModal({
               {order.design || 'Custom Embroidery Order'}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[0.68rem] font-bold">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-text-main text-[0.68rem] font-bold">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -197,8 +197,8 @@ export default function OrderReviewModal({
                   fill="currentColor"
                   className={
                     star <= activeStars
-                      ? 'text-amber-400 drop-shadow-[0_2px_10px_rgba(251,191,36,0.45)]'
-                      : 'text-text-dim/30 hover:text-text-dim/60'
+                      ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.35)]'
+                      : 'text-white/20 hover:text-white/40'
                   }
                 >
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -206,7 +206,7 @@ export default function OrderReviewModal({
               </button>
             ))}
           </div>
-          <span className="text-xs font-bold text-primary">
+          <span className="text-xs font-bold text-text-main">
             {getRatingLabel(activeStars)}
           </span>
         </div>
@@ -226,7 +226,7 @@ export default function OrderReviewModal({
                   onClick={() => toggleTag(tag)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer transition-all ${
                     active
-                      ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                      ? 'bg-white/15 text-text-main border-white/30 shadow-xs'
                       : 'bg-white/[0.03] text-text-dim border-border-glass hover:bg-white/[0.07]'
                   }`}
                 >

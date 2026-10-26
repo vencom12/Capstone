@@ -129,19 +129,6 @@ export default function ProductModal({
   // Custom Embroidery Lettering / Personalization state (Exclusive Cursive Script Font)
   const [isPersonalized, setIsPersonalized] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>('');
-  const [threadColor, setThreadColor] = useState<{ name: string; hex: string }>({
-    name: 'Metallic Gold',
-    hex: '#d4af37',
-  });
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [monogramError, setMonogramError] = useState<string | null>(null);
-  
-  // Studio Machine Standard: One default formal cursive script
-  const DEFAULT_FONT = {
-    name: 'Classic Cursive Script',
-    fontCss: "'Brush Script MT', 'Segoe Script', 'Great Vibes', cursive",
-  };
-
   interface StudioThreadColor {
     name: string;
     hex: string;
@@ -159,10 +146,49 @@ export default function ProductModal({
     { name: 'Rose Blush', hex: '#fb7185', isAvailable: true },
   ];
 
-  const [availableColors, setAvailableColors] = useState<StudioThreadColor[]>(THREAD_COLORS);
+  const [availableColors, setAvailableColors] = useState<StudioThreadColor[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('stitch_thread_colors_sync');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.colors && Array.isArray(parsed.colors) && parsed.colors.length > 0) {
+            return parsed.colors;
+          }
+        }
+      } catch (_) {}
+    }
+    return THREAD_COLORS;
+  });
+
+  const [threadColor, setThreadColor] = useState<{ name: string; hex: string }>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('stitch_thread_colors_sync');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.colors && Array.isArray(parsed.colors) && parsed.colors.length > 0) {
+            const firstActive = parsed.colors.find((c: any) => c.isAvailable !== false);
+            if (firstActive) {
+              return { name: firstActive.name, hex: firstActive.hex };
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return { name: 'Obsidian Black', hex: '#1c1917' };
+  });
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [monogramError, setMonogramError] = useState<string | null>(null);
+  
+  // Studio Machine Standard: One default formal cursive script
+  const DEFAULT_FONT = {
+    name: 'Classic Cursive Script',
+    fontCss: "'Brush Script MT', 'Segoe Script', 'Great Vibes', cursive",
+  };
 
   // Sync available studio thread colors from admin settings in real time
-  const applyThreadColorConfig = (colors: any, notifyIfSwitched = true) => {
+  const applyThreadColorConfig = (colors: any, notifyIfSwitched = false) => {
     let list = colors;
     if (typeof list === 'string') {
       try {
@@ -185,7 +211,11 @@ export default function ProductModal({
       if (!match || match.isAvailable === false) {
         const firstActive = mapped.find((c) => c.isAvailable !== false);
         if (firstActive) {
-          if (notifyIfSwitched && match) {
+          // Strictly only notify if:
+          // 1. notifyIfSwitched is true (only passed by explicit live admin events, NEVER on reload/initial fetch)
+          // 2. The modal is currently open AND user has enabled personalization
+          // 3. The color switched was actually marked unavailable
+          if (notifyIfSwitched && isOpen && isPersonalized && match && match.isAvailable === false) {
             showToast(`"${prevSelected.name}" thread is temporarily unavailable. Switched to ${firstActive.name}.`, 'warning');
           }
           return { name: firstActive.name, hex: firstActive.hex };
@@ -196,52 +226,79 @@ export default function ProductModal({
   };
 
   useEffect(() => {
-    const fetchLatestColors = () => {
+    const fetchLatestColors = (shouldNotify = false) => {
       api.get<any>('/api/customer/settings')
         .then((res) => {
           if (res?.availableThreadColors) {
-            applyThreadColorConfig(res.availableThreadColors, true);
+            applyThreadColorConfig(res.availableThreadColors, shouldNotify);
           }
         })
         .catch(() => {});
     };
 
-    // Immediate fetch on mount or whenever modal opens
-    fetchLatestColors();
+    // Immediate silent fetch on mount/reload (never notify)
+    fetchLatestColors(false);
 
     const handleSettingsEvent = (e: any) => {
       if (e.detail?.availableThreadColors) {
+        // Admin updated thread colors: notify if active customization affected
         applyThreadColorConfig(e.detail.availableThreadColors, true);
       } else {
-        fetchLatestColors();
+        fetchLatestColors(false);
       }
     };
 
-    const handleDataChanged = (e: any) => {
-      fetchLatestColors();
+    const handleDataChanged = () => {
+      fetchLatestColors(false);
     };
 
     const handleFocus = () => {
-      fetchLatestColors();
+      fetchLatestColors(false);
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('stitch_app_events');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED' && event.data?.availableThreadColors) {
+          // Live cross-tab admin update: notify if active customization affected
+          applyThreadColorConfig(event.data.availableThreadColors, true);
+        }
+      };
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'stitch_thread_colors_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.colors) {
+            // Live cross-tab storage change: notify if active customization affected
+            applyThreadColorConfig(parsed.colors, true);
+          }
+        } catch (_) {}
+      }
     };
 
     window.addEventListener('settingsUpdated', handleSettingsEvent);
     window.addEventListener('dataChanged', handleDataChanged);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorage);
 
-    // Actively poll every 1.5s while customization modal is open so changes by admin show immediately
+    // Silent background poll while modal is open
     let interval: NodeJS.Timeout | null = null;
     if (isOpen) {
-      interval = setInterval(fetchLatestColors, 1500);
+      interval = setInterval(() => fetchLatestColors(false), 2000);
     }
 
     return () => {
+      if (bc) bc.close();
       window.removeEventListener('settingsUpdated', handleSettingsEvent);
       window.removeEventListener('dataChanged', handleDataChanged);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
       if (interval) clearInterval(interval);
     };
-  }, [isOpen, product]);
+  }, [isOpen, isPersonalized, product]);
 
   // Sync state when product opens
   useEffect(() => {
@@ -1036,7 +1093,7 @@ export default function ProductModal({
                           {/* Strike-through diagonal slash when thread is crossed out */}
                           {!isAvailable && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                              <div className="w-[150%] h-[2.5px] bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.9)] rotate-45 transform" />
+                              <div className="w-[150%] h-[2px] bg-white/90 shadow-[0_0_3px_rgba(0,0,0,0.8)] rotate-45 transform" />
                             </div>
                           )}
 

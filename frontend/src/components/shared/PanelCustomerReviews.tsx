@@ -44,6 +44,17 @@ const QUICK_TEMPLATES: Record<number, string> = {
   1: 'We are deeply sorry for your disappointing experience. Our team takes quality very seriously and has recorded this for review.',
 };
 
+const parseReviewMessage = (rawMessage: string) => {
+  if (!rawMessage) return { tags: [] as string[], text: '' };
+  const match = rawMessage.match(/^\[Highlights:\s*(.+?)\]\s*([\s\S]*)$/i);
+  if (match) {
+    const tags = match[1].split(',').map((s) => s.trim()).filter(Boolean);
+    const text = match[2]?.trim() || '';
+    return { tags, text };
+  }
+  return { tags: [] as string[], text: rawMessage.trim() };
+};
+
 // Module-level cache for instant tab navigation (Stale-While-Revalidate)
 const reviewsCache: Record<string, {
   feedbacks: FeedbackItem[];
@@ -84,6 +95,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   const [noteInput, setNoteInput] = useState<string>('');
   const [isSubmittingReply, setIsSubmittingReply] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
+  const [isTriggeringAutoReply, setIsTriggeringAutoReply] = useState<boolean>(false);
 
   // Fetch reviews from API
   const fetchFeedbacks = useCallback(
@@ -227,6 +239,26 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
     }
   };
 
+  // Manually trigger immediate auto-replies for 3, 4, 5 stars (Admin only)
+  const handleTriggerAutoReply = async () => {
+    setIsTriggeringAutoReply(true);
+    try {
+      const res = await api.post<{ success: boolean; count: number; message: string }>(
+        '/api/admin/feedback/trigger-auto-reply',
+        {}
+      );
+      if (res && res.success) {
+        showToast(res.message, 'success');
+        fetchFeedbacks(true);
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast(err?.message || 'Failed to trigger automated replies', 'error');
+    } finally {
+      setIsTriggeringAutoReply(false);
+    }
+  };
+
   // Export CSV (Admin only)
   const handleExportCsv = () => {
     if (feedbacks.length === 0) {
@@ -252,11 +284,11 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
     document.body.removeChild(link);
   };
 
-  // Render clean stars (Plain gold text stars, no colorful emojis)
+  // Render clean stars (Plain monochrome text stars, no colorful icons)
   const renderStars = (rating: number) => {
     const full = Math.max(1, Math.min(5, Math.round(rating || 5)));
     return (
-      <span className="font-mono text-amber-400 font-bold tracking-tight text-xs">
+      <span className="font-mono text-text-main font-bold tracking-tight text-xs">
         {'★'.repeat(full)}
         <span className="text-white/20">{'★'.repeat(5 - full)}</span>
       </span>
@@ -268,13 +300,24 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
       {/* Top Action Toolbar */}
       <div className="flex items-center justify-start gap-2.5 flex-wrap mb-4">
         {role === 'admin' && (
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="px-3.5 py-2 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-semibold transition cursor-pointer"
-          >
-            Export CSV
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="px-3.5 py-2 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-semibold transition cursor-pointer"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={handleTriggerAutoReply}
+              disabled={isTriggeringAutoReply || isSyncing}
+              className="px-3.5 py-2 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-semibold transition cursor-pointer"
+              title="Immediately send automated replies to any eligible 3, 4, and 5-star reviews"
+            >
+              {isTriggeringAutoReply ? 'Sending replies...' : 'Auto-Reply Now (3-5★)'}
+            </button>
+          </>
         )}
 
         <button
@@ -301,328 +344,234 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         </button>
       </div>
 
-      {/* Option 1: Compact Single-Row Summary Stat Bar */}
-      <div className="bg-bg-surface border border-border-glass rounded-xl px-4 py-3 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 divide-y sm:divide-y-0 sm:divide-x divide-white/5 text-xs shadow-xs">
-        {/* Metric 1: Average Rating */}
-        <div className="flex items-center gap-3 pr-3 flex-1 min-w-0">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-400/10 text-amber-400 font-bold shrink-0 text-sm">
-            ★
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider">Average Rating</div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-base font-black font-mono text-text-main">
-                {metrics.averageRating.toFixed(1)}
-              </span>
-              <span className="text-[11px] text-text-dim">/ 5.0</span>
-              <span className="text-[11px] text-text-dim ml-1 font-mono">
-                ({metrics.totalCount} {metrics.totalCount === 1 ? 'review' : 'reviews'})
-              </span>
-            </div>
+      {/* Simple Clean Summary Bar (No colorful icon boxes) */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl px-5 py-3.5 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+        <div>
+          <div className="text-[11px] font-medium text-text-dim">Overall Rating</div>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-xl font-bold text-text-main font-mono">
+              {metrics.averageRating.toFixed(1)}
+            </span>
+            <span className="text-xs text-text-dim">/ 5.0</span>
+            <span className="text-xs text-text-dim ml-2 font-mono">
+              ({metrics.totalCount} {metrics.totalCount === 1 ? 'review' : 'reviews'})
+            </span>
           </div>
         </div>
 
-        {/* Metric 2: Customer Sentiment */}
-        <div className="flex items-center gap-3 px-0 sm:px-3 py-2 sm:py-0 flex-1 min-w-0">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 text-text-main font-bold shrink-0 text-xs">
-            💬
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider">Customer Sentiment</div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-base font-black font-mono text-text-main">
-                {metrics.sentimentRate || 100}%
-              </span>
-              <span className="text-[11px] text-text-dim">Positive</span>
-              <span className="text-[11px] text-text-dim ml-1 truncate">
-                ({metrics.fiveStarCount} rated 5★)
-              </span>
-            </div>
+        <div>
+          <div className="text-[11px] font-medium text-text-dim">5-Star Feedback</div>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-xl font-bold text-text-main font-mono">
+              {metrics.fiveStarCount}
+            </span>
+            <span className="text-xs text-text-dim">five-star reviews</span>
+            <span className="text-xs text-text-dim ml-2 font-mono">
+              ({metrics.totalCount > 0 ? Math.round((metrics.fiveStarCount / metrics.totalCount) * 100) : 100}%)
+            </span>
           </div>
         </div>
 
-        {/* Metric 3: Workflow Action Queue (Pending Attention) */}
-        <div
-          onClick={() => {
-            setStatusFilter((prev) => (prev === 'Pending' ? 'all' : 'Pending'));
-          }}
-          className={`flex items-center gap-3 pl-0 sm:pl-3 pt-2 sm:pt-0 flex-1 min-w-0 cursor-pointer group transition rounded-lg ${
-            statusFilter === 'Pending' ? 'bg-amber-400/10 p-1.5 -m-1.5 rounded-lg' : ''
-          }`}
-          title="Click to toggle filtering by reviews needing attention"
-        >
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 font-bold text-xs ${
-              metrics.pendingCount > 0
-                ? 'bg-amber-400/15 text-amber-400'
-                : 'bg-emerald-400/10 text-emerald-400'
-            }`}
-          >
-            {metrics.pendingCount > 0 ? '⚠️' : '✓'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider flex items-center justify-between">
-              <span>Pending Attention</span>
-              <span className="text-[9px] text-text-dim group-hover:text-amber-400 font-medium">
-                {statusFilter === 'Pending' ? 'Filter Active' : 'Filter Queue'}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span
-                className={`text-base font-black font-mono ${
-                  metrics.pendingCount > 0 ? 'text-amber-400' : 'text-emerald-400'
-                }`}
-              >
-                {metrics.pendingCount}
-              </span>
-              <span className="text-[11px] text-text-dim truncate">
-                {metrics.pendingCount > 0 ? 'Awaiting staff action' : 'All reviews reviewed'}
-              </span>
-            </div>
+        <div>
+          <div className="text-[11px] font-medium text-text-dim">Manual Action (1-2★)</div>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="text-xl font-bold text-text-main font-mono">
+              {feedbacks.filter(f => f.rating <= 2 && (!f.merchantReply || !f.merchantReply.trim())).length}
+            </span>
+            <span className="text-xs text-text-dim">needs admin reply</span>
           </div>
         </div>
       </div>
 
-      {/* Filter Tabs & Search: Complete separation between Customer Rating and Moderation Workflow */}
-      <div className="bg-bg-surface border border-border-glass rounded-xl p-2.5 mb-4 space-y-2.5">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-          {/* Customer Rating Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-text-dim px-1 shrink-0">
-              Score:
-            </span>
-            {[
-              { id: 'all', label: 'All Ratings' },
-              { id: '5', label: '5 Stars' },
-              { id: '4', label: '4 Stars' },
-              { id: '3', label: '3 Stars' },
-              { id: 'critical', label: '1-2 Stars' },
-            ].map((pill) => {
-              const isActive = ratingFilter === pill.id;
-              return (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setRatingFilter(pill.id)}
-                  className={`px-2.5 py-1.5 rounded-lg font-semibold transition cursor-pointer border shrink-0 text-xs ${
-                    isActive
-                      ? 'bg-white/10 text-text-main border-white/20 shadow-xs'
-                      : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-                  }`}
-                >
-                  {pill.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[210px]">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search customer, order, message..."
-              className="w-full bg-bg-card border border-border-glass px-3 py-1.5 rounded-lg text-xs text-text-main outline-none focus:border-white/30 transition placeholder:text-text-dim"
-            />
-          </div>
-        </div>
-
-        {/* Workflow Status Filter (Separated row) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-white/5 text-xs flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-dim px-1 shrink-0">
-            Workflow:
-          </span>
+      {/* Simple Filter & Search Bar */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-3 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Rating Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-0.5">
           {[
-            { id: 'all', label: 'All Statuses' },
-            { id: 'Pending', label: '⚠️ Needs Attention', count: metrics.pendingCount, isPending: true },
-            { id: 'Reviewed', label: 'Reviewed' },
-            { id: 'Resolved', label: 'Resolved' },
+            { id: 'all', label: `All (${metrics.totalCount})` },
+            { id: '5', label: '5 Stars' },
+            { id: '4', label: '4 Stars' },
+            { id: '3', label: '3 Stars' },
+            { id: 'critical', label: '1-2 Stars (Action Needed)' },
           ].map((pill) => {
-            const isActive = statusFilter === pill.id;
+            const isActive = ratingFilter === pill.id;
             return (
               <button
                 key={pill.id}
                 type="button"
-                onClick={() => setStatusFilter(pill.id)}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer border flex items-center gap-1.5 shrink-0 text-xs ${
+                onClick={() => setRatingFilter(pill.id)}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer border shrink-0 text-xs ${
                   isActive
-                    ? pill.isPending
-                      ? 'bg-amber-400/15 text-amber-300 border-amber-400/40 shadow-xs'
-                      : 'bg-white/10 text-text-main border-white/20 shadow-xs'
-                    : pill.isPending && (pill.count || 0) > 0
-                    ? 'text-amber-400 border-amber-400/20 bg-amber-400/5 hover:bg-amber-400/10'
+                    ? 'bg-white/15 text-text-main border-white/30 shadow-xs'
                     : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
                 }`}
               >
-                <span>{pill.label}</span>
-                {pill.count !== undefined && pill.count > 0 && (
-                  <span
-                    className={`text-[10px] font-mono px-1 rounded ${
-                      isActive ? 'bg-amber-400/25 text-amber-200' : 'bg-amber-400/15 text-amber-300'
-                    }`}
-                  >
-                    {pill.count}
-                  </span>
-                )}
+                {pill.label}
               </button>
             );
           })}
+        </div>
 
-          {(ratingFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+        {/* Search */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search reviews..."
+            className="w-full sm:w-60 bg-bg-card border border-border-glass px-3 py-1.5 rounded-lg text-xs text-text-main outline-none focus:border-white/30 transition placeholder:text-text-dim"
+          />
+          {(ratingFilter !== 'all' || searchQuery) && (
             <button
               type="button"
               onClick={() => {
                 setRatingFilter('all');
-                setStatusFilter('all');
                 setSearchQuery('');
               }}
-              className="ml-auto text-[11px] text-text-dim hover:text-text-main underline cursor-pointer px-1 shrink-0"
+              className="text-xs text-text-dim hover:text-text-main underline cursor-pointer shrink-0"
             >
-              Reset Filters
+              Reset
             </button>
           )}
         </div>
       </div>
 
-      {/* Table Column Headers */}
-      {!isLoading && feedbacks.length > 0 && (
-        <div className="hidden sm:flex items-center justify-between px-3.5 py-2 text-[11px] font-bold text-text-dim uppercase tracking-wider bg-white/[0.02] border border-border-glass rounded-lg">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <span className="w-24 shrink-0">Rating</span>
-            <span className="w-48 shrink-0">Customer &amp; Date</span>
-            <span className="flex-1 truncate">Feedback Preview</span>
-          </div>
-          <div className="flex items-center gap-6 shrink-0 pr-2">
-            <span>Status</span>
-            <span>Details</span>
-          </div>
-        </div>
-      )}
-
-      {/* REVIEWS LIST: Clean, compact rows that expand ONLY when clicked */}
-      <div className="space-y-2">
+      {/* REVIEWS LIST: Clean, friendly cards */}
+      <div className="space-y-3">
         {isLoading ? (
           <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl">
-            Loading reviews...
+            Loading customer reviews...
           </div>
         ) : feedbacks.length === 0 ? (
           <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl flex flex-col items-center gap-2">
-            <span>No customer reviews found matching your filters.</span>
-            {(ratingFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+            <span>No customer reviews found.</span>
+            {(ratingFilter !== 'all' || searchQuery) && (
               <button
                 type="button"
                 onClick={() => {
                   setRatingFilter('all');
-                  setStatusFilter('all');
                   setSearchQuery('');
                 }}
                 className="text-xs text-text-main font-semibold underline cursor-pointer"
               >
-                Clear all filters
+                Show all reviews
               </button>
             )}
           </div>
         ) : (
           feedbacks.map((item) => {
             const isExpanded = expandedId === item.id;
+            const { tags, text } = parseReviewMessage(item.message);
             return (
               <div
                 key={item.id}
-                className={`border rounded-xl transition bg-bg-surface w-full max-w-full overflow-hidden ${
-                  isExpanded ? 'border-white/30 bg-white/[0.03]' : 'border-border-glass hover:bg-white/[0.015]'
+                className={`border rounded-xl transition bg-bg-surface w-full overflow-hidden ${
+                  isExpanded ? 'border-white/30 bg-white/[0.02]' : 'border-border-glass hover:border-white/20'
                 }`}
               >
-                {/* COMPACT SUMMARY ROW (Click to Expand / Collapse) */}
-                <div
-                  onClick={() => toggleExpand(item)}
-                  className="p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 cursor-pointer select-none w-full min-w-0 max-w-full overflow-hidden"
-                >
-                  <div className="flex items-start sm:items-center gap-3 min-w-0 w-full flex-1 overflow-hidden">
-                    {/* Star Rating */}
-                    <div className="shrink-0 mt-0.5 sm:mt-0">{renderStars(item.rating)}</div>
-
-                    {/* Customer Name & Order */}
-                    <div className="min-w-0 flex-1 overflow-hidden max-w-full">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-text-main truncate max-w-[140px] sm:max-w-none">
-                          {item.customerName || 'Valued Customer'}
-                        </span>
-                        {item.orderId && (
-                          <span className="text-[10px] font-mono text-text-dim px-1.5 py-0.5 rounded bg-white/5 border border-white/10 shrink-0">
-                            #{item.orderId}
-                          </span>
-                        )}
-                        <span className="text-[11px] text-text-dim shrink-0">
-                          {new Date(item.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </span>
-                      </div>
-
-                      {/* 1-Line Truncated Preview on desktop, 2-line wrapped on mobile */}
-                      {!isExpanded && (
-                        <p className="text-xs text-text-dim line-clamp-2 sm:truncate mt-1 m-0 font-normal break-words max-w-full block overflow-hidden">
-                          "{item.message}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status Badge & Expand Toggle Indicator */}
-                  <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t border-white/[0.04] sm:border-0 mt-0.5 sm:mt-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                          item.status === 'Pending'
-                            ? 'bg-amber-400/10 text-amber-300 border-amber-400/30'
-                            : item.status === 'Resolved'
-                            ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/20'
-                            : 'bg-white/5 text-text-main border-border-glass'
-                        }`}
-                      >
-                        {item.status === 'Pending' && <span className="text-[9px]">⚠️</span>}
-                        {item.status === 'Resolved' && <span className="text-[9px]">✓</span>}
-                        {item.rating >= 4 ? 'Published' : item.status === 'Pending' ? 'Needs Attention' : item.status}
+                {/* Clean, readable review card */}
+                <div className="p-4 flex flex-col gap-2.5">
+                  {/* Top Bar: Stars + Customer Name + Date + Order */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <div>{renderStars(item.rating)}</div>
+                      <span className="text-xs font-bold text-text-main">
+                        {item.customerName || 'Customer'}
                       </span>
-
-                      {item.merchantReply && (
-                        <span className="text-[10px] font-medium text-text-dim px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
-                          Replied
+                      {item.orderId && (
+                        <span className="text-[10px] font-mono text-text-dim px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                          #{item.orderId}
                         </span>
                       )}
+                      <span className="text-[11px] text-text-dim">
+                        {new Date(item.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
                     </div>
 
-                    <span className="text-xs text-text-dim font-bold shrink-0">
-                      {isExpanded ? 'Close ▲' : 'View ▼'}
-                    </span>
+                    {/* Quick Status & Action */}
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      {item.merchantReply ? (
+                        <span className="text-[10px] font-semibold text-text-main bg-white/10 border border-white/20 px-2 py-0.5 rounded-md">
+                          {item.rating <= 2 ? 'Admin Replied' : 'Replied'}
+                        </span>
+                      ) : item.rating <= 2 ? (
+                        <span className="text-[10px] font-bold text-text-main bg-white/15 border border-white/30 px-2 py-0.5 rounded-md">
+                          Manual Action Required
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-text-dim bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                          Auto-reply pending (~5m)
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(item)}
+                        className="text-xs font-semibold text-text-main hover:underline transition cursor-pointer bg-transparent border-none p-1"
+                      >
+                        {isExpanded ? 'Close' : item.merchantReply ? 'Edit Reply' : item.rating <= 2 ? 'Manual Reply' : 'Reply Now'}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Highlights Tags (Rendered as subtle monochrome chips) */}
+                  {tags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Customer Review Message */}
+                  {text ? (
+                    <p className="text-xs text-text-main leading-relaxed m-0 font-normal">
+                      "{text}"
+                    </p>
+                  ) : (
+                    <p className="text-xs text-text-dim italic m-0">
+                      Customer rated {item.rating} stars with the highlights selected above.
+                    </p>
+                  )}
+
+                  {/* Existing Store Reply Preview (when not expanded) */}
+                  {!isExpanded && item.merchantReply && (
+                    <div className="mt-1 p-2.5 rounded-lg bg-white/[0.02] border border-border-glass text-xs text-text-dim flex items-start gap-1.5">
+                      <span className="font-bold text-text-main shrink-0">Your Reply:</span>
+                      <span className="italic truncate">"{item.merchantReply}"</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* EXPANDED SECTION (Shown ONLY when clicked) */}
+                {/* EXPANDED SECTION (Shown ONLY when replying or inspecting) */}
                 {isExpanded && (
-                  <div className="p-4 pt-1 border-t border-white/5 space-y-3.5 animate-[fadeIn_0.15s_ease-out]">
-                    {/* Full Customer Message */}
-                    <div className="p-3 rounded-lg bg-bg-card border border-border-glass">
-                      <div className="text-[11px] font-semibold text-text-dim uppercase tracking-wider mb-1">
-                        Customer Message
-                      </div>
-                      <p className="text-xs text-text-main leading-relaxed m-0 italic whitespace-pre-wrap break-words">
-                        "{item.message}"
-                      </p>
-                    </div>
-
-                    {/* Official Store Response Section */}
+                  <div className="p-4 pt-2 border-t border-white/5 space-y-3 bg-white/[0.01]">
+                    {/* Reply Box */}
                     <div className="p-3 rounded-lg bg-bg-card border border-border-glass space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-text-dim uppercase tracking-wider">
-                          Official Store Reply
+                        <span className="text-xs font-bold text-text-main">
+                          {item.rating <= 2 ? 'Admin Manual Intervention' : 'Reply to Customer'}
                         </span>
-                        {item.merchantReplyAt && (
+                        {item.merchantReplyAt ? (
                           <span className="text-[10px] text-text-dim">
-                            Sent {new Date(item.merchantReplyAt).toLocaleDateString()}
+                            Last sent {new Date(item.merchantReplyAt).toLocaleDateString()}
+                          </span>
+                        ) : item.rating <= 2 ? (
+                          <span className="text-[10px] text-text-dim">
+                            1-2★ reviews require manual admin intervention
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-text-dim">
+                            Auto-reply will send in ~5 mins if left blank
                           </span>
                         )}
                       </div>
@@ -631,20 +580,19 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                         rows={2}
                         value={replyInput}
                         onChange={(e) => setReplyInput(e.target.value)}
-                        placeholder="Type reply to this customer..."
+                        placeholder="Type a friendly reply to this customer..."
                         className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-xs text-text-main outline-none focus:border-white/30 transition resize-none placeholder:text-text-dim"
                       />
 
                       <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
-                        {/* Quick Template Selector */}
                         <div className="flex items-center gap-1.5 text-[11px]">
-                          <span className="text-text-dim">Use template:</span>
+                          <span className="text-text-dim">Template:</span>
                           <button
                             type="button"
                             onClick={() => setReplyInput(QUICK_TEMPLATES[item.rating] || QUICK_TEMPLATES[5])}
-                            className="text-text-dim hover:text-text-main underline cursor-pointer"
+                            className="text-text-dim hover:text-text-main underline cursor-pointer bg-transparent border-none p-0"
                           >
-                            Default for {item.rating}★
+                            Fill standard {item.rating}-star reply
                           </button>
                         </div>
 
@@ -652,91 +600,52 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                           type="button"
                           onClick={() => handleSaveReply(item)}
                           disabled={isSubmittingReply}
-                          className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-main text-xs font-bold transition cursor-pointer"
+                          className="px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-main text-xs font-bold transition cursor-pointer border border-border-glass shadow-xs"
                         >
-                          {isSubmittingReply ? 'Saving...' : 'Save Reply'}
+                          {isSubmittingReply ? 'Saving...' : 'Send Reply'}
                         </button>
                       </div>
                     </div>
 
-                    {/* Internal Staff Note & Status Controls */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Staff Note */}
-                      <div className="p-3 rounded-lg bg-bg-card border border-border-glass flex flex-col justify-between gap-2">
-                        <div>
-                          <div className="text-[11px] font-semibold text-text-dim uppercase tracking-wider mb-1">
-                            Internal Staff Note (Private)
-                          </div>
-                          <input
-                            type="text"
-                            value={noteInput}
-                            onChange={(e) => setNoteInput(e.target.value)}
-                            placeholder="Add a private note for staff..."
-                            className="w-full bg-bg-surface border border-border-glass px-2.5 py-1.5 rounded-lg text-xs text-text-main outline-none focus:border-white/30 transition placeholder:text-text-dim"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleSaveNote(item)}
-                            disabled={isSavingNote}
-                            className="px-3 py-1 rounded-md bg-white/5 hover:bg-white/10 text-text-dim hover:text-text-main text-xs font-medium transition cursor-pointer"
-                          >
-                            {isSavingNote ? 'Saving...' : 'Save Note'}
-                          </button>
-                        </div>
+                    {/* Simple Staff Note */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-bg-card border border-border-glass text-xs">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-text-dim shrink-0 font-medium">Private Note:</span>
+                        <input
+                          type="text"
+                          value={noteInput}
+                          onChange={(e) => setNoteInput(e.target.value)}
+                          placeholder="Optional internal note..."
+                          className="w-full bg-bg-surface border border-border-glass px-2.5 py-1 rounded-md text-xs text-text-main outline-none focus:border-white/30 transition"
+                        />
                       </div>
-
-                      {/* Status & Options */}
-                      <div className="p-3 rounded-lg bg-bg-card border border-border-glass flex flex-col justify-between gap-2">
-                        <div>
-                          <div className="text-[11px] font-semibold text-text-dim uppercase tracking-wider mb-1">
-                            Review Status
-                          </div>
-                          {item.rating >= 4 ? (
-                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                              <span className="text-xs font-semibold text-text-main px-2.5 py-1 rounded-md bg-white/[0.04] border border-border-glass flex items-center gap-1.5">
-                                <span>✓</span> Published on Storefront
-                              </span>
-                              <span className="text-[11px] text-text-dim">Positive review • No issue to resolve</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(item, item.status === 'Resolved' ? 'Pending' : 'Resolved')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition flex items-center gap-1.5 ${
-                                  item.status === 'Resolved'
-                                    ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/25'
-                                    : 'bg-amber-400/15 text-amber-300 border-amber-400/35 hover:bg-amber-400/20'
-                                }`}
-                              >
-                                {item.status === 'Resolved' ? (
-                                  <><span>✓</span> Issue Marked Resolved (Click to Reopen)</>
-                                ) : (
-                                  <><span>⚠️</span> Mark Issue as Resolved</>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {role === 'admin' && (
-                          <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                            <span className="text-xs text-text-dim">Show on Website:</span>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleFeature(item)}
-                              className={`text-xs font-semibold underline cursor-pointer ${
-                                item.isFeatured ? 'text-text-main' : 'text-text-dim hover:text-text-main'
-                              }`}
-                            >
-                              {item.isFeatured ? 'Featured on Website ✓' : 'Feature this review'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveNote(item)}
+                        disabled={isSavingNote}
+                        className="px-3 py-1 rounded-md bg-white/5 hover:bg-white/10 text-text-dim hover:text-text-main text-xs font-medium transition cursor-pointer border-none shrink-0"
+                      >
+                        {isSavingNote ? 'Saving...' : 'Save Note'}
+                      </button>
                     </div>
+
+                    {/* Feature on Website Toggle (Admin) */}
+                    {role === 'admin' && (
+                      <div className="flex items-center justify-between pt-1 px-1">
+                        <span className="text-xs text-text-dim">Show this review on your website:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFeature(item)}
+                          className={`text-xs font-bold px-3 py-1 rounded-lg border transition cursor-pointer ${
+                            item.isFeatured
+                              ? 'bg-white/15 text-text-main border-white/30'
+                              : 'bg-white/5 text-text-dim border-white/10 hover:text-text-main'
+                          }`}
+                        >
+                          {item.isFeatured ? 'Featured on Website ✓' : 'Feature on Website'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -744,6 +653,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
           })
         )}
       </div>
+
 
       {/* Pagination */}
       <Pagination

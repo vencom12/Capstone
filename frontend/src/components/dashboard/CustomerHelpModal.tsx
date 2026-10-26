@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: 'What is the production turnaround time?',
-    a: 'Personalized name and text stitching orders are crafted on the same day at our Pacific Mall studio, typically within 15 to 45 minutes depending on the current machine queue. For bulk orders (schools, corporate giveaways, sports events), turnaround depends on item quantity. You can track your real-time queue progress live in your Order Tracking & Details modal.'
+    a: 'For single-piece personalized embroidery (names, initials, monograms), actual machine stitching takes under a minute up to a couple of minutes! Depending on how many orders are ahead in the live counter queue, small orders are typically ready for same-day pickup within 15 to 45 minutes. For bulk batch orders (schools, sports events, corporate uniforms), turnaround takes from several days up to several weeks depending on total piece count, currently active bulk batches, and incoming retail queue traffic. You can monitor live queue capacity and machine status directly in your dashboard.'
   },
   {
     q: 'Where can I pick up my orders in Lucena City?',

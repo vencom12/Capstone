@@ -80,6 +80,7 @@ router.get('/feedback/templates', adminAuth(), feedbackController.getFeedbackTem
 router.patch('/feedback/:id', adminAuth(), auditLogger('Feedback', 'ADMIN_UPDATE_FEEDBACK'), feedbackController.updateFeedbackStatus);
 router.post('/feedback/:id/reply', adminAuth(), auditLogger('Feedback', 'MERCHANT_REPLY_FEEDBACK'), feedbackController.replyFeedback);
 router.patch('/feedback/:id/feature', adminAuth(), auditLogger('Feedback', 'TOGGLE_FEATURE_FEEDBACK'), feedbackController.toggleFeatureFeedback);
+router.post('/feedback/trigger-auto-reply', adminAuth(), auditLogger('Feedback', 'TRIGGER_AUTO_REPLY'), feedbackController.triggerAutoReply);
 
 // Walk-In Counter Mode Order Creation (Staff permitted)
 router.post('/orders/walk-in', staffAuth(), auditLogger('Order', 'CREATE_WALKIN_ORDER'), adminController.createWalkInOrder);

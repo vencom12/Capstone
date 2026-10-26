@@ -90,21 +90,13 @@ exports.submitFeedback = async (req, res) => {
             }
         }
 
-        // Determine if Auto-Reply is enabled in SystemSettings
+        // For 3, 4, and 5-star reviews:
+        // Automatically replied by the system after a period of time (5 minutes grace period).
+        // For 1 and 2-star reviews:
+        // Strictly require manual intervention by the admin; never auto-replied.
+        // Therefore, on initial submission, merchantReply is ALWAYS null.
         let autoReply = null;
         let autoReplyAt = null;
-        try {
-            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-            const isAutoReplyOn = settings ? settings.autoReplyReviews !== false : true;
-            if (isAutoReplyOn) {
-                autoReply = getSmartReplyTemplate(cleanRating, finalName);
-                autoReplyAt = new Date();
-            }
-        } catch (settingsErr) {
-            console.warn('[Feedback] Could not check autoReplyReviews setting; defaulting to enabled:', settingsErr?.message);
-            autoReply = getSmartReplyTemplate(cleanRating, finalName);
-            autoReplyAt = new Date();
-        }
 
         // One review per order per customer: update the existing one instead of duplicating
         if (userId && orderId) {
@@ -112,14 +104,16 @@ exports.submitFeedback = async (req, res) => {
                 SELECT "id", "merchantReply" FROM "Feedback" WHERE "orderId" = ${orderId.trim()} AND "userId" = ${userId} LIMIT 1
             `;
             if (existing) {
-                // If it already had a reply, retain it; otherwise attach autoReply if enabled
-                const replyToKeep = existing.merchantReply || autoReply;
+                // If it already had an existing reply, keep it
+                const replyToKeep = existing.merchantReply || null;
+                const nextStatus = cleanRating >= 3 ? 'Reviewed' : 'Pending';
                 await prisma.$executeRaw`
                     UPDATE "Feedback" 
                     SET "rating" = ${cleanRating}, 
                         "message" = ${cleanMessage},
                         "merchantReply" = ${replyToKeep},
                         "merchantReplyAt" = CASE WHEN ${replyToKeep} IS NOT NULL AND "merchantReplyAt" IS NULL THEN NOW() ELSE "merchantReplyAt" END,
+                        "status" = ${nextStatus},
                         "updatedAt" = NOW()
                     WHERE "id" = ${existing.id}
                 `;
@@ -129,8 +123,8 @@ exports.submitFeedback = async (req, res) => {
             }
         }
 
-        // 4★ and 5★ reviews are auto-published as verified storefront social proof.
-        // Only 1★ and 2★ reviews are flagged as 'Pending' Quality Alerts for staff service recovery.
+        // 3★, 4★, and 5★ reviews are published as verified storefront social proof.
+        // 1★ and 2★ reviews are flagged as 'Pending' Quality Alerts requiring manual admin intervention.
         const initialStatus = cleanRating >= 3 ? 'Reviewed' : 'Pending';
 
         await prisma.$executeRaw`
@@ -152,6 +146,21 @@ exports.submitFeedback = async (req, res) => {
         const [created] = await prisma.$queryRaw`
             SELECT * FROM "Feedback" WHERE "id" = ${id}
         `;
+
+        // If 3★, 4★, or 5★ review: schedule automated reply after 5 minutes grace window
+        // 1★ and 2★ reviews are NEVER auto-scheduled and strictly await manual admin response
+        if (cleanRating >= 3) {
+            setTimeout(async () => {
+                try {
+                    const { processScheduledAutoReplies } = require('../../utils/cronJobs');
+                    if (processScheduledAutoReplies) {
+                        await processScheduledAutoReplies(req.app.get('io'));
+                    }
+                } catch (schedErr) {
+                    console.warn('[AutoReply Scheduler] Notice:', schedErr?.message);
+                }
+            }, 5 * 60 * 1000); // 5 minutes grace window
+        }
 
         // Broadcast telemetry so product reviews and staff feed update in real-time
         try {
@@ -528,3 +537,23 @@ exports.toggleFeatureFeedback = async (req, res) => {
         res.status(500).json({ message: 'Failed to toggle featured status' });
     }
 };
+
+// Manually trigger immediate auto-replies for all pending 3, 4, and 5-star reviews (Admin Only)
+// 1 and 2-star reviews are strictly ignored and must be handled manually
+exports.triggerAutoReply = async (req, res) => {
+    try {
+        const { processScheduledAutoReplies } = require('../../utils/cronJobs');
+        const count = await processScheduledAutoReplies(req.app.get('io'), { forceNow: true });
+        res.json({
+            success: true,
+            count,
+            message: count > 0
+                ? `Successfully sent automated replies to ${count} review(s).`
+                : 'No pending 3, 4, or 5-star reviews need automated replies.'
+        });
+    } catch (err) {
+        console.error('Error triggering auto-replies:', err);
+        res.status(500).json({ message: 'Failed to trigger automated replies' });
+    }
+};
+

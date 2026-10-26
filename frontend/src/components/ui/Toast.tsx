@@ -116,18 +116,8 @@ export default function ToastContainer() {
               transition-all duration-200 animate-fadeIn
             "
           >
-            {/* Status Vector Icon Badge */}
-            <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                isSuccess
-                  ? 'bg-emerald-500/15 text-emerald-400'
-                  : isError
-                  ? 'bg-rose-500/15 text-rose-400'
-                  : isWarning
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : 'bg-sky-500/15 text-sky-400'
-              }`}
-            >
+            {/* Status Vector Icon Badge (Monochrome Minimalist) */}
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-white/10 text-white border border-white/10">
               {isSuccess && (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />

@@ -1077,14 +1077,14 @@ export default function PanelSettings({
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           autoReplyReviews 
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                            : 'bg-white/10 text-text-dim border border-border-glass'
+                            ? 'bg-white/15 text-text-main border border-white/30' 
+                            : 'bg-white/5 text-text-dim border border-white/10'
                         }`}>
-                          {autoReplyReviews ? 'Active & Auto-Publishing' : 'Disabled (Manual Only)'}
+                          {autoReplyReviews ? 'Active (3-5★ Auto-Reply)' : 'Disabled (Manual Only)'}
                         </span>
                       </div>
                       <span className="text-[11px] text-text-dim mt-1 leading-relaxed">
-                        When customers submit a product review, automatically attach an official merchant reply calibrated precisely to the rating (1★ apology/recovery, 3★ constructive feedback, 5★ craftsmanship appreciation). Customer responses are locked to keep public comment threads clean and professional.
+                        3★, 4★, and 5★ reviews are automatically replied to by the system after a 5-minute grace period with personalized craftsmanship responses. 1★ and 2★ reviews are strictly excluded from automated replies and require manual intervention and personal review by the administrator.
                       </span>
                     </div>
 

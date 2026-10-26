@@ -158,7 +158,7 @@ app.use(compression());
 
 // Initialize Automated Background Tasks
 const { initCronJobs } = require('./utils/cronJobs');
-initCronJobs();
+initCronJobs(io);
 
 // --- Production Security Middleware ---
 
