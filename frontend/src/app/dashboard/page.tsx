@@ -928,10 +928,10 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen min-h-dvh w-full overflow-x-hidden bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
+    <div className="min-h-screen min-h-dvh w-full max-w-full overflow-x-hidden bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* Mobile Top Bar */}
-      <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-4 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
-        <Link href="/" className="flex items-center gap-2 min-w-0 max-w-[210px] shrink no-underline cursor-pointer group">
+      <div className="hidden max-md:flex items-center justify-between w-full max-w-full overflow-hidden h-[58px] px-3 sm:px-4 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
+        <Link href="/" className="flex items-center gap-2 min-w-0 flex-1 truncate no-underline cursor-pointer group mr-2">
           {businessLogoUrl ? (
             <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
           ) : (
@@ -942,14 +942,14 @@ export default function DashboardPage() {
           <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Customer Hub</span>
         </Link>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Link
             href="/#products-section"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/25 text-primary font-bold text-xs hover:bg-primary/20 active:scale-95 transition-all no-underline"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/25 text-primary font-bold text-xs hover:bg-primary/20 active:scale-95 transition-all no-underline"
             title="Browse Products"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            <span>Products</span>
+            <span className="hidden xs:inline">Products</span>
           </Link>
 
           <button
@@ -957,13 +957,13 @@ export default function DashboardPage() {
             className="bg-transparent border-none text-text-dim hover:text-text-main cursor-pointer p-1.5 flex items-center justify-center rounded-lg hover:bg-white/5 active:scale-95 transition-all shrink-0"
             title="Toggle theme"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
           </button>
 
           {/* Mobile Quick Account Avatar / Settings Trigger */}
           <button
             onClick={() => setActiveTab('settings')}
-            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs cursor-pointer transition-all border ${activeTab === 'settings'
+            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs cursor-pointer transition-all border shrink-0 ${activeTab === 'settings'
                 ? 'bg-primary text-white border-primary shadow-sm scale-105'
                 : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
               }`}
@@ -971,6 +971,19 @@ export default function DashboardPage() {
             aria-label="Account Settings"
           >
             {user?.username?.charAt(0).toUpperCase() || 'U'}
+          </button>
+
+          {/* Mobile Quick Logout */}
+          <button
+            onClick={async () => {
+              router.replace('/');
+              await logout();
+            }}
+            className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 border-none"
+            title="Log out of session"
+            aria-label="Logout"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           </button>
         </div>
       </div>

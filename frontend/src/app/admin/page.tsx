@@ -764,10 +764,10 @@ export default function AdminPage() {
                 <path d="M19 4v4m2-2h-4" />
               </svg>
             </button>
-            <div className="flex items-center gap-1.5 text-sm min-w-0 truncate">
+            <div className="flex items-center gap-1.5 text-sm min-w-0 flex-1 truncate">
               <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Admin</span>
               <span className="text-text-dim/40 hidden sm:inline">/</span>
-              <span className="font-bold text-text-main text-sm sm:text-base tracking-tight truncate max-w-[130px] sm:max-w-none">
+              <span className="font-bold text-text-main text-sm sm:text-base tracking-tight truncate">
                 {tabTitles[activeTab] || 'Dashboard'}
               </span>
             </div>
