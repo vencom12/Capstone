@@ -43,8 +43,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         amount: 1,
         minThreshold: material.minThreshold || 10
       });
-      refreshData().catch(() => {});
-      fetchAuditLogs?.().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs?.().catch(() => { });
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -72,8 +72,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         amount: 1,
         minThreshold: material.minThreshold || 10
       });
-      refreshData().catch(() => {});
-      fetchAuditLogs?.().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs?.().catch(() => { });
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -113,8 +113,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         amount: amount,
         minThreshold: material.minThreshold || 10
       });
-      refreshData().catch(() => {});
-      fetchAuditLogs?.().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs?.().catch(() => { });
     } catch (err) {
       setOptimisticCount(prev);
       setInputValue(prev.toString());
@@ -152,8 +152,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
           }
         }}
         className={`flex items-center justify-center h-8 w-24 flex-shrink-0 rounded-lg border transition-all duration-300 ease-in-out cursor-pointer select-none overflow-hidden
-          ${isEditing 
-            ? 'bg-white/10 border-primary/50 shadow-sm' 
+          ${isEditing
+            ? 'bg-white/10 border-primary/50 shadow-sm'
             : 'bg-white/5 border-border-glass hover:border-primary/30 hover:bg-white/10'
           }
         `}
@@ -177,8 +177,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         {/* Sliding Unit Label */}
         <span
           className={`text-[0.75rem] font-bold text-text-dim transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap
-            ${isEditing 
-              ? 'max-w-0 opacity-0 ml-0 pointer-events-none' 
+            ${isEditing
+              ? 'max-w-0 opacity-0 ml-0 pointer-events-none'
               : 'max-w-[42px] opacity-100 ml-1'
             }
           `}
@@ -298,7 +298,7 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
       className="bg-transparent hover:bg-white/5 border-none px-2 py-1 rounded font-mono text-xs text-text-dim cursor-pointer transition-all flex items-center gap-1"
       title="Click to edit safety safety threshold"
     >
-      {material.minThreshold || 10} 
+      {material.minThreshold || 10}
     </button>
   );
 }
@@ -396,7 +396,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
 
     try {
       await api.patch(`/api/admin/inventory/${materialId}`, { supplierUnitCost: parsed });
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
     } catch (err) {
       console.error(err);
       if (setInventory) {
@@ -529,7 +529,7 @@ export default function PanelRawMaterials({
   const getLinkedProductsForMaterial = (matId: string, matName: string) => {
     if (!products || products.length === 0) return [];
     const links: { productId: string; productName: string; variantName?: string; type: 'variant' | 'recipe' }[] = [];
-    
+
     for (const p of products) {
       const pId = p.id || p._id || '';
       // 1. Check if linked to any variant
@@ -844,11 +844,11 @@ export default function PanelRawMaterials({
         })
       );
 
-      refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs().catch(() => { });
     } catch (err) {
       console.error(err);
-      refreshData().catch(() => {});
+      refreshData().catch(() => { });
       showToast('Failed to save some delivery items', 'error');
     } finally {
       setIsSubmittingBatch(false);
@@ -1276,14 +1276,14 @@ export default function PanelRawMaterials({
         prev.map((m) =>
           (m.id || m._id) === materialId
             ? {
-                ...m,
-                item: trimmedName,
-                count: newCount,
-                unit: newUnit,
-                minThreshold: newThreshold,
-                supplierUnitCost: newCost,
-                packSize: newPackSize
-              }
+              ...m,
+              item: trimmedName,
+              count: newCount,
+              unit: newUnit,
+              minThreshold: newThreshold,
+              supplierUnitCost: newCost,
+              packSize: newPackSize
+            }
             : m
         )
       );
@@ -1301,8 +1301,8 @@ export default function PanelRawMaterials({
         supplierUnitCost: newCost,
         packSize: newPackSize
       });
-      refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs().catch(() => { });
     } catch (err: any) {
       console.error(err);
       if (setInventory) {
@@ -1391,8 +1391,8 @@ export default function PanelRawMaterials({
           prev.map((m) => (m.id === tempId || m._id === tempId ? { ...m, ...res.data } : m))
         );
       }
-      refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs().catch(() => { });
     } catch (err: any) {
       console.error(err);
       if (setInventory) {
@@ -1415,8 +1415,8 @@ export default function PanelRawMaterials({
 
     try {
       await api.delete(`/api/admin/inventory/${id}`);
-      refreshData().catch(() => {});
-      fetchAuditLogs().catch(() => {});
+      refreshData().catch(() => { });
+      fetchAuditLogs().catch(() => { });
     } catch (err) {
       console.error(err);
       if (setInventory) {
@@ -1482,8 +1482,8 @@ export default function PanelRawMaterials({
             title="Inventory Threshold Settings"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         )}
@@ -1498,129 +1498,126 @@ export default function PanelRawMaterials({
 
       {/* Main materials dashboard panel */}
       <div className="w-full glass-card">
-          {/* Simple 2-pill Stock Filter + Restock Slip Action */}
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-white/5">
-            <div className="flex items-center gap-2">
-              {[
-                { id: 'all', label: 'All Items', count: inventory.length },
-                { id: 'low', label: 'Needs Restock', count: lowStockItems.length },
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${
-                    stockTierFilter === pill.id
-                      ? 'bg-primary text-white border-primary/40 shadow-sm'
-                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+        {/* Simple 2-pill Stock Filter + Restock Slip Action */}
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            {[
+              { id: 'all', label: 'All Items', count: inventory.length },
+              { id: 'low', label: 'Needs Restock', count: lowStockItems.length },
+            ].map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setStockTierFilter(pill.id as StockLevelTier)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border transition-all flex items-center gap-2 ${stockTierFilter === pill.id
+                    ? 'bg-primary text-white border-primary/40 shadow-sm'
+                    : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                   }`}
-                >
-                  <span>{pill.label}</span>
-                  <span className={`text-[0.68rem] px-2 py-0.5 rounded-full font-bold font-mono ${
-                    pill.id === 'low' && lowStockItems.length > 0
-                      ? 'bg-danger/20 text-danger'
-                      : 'bg-white/10'
+              >
+                <span>{pill.label}</span>
+                <span className={`text-[0.68rem] px-2 py-0.5 rounded-full font-bold font-mono ${pill.id === 'low' && lowStockItems.length > 0
+                    ? 'bg-danger/20 text-danger'
+                    : 'bg-white/10'
                   }`}>
-                    {pill.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={openBatchReceiveModal}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm bg-primary/20 border border-primary/40 text-primary-light hover:bg-primary/30"
-                title="Quickly check in multiple delivered packs from suppliers"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-                <span>Receive Delivery</span>
+                  {pill.count}
+                </span>
               </button>
-
-              <button
-                type="button"
-                onClick={handleOpenShoppingListImage}
-                disabled={isGeneratingImage}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                  lowStockItems.length > 0
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                    : 'bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
-                }`}
-                title="Generate restock order slip to send to supplier via Messenger or Viber"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                <span>{isGeneratingImage ? 'Generating...' : 'Order Restock Slip'}</span>
-                {lowStockItems.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-mono">
-                    {lowStockItems.length}
-                  </span>
-                )}
-              </button>
-            </div>
+            ))}
           </div>
 
-          {isSyncing && inventory.length === 0 ? (
-            <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
-              <TableSkeleton rows={5} cols={4} />
-            </div>
-          ) : (
-            <div className="glass-table-container max-[1024px]:hidden">
-              <table className="glass-table">
-                <thead>
-                  <tr>
-                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('name')} title="Click to sort by Name">
-                      <div className="flex items-center gap-1.5">
-                        <span>Material Name</span>
-                        {sortBy === 'name' && (
-                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('stock')} title="Click to sort by Stock Count">
-                      <div className="flex items-center gap-1.5">
-                        <span>Current Stock</span>
-                        {sortBy === 'stock' && (
-                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('threshold')} title="Click to sort by Safety Threshold">
-                      <div className="flex items-center gap-1.5">
-                        <span>Safety Threshold</span>
-                        {sortBy === 'threshold' && (
-                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('cost')} title="Click to sort by Supplier Cost">
-                      <div className="flex items-center gap-1.5">
-                        <span>Supplier Cost / Unit</span>
-                        {sortBy === 'cost' && (
-                          <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th className="glass-th text-right">Actions</th>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openBatchReceiveModal}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm bg-primary/20 border border-primary/40 text-primary-light hover:bg-primary/30"
+              title="Quickly check in multiple delivered packs from suppliers"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+              <span>Receive Delivery</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenShoppingListImage}
+              disabled={isGeneratingImage}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${lowStockItems.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
+                }`}
+              title="Generate restock order slip to send to supplier via Messenger or Viber"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              <span>{isGeneratingImage ? 'Generating...' : 'Order Restock Slip'}</span>
+              {lowStockItems.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-mono">
+                  {lowStockItems.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {isSyncing && inventory.length === 0 ? (
+          <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
+            <TableSkeleton rows={5} cols={4} />
+          </div>
+        ) : (
+          <div className="glass-table-container max-[1024px]:hidden">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('name')} title="Click to sort by Name">
+                    <div className="flex items-center gap-1.5">
+                      <span>Material Name</span>
+                      {sortBy === 'name' && (
+                        <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('stock')} title="Click to sort by Stock Count">
+                    <div className="flex items-center gap-1.5">
+                      <span>Current Stock</span>
+                      {sortBy === 'stock' && (
+                        <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('threshold')} title="Click to sort by Safety Threshold">
+                    <div className="flex items-center gap-1.5">
+                      <span>Safety Threshold</span>
+                      {sortBy === 'threshold' && (
+                        <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="glass-th text-left cursor-pointer select-none hover:text-text-main transition" onClick={() => handleSort('cost')} title="Click to sort by Supplier Cost">
+                    <div className="flex items-center gap-1.5">
+                      <span>Supplier Cost / Unit</span>
+                      {sortBy === 'cost' && (
+                        <span className="text-primary font-mono text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="glass-th text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInventory.length === 0 ? (
+                  <tr className="glass-tr">
+                    <td colSpan={5} className="glass-td text-center text-text-dim">
+                      No materials match the selected filters.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredInventory.length === 0 ? (
-                    <tr className="glass-tr">
-                      <td colSpan={5} className="glass-td text-center text-text-dim">
-                        No materials match the selected filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedInventory.map((i) => {
+                ) : (
+                  paginatedInventory.map((i) => {
                     const id = i.id || i._id;
                     const isLow = i.count <= (i.minThreshold || 10);
                     return (
@@ -1680,8 +1677,8 @@ export default function PanelRawMaterials({
                                 title={`Edit details for ${i.item}`}
                               >
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                                 <span>Edit</span>
                               </button>
@@ -1709,99 +1706,99 @@ export default function PanelRawMaterials({
               </tbody>
             </table>
           </div>
-          )}
+        )}
 
-          {/* Mobile Card Blocks View */}
-          <div className="min-[1025px]:hidden grid grid-cols-2 gap-4 animate-fade">
-            {isSyncing && inventory.length === 0 ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))
-            ) : filteredInventory.length === 0 ? (
-              <div className="glass-card p-6 text-center text-text-dim col-span-full">No materials cataloged.</div>
-            ) : (
-              paginatedInventory.map((i) => {
-                const id = i.id || i._id;
-                const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
-                return (
-                  <div
-                    key={id}
-                    className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-4 flex flex-col gap-3 text-left relative"
-                  >
-                    <div className="flex justify-between items-start gap-1">
-                      <span className="font-bold text-text-main text-sm truncate">{i.item}</span>
-                      <span
-                        className={`inline-flex items-center gap-1 text-[0.62rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 backdrop-blur-md ${stockLevel.badgeClass}`}
-                        title={stockLevel.description}
-                      >
-                        <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
-                        {stockLevel.label}
-                      </span>
-                    </div>
+        {/* Mobile Card Blocks View */}
+        <div className="min-[1025px]:hidden grid grid-cols-2 gap-4 animate-fade">
+          {isSyncing && inventory.length === 0 ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))
+          ) : filteredInventory.length === 0 ? (
+            <div className="glass-card p-6 text-center text-text-dim col-span-full">No materials cataloged.</div>
+          ) : (
+            paginatedInventory.map((i) => {
+              const id = i.id || i._id;
+              const stockLevel = computeStockLevel(i.count, i.minThreshold || 10);
+              return (
+                <div
+                  key={id}
+                  className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-4 flex flex-col gap-3 text-left relative"
+                >
+                  <div className="flex justify-between items-start gap-1">
+                    <span className="font-bold text-text-main text-sm truncate">{i.item}</span>
+                    <span
+                      className={`inline-flex items-center gap-1 text-[0.62rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 backdrop-blur-md ${stockLevel.badgeClass}`}
+                      title={stockLevel.description}
+                    >
+                      <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
+                      {stockLevel.label}
+                    </span>
+                  </div>
 
-                    <div className="flex flex-col gap-2.5 text-xs font-medium">
-                      <div>
-                        <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
-                        {/* Read-only Current Count display with stock gauge */}
-                        <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none">
-                          <span>{i.count}</span>
-                          <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
-                        </div>
-                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1.5">
-                          <div 
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
-                              backgroundColor: stockLevel.dotColor
-                            }}
-                          />
-                        </div>
+                  <div className="flex flex-col gap-2.5 text-xs font-medium">
+                    <div>
+                      <span className="text-[0.65rem] text-text-dim block mb-1">Current Count</span>
+                      {/* Read-only Current Count display with stock gauge */}
+                      <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-text-main bg-white/5 border border-border-glass px-3 py-1.5 rounded-lg w-fit select-none">
+                        <span>{i.count}</span>
+                        <span className="text-[0.7rem] text-text-dim font-bold">{i.unit || 'PCs'}</span>
                       </div>
-
-                      <div className="flex justify-between items-center text-[0.72rem] text-text-dim pt-1 border-t border-white/5">
-                        <span>Threshold: <b className="text-text-main font-mono">{i.minThreshold || 10} {i.unit || 'PCs'}</b></span>
-                        <span>Cost: <b className="text-emerald-400 font-mono">{i.supplierUnitCost != null ? `₱${Number(i.supplierUnitCost).toFixed(2)}` : '—'}</b></span>
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1.5">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${Math.min(100, Math.max(6, (i.count / ((i.minThreshold || 10) * 2.5)) * 100))}%`,
+                            backgroundColor: stockLevel.dotColor
+                          }}
+                        />
                       </div>
                     </div>
 
-                    <div className="flex gap-2 w-full mt-2">
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(i)}
-                          className="flex-1 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-sm"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => setDeletingMaterial(i)}
-                          className="flex-1 bg-danger/10 border border-danger/30 text-danger py-2 px-3 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer text-center shadow-sm"
-                        >
-                          Delete
-                        </button>
-                      )}
+                    <div className="flex justify-between items-center text-[0.72rem] text-text-dim pt-1 border-t border-white/5">
+                      <span>Threshold: <b className="text-text-main font-mono">{i.minThreshold || 10} {i.unit || 'PCs'}</b></span>
+                      <span>Cost: <b className="text-emerald-400 font-mono">{i.supplierUnitCost != null ? `₱${Number(i.supplierUnitCost).toFixed(2)}` : '—'}</b></span>
                     </div>
                   </div>
-                );
-              })
-            )}
-          </div>
 
-          {/* Pagination Controls */}
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredInventory.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            pageSizeOptions={[5, 10, 20, 50]}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setCurrentPage(1);
-            }}
-          />
+                  <div className="flex gap-2 w-full mt-2">
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(i)}
+                        className="flex-1 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-sm"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setDeletingMaterial(i)}
+                        className="flex-1 bg-danger/10 border border-danger/30 text-danger py-2 px-3 rounded-xl text-xs font-bold hover:bg-danger/20 transition-all cursor-pointer text-center shadow-sm"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredInventory.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Modal: Add Material */}
@@ -2449,11 +2446,10 @@ export default function PanelRawMaterials({
                 return (
                   <div
                     key={item.id}
-                    className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border transition ${
-                      item.selected
+                    className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border transition ${item.selected
                         ? 'bg-primary/5 border-primary/30 text-text-main'
                         : 'bg-white/[0.02] border-border-glass opacity-60 text-text-dim'
-                    }`}
+                      }`}
                   >
                     {/* Checkbox & Item info */}
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -2610,7 +2606,7 @@ export default function PanelRawMaterials({
                     className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer shadow-sm flex items-center gap-1.5"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <span>{isSubmittingBatch ? 'Checking in...' : `Check-in Delivery (+${totalUnits})`}</span>
                   </button>
@@ -2666,7 +2662,7 @@ export default function PanelRawMaterials({
                   title="Copy formatted text message as backup"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span>Copy Text</span>
                 </button>
@@ -2733,7 +2729,7 @@ export default function PanelRawMaterials({
                 title="Right-click or press and hold to copy"
               />
             </div>
-            
+
             <div className="text-[11px] text-text-dim text-center">
               Tip: Click <b>Copy Image</b>, open <b>Messenger</b> or <b>Viber</b>, and press <b>Ctrl + V</b> (or Paste) to send!
             </div>
@@ -2776,8 +2772,8 @@ export default function PanelRawMaterials({
                   className="px-4 py-2 rounded-xl bg-bg-surface border border-border-glass hover:bg-white/10 text-text-main text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M6 14h12v8H6z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 14h12v8H6z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span>Print</span>
                 </button>
@@ -2792,7 +2788,7 @@ export default function PanelRawMaterials({
                   className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span>Save File</span>
                 </button>

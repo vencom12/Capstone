@@ -26,7 +26,6 @@ import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
 import { printBagSlip } from '@/lib/printBagSlip';
-import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -141,41 +140,6 @@ export default function EmployeePage() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  // Touch Swipe Navigation for Employee Workbench Tabs
-  const WORKBENCH_TABS = ['orders', 'counter', 'history', 'support', 'settings'];
-
-  const handleWorkbenchSwipeLeft = useCallback(() => {
-    setActiveTab((prev) => {
-      const idx = WORKBENCH_TABS.indexOf(prev);
-      if (idx !== -1 && idx < WORKBENCH_TABS.length - 1) {
-        return WORKBENCH_TABS[idx + 1];
-      }
-      return prev;
-    });
-  }, []);
-
-  const handleWorkbenchSwipeRight = useCallback(() => {
-    setActiveTab((prev) => {
-      const idx = WORKBENCH_TABS.indexOf(prev);
-      if (idx > 0) {
-        return WORKBENCH_TABS[idx - 1];
-      }
-      return prev;
-    });
-  }, []);
-
-  const touchSwipeHandlers = useTouchSwipe({
-    onSwipeLeft: handleWorkbenchSwipeLeft,
-    onSwipeRight: handleWorkbenchSwipeRight,
-    disabled:
-      activeTab === 'counter' ||
-      isMobilePanelOpen ||
-      isProcessModalOpen ||
-      Boolean(confirmingHandoverOrder) ||
-      isReceiptModalOpen ||
-      isChangePasswordOpen,
-  });
-
   const fetchEmployeeData = async () => {
     if (isLoggingOutRef.current) return;
     const authState = useAuthStore.getState();
@@ -230,7 +194,7 @@ export default function EmployeePage() {
       } else {
         setActiveTab('orders');
       }
-    } catch (e) {}
+    } catch (e) { }
     setIsHydrated(true);
   }, []);
 
@@ -262,7 +226,7 @@ export default function EmployeePage() {
     if (isHydrated) {
       try {
         sessionStorage.setItem('stitch-employee-tab', activeTab);
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [activeTab, isHydrated]);
 
@@ -432,8 +396,8 @@ export default function EmployeePage() {
     setUpdatingOrderIds(prev => ({ ...prev, [orderId]: true }));
     const previousStatus = order.status;
     const previousProgress = order.progress;
-    const progress = customProgress !== undefined 
-      ? customProgress 
+    const progress = customProgress !== undefined
+      ? customProgress
       : (nextStatus === 'Preparing Order' ? 50 : 100);
 
     // 1. Instant optimistic UI transition (0ms UI lag)
@@ -519,13 +483,13 @@ export default function EmployeePage() {
 
 
   const handleDownloadReceipt = async (order: any) => {
-    const receiptId = order?.transactionID || 
-                      order?.transactionId || 
-                      order?.receiptID || 
-                      order?.receiptId || 
-                      order?.orderId || 
-                      order?.id || 
-                      order?._id;
+    const receiptId = order?.transactionID ||
+      order?.transactionId ||
+      order?.receiptID ||
+      order?.receiptId ||
+      order?.orderId ||
+      order?.id ||
+      order?._id;
 
     if (!receiptId || receiptId === 'undefined') {
       showToast('No receipt reference available for download', 'error');
@@ -605,14 +569,14 @@ export default function EmployeePage() {
 
             {/* Compact Top Filter & Action Toolbar */}
             <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
-              <input 
-                type="text" 
-                placeholder="Search queue..." 
+              <input
+                type="text"
+                placeholder="Search queue..."
                 value={ordersSearchQuery}
                 onChange={(e) => setOrdersSearchQuery(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
               />
-              <GlassDatePicker 
+              <GlassDatePicker
                 value={ordersDateFilter}
                 onChange={(val) => setOrdersDateFilter(val)}
                 placeholder="Filter date"
@@ -633,16 +597,14 @@ export default function EmployeePage() {
                     <button
                       key={tab.key}
                       onClick={() => setOrdersQueueTab(tab.key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                        ordersQueueTab === tab.key
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${ordersQueueTab === tab.key
                           ? 'bg-bg-surface text-text-main border-primary/60 shadow-sm'
                           : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                      }`}
+                        }`}
                     >
                       {tab.label}
-                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${
-                        ordersQueueTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-white/10 text-text-dim'
-                      }`}>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${ordersQueueTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-white/10 text-text-dim'
+                        }`}>
                         {tab.count}
                       </span>
                     </button>
@@ -652,32 +614,32 @@ export default function EmployeePage() {
             })()}
 
             {isSyncing && orders.length === 0 ? (
-               <div className="max-[1100px]:hidden mb-4 w-full">
-                 <TableSkeleton rows={5} cols={6} />
-               </div>
-             ) : (
-               <div className="glass-table-container max-[1100px]:hidden">
-                   <table className="glass-table">
-                     <thead>
-                        <tr>
-                          <th className="glass-th text-left">Order ID & Status</th>
-                          <th className="glass-th text-left">Priority / Est. Time</th>
-                          <th className="glass-th text-left">Client & Date</th>
-                          <th className="glass-th text-left">Design / Items</th>
-                          <th className="glass-th text-left">Total</th>
-                          <th className="glass-th text-right">Action</th>
-                        </tr>
-                     </thead>
-                     <tbody>
-                        {activeOrders.length === 0 ? (
-                          <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
-                        ) : (
-                          paginatedQueueOrders.map((o) => {
-                         const isBatchMatched = o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim());
-                         return (
-                           <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
-                             <td className="glass-td">
-                               <div className="flex flex-col text-left">
+              <div className="max-[1100px]:hidden mb-4 w-full">
+                <TableSkeleton rows={5} cols={6} />
+              </div>
+            ) : (
+              <div className="glass-table-container max-[1100px]:hidden">
+                <table className="glass-table">
+                  <thead>
+                    <tr>
+                      <th className="glass-th text-left">Order ID & Status</th>
+                      <th className="glass-th text-left">Priority / Est. Time</th>
+                      <th className="glass-th text-left">Client & Date</th>
+                      <th className="glass-th text-left">Design / Items</th>
+                      <th className="glass-th text-left">Total</th>
+                      <th className="glass-th text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeOrders.length === 0 ? (
+                      <tr className="glass-tr"><td colSpan={6} className="glass-td text-center text-text-dim">No active orders in queue.</td></tr>
+                    ) : (
+                      paginatedQueueOrders.map((o) => {
+                        const isBatchMatched = o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim());
+                        return (
+                          <tr key={o.id || o._id} className="glass-tr hover:bg-white/5 transition-all">
+                            <td className="glass-td">
+                              <div className="flex flex-col text-left">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
                                   <span className="text-[10px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
@@ -689,175 +651,174 @@ export default function EmployeePage() {
                                     </span>
                                   )}
                                 </div>
-                                 <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
+                                <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
                                    ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                     o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                                     'bg-white/10 text-text-dim border border-white/20'
-                                   }
+                                    o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
+                                      'bg-white/10 text-text-dim border border-white/20'
+                                  }
                                  `}>
-                                   {o.status} ({o.progress || 0}%)
-                                 </span>
-                               </div>
-                             </td>
-                             <td className="glass-td text-left">
-                               <div className="flex flex-col">
-                                 <div className="flex items-center gap-1.5">
-                                   <span className={`w-2 h-2 rounded-full ${
-                                     o.priorityScore >= 80 ? 'bg-danger animate-pulse ' :
-                                     o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
-                                   }`}></span>
-                                   <span className="font-bold text-text-main text-sm">
-                                     Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
-                                   </span>
-                                   {o.isRush && (
-                                     <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                       Rush
-                                     </span>
-                                   )}
-                                 </div>
-                                 <span className="text-[0.75rem] text-text-dim mt-0.5">
-                                   Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
-                                 </span>
-                               </div>
-                             </td>
-                             <td className="glass-td text-text-main text-sm font-medium text-left">
-                               <div>{o.client || 'Valued Customer'}</div>
-                               <div className="text-[0.75rem] text-text-dim mt-0.5">
-                                 {new Date(o.date || o.createdAt).toLocaleString()}
-                               </div>
-                               {o.dueDate && (
-                                 <div className={`text-[0.7rem] font-extrabold mt-1 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
-                                   {getRelativeTime(o.dueDate)}
-                                 </div>
-                               )}
-                             </td>
-                             <td className="glass-td text-text-main text-sm text-left">
-                                {o.items && Array.isArray(o.items) ? (
-                                  <div className="flex flex-col gap-1.5">
-                                    {o.items.map((item: any, idx: number) => {
-                                      const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
-                                      const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
-                                      const rawColor = item.personalization?.threadColor || item.personalization?.color;
-                                      const threadColor = typeof rawColor === 'object' && rawColor !== null ? (rawColor.name || '') : (typeof rawColor === 'string' ? rawColor : '');
-                                      return (
-                                        <div key={idx} className="flex flex-col text-xs">
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            {item.selectedColor && (
-                                              <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                            )}
-                                            <span className="font-medium text-text-main">{item.quantity}x {item.name}</span>
-                                            {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
-                                          </div>
-                                          {stitchText && (
-                                            <div className="flex items-center gap-1 text-[0.7rem] text-text-dim font-mono mt-0.5 pl-2 border-l border-border-glass">
-                                              <span>&ldquo;{stitchText}&rdquo;</span>
-                                              {threadColor && (
-                                                <span className="text-text-dim/70 text-[0.65rem] font-sans">
-                                                  ({threadColor})
-                                                </span>
-                                              )}
-                                            </div>
+                                  {o.status} ({o.progress || 0}%)
+                                </span>
+                              </div>
+                            </td>
+                            <td className="glass-td text-left">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full ${o.priorityScore >= 80 ? 'bg-danger animate-pulse ' :
+                                      o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
+                                    }`}></span>
+                                  <span className="font-bold text-text-main text-sm">
+                                    Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
+                                  </span>
+                                  {o.isRush && (
+                                    <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                      Rush
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[0.75rem] text-text-dim mt-0.5">
+                                  Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="glass-td text-text-main text-sm font-medium text-left">
+                              <div>{o.client || 'Valued Customer'}</div>
+                              <div className="text-[0.75rem] text-text-dim mt-0.5">
+                                {new Date(o.date || o.createdAt).toLocaleString()}
+                              </div>
+                              {o.dueDate && (
+                                <div className={`text-[0.7rem] font-extrabold mt-1 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
+                                  {getRelativeTime(o.dueDate)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="glass-td text-text-main text-sm text-left">
+                              {o.items && Array.isArray(o.items) ? (
+                                <div className="flex flex-col gap-1.5">
+                                  {o.items.map((item: any, idx: number) => {
+                                    const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                    const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
+                                    const rawColor = item.personalization?.threadColor || item.personalization?.color;
+                                    const threadColor = typeof rawColor === 'object' && rawColor !== null ? (rawColor.name || '') : (typeof rawColor === 'string' ? rawColor : '');
+                                    return (
+                                      <div key={idx} className="flex flex-col text-xs">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          {item.selectedColor && (
+                                            <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
                                           )}
+                                          <span className="font-medium text-text-main">{item.quantity}x {item.name}</span>
+                                          {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                 <span className="font-semibold">{o.design || 'Embroidery Design'}</span>
-                               )}
-                               {isBatchMatched && (
-                                 <div className="mt-1">
-                                   <span className="inline-flex items-center gap-0.5 text-[0.65rem] bg-primary/10 text-primary border border-primary/25 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                     Batch Matched
-                                   </span>
-                                 </div>
-                               )}
-                             </td>
-                             <td className="glass-td text-primary font-mono font-bold text-sm text-left">
-                               ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
-                             </td>
-                             <td className="glass-td text-right">
-                               <div className="flex gap-2 justify-end">
-                                  <button
-                                    type="button"
-                                    onClick={() => printBagSlip(o)}
-                                    title="Print 80mm thermal slip to attach to garment bag"
-                                    className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                                  >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
-                                      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
-                                      <circle cx="7" cy="7" r="1.5"/>
-                                    </svg>
-                                    <span>Bag Slip</span>
-                                  </button>
-                                  {o.status === 'In Queue' && (
-                                    o.isByog && !o.garmentsReceivedAt ? (
-                                      <button
-                                        onClick={() => handleReceiveGarments(o)}
-                                        className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
-                                        title="Customer dropped off garments at counter"
-                                      >
-                                        <span>Intake</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
-                                        disabled={updatingOrderIds[o.id]}
-                                        className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer disabled:opacity-50"
-                                        title="Load to embroidery machine and start stitching"
-                                      >
-                                        <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Start Stitching'}</span>
-                                      </button>
-                                    )
-                                  )}
-
-                                  {o.status === 'Preparing Order' && (
+                                        {stitchText && (
+                                          <div className="flex items-center gap-1 text-[0.7rem] text-text-dim font-mono mt-0.5 pl-2 border-l border-border-glass">
+                                            <span>&ldquo;{stitchText}&rdquo;</span>
+                                            {threadColor && (
+                                              <span className="text-text-dim/70 text-[0.65rem] font-sans">
+                                                ({threadColor})
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="font-semibold">{o.design || 'Embroidery Design'}</span>
+                              )}
+                              {isBatchMatched && (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center gap-0.5 text-[0.65rem] bg-primary/10 text-primary border border-primary/25 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    Batch Matched
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="glass-td text-primary font-mono font-bold text-sm text-left">
+                              ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                            </td>
+                            <td className="glass-td text-right">
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => printBagSlip(o)}
+                                  title="Print 80mm thermal slip to attach to garment bag"
+                                  className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                                    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+                                    <circle cx="7" cy="7" r="1.5" />
+                                  </svg>
+                                  <span>Bag Slip</span>
+                                </button>
+                                {o.status === 'In Queue' && (
+                                  o.isByog && !o.garmentsReceivedAt ? (
                                     <button
-                                      onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
+                                      onClick={() => handleReceiveGarments(o)}
+                                      className="bg-white/5 hover:bg-white/10 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                                      title="Customer dropped off garments at counter"
+                                    >
+                                      <span>Intake</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
                                       disabled={updatingOrderIds[o.id]}
-                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
-                                      title="Finish stitching, package order with claim slip, and place on side"
+                                      className="bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer disabled:opacity-50"
+                                      title="Load to embroidery machine and start stitching"
                                     >
-                                      <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Bag'}</span>
+                                      <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Start Stitching'}</span>
                                     </button>
-                                  )}
+                                  )
+                                )}
 
-                                  {o.status === 'Ready For Pick Up' && (
-                                    <button
-                                      onClick={() => {
-                                        setConfirmingHandoverOrder(o);
-                                      }}
-                                      className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                      title="Match claim slip code on bag and hand over to customer"
-                                    >
-                                      <span>Hand Over</span>
-                                    </button>
-                                  )}
+                                {o.status === 'Preparing Order' && (
+                                  <button
+                                    onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
+                                    disabled={updatingOrderIds[o.id]}
+                                    className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                                    title="Finish stitching, package order with claim slip, and place on side"
+                                  >
+                                    <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Bag'}</span>
+                                  </button>
+                                )}
 
+                                {o.status === 'Ready For Pick Up' && (
                                   <button
                                     onClick={() => {
-                                      setSelectedOrder(o);
-                                      setOrderStatusInput(o.status || 'In Queue');
-                                      setOrderProgressInput((o.progress || 10).toString());
-                                      setIsProcessModalOpen(true);
+                                      setConfirmingHandoverOrder(o);
                                     }}
-                                    title="Manual status override"
-                                    className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 text-xs transition-colors cursor-pointer flex items-center justify-center"
+                                    className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                                    title="Match claim slip code on bag and hand over to customer"
                                   >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-                                    </svg>
+                                    <span>Hand Over</span>
                                   </button>
-                               </div>
-                             </td>
-                           </tr>
-                         );
-                       })
-                     )}
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    setSelectedOrder(o);
+                                    setOrderStatusInput(o.status || 'In Queue');
+                                    setOrderProgressInput((o.progress || 10).toString());
+                                    setIsProcessModalOpen(true);
+                                  }}
+                                  title="Manual status override"
+                                  className="text-text-dim hover:text-text-main p-1.5 rounded-lg hover:bg-white/5 text-xs transition-colors cursor-pointer flex items-center justify-center"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
-             </div>
-             )}
+              </div>
+            )}
 
             {/* Tablet & Mobile Card Block View */}
             <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
@@ -878,7 +839,7 @@ export default function EmployeePage() {
                           <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
                             ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
                               o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                              'bg-white/10 text-text-dim border border-white/20'
+                                'bg-white/10 text-text-dim border border-white/20'
                             }
                           `}>
                             {o.status} ({o.progress || 0}%)
@@ -889,10 +850,9 @@ export default function EmployeePage() {
                             <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
                             <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleString()}</span>
                             <div className="flex items-center gap-1.5 mt-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                o.priorityScore >= 80 ? 'bg-danger animate-pulse' :
-                                o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
-                              }`}></span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${o.priorityScore >= 80 ? 'bg-danger animate-pulse' :
+                                  o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
+                                }`}></span>
                               <span className="text-[0.7rem] font-bold text-text-main">
                                 Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
                               </span>
@@ -969,8 +929,8 @@ export default function EmployeePage() {
                           className="bg-white/5 border border-border-glass text-text-main py-2.5 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center shrink-0 flex items-center justify-center gap-1"
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
-                            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
-                            <circle cx="7" cy="7" r="1.5"/>
+                            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+                            <circle cx="7" cy="7" r="1.5" />
                           </svg>
                           <span>Bag Slip</span>
                         </button>
@@ -1023,7 +983,7 @@ export default function EmployeePage() {
                           title="Manual adjustments"
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+                            <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
                           </svg>
                         </button>
                       </div>
@@ -1074,14 +1034,14 @@ export default function EmployeePage() {
 
             {/* Compact Top Filter Toolbar */}
             <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
-              <input 
-                type="text" 
-                placeholder="Search history ID, client..." 
+              <input
+                type="text"
+                placeholder="Search history ID, client..."
                 value={historySearchQuery}
                 onChange={(e) => setHistorySearchQuery(e.target.value)}
-                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]" 
+                className="bg-bg-surface border border-border-glass p-2.5 rounded-xl text-text-main text-[0.85rem] outline-none min-w-[200px]"
               />
-              <GlassDatePicker 
+              <GlassDatePicker
                 value={historyDateFilter}
                 onChange={(val) => setHistoryDateFilter(val)}
                 placeholder="Filter date"
@@ -1304,13 +1264,13 @@ export default function EmployeePage() {
               {/* Display Theme */}
               <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
                 <div className="flex items-center gap-3.5">
-                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
-                   </div>
-                   <div className="text-left">
-                     <h4 className="m-0 text-sm font-bold text-text-main">Display Mode</h4>
-                     <p className="m-0 mt-0.5 text-xs text-text-dim">Switch between high-contrast dark and daytime light mode</p>
-                   </div>
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="m-0 text-sm font-bold text-text-main">Display Mode</h4>
+                    <p className="m-0 mt-0.5 text-xs text-text-dim">Switch between high-contrast dark and daytime light mode</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -1324,13 +1284,13 @@ export default function EmployeePage() {
               {/* Security: Change Password */}
               <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
                 <div className="flex items-center gap-3.5">
-                   <div className="w-10 h-10 rounded-xl bg-white/5 text-text-dim flex items-center justify-center shrink-0">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                   </div>
-                   <div className="text-left">
-                     <h4 className="m-0 text-sm font-bold text-text-main">Account Security</h4>
-                     <p className="m-0 mt-0.5 text-xs text-text-dim">Update your station operator access password</p>
-                   </div>
+                  <div className="w-10 h-10 rounded-xl bg-white/5 text-text-dim flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="m-0 text-sm font-bold text-text-main">Account Security</h4>
+                    <p className="m-0 mt-0.5 text-xs text-text-dim">Update your station operator access password</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -1356,55 +1316,47 @@ export default function EmployeePage() {
         max-[650px]:fixed max-[650px]:top-0 max-[650px]:left-0 max-[650px]:h-full max-[650px]:z-[2000] max-[650px]:transition-transform max-[650px]:duration-300
         ${isMobilePanelOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
       `}>
-         <EmployeeSidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsMobilePanelOpen(false); }} />
+        <EmployeeSidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsMobilePanelOpen(false); }} />
       </div>
 
       {/* Mobile Overlay */}
       {isMobilePanelOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1900] hidden max-[650px]:block"
           onClick={() => setIsMobilePanelOpen(false)}
         />
       )}
-      
+
       {/* Main Viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full touch-pan-y" {...touchSwipeHandlers}>
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
-        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-2 sm:gap-4 max-w-full overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
             <button
               onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)}
-              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors"
+              className="min-[651px]:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors shrink-0"
               aria-label="Toggle navigation"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('toggleAIAssistant'))}
-              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+              className="min-[651px]:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors shrink-0"
               title="Ask AI Copilot"
               aria-label="Ask AI Copilot"
             >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
                 <path d="M19 4v4m2-2h-4" />
               </svg>
             </button>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-1.5 text-sm min-w-0 truncate">
               <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Employee</span>
               <span className="text-text-dim/40 hidden sm:inline">/</span>
-              <span className="font-bold text-text-main text-base tracking-tight">
+              <span className="font-bold text-text-main text-sm sm:text-base tracking-tight truncate max-w-[130px] sm:max-w-none">
                 {tabTitles[activeTab] || 'Workbench'}
               </span>
-              {activeTab !== 'counter' && (
-                <span className="hidden xl:inline-flex items-center gap-1 text-[11px] text-text-dim/60 font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-border-glass select-none ml-2">
-                  <svg className="w-3 h-3 text-primary/70 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  Swipe &larr; &rarr; tabs
-                </span>
-              )}
             </div>
           </div>
 
@@ -1427,34 +1379,33 @@ export default function EmployeePage() {
           </div>
 
           {/* Top-Right User Profile & Quick Actions */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Chime Audio Alert Toggle */}
             <button
               type="button"
               onClick={handleToggleChime}
               title={isChimeActive ? "New order chime active (click to mute)" : "New order chime muted (click to enable)"}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                isChimeActive
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${isChimeActive
                   ? 'bg-primary/15 text-primary border-primary/30 hover:bg-primary/25 shadow-sm'
                   : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10'
-              }`}
+                }`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-                {!isChimeActive && <line x1="2" y1="2" x2="22" y2="22"/>}
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                {!isChimeActive && <line x1="2" y1="2" x2="22" y2="22" />}
               </svg>
               <span className="hidden lg:inline">{isChimeActive ? 'Chime Alert On' : 'Chime Muted'}</span>
             </button>
 
-            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 pl-1.5 sm:pl-3 border-l border-border-glass/40 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab('settings')}
-                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 -m-1 rounded-xl hover:bg-white/5 transition-all text-left group"
+                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 rounded-xl hover:bg-white/5 transition-all text-left group shrink-0"
                 title="Account Settings"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 group-hover:scale-105 flex items-center justify-center font-bold text-xs transition-all shrink-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 flex items-center justify-center font-bold text-xs transition-all shrink-0">
                   {user?.username?.substring(0, 2).toUpperCase() || 'OP'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
@@ -1473,7 +1424,7 @@ export default function EmployeePage() {
                   router.replace('/');
                   await logout();
                 }}
-                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
+                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none shrink-0"
                 title="Log out of session"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -1483,7 +1434,7 @@ export default function EmployeePage() {
           </div>
         </header>
 
-        <main className="flex-1 max-w-[1500px] w-full mx-auto p-8 max-[650px]:p-4 pb-24 scrollbar-thin">
+        <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-8 pb-24 scrollbar-thin overflow-x-hidden">
           {renderTabContent()}
         </main>
       </div>

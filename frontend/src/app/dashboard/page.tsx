@@ -928,7 +928,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen min-h-dvh w-full bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
+    <div className="min-h-screen min-h-dvh w-full overflow-x-hidden bg-transparent text-text-main flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* Mobile Top Bar */}
       <div className="hidden max-md:flex items-center justify-between w-full h-[58px] px-4 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
         <Link href="/" className="flex items-center gap-2 min-w-0 max-w-[210px] shrink no-underline cursor-pointer group">
@@ -980,7 +980,7 @@ export default function DashboardPage() {
         setActiveTab={setActiveTab}
       />
 
-      <main className="w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0">
+      <main className="w-full max-w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0 overflow-x-hidden">
         {renderTabContent()}
       </main>
 

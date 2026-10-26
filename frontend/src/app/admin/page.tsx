@@ -741,33 +741,33 @@ export default function AdminPage() {
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
-        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-2 sm:gap-4 max-w-full overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
             <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
-              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors"
+              className="min-[651px]:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors shrink-0"
               aria-label="Toggle navigation"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('toggleAIAssistant'))}
-              className="min-[651px]:hidden w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+              className="min-[651px]:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 cursor-pointer transition-colors shrink-0"
               title="Ask AI Copilot"
               aria-label="Ask AI Copilot"
             >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
                 <path d="M19 4v4m2-2h-4" />
               </svg>
             </button>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-1.5 text-sm min-w-0 truncate">
               <span className="text-text-dim text-xs uppercase tracking-wider font-bold hidden sm:inline">Admin</span>
               <span className="text-text-dim/40 hidden sm:inline">/</span>
-              <span className="font-bold text-text-main text-base tracking-tight">
+              <span className="font-bold text-text-main text-sm sm:text-base tracking-tight truncate max-w-[130px] sm:max-w-none">
                 {tabTitles[activeTab] || 'Dashboard'}
               </span>
             </div>
@@ -786,7 +786,7 @@ export default function AdminPage() {
           </div>
 
           {/* Top-Right User Profile & Quick Actions */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
               <span className="font-medium capitalize">
@@ -794,14 +794,14 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 pl-1.5 sm:pl-3 border-l border-border-glass/40 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab('settings')}
-                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 -m-1 rounded-xl hover:bg-white/5 transition-all text-left group"
+                className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-1 rounded-xl hover:bg-white/5 transition-all text-left group shrink-0"
                 title="Account Settings"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 group-hover:scale-105 flex items-center justify-center font-bold text-xs transition-all shrink-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/20 text-primary border border-primary/30 group-hover:border-primary/70 flex items-center justify-center font-bold text-xs transition-all shrink-0">
                   {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left">
@@ -820,7 +820,7 @@ export default function AdminPage() {
                   router.replace('/');
                   await logout();
                 }}
-                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none"
+                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none shrink-0"
                 title="Log out of session"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -831,7 +831,7 @@ export default function AdminPage() {
         </header>
 
         {/* Content injection viewport */}
-        <main className="dash-main flex-1 max-w-[1500px] w-full mx-auto pb-24">
+        <main className="dash-main flex-1 max-w-[1500px] w-full mx-auto pb-24 overflow-x-hidden">
           {loadError && (
             <div className="mx-5 mt-4 px-4 py-3 rounded-xl bg-danger/10 border border-danger/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm text-danger">
