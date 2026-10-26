@@ -296,7 +296,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   };
 
   return (
-    <div className="flex flex-col h-full text-left font-sans max-w-5xl mx-auto pb-16 w-full min-w-0 overflow-x-hidden">
+    <div className="flex flex-col min-h-full text-left font-sans max-w-5xl mx-auto pt-2 pb-32 sm:pb-40 w-full min-w-0">
       {/* Top Action Toolbar */}
       <div className="flex items-center justify-start gap-2.5 flex-wrap mb-4">
         {role === 'admin' && (
@@ -400,11 +400,10 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                 key={pill.id}
                 type="button"
                 onClick={() => setRatingFilter(pill.id)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer border shrink-0 text-xs ${
-                  isActive
-                    ? 'bg-white/15 text-text-main border-white/30 shadow-xs'
-                    : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-                }`}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer border shrink-0 text-xs ${isActive
+                  ? 'bg-white/15 text-text-main border-white/30 shadow-xs'
+                  : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
+                  }`}
               >
                 {pill.label}
               </button>
@@ -465,9 +464,8 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
             return (
               <div
                 key={item.id}
-                className={`border rounded-xl transition bg-bg-surface w-full overflow-hidden ${
-                  isExpanded ? 'border-white/30 bg-white/[0.02]' : 'border-border-glass hover:border-white/20'
-                }`}
+                className={`border rounded-xl transition bg-bg-surface w-full overflow-hidden ${isExpanded ? 'border-white/30 bg-white/[0.02]' : 'border-border-glass hover:border-white/20'
+                  }`}
               >
                 {/* Clean, readable review card */}
                 <div className="p-4 flex flex-col gap-2.5">
@@ -636,11 +634,10 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                         <button
                           type="button"
                           onClick={() => handleToggleFeature(item)}
-                          className={`text-xs font-bold px-3 py-1 rounded-lg border transition cursor-pointer ${
-                            item.isFeatured
-                              ? 'bg-white/15 text-text-main border-white/30'
-                              : 'bg-white/5 text-text-dim border-white/10 hover:text-text-main'
-                          }`}
+                          className={`text-xs font-bold px-3 py-1 rounded-lg border transition cursor-pointer ${item.isFeatured
+                            ? 'bg-white/15 text-text-main border-white/30'
+                            : 'bg-white/5 text-text-dim border-white/10 hover:text-text-main'
+                            }`}
                         >
                           {item.isFeatured ? 'Featured on Website ✓' : 'Feature on Website'}
                         </button>

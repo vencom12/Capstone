@@ -56,25 +56,38 @@
    Soft, eye-friendly cream & linen tones with warm stone typography
    ======================================== */
 [data-theme="light"] {
-  --color-bg-dark: #f8fafc;       /* Crisp Porcelain base - clean, modern, zero glare */
-  --color-bg-card: #ffffff;       /* Pure white elevated cards */
-  --color-bg-sidebar: #f1f5f9;    /* Clean subtle slate sidebar */
+  --color-bg-dark: #f8fafc;
+  /* Crisp Porcelain base - clean, modern, zero glare */
+  --color-bg-card: #ffffff;
+  /* Pure white elevated cards */
+  --color-bg-sidebar: #f1f5f9;
+  /* Clean subtle slate sidebar */
   --color-bg-header: rgba(255, 255, 255, 0.92);
-  --color-bg-surface: #f1f5f9;    /* Clean soft slate for nested surfaces & inputs */
-  --color-text-main: #0f172a;     /* Deep Slate 900 - crisp maximum readability */
-  --color-text-dim: #64748b;      /* Slate 500 */
-  --color-border-glass: rgba(15, 23, 42, 0.08); /* Crisp subtle border */
+  --color-bg-surface: #f1f5f9;
+  /* Clean soft slate for nested surfaces & inputs */
+  --color-text-main: #0f172a;
+  /* Deep Slate 900 - crisp maximum readability */
+  --color-text-dim: #64748b;
+  /* Slate 500 */
+  --color-border-glass: rgba(15, 23, 42, 0.08);
+  /* Crisp subtle border */
   --color-primary-glow: rgba(185, 28, 28, 0.12);
 }
 
 [data-theme="dark"] {
-  --color-bg-dark: #090d16;       /* Grounded Obsidian */
-  --color-bg-card: #111827;       /* Deep Slate card */
-  --color-bg-sidebar: #0d121f;    /* Obsidian sidebar */
+  --color-bg-dark: #090d16;
+  /* Grounded Obsidian */
+  --color-bg-card: #111827;
+  /* Deep Slate card */
+  --color-bg-sidebar: #0d121f;
+  /* Obsidian sidebar */
   --color-bg-header: rgba(13, 18, 31, 0.85);
-  --color-bg-surface: #1e293b;    /* Elevated dark slate */
-  --color-text-main: #f8fafc;     /* Crisp white text */
-  --color-text-dim: #94a3b8;      /* Slate 400 */
+  --color-bg-surface: #1e293b;
+  /* Elevated dark slate */
+  --color-text-main: #f8fafc;
+  /* Crisp white text */
+  --color-text-dim: #94a3b8;
+  /* Slate 400 */
   --color-border-glass: rgba(255, 255, 255, 0.08);
   --color-primary-glow: rgba(185, 28, 28, 0.2);
 }
@@ -369,8 +382,7 @@ body {
 .dash-main {
   padding: 1.5rem;
   /* p-6 instead of p-8 */
-  height: 100%;
-  overflow-y: auto;
+  min-height: 100%;
 }
 
 @media (max-width: 650px) {
@@ -520,6 +532,7 @@ select option {
 .custom-dropdown-popover::-webkit-scrollbar {
   width: 5px;
 }
+
 .custom-dropdown-popover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
@@ -567,6 +580,7 @@ select option {
   fill: var(--color-text-main) !important;
   color: var(--color-text-main) !important;
 }
+
 /* Ambient Clean Shadows for Light Mode */
 [data-theme="light"] .glass-card,
 [data-theme="light"] .dash-card,
@@ -598,6 +612,7 @@ select option {
     opacity: 0;
     transform: translateY(-14px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -613,6 +628,7 @@ select option {
     opacity: 0;
     transform: translateY(14px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -631,13 +647,16 @@ select option {
     transform: translateX(100%);
     opacity: 0;
   }
+
   65% {
     transform: translateX(-10px);
     opacity: 1;
   }
+
   85% {
     transform: translateX(4px);
   }
+
   100% {
     transform: translateX(0);
     opacity: 1;
@@ -645,18 +664,24 @@ select option {
 }
 
 @keyframes aiTabWiggle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0) rotate(0deg);
   }
+
   20% {
     transform: translateX(-7px) rotate(-6deg);
   }
+
   40% {
     transform: translateX(-2px) rotate(4deg);
   }
+
   60% {
     transform: translateX(-5px) rotate(-3deg);
   }
+
   80% {
     transform: translateX(-1px) rotate(2deg);
   }
@@ -667,9 +692,11 @@ select option {
     opacity: 0;
     transform: scale(0.8) translateX(16px);
   }
+
   70% {
     transform: scale(1.04) translateX(-4px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateX(0);
@@ -690,9 +717,21 @@ select option {
 
 /* Tactile Error Shake for Input & Form Validation */
 @keyframes formShake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .animate-shake {
@@ -700,8 +739,15 @@ select option {
 }
 
 @keyframes microFadeIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fadeIn {
@@ -717,7 +763,8 @@ select option {
   }
 
   /* Reset body and hide background page chrome */
-  body, html {
+  body,
+  html {
     background: #ffffff !important;
     color: #000000 !important;
     overflow: visible !important;
