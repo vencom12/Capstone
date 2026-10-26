@@ -23,7 +23,6 @@ interface AuthState {
   register: (username: string, email?: string, password?: string, phoneNumber?: string, address?: string, otpCode?: string) => Promise<AuthResponse>;
   sendRegistrationOtp: (email: string, username?: string) => Promise<{ success: boolean; message: string }>;
   verifyRegistrationOtp: (email: string, otpCode: string) => Promise<{ success: boolean; message: string }>;
-  linkGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<{ success: boolean; message: string; user?: User }>;
   sendLinkOtp: (email: string) => Promise<{ success: boolean; message: string }>;
   linkEmail: (email: string, otpCode: string) => Promise<{ success: boolean; message: string; user?: User }>;
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
@@ -122,18 +121,6 @@ export const useAuthStore = create<AuthState>()(
           return await api.post<{ success: boolean; message: string }>('/api/auth/verify-otp', { email, otpCode });
         } catch (err: any) {
           return { success: false, message: err?.message || 'Invalid or expired verification code.' };
-        }
-      },
-
-      linkGoogle: async (googleData) => {
-        try {
-          const data = await api.post<{ success: boolean; message: string; user: User }>('/api/auth/google/link', googleData);
-          if (data.user) {
-            set({ user: data.user });
-          }
-          return { success: true, message: data.message, user: data.user };
-        } catch (err: any) {
-          return { success: false, message: err?.message || 'Failed to link Google account.' };
         }
       },
 

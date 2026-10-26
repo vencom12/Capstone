@@ -222,58 +222,7 @@ exports.register = async (req, res) => {
     }
 };
 
-// 4. Link Google account to existing user (cryptographically verified by Google OAuth)
-exports.linkGoogleAccount = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const { email, displayName, uid } = req.body;
-        if (!email) {
-            return res.status(400).json({ message: 'Google account email is required.' });
-        }
-
-        const cleanEmail = email.trim().toLowerCase();
-
-        // Check if email already belongs to another account
-        const existing = await prisma.user.findFirst({
-            where: {
-                email: { equals: cleanEmail, mode: 'insensitive' },
-                id: { not: userId }
-            }
-        });
-        if (existing) {
-            return res.status(400).json({ message: 'This Google account is already linked to another user account.' });
-        }
-
-        // Link Google email to current user and mark verified
-        const updatedUser = await prisma.user.update({
-            where: { id: userId },
-            data: {
-                email: cleanEmail,
-                isEmailVerified: true
-            }
-        });
-
-        return res.json({
-            success: true,
-            message: `Successfully linked Google account (${cleanEmail})!`,
-            user: {
-                id: updatedUser.id,
-                username: updatedUser.username,
-                role: updatedUser.role,
-                email: updatedUser.email,
-                isEmailVerified: updatedUser.isEmailVerified,
-                walletBalance: updatedUser.walletBalance,
-                address: updatedUser.address,
-                phoneNumber: updatedUser.phoneNumber
-            }
-        });
-    } catch (err) {
-        console.error('linkGoogleAccount Error:', err);
-        return res.status(500).json({ message: 'Failed to link Google account.' });
-    }
-};
-
-// 5. Send OTP to link an email to an existing account
+// 4. Send OTP to link an email to an existing account
 exports.sendLinkOtp = async (req, res) => {
     try {
         const userId = req.user.id;

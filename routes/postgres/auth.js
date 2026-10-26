@@ -36,7 +36,6 @@ const profileValidation = [
 router.get('/check-availability', authController.checkAvailability);
 router.post('/send-otp', authController.sendRegistrationOtp);
 router.post('/verify-otp', authController.verifyRegistrationOtp);
-router.post('/google/link', auth(), authController.linkGoogleAccount);
 router.post('/email/send-link-otp', auth(), authController.sendLinkOtp);
 router.post('/email/link', auth(), authController.linkEmailWithOtp);
 router.post('/register', registerValidation, authController.register);

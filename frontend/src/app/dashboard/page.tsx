@@ -67,45 +67,12 @@ export default function DashboardPage() {
   const [isSendingLinkOtp, setIsSendingLinkOtp] = useState(false);
   const [isVerifyingLinkOtp, setIsVerifyingLinkOtp] = useState(false);
   const [linkOtpCooldown, setLinkOtpCooldown] = useState(0);
-  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
 
   useEffect(() => {
     if (linkOtpCooldown <= 0) return;
     const timer = setInterval(() => setLinkOtpCooldown((prev) => Math.max(0, prev - 1)), 1000);
     return () => clearInterval(timer);
   }, [linkOtpCooldown]);
-
-  const handleLinkGoogle = async () => {
-    if (isLinkingGoogle) return;
-    setIsLinkingGoogle(true);
-    try {
-      const { signInWithPopup } = await import('firebase/auth');
-      const { auth, googleProvider } = await import('@/lib/firebase');
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUser = result.user;
-      if (!googleUser.email) {
-        showToast('No email address provided by Google account.', 'error');
-        return;
-      }
-      const res = await useAuthStore.getState().linkGoogle({
-        email: googleUser.email,
-        displayName: googleUser.displayName || '',
-        uid: googleUser.uid,
-      });
-      if (res.success) {
-        showToast(`Google account (${googleUser.email}) successfully linked!`, 'success');
-      } else {
-        showToast(res.message || 'Failed to link Google account.', 'error');
-      }
-    } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-        return;
-      }
-      showToast(err?.message || 'Failed to connect Google account.', 'error');
-    } finally {
-      setIsLinkingGoogle(false);
-    }
-  };
 
   const handleSendLinkEmailOtp = async (e?: React.FormEvent, overrideEmail?: string) => {
     if (e) e.preventDefault();
@@ -752,7 +719,7 @@ export default function DashboardPage() {
                         <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">
                           {user?.email 
                             ? user.email 
-                            : 'Add an email to receive order status updates, receipts, and password resets.'}
+                            : 'Link your Gmail or email address to receive order updates, receipts, and password resets.'}
                         </p>
                       </div>
                     </div>
@@ -769,39 +736,7 @@ export default function DashboardPage() {
                       }}
                       className="bg-white/5 border border-border-glass px-4 py-2 rounded-xl text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95 shadow-sm"
                     >
-                      {user?.email ? (user.isEmailVerified ? 'Change Email' : 'Verify with Code') : 'Link Verified Email'}
-                    </button>
-                  </div>
-
-                  {/* Google Account Linking */}
-                  <div className="p-6 flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-xl bg-white/5 text-text-main flex items-center justify-center shrink-0 border border-border-glass">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Google Account</h4>
-                          {user?.email && user.isEmailVerified ? (
-                            <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/10 text-text-main border border-border-glass">
-                              Available
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">
-                          Connect your Google account for 1-click verified login
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={isLinkingGoogle}
-                      onClick={handleLinkGoogle}
-                      className="bg-white/5 border border-border-glass px-4 py-2 rounded-xl text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50"
-                    >
-                      {isLinkingGoogle ? 'Connecting...' : 'Link Google Account'}
+                      {user?.email ? (user.isEmailVerified ? 'Change Email' : 'Verify with Code') : 'Link Email'}
                     </button>
                   </div>
 
@@ -1285,11 +1220,11 @@ export default function DashboardPage() {
               </svg>
             </div>
             <h2 className="text-xl font-black text-text-main m-0 tracking-tight">
-              {linkEmailStep === 'email' ? 'Link Verified Email' : 'Enter 6-Digit Code'}
+              {linkEmailStep === 'email' ? 'Link Email Address' : 'Enter 6-Digit Code'}
             </h2>
             <p className="text-xs text-text-dim mt-1.5 mb-0">
               {linkEmailStep === 'email'
-                ? 'Enter your email address to receive an instant verification code.'
+                ? 'Enter your Gmail or email address to receive an instant 6-digit verification code.'
                 : `We sent a 6-digit verification code to ${linkEmailInput}. Enter it below.`}
             </p>
           </div>
@@ -1302,7 +1237,7 @@ export default function DashboardPage() {
                   type="email"
                   required
                   autoFocus
-                  placeholder="you@example.com"
+                  placeholder="you@gmail.com"
                   value={linkEmailInput}
                   onChange={(e) => {
                     setLinkEmailInput(e.target.value);
