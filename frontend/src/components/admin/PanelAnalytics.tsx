@@ -465,9 +465,9 @@ export default function PanelAnalytics({
     });
 
     const entries = Object.values(dailyMap).sort((a, b) => a.timestamp - b.timestamp);
-    if (entries.length === 0) return [{ date: 'Period', revenue: totalRevenue, profit: netProfit }];
+    if (entries.length === 0) return [];
     return entries;
-  }, [filteredOrders, totalRevenue, netProfit, inventoryCostMap, timeRange]);
+  }, [filteredOrders, inventoryCostMap, timeRange]);
 
   // 1-Click Thermal Print Slip for Cashier Turnover
   const handlePrintSlip = () => {
@@ -563,12 +563,12 @@ export default function PanelAnalytics({
   }, [biData]);
 
   return (
-    <div className="flex flex-col h-full text-left font-sans max-w-5xl mx-auto pb-16">
-      {/* TOP ACTION TOOLBAR (Expanded Coverage from Today to 1 Year & All Time) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-        {/* Left-Aligned Time Switcher */}
+    <section className="animate-fade flex flex-col min-h-full text-left w-full space-y-4 pb-12">
+      {/* TOP CONTROL TOOLBAR (Timeframe Switcher, Cashier Print Slip, Rent Shield) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* Left: Timeframe Switcher */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex bg-bg-surface border border-border-glass rounded-xl p-1 text-xs shadow-xs flex-wrap gap-0.5">
+          <div className="flex bg-bg-surface border border-border-glass rounded-xl p-1 text-xs shadow-xs flex-wrap gap-1">
             {(
               [
                 { id: 'today', label: 'Today' },
@@ -583,7 +583,7 @@ export default function PanelAnalytics({
                 key={item.id}
                 type="button"
                 onClick={() => setTimeRange(item.id)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   timeRange === item.id
                     ? 'bg-primary text-white shadow-xs'
                     : 'text-text-dim hover:text-text-main hover:bg-white/5'
@@ -599,7 +599,7 @@ export default function PanelAnalytics({
             type="button"
             onClick={handlePrintSlip}
             className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/5 text-text-main border border-border-glass text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-            title="Print summary slip for closing records"
+            title="Print summary slip for cashier turnover"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 6 2 18 2 18 9" />
@@ -610,24 +610,24 @@ export default function PanelAnalytics({
           </button>
         </div>
 
-        {/* Right Side: Stall Overhead Badge */}
+        {/* Right: Rent Shield Badge */}
         <div className="flex items-center gap-2 text-xs">
           <button
             type="button"
             onClick={() => setShowOverheadSettings(!showOverheadSettings)}
-            className="px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main transition flex items-center gap-2 cursor-pointer font-medium shadow-xs"
+            className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main transition flex items-center gap-2 cursor-pointer font-medium shadow-xs"
             title="Configure daily stall rent & electricity budget"
           >
             <span>Rent Shield:</span>
             <strong className="text-text-main font-mono">₱{dailyStallOverhead.toLocaleString()}/day</strong>
-            <span className="text-[10px] text-primary underline">Edit</span>
+            <span className="text-[11px] text-primary underline font-bold">Edit</span>
           </button>
         </div>
       </div>
 
-      {/* Collapsible Stall Overhead Input */}
+      {/* Collapsible Rent Settings */}
       {showOverheadSettings && (
-        <div className="mb-4 p-3.5 bg-bg-surface border border-primary/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-[fadeIn_0.15s_ease-out]">
+        <div className="p-3.5 bg-bg-surface border border-primary/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-[fadeIn_0.15s_ease-out]">
           <span className="text-text-dim">
             Daily shop rent &amp; electricity operating budget:
           </span>
@@ -647,7 +647,7 @@ export default function PanelAnalytics({
                 setShowOverheadSettings(false);
                 showToast(`Daily rent saved: ₱${dailyStallOverhead.toLocaleString()}`, 'success');
               }}
-              className="px-3.5 py-1.5 bg-primary hover:bg-primary-light text-white rounded-lg font-bold text-xs transition cursor-pointer shadow-xs"
+              className="px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-lg font-bold text-xs transition cursor-pointer shadow-xs"
             >
               Save
             </button>
@@ -655,77 +655,72 @@ export default function PanelAnalytics({
         </div>
       )}
 
-      {/* =========================================================================
-          EXECUTIVE FINANCIAL SUMMARY CARDS FOR CHOSEN TIMEFRAME
-          ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      {/* EXECUTIVE FINANCIAL SUMMARY CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* 1. Total Revenue */}
-        <div className="p-4 bg-bg-surface border border-border-glass rounded-2xl shadow-xs">
-          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block mb-1">
+        <div className="glass-card p-4 border border-border-glass rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
             Total Revenue
           </span>
-          <div className="text-xl sm:text-2xl font-black font-mono text-text-main">
-            ₱{totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <div className="text-xl font-bold font-mono text-text-main my-1">
+            ₱{totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <span className="text-[11px] text-text-dim font-mono mt-1 block">
+          <span className="text-[11px] text-text-dim font-mono truncate">
             {filteredOrders.length} orders ({paymentBreakdown.cashCount} Cash, {paymentBreakdown.gcashCount} GCash)
           </span>
         </div>
 
         {/* 2. Material Costs */}
-        <div className="p-4 bg-bg-surface border border-border-glass rounded-2xl shadow-xs">
-          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block mb-1">
-            Material Costs
+        <div className="glass-card p-4 border border-border-glass rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
+            Materials Consumed
           </span>
-          <div className="text-xl sm:text-2xl font-black font-mono text-text-dim">
-            {estimatedMaterialCosts > 0 ? (
-              `₱${estimatedMaterialCosts.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-            ) : (
-              <span className="text-text-dim/60">₱0.00</span>
-            )}
+          <div className="text-xl font-bold font-mono text-text-dim my-1">
+            ₱{estimatedMaterialCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <span className="text-[10px] text-text-dim/80 mt-1 block truncate">
-            Based on supplier unit prices
+          <span className="text-[11px] text-text-dim/70 truncate">
+            Supplier raw inventory cost
           </span>
         </div>
 
         {/* 3. Operating Overhead */}
-        <div className="p-4 bg-bg-surface border border-border-glass rounded-2xl shadow-xs">
-          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block mb-1">
-            Stall Overhead
+        <div className="glass-card p-4 border border-border-glass rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
+            Operating Overhead
           </span>
-          <div className="text-xl sm:text-2xl font-black font-mono text-text-dim">
-            ₱{operatingOverhead.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          <div className="text-xl font-bold font-mono text-text-dim my-1">
+            ₱{operatingOverhead.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <span className="text-[10px] text-text-dim/80 mt-1 block truncate">
-            Rent &amp; utilities allocation
+          <span className="text-[11px] text-text-dim/70 truncate">
+            ₱{dailyStallOverhead.toLocaleString()}/day rent allocation
           </span>
         </div>
 
-        {/* 4. Net Profit */}
-        <div className="p-4 bg-bg-surface border border-border-glass rounded-2xl shadow-xs">
-          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block mb-1">
-            Net Profit (Kita)
+        {/* 4. Net Operating Profit */}
+        <div className="glass-card p-4 border border-border-glass rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
+            Net Operating Profit
           </span>
-          <div className={`text-xl sm:text-2xl font-black font-mono ${netProfit < 0 ? 'text-amber-500' : 'text-emerald-500 dark:text-emerald-400'}`}>
-            {netProfit < 0 ? `-₱${Math.abs(netProfit).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `+₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          <div className={`text-xl font-bold font-mono my-1 ${
+            netProfit > 0 ? 'text-emerald-400' : 'text-text-main'
+          }`}>
+            {netProfit >= 0
+              ? `₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : `-₱${Math.abs(netProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           </div>
-          <span className="text-[11px] font-mono text-text-dim mt-1 block">
-            {netMargin}% net profit margin
+          <span className="text-[11px] text-text-dim font-mono truncate">
+            {totalRevenue > 0 ? `${netMargin}% net margin` : 'Awaiting daily sales'}
           </span>
         </div>
       </div>
 
-      {/* =========================================================================
-          CONTINUOUS AI OPERATIONAL LEARNING & WORKFLOW STRATEGY ENGINE
-          ========================================================================= */}
-      <div className="bg-bg-surface border border-primary/30 rounded-2xl p-5 shadow-xs relative overflow-hidden mb-5">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      {/* CONTINUOUS AI OPERATIONAL LEARNING & STRATEGY ENGINE */}
+      <div className="glass-card p-5 border border-border-glass rounded-xl text-left">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/5 border border-border-glass flex items-center justify-center text-text-main shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4 4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z" />
                 <path d="M18 10a6 6 0 0 1-12 0" />
                 <path d="M12 18v4" />
@@ -735,15 +730,15 @@ export default function PanelAnalytics({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold text-text-main">
-                  Continuous Operational Learning &amp; AI Workflow Strategies
+                  AI Operational Intelligence &amp; Continuous Learning
                 </h3>
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Model Active (365-Day Window)
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success border border-success/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  365-Day Model Active
                 </span>
               </div>
               <p className="text-xs text-text-dim mt-0.5">
-                Continuously analyzes 365 days of orders, consumption velocity, and kiosk capacity to optimize store profitability.
+                Continuously analyzes historical sales velocity, price elasticity, and raw material usage to improve store workflows.
               </p>
             </div>
           </div>
@@ -752,8 +747,8 @@ export default function PanelAnalytics({
             type="button"
             disabled={isLoadingBi}
             onClick={() => fetchBiData(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-            title="Re-run neural optimization over 365-day database aggregates"
+            className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+            title="Re-run operational learning analysis over database records"
           >
             <svg
               width="13"
@@ -761,60 +756,49 @@ export default function PanelAnalytics({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
+              strokeWidth="2"
               className={isLoadingBi ? 'animate-spin' : ''}
             >
-              <path d="M21 2v6h-6" />
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-              <path d="M3 22v-6h6" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-            <span>{isLoadingBi ? 'Analyzing...' : 'Re-train / Analyze (365D)'}</span>
+            <span>{isLoadingBi ? 'Evaluating...' : 'Re-analyze Model'}</span>
           </button>
         </div>
 
-        {/* Learned Signals Grid */}
-        {biData && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4 relative z-10">
-            <div className="p-3 rounded-xl bg-white/5 border border-border-glass">
-              <span className="text-[11px] text-text-dim block mb-0.5">Learned Customer AOV</span>
-              <span className="text-sm font-bold font-mono text-text-main">
-                ₱{(biData.metrics?.avgOrderValue || 0).toFixed(2)}
-              </span>
-              <span className="text-[10px] text-text-dim block mt-0.5">avg. order value learned</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white/5 border border-border-glass">
-              <span className="text-[11px] text-text-dim block mb-0.5">7-Day ML Forecast</span>
-              <span className="text-sm font-bold font-mono text-emerald-500 dark:text-emerald-400">
-                +₱{totalForecastRevenue.toFixed(2)}
-              </span>
-              <span className="text-[10px] text-text-dim block mt-0.5">projected next 7 days</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white/5 border border-border-glass">
-              <span className="text-[11px] text-text-dim block mb-0.5">Data Coverage</span>
-              <span className="text-sm font-bold font-mono text-text-main">
-                {filteredOrders.length} orders
-              </span>
-              <span className="text-[10px] text-text-dim block mt-0.5">in selected timeframe</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white/5 border border-border-glass">
-              <span className="text-[11px] text-text-dim block mb-0.5">AI Recommendations</span>
-              <span className="text-sm font-bold font-mono text-primary">
-                {biData.suggestions.length} Active
-              </span>
-              <span className="text-[10px] text-text-dim block mt-0.5">actionable strategies</span>
-            </div>
+        {/* 3 Key Operational Learned Signals */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
+            <span className="text-[11px] text-text-dim block mb-0.5">Learned Customer AOV</span>
+            <span className="text-sm font-bold font-mono text-text-main">
+              ₱{(biData?.metrics?.avgOrderValue || 0).toFixed(2)}
+            </span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Average ticket per customer</span>
           </div>
-        )}
 
-        {/* Strategy Recommendation Cards */}
-        <div className="space-y-2.5 relative z-10">
+          <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
+            <span className="text-[11px] text-text-dim block mb-0.5">7-Day ML Revenue Forecast</span>
+            <span className="text-sm font-bold font-mono text-emerald-400">
+              +₱{totalForecastRevenue.toFixed(2)}
+            </span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Linear projection from velocity</span>
+          </div>
+
+          <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
+            <span className="text-[11px] text-text-dim block mb-0.5">Operational Training Set</span>
+            <span className="text-sm font-bold font-mono text-text-main">
+              {orders.length} orders
+            </span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Continuous learning dataset</span>
+          </div>
+        </div>
+
+        {/* Actionable Strategy Recommendations */}
+        <div className="space-y-2">
           {isLoadingBi && !biData ? (
-            <div className="p-6 text-center text-xs text-text-dim font-mono animate-pulse">
-              Evaluating historical demand curves, spool velocity, and kiosk backlog...
+            <div className="p-4 text-center text-xs text-text-dim font-mono animate-pulse">
+              Evaluating demand curves, material replenishment thresholds, and kiosk velocity...
             </div>
           ) : biData?.suggestions && biData.suggestions.length > 0 ? (
             biData.suggestions.map((sug) => {
@@ -825,40 +809,29 @@ export default function PanelAnalytics({
               return (
                 <div
                   key={sug.id}
-                  className={`p-3.5 rounded-xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                    isCritical
-                      ? 'bg-rose-500/10 border-rose-500/30'
-                      : isWarning
-                      ? 'bg-amber-500/10 border-amber-500/30'
-                      : 'bg-white/5 border-border-glass hover:border-primary/40'
-                  }`}
+                  className="p-3 rounded-lg bg-white/5 border border-border-glass flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          sug.category === 'Pricing'
-                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                            : sug.category === 'Inventory'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        }`}
-                      >
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-text-main border border-border-glass">
                         {sug.category}
                       </span>
-                      <span
-                        className={`text-[10px] font-bold uppercase ${
-                          isCritical ? 'text-rose-400' : isWarning ? 'text-amber-400' : 'text-text-dim'
-                        }`}
-                      >
-                        • {sug.severity}
-                      </span>
+                      {isCritical && (
+                        <span className="text-[10px] font-bold text-danger uppercase tracking-wider">
+                          • Action Recommended
+                        </span>
+                      )}
+                      {isWarning && (
+                        <span className="text-[10px] font-bold text-warning uppercase tracking-wider">
+                          • Notice
+                        </span>
+                      )}
                       <h4 className="text-xs font-bold text-text-main truncate">{sug.title}</h4>
                     </div>
                     <p className="text-xs text-text-dim leading-relaxed">{sug.description}</p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-border-glass">
                     <button
                       type="button"
                       onClick={() => handleDeclineSuggestion(sug.id)}
@@ -871,121 +844,122 @@ export default function PanelAnalytics({
                       type="button"
                       disabled={isExecuting}
                       onClick={() => handleExecuteSuggestion(sug)}
-                      className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
                     >
-                      {isExecuting ? (
-                        <span>Applying...</span>
-                      ) : (
-                        <>
-                          <span>⚡</span>
-                          <span>{sug.actionText || 'Apply Strategy'}</span>
-                        </>
-                      )}
+                      {isExecuting ? 'Applying...' : sug.actionText || 'Apply Strategy'}
                     </button>
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="p-4 rounded-xl bg-white/5 border border-border-glass flex items-center gap-3 text-xs text-text-dim">
-              <span className="text-base">✨</span>
+            <div className="p-3.5 rounded-lg bg-white/5 border border-border-glass flex items-center gap-2.5 text-xs text-text-dim">
+              <span className="text-emerald-400 font-bold">✓</span>
               <span>
-                <strong>Optimal Performance:</strong> All inventory safety limits, price elasticities, and machine queue throughput are operating at peak efficiency.
+                <strong>System Optimal:</strong> All inventory safety limits, price elasticities, and machine queue throughput are operating at peak efficiency.
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Top Sold Items Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-border-glass">
-        <div className="flex items-center justify-between pb-4 border-b border-border-glass">
+      {/* TOP SOLD GARMENTS & BEST SELLERS TABLE */}
+      <div className="glass-card p-5 border border-border-glass rounded-xl text-left">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-border-glass">
           <div>
             <h3 className="text-sm font-bold text-text-main">Top Sold Garments &amp; Best Sellers</h3>
-              <p className="text-xs text-text-dim">
-                Ranked by units ordered. Material costs reflect supplier unit prices configured in Raw Materials.
-              </p>
-            </div>
-            <span className="text-xs text-text-dim font-mono font-medium">
-              {filteredOrders.length} orders total
-            </span>
+            <p className="text-xs text-text-dim">
+              Ranked by pieces crafted. Material costs reflect Raw Materials inventory supplier unit costs.
+            </p>
           </div>
-
-          {categoryPerformance.length === 0 ? (
-            <div className="py-10 text-center text-xs text-text-dim">
-              No orders recorded during this timeframe.
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border-glass text-text-dim text-[11px] pb-2">
-                      <th className="pb-2.5 font-bold">Item Type</th>
-                      <th className="pb-2.5 font-bold text-center">Pieces Crafted</th>
-                      <th className="pb-2.5 font-bold text-right">Total Bounty</th>
-                      <th className="pb-2.5 font-bold text-right">Material Cost</th>
-                      <th className="pb-2.5 font-bold text-right">Net Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-glass">
-                    {paginatedCategories.map((row) => (
-                      <tr key={row.category} className="hover:bg-primary/5 transition">
-                        <td className="py-3 text-text-main font-semibold text-sm">
-                          {row.category}
-                        </td>
-                        <td className="py-3 text-center font-mono font-bold text-text-main text-sm">
-                          {row.units} pcs
-                        </td>
-                        <td className="py-3 text-right font-mono font-semibold text-text-main text-sm">
-                          ₱{row.revenue.toFixed(2)}
-                        </td>
-                        <td className="py-3 text-right font-mono text-text-dim">
-                          {row.cost > 0 ? (
-                            `₱${row.cost.toFixed(2)}`
-                          ) : (
-                            <span className="text-[11px] text-text-dim/60" title="No supplier cost specified in Raw Materials inventory">
-                              ₱0.00
-                            </span>
-                          )}
-                        </td>
-                        <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-amber-500' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                          {row.profit < 0 ? `-₱${Math.abs(row.profit).toFixed(2)}` : `+₱${row.profit.toFixed(2)}`}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <Pagination
-                currentPage={categoryPage}
-                totalItems={categoryPerformance.length}
-                pageSize={categoryPageSize}
-                onPageChange={setCategoryPage}
-                pageSizeOptions={[5, 10, 20]}
-                onPageSizeChange={(newSize) => {
-                  setCategoryPageSize(newSize);
-                  setCategoryPage(1);
-                }}
-                itemLabel="categories"
-              />
-            </>
-          )}
+          <span className="text-xs text-text-dim font-mono">
+            {filteredOrders.length} orders total
+          </span>
         </div>
 
-        {/* Daily Profit Curve */}
-        <div className="bg-bg-surface border border-border-glass rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-bold text-text-main">Performance Trendline</h3>
-              <p className="text-xs text-text-dim">Clean earnings curve across the chosen period.</p>
-            </div>
-            <span className="text-xs font-mono font-bold text-emerald-500 dark:text-emerald-400">
-              Revenue &amp; Profit (₱)
-            </span>
+        {categoryPerformance.length === 0 ? (
+          <div className="py-8 text-center text-xs text-text-dim">
+            No orders recorded for {timeRange === 'today' ? 'today' : timeRange === 'week' ? 'the past 7 days' : timeRange === 'month' ? 'the past 30 days' : timeRange === '6months' ? 'the past 6 months' : timeRange === '1year' ? 'the past 1 year' : 'this period'}. Expand the timeframe to 6 Months, 1 Year, or All Time to view sales.
           </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border-glass text-text-dim text-[11px]">
+                    <th className="pb-2.5 font-bold">Item Type</th>
+                    <th className="pb-2.5 font-bold text-center">Pieces Crafted</th>
+                    <th className="pb-2.5 font-bold text-right">Total Bounty</th>
+                    <th className="pb-2.5 font-bold text-right">Material Cost</th>
+                    <th className="pb-2.5 font-bold text-right">Net Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-glass">
+                  {paginatedCategories.map((row) => (
+                    <tr key={row.category} className="hover:bg-white/5 transition">
+                      <td className="py-3 text-text-main font-semibold text-sm">
+                        {row.category}
+                      </td>
+                      <td className="py-3 text-center font-mono font-bold text-text-main text-sm">
+                        {row.units} pcs
+                      </td>
+                      <td className="py-3 text-right font-mono font-semibold text-text-main text-sm">
+                        ₱{row.revenue.toFixed(2)}
+                      </td>
+                      <td className="py-3 text-right font-mono text-text-dim">
+                        {row.cost > 0 ? (
+                          `₱${row.cost.toFixed(2)}`
+                        ) : (
+                          <span className="text-[11px] text-text-dim/60" title="No supplier cost specified in Raw Materials inventory">
+                            ₱0.00
+                          </span>
+                        )}
+                      </td>
+                      <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-text-dim' : 'text-emerald-400'}`}>
+                        {row.profit < 0 ? `-₱${Math.abs(row.profit).toFixed(2)}` : `+₱${row.profit.toFixed(2)}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
+            <Pagination
+              currentPage={categoryPage}
+              totalItems={categoryPerformance.length}
+              pageSize={categoryPageSize}
+              onPageChange={setCategoryPage}
+              pageSizeOptions={[5, 10, 20]}
+              onPageSizeChange={(newSize) => {
+                setCategoryPageSize(newSize);
+                setCategoryPage(1);
+              }}
+              itemLabel="categories"
+            />
+          </>
+        )}
+      </div>
+
+      {/* PERFORMANCE TRENDLINE */}
+      <div className="glass-card p-5 border border-border-glass rounded-xl text-left">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-text-main">Performance Trendline</h3>
+            <p className="text-xs text-text-dim">
+              Earnings curve across selected period ({timeRange === '1year' || timeRange === 'all' ? 'Monthly' : timeRange === '6months' ? 'Weekly' : 'Daily'}).
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold text-emerald-400">
+            Revenue &amp; Profit (₱)
+          </span>
+        </div>
+
+        {chartData.length === 0 ? (
+          <div className="h-40 w-full flex flex-col items-center justify-center text-xs text-text-dim border border-dashed border-border-glass rounded-xl bg-white/[0.01]">
+            <span>No order transactions recorded during this timeframe.</span>
+            <span className="text-[11px] text-text-dim/60 mt-1">Select 6 Months, 1 Year, or All Time above to view historical trendlines.</span>
+          </div>
+        ) : (
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -1005,8 +979,8 @@ export default function PanelAnalytics({
                       return (
                         <div className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-xs font-mono shadow-md">
                           <div className="text-text-dim font-sans mb-1">{label}</div>
-                          <div className={`font-bold text-sm ${val < 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                            {val < 0 ? `Balance: -₱${Math.abs(val).toFixed(2)}` : `Profit: +₱${val.toFixed(2)}`}
+                          <div className={`font-bold text-sm ${val < 0 ? 'text-text-main' : 'text-emerald-400'}`}>
+                            {val < 0 ? `Gross Profit: -₱${Math.abs(val).toFixed(2)}` : `Gross Profit: +₱${val.toFixed(2)}`}
                           </div>
                         </div>
                       );
@@ -1018,14 +992,15 @@ export default function PanelAnalytics({
                   type="monotone"
                   dataKey="profit"
                   stroke="#10b981"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#questProfitGrad)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        )}
       </div>
+    </section>
   );
 }
