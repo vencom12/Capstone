@@ -6,7 +6,7 @@ const { logAiChange } = require('../../utils/aiLogger');
 const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 const jwt = require('jsonwebtoken');
 const { resolveToken } = require('../../utils/tokenResolver');
-const { getActiveSuggestions } = require('./forecastingController');
+const { getActiveSuggestions, getCostWatchAudit } = require('./forecastingController');
 const { fetchGroqChatWithFallback, fetchGroqVisionWithFallback } = require('../../utils/groqClient');
 
 // In-flight concurrency lock to prevent race-condition double-spend replays across parallel requests
@@ -55,7 +55,8 @@ const ALLOWED_TOOLS_BY_ROLE = {
         'executeRecommendationAction',
         'routeOrderToMachine',
         'sendCustomerEmail',
-        'createMaintenanceTicket'
+        'createMaintenanceTicket',
+        'getSupplierCostWatch'
     ],
     employee: [
         'updateOrderStatus',
@@ -478,6 +479,28 @@ const executeAction = async (functionName, args, req) => {
         });
         
         actionResult = `Successfully executed recommendation "${suggestionId}": ${actionDetails}`;
+    }
+    else if (functionName === "getSupplierCostWatch") {
+        if (dbUser.role !== 'admin') {
+            return "Permission Denied: Only administrators can audit supplier acquisition costs and gross profit margins.";
+        }
+        try {
+            const audit = await getCostWatchAudit();
+            if (!audit || !audit.items || audit.items.length === 0) {
+                return "Cost Watch: No product raw material cost data found.";
+            }
+            let resText = `### 🔍 Supplier Cost Watch Audit\n\n`;
+            resText += `**Summary**: ${audit.summary.criticalCount} Critical Squeeze, ${audit.summary.tightCount} Tight Margins, ${audit.summary.healthyCount} Healthy Margins (Average Margin: ${audit.summary.averageMarginPercent}%)\n\n`;
+            resText += `| Product | Retail Price | Material Cost | Margin % | Status |\n`;
+            resText += `| :--- | :--- | :--- | :--- | :--- |\n`;
+            audit.items.forEach(it => {
+                const statusEmoji = it.status === 'CRITICAL_SQUEEZE' ? '🔴 CRITICAL' : it.status === 'TIGHT_MARGIN' ? '🟡 TIGHT' : '🟢 HEALTHY';
+                resText += `| **${it.productName}** | ₱${it.retailPrice.toFixed(2)} | ₱${it.materialCost.toFixed(2)} | ${it.marginPercent}% | ${statusEmoji} |\n`;
+            });
+            return resText;
+        } catch (err) {
+            return `Failed to audit supplier costs: ${err.message}`;
+        }
     }
     return actionResult;
 };
@@ -903,6 +926,39 @@ exports.chat = async (req, res) => {
                 reply,
                 tokensUsed: 0
             });
+        }
+
+        // 7. Supplier Cost Watch & Margin Audit (100% Zero-Token DB Fast Path)
+        if (/\b(cost watch|supplier cost|supplier costs|supplier price|supplier prices|margin watch|gross margin|profit margin|margin squeeze)\b/i.test(cleanMsg)) {
+            if (dbUser.role !== 'admin') {
+                return res.json({
+                    success: true,
+                    reply: "🔒 **Permission Denied**: The Supplier Cost Watch and profit margin audit is restricted to administrative staff.",
+                    tokensUsed: 0
+                });
+            }
+            try {
+                const audit = await getCostWatchAudit();
+                let reply = `### 🔍 Live Supplier Cost Watch & Margin Audit\n\n`;
+                reply += `**Status Overview**: ${audit.summary.criticalCount} Critical Squeeze, ${audit.summary.tightCount} Tight Margins, ${audit.summary.healthyCount} Healthy (${audit.items.length} catalog products monitored)\n\n`;
+                reply += `*Note: Per store policy, we maintain fixed customer pricing without discounts and only adjust product retail prices when supplier raw material costs increase.*\n\n`;
+                reply += `| Product | Retail Price | Raw Material Cost | Gross Margin | Health Status |\n`;
+                reply += `| :--- | :--- | :--- | :--- | :--- |\n`;
+                audit.items.forEach(it => {
+                    const statusEmoji = it.status === 'CRITICAL_SQUEEZE' ? '🔴 Squeeze (<25%)' : it.status === 'TIGHT_MARGIN' ? '🟡 Tight (25-40%)' : '🟢 Healthy (>40%)';
+                    reply += `| **${it.productName}** | ₱${it.retailPrice.toFixed(2)} | ₱${it.materialCost.toFixed(2)} | ${it.marginPercent}% | ${statusEmoji} |\n`;
+                });
+                if (audit.summary.criticalCount > 0) {
+                    reply += `\n> ⚠️ **Supplier Cost Alert**: ${audit.summary.criticalCount} product(s) have margins squeezed below 25% due to rising raw material acquisition costs. Consider reviewing supplier acquisition rates or adjusting retail prices.`;
+                }
+                return res.json({
+                    success: true,
+                    reply,
+                    tokensUsed: 0
+                });
+            } catch (err) {
+                console.error('Cost Watch Fast Path Error:', err);
+            }
         }
 
         const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
@@ -1428,6 +1484,17 @@ exports.chat = async (req, res) => {
                             issue: { type: "string", description: "Description of the machine failure or issue" }
                         },
                         required: ["machineId", "issue"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "getSupplierCostWatch",
+                    description: "Audits supplier raw material acquisition costs vs retail prices and calculates profit margins for all products.",
+                    parameters: {
+                        type: "object",
+                        properties: {}
                     }
                 }
             }

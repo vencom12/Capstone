@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -49,6 +50,11 @@ export const THREAD_COLORS = [
 
 
 export default function PanelCounterMode({ orders, refreshData, setOrders }: PanelCounterModeProps) {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<'register' | 'quick_punch' | 'turnover'>('register');
 
@@ -1891,9 +1897,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {/* ───────────────────────────────────────────────────────────── */}
           {/* ANTI-FRAUD VERIFICATION POPUP MODAL (1-TAP TURNOVER)          */}
           {/* ───────────────────────────────────────────────────────────── */}
-          {verifyingOrderForRelease && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade">
-              <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left">
+          {verifyingOrderForRelease && isClient && createPortal(
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+              <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-border-glass">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
@@ -1973,7 +1979,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}
@@ -1983,9 +1990,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       {/* ───────────────────────────────────────────────────────────── */}
       {/* THERMAL CLAIM STUB MODAL (ANTI-FRAUD PROTECTION)            */}
       {/* ───────────────────────────────────────────────────────────── */}
-      {createdOrderTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto animate-fade">
-          <div className="bg-bg-surface border border-border-glass rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 text-left">
+      {createdOrderTicket && isClient && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-bg-surface border border-border-glass rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 text-left my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-border-glass">
               <span className="text-xs font-bold uppercase tracking-wider text-text-dim">
                 {createdOrderTicket.isDirectSale || createdOrderTicket.status === 'Completed' ? 'Official Sales Receipt' : 'Counter Claim Slip'}
@@ -2008,7 +2015,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               Next Customer &rarr;
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

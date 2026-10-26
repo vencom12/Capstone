@@ -53,6 +53,7 @@ router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 
 // Intelligence & Forecasting (Admin Only)
 router.get('/intelligence/suggestions', adminAuth(), forecastingController.getSuggestions);
+router.get('/intelligence/cost-watch', adminAuth(), forecastingController.getCostWatch);
 router.post('/intelligence/execute', adminAuth(), forecastingController.executeSuggestionAction);
 router.post('/intelligence/decline', adminAuth(), forecastingController.declineSuggestionAction);
 router.get('/purchase-orders', staffAuth(), forecastingController.getPurchaseOrders);

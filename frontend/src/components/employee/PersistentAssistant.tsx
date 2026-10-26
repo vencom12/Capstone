@@ -101,6 +101,17 @@ const quickPrompts: QuickPrompt[] = [
         <line x1="6" y1="20" x2="6" y2="14"/>
       </svg>
     )
+  },
+  {
+    id: 'cost-watch',
+    label: 'Cost Watch',
+    prompt: 'Audit supplier raw material acquisition costs and gross profit margins across catalog products.',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    )
   }
 ];
 
@@ -527,11 +538,14 @@ export default function PersistentAssistant() {
     if (upper === 'LOW_STOCK' || upper === 'LOW STOCK' || upper === 'PARTIAL_STOCK' || upper === 'PARTIAL STOCK' || upper === 'DEPLETED') {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Low Stock</span>;
     }
-    if (upper === 'HEALTHY' || upper === 'STABLE') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Healthy</span>;
+    if (upper === 'HEALTHY' || upper === 'STABLE' || upper === 'HEALTHY_MARGIN' || upper === 'HEALTHY (>40%)') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Healthy</span>;
     }
-    if (upper === 'CRITICAL' || upper === 'CRITICAL_OUT' || upper === 'OUT OF STOCK') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Critical Out</span>;
+    if (upper === 'TIGHT_MARGIN' || upper === 'TIGHT (25-40%)' || upper === 'TIGHT') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">Tight Margin</span>;
+    }
+    if (upper === 'CRITICAL' || upper === 'CRITICAL_OUT' || upper === 'OUT OF STOCK' || upper === 'CRITICAL_SQUEEZE' || upper === 'SQUEEZE (<25%)') {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">Critical Squeeze</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Delivered</span>;

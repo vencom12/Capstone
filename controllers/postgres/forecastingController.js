@@ -17,22 +17,22 @@ function calculateLinearProjections(dataPoints, forecastDays = 7) {
         const val = n === 1 ? dataPoints[0] : 0;
         return Array.from({ length: forecastDays }, () => val);
     }
-    
+
     let sumX = 0;
     let sumY = 0;
     let sumXY = 0;
     let sumXX = 0;
-    
+
     for (let i = 0; i < n; i++) {
         sumX += i;
         sumY += dataPoints[i];
         sumXY += i * dataPoints[i];
         sumXX += i * i;
     }
-    
+
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-    
+
     const projections = [];
     for (let j = 0; j < forecastDays; j++) {
         const nextX = n + j;
@@ -44,7 +44,7 @@ function calculateLinearProjections(dataPoints, forecastDays = 7) {
 
 async function getActiveSuggestionsInternal(force = false) {
     const now = new Date();
-    
+
     if (force) {
         // Throttling: limit force refresh to once every 5 minutes
         if (lastForceRefresh && (now - lastForceRefresh < 5 * 60 * 1000)) {
@@ -206,7 +206,7 @@ async function getActiveSuggestionsInternal(force = false) {
     for (const proj of safetyStockProjections) {
         if (proj.isAlarmed || proj.depletionRisk === 'Critical' || proj.depletionRisk === 'Warning') {
             const suggestAmount = Math.max(10, proj.minThreshold * 2 - proj.count);
-            
+
             // Phase 3: Predictive Procurement - Auto-draft PO for Critical Items
             if (proj.depletionRisk === 'Critical' || proj.isAlarmed) {
                 const existingDraft = await prisma.purchaseOrder.findFirst({
@@ -528,7 +528,7 @@ exports.executeSuggestionAction = async (req, res) => {
 
             // Broadcast changes
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
-        } 
+        }
         else if (actionType === 'updatePrice') {
             const { productId, price } = payload;
             const updated = await prisma.product.update({
@@ -554,7 +554,7 @@ exports.executeSuggestionAction = async (req, res) => {
             const { productId, variantAPrice, variantBPrice } = payload;
             const updated = await prisma.product.update({
                 where: { id: productId },
-                data: { 
+                data: {
                     isAbTesting: true,
                     variantAPrice: parseFloat(variantAPrice),
                     variantBPrice: parseFloat(variantBPrice),
@@ -576,14 +576,14 @@ exports.executeSuggestionAction = async (req, res) => {
             const productsList = await prisma.product.findMany();
             const enriched = await enrichProductsWithStock(productsList);
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enriched);
-        } 
+        }
         else if (actionType === 'prioritizeOrder') {
             const { orderId, isRush, priorityScore } = payload;
             const updated = await prisma.order.update({
                 where: { id: orderId },
-                data: { 
+                data: {
                     isRush: isRush,
-                    priorityScore: parseFloat(priorityScore) 
+                    priorityScore: parseFloat(priorityScore)
                 }
             });
 
@@ -597,7 +597,7 @@ exports.executeSuggestionAction = async (req, res) => {
 
             // Broadcast changes
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
-        } 
+        }
         else if (['acknowledge', 'monitorSupplierCost', 'initiateMarketing', 'reviewProcess'].includes(actionType)) {
             entity = ENTITIES.SYSTEM;
             entityId = payload?.productId || payload?.inventoryId || 'global';
@@ -900,7 +900,7 @@ exports.trackProductView = async (req, res) => {
     try {
         const { id } = req.params;
         const { variant } = req.body; // 'A' or 'B'
-        
+
         const dataToUpdate = {};
         if (variant === 'A') dataToUpdate.variantAViews = { increment: 1 };
         if (variant === 'B') dataToUpdate.variantBViews = { increment: 1 };
@@ -917,3 +917,83 @@ exports.trackProductView = async (req, res) => {
         res.status(500).json({ success: false });
     }
 };
+
+async function getCostWatchAuditInternal() {
+    const [products, inventory] = await Promise.all([
+        prisma.product.findMany({ select: { id: true, name: true, price: true } }),
+        prisma.inventory.findMany({
+            select: { id: true, item: true, supplierUnitCost: true }
+        })
+    ]);
+
+    const items = [];
+    let criticalCount = 0;
+    let tightCount = 0;
+    let healthyCount = 0;
+    let totalMargin = 0;
+    let evaluatedCount = 0;
+
+    products.forEach(p => {
+        let materialCost = 0;
+        const lowerName = p.name.toLowerCase().trim();
+        const matchedInv = inventory.find(inv => {
+            const itemLower = (inv.item || '').toLowerCase().trim();
+            return lowerName.includes(itemLower) || itemLower.includes(lowerName);
+        });
+
+        if (matchedInv && Number(matchedInv.supplierUnitCost) > 0) {
+            materialCost = Number(matchedInv.supplierUnitCost);
+        }
+
+        const price = Number(p.price) || 0;
+        if (price > 0 && materialCost > 0) {
+            const margin = ((price - materialCost) / price) * 100;
+            const marginPercent = Math.round(margin * 10) / 10;
+            totalMargin += marginPercent;
+            evaluatedCount++;
+
+            let status = 'HEALTHY_MARGIN';
+            if (materialCost >= price || marginPercent < 25) {
+                status = 'CRITICAL_SQUEEZE';
+                criticalCount++;
+            } else if (marginPercent < 40) {
+                status = 'TIGHT_MARGIN';
+                tightCount++;
+            } else {
+                healthyCount++;
+            }
+
+            items.push({
+                productId: p.id,
+                productName: p.name,
+                retailPrice: price,
+                materialCost,
+                marginPercent,
+                status
+            });
+        }
+    });
+
+    return {
+        summary: {
+            criticalCount,
+            tightCount,
+            healthyCount,
+            averageMarginPercent: evaluatedCount > 0 ? Math.round((totalMargin / evaluatedCount) * 10) / 10 : 0
+        },
+        items
+    };
+}
+
+exports.getCostWatchAudit = getCostWatchAuditInternal;
+
+exports.getCostWatch = async (req, res) => {
+    try {
+        const audit = await getCostWatchAuditInternal();
+        res.json({ success: true, ...audit });
+    } catch (err) {
+        console.error('Failed to run Cost Watch audit:', err);
+        res.status(500).json({ success: false, message: 'Failed to run Cost Watch audit' });
+    }
+};
+
