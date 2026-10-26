@@ -80,18 +80,6 @@ const quickPrompts: QuickPrompt[] = [
     )
   },
   {
-    id: 'machines',
-    label: 'Machine Fleet',
-    prompt: 'Show current embroidery machine fleet status and operator assignments.',
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="2"/>
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M6 12h.01M18 12h.01"/>
-      </svg>
-    )
-  },
-  {
     id: 'revenue',
     label: 'Revenue Snapshot',
     prompt: 'Show today\'s financial and sales revenue breakdown.',
@@ -126,7 +114,7 @@ export default function PersistentAssistant() {
     {
       id: createMsgId(),
       sender: 'ai',
-      text: 'Hello! I am **StitchMaster AI**. I have live conversational access to the workshop database. I can audit product variant stock, track low materials, analyze sales, prioritize queues, and manage machine throughput. How can I help you today?'
+      text: 'Hello! I am **StitchMaster AI**. I have live conversational access to the workshop database. I can audit product variant stock, track low materials, analyze sales, and prioritize workshop queues. How can I help you today?'
     }
   ]);
   const [inputValue, setInputValue] = useState('');

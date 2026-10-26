@@ -535,11 +535,11 @@ exports.chat = async (req, res) => {
             const firstName = (dbUser.name || dbUser.username || 'Team Member').split(' ')[0];
             const reply = `Hello, **${firstName}**. I am **StitchMaster AI**, your workshop intelligence assistant.\n\n` +
                 `I have live database access. As an **${roleTitle}**, here is what I can do for you:\n` +
-                `• **Live Operations:** Check rush orders, queue status, and machine fleet capacity.\n` +
+                `• **Live Operations:** Check rush orders, queue status, and counter production.\n` +
                 `• **Materials & Inventory:** Audit low thread spools and draft material acquisition forms.\n` +
                 (dbUser.role === 'admin' 
                     ? `• **Analytics & Management:** Inspect daily revenue, conversion rates, and manage product catalog stock.\n` 
-                    : `• **Workstation:** Review assigned machine orders, update order status, and log machine maintenance.\n`) +
+                    : `• **Workstation:** Review active orders, update production status, and track counter handover.\n`) +
                 `\nWhat would you like to work on today? Ask a question or select a command above.`;
 
             return res.json({

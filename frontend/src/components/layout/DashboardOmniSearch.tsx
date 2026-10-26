@@ -100,7 +100,7 @@ export default function DashboardOmniSearch({
         { id: 'overview', title: 'Dashboard Overview', desc: 'KPIs, stats, and real-time operations', category: 'Navigation' },
         { id: 'products', title: 'Product Catalog', desc: 'Manage base fans, bags, aprons, and pricing', category: 'Navigation' },
         { id: 'materials', title: 'Raw Materials & Spools', desc: 'Stock levels, spools, fabrics, and reorder alerts', category: 'Navigation' },
-        { id: 'staffing', title: 'Personnel & Operators', desc: 'Staff shifts, roles, and machine assignments', category: 'Navigation' },
+        { id: 'staffing', title: 'Personnel & Operators', desc: 'Staff accounts, roles, and permissions', category: 'Navigation' },
         { id: 'analytics', title: 'Business Analytics', desc: 'Revenue breakdowns, product volume, and trends', category: 'Navigation' },
         { id: 'history', title: 'Archived Order History', desc: 'Search past completed and archived orders', category: 'Navigation' },
         { id: 'audit', title: 'System Audit Trail', desc: 'Operator logs, inventory changes, and system history', category: 'Navigation' },
