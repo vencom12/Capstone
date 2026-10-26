@@ -1380,7 +1380,37 @@ exports.downloadDailyFinancialPdf = async (req, res) => {
 
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         const dailyRent = (settings && settings.dailyRent != null) ? settings.dailyRent : (process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00);
-        const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
+        const inventoryItems = await prisma.inventory.findMany({
+            where: { supplierUnitCost: { not: null, gt: 0 } },
+            select: { item: true, supplierUnitCost: true }
+        });
+        const costMap = {};
+        inventoryItems.forEach(i => {
+            costMap[i.item.toLowerCase().trim()] = Number(i.supplierUnitCost);
+        });
+
+        let materialsCost = 0;
+        todayOrders.forEach(o => {
+            if (Array.isArray(o.items)) {
+                o.items.forEach(it => {
+                    if (!it.isByog && !o.isByog) {
+                        const name = (it.name || '').toLowerCase().trim();
+                        const qty = it.quantity || 1;
+                        let matchedCost = 0;
+                        for (const [invName, cost] of Object.entries(costMap)) {
+                            const cleanInv = invName.replace(/[\(\)]/g, '').split(' ')[0].toLowerCase().trim();
+                            if (cleanInv.length >= 3 && name.includes(cleanInv)) {
+                                matchedCost = cost;
+                                break;
+                            }
+                        }
+                        materialsCost += matchedCost * qty;
+                    }
+                });
+            }
+        });
+        materialsCost = Math.round(materialsCost * 100) / 100;
+
         const totalExpenses = dailyRent + materialsCost;
         const netProfit = paidRevenue - totalExpenses;
 

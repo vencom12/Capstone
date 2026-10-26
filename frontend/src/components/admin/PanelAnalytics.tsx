@@ -100,21 +100,24 @@ export default function PanelAnalytics({
   }, [inventory]);
 
   const getRealOrEstimatedCost = (itemName: string, itemPrice: number, isByog: boolean, qty: number): number => {
-    if (isByog) return 12 * qty;
+    // If the customer brought their own item (BYOG), the shop incurred no garment material cost
+    if (isByog) return 0;
 
-    const lowerName = itemName.toLowerCase();
+    const lowerName = (itemName || '').toLowerCase().trim();
+    if (!lowerName) return 0;
+
+    // Only match against actual inventory items that have an explicitly specified supplierUnitCost
     for (const [invName, cost] of Object.entries(inventoryCostMap)) {
-      if (cost != null && lowerName.includes(invName.replace('(', '').replace(')', '').split(' ')[0].toLowerCase())) {
-        return cost * qty;
+      if (cost != null && Number(cost) > 0) {
+        const cleanInv = invName.replace(/[\(\)]/g, '').split(' ')[0].toLowerCase().trim();
+        if (cleanInv.length >= 3 && lowerName.includes(cleanInv)) {
+          return Number(cost) * qty;
+        }
       }
     }
 
-    if (lowerName.includes('bath towel')) return 80 * qty;
-    if (lowerName.includes('hand towel') || lowerName.includes('towel')) return 45 * qty;
-    if (lowerName.includes('cap') || lowerName.includes('hat')) return 75 * qty;
-    if (lowerName.includes('fan')) return 25 * qty;
-    if (lowerName.includes('shirt') || lowerName.includes('polo')) return 90 * qty;
-    return Math.round(itemPrice * 0.35) * qty;
+    // If no supplier unit cost has been set in the Raw Materials inventory, cost is 0
+    return 0;
   };
 
   // 2. Filter orders by selected timeframe
@@ -173,9 +176,7 @@ export default function PanelAnalytics({
         });
         return sum + orderCost;
       }
-      if (o.isByog) return sum + 12;
-      const amt = Number(o.totalAmount || o.amount) || 0;
-      return sum + Math.round(amt * 0.35);
+      return sum;
     }, 0);
   }, [filteredOrders, inventoryCostMap]);
 
@@ -289,7 +290,7 @@ export default function PanelAnalytics({
           cost += getRealOrEstimatedCost(item.name || '', item.price || rev, item.isByog || o.isByog, item.quantity || 1);
         });
       } else {
-        cost = o.isByog ? 12 : Math.round(rev * 0.35);
+        cost = 0;
       }
       const prof = rev - cost;
 
@@ -488,7 +489,9 @@ export default function PanelAnalytics({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-main">Top Sold Garments &amp; Best Sellers</h3>
-              <p className="text-xs text-text-dim">Ranked by units ordered by your customers.</p>
+              <p className="text-xs text-text-dim">
+                Ranked by units ordered. Material costs reflect supplier unit prices configured in Raw Materials.
+              </p>
             </div>
             <span className="text-xs text-text-dim font-mono font-medium">
               {filteredOrders.length} orders total
@@ -525,7 +528,13 @@ export default function PanelAnalytics({
                           ₱{row.revenue.toFixed(2)}
                         </td>
                         <td className="py-3 text-right font-mono text-text-dim">
-                          ₱{row.cost.toFixed(2)}
+                          {row.cost > 0 ? (
+                            `₱${row.cost.toFixed(2)}`
+                          ) : (
+                            <span className="text-[11px] text-text-dim/60" title="No supplier cost specified in Raw Materials inventory">
+                              ₱0.00
+                            </span>
+                          )}
                         </td>
                         <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-amber-500' : 'text-emerald-500 dark:text-emerald-400'}`}>
                           {row.profit < 0 ? `-₱${Math.abs(row.profit).toFixed(2)}` : `+₱${row.profit.toFixed(2)}`}
