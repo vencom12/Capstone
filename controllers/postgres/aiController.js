@@ -1178,6 +1178,7 @@ exports.chat = async (req, res) => {
         - Format overviews and lists in beautiful Markdown Tables.
         - Always use uppercase status identifiers in tables/lists so the UI highlights them as premium colored pills (e.g., 'LOW_STOCK', 'HEALTHY', 'CRITICAL', 'WARNING', 'DELIVERED', 'PREPARING', 'IN QUEUE', 'PENDING PAYMENT', 'CANCELED').
         - Provide strategic advice, analysis, strategies, and tactics for the business based on inventory counts and order trends.
+        - STORE PRICING & DISCOUNT POLICY: The business strictly DOES NOT give discounts, coupons, sales, or promotional markdowns under any circumstances. Prices are fixed and are ONLY raised if supplier raw material acquisition prices increase and threaten gross margin.
         - Every time you modify the database, the system will automatically record it in the change logs.
         - CRITICAL COMMAND & BATCH INSTRUCTION COMPLIANCE:
           1. Follow user instructions thoroughly and completely. Never skip or ignore requested items.
@@ -2701,7 +2702,8 @@ CRITICAL RULES:
 7. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.
 8. TURNAROUND TIMES & QUEUE SCHEDULE:
 - For single items (1 cap, 1 towel, simple text/monogram): actual machine stitching takes under a minute up to 1-2 minutes. When retail orders are ahead in the live counter queue, small orders typically take 15 to 45 minutes for same-day pickup.
-- For bulk batch orders (schools, corporate events, teams): production takes anywhere from several days up to a few weeks depending on piece count, active bulk queue, and incoming small order volume. NEVER quote a flat 24-48 hours for bulk orders. Encourage customers to check live dashboard queue tracking or consult our workshop staff for custom bulk scheduling.`;
+- For bulk batch orders (schools, corporate events, teams): production takes anywhere from several days up to a few weeks depending on piece count, active bulk queue, and incoming small order volume. NEVER quote a flat 24-48 hours for bulk orders. Encourage customers to check live dashboard queue tracking or consult our workshop staff for custom bulk scheduling.
+9. NO DISCOUNTS POLICY: The business strictly does NOT offer discounts, promotional codes, or custom price cuts. All product prices and lettering fees are fixed.`;
 
         // Efficient history window: last 4 messages, trimmed text length
         const messages = [

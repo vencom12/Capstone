@@ -244,56 +244,77 @@ async function getActiveSuggestionsInternal(force = false) {
         }
     }
 
-    // pricing optimizations based on sales velocity in the last 14 days
-    const orderCounts = {};
-    orders14d.forEach(order => {
-        const items = order.items || [];
-        items.forEach(item => {
-            orderCounts[item.name.toLowerCase()] = (orderCounts[item.name.toLowerCase()] || 0) + (item.quantity || 1);
-        });
+    // 5. Margin Protection Pricing (Strict Store Policy: Never give discounts; only adjust price if supplier raw material costs increase)
+    const inventoryCostMap = {};
+    inventory.forEach(inv => {
+        const cost = Number(inv.supplierUnitCost) || 0;
+        inventoryCostMap[inv.id] = cost;
+        inventoryCostMap[inv.item.toLowerCase()] = cost;
     });
 
     products.forEach(p => {
-        const ordersQty = orderCounts[p.name.toLowerCase()] || 0;
-        const dailyVelocity = ordersQty / 14;
-        
-        if (dailyVelocity > 0.3) {
-            const originalPrice = p.price;
-            const suggestedPrice = parseFloat((originalPrice * 1.1).toFixed(2));
-            fallbackSuggestions.push({
-                id: `SUG-PRICE-INC-${p.id}`,
-                title: `A/B Price Testing: ${p.name}`,
-                category: 'Pricing',
-                severity: 'info',
-                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is ₱${originalPrice.toFixed(2)}. Suggest running an A/B test with a 10% price increase (₱${suggestedPrice.toFixed(2)}) to model price elasticity and maximize margin.`,
-                actionText: `Start A/B Test (₱${originalPrice.toFixed(2)} vs ₱${suggestedPrice.toFixed(2)})`,
-                action: {
-                    type: 'startAbTest',
-                    payload: {
-                        productId: p.id,
-                        variantAPrice: originalPrice,
-                        variantBPrice: suggestedPrice
-                    }
-                }
+        let totalUnitMaterialCost = 0;
+        const recipe = productRecipes[p.name.toLowerCase()] || [];
+
+        if (Array.isArray(recipe) && recipe.length > 0) {
+            recipe.forEach(r => {
+                const cost = inventoryCostMap[r.inventoryId] || inventoryCostMap[(r.name || '').toLowerCase()] || 0;
+                totalUnitMaterialCost += cost * (Number(r.quantity) || 1);
             });
-        } else if (ordersQty === 0 && p.count > 10) {
-            const originalPrice = p.price;
-            const suggestedPrice = parseFloat((originalPrice * 0.85).toFixed(2));
-            fallbackSuggestions.push({
-                id: `SUG-PRICE-DEC-${p.id}`,
-                title: `Clearance Discount: ${p.name}`,
-                category: 'Pricing',
-                severity: 'info',
-                description: `Design "${p.name}" is slow-moving with 0 orders in the last 14 days. Current stockpile count is ${p.count}. Suggest temporary 15% markdown to ₱${suggestedPrice.toFixed(2)} to stimulate sales and free up inventory resources.`,
-                actionText: `Apply 15% Discount (₱${suggestedPrice.toFixed(2)})`,
-                action: {
-                    type: 'updatePrice',
-                    payload: {
-                        productId: p.id,
-                        price: suggestedPrice
-                    }
-                }
+        } else {
+            // Check direct inventory match by product name
+            const lowerName = p.name.toLowerCase();
+            const matchedInv = inventory.find(inv => {
+                const itemLower = inv.item.toLowerCase();
+                return lowerName.includes(itemLower) || itemLower.includes(lowerName);
             });
+            if (matchedInv && Number(matchedInv.supplierUnitCost) > 0) {
+                totalUnitMaterialCost = Number(matchedInv.supplierUnitCost);
+            }
+        }
+
+        // Only evaluate if supplier unit cost is recorded and positive
+        if (totalUnitMaterialCost > 0 && p.price > 0) {
+            const costRatio = totalUnitMaterialCost / p.price;
+
+            // Critical: Supplier cost meets or exceeds selling price (zero or negative gross profit)
+            if (totalUnitMaterialCost >= p.price) {
+                const targetPrice = Math.ceil((totalUnitMaterialCost / 0.60) / 10) * 10;
+                fallbackSuggestions.push({
+                    id: `SUG-PRICE-SUPPLIER-CRIT-${p.id}`,
+                    title: `Supplier Cost Squeeze: ${p.name}`,
+                    category: 'Pricing',
+                    severity: 'critical',
+                    description: `Supplier raw material unit cost for "${p.name}" is ₱${totalUnitMaterialCost.toFixed(2)}, which meets or exceeds its current retail price of ₱${p.price.toFixed(2)}. Per business policy, price increases are only enacted when supplier costs rise. Recommend adjusting retail price to ₱${targetPrice.toFixed(2)} to restore standard margin.`,
+                    actionText: `Update Price to ₱${targetPrice.toFixed(2)}`,
+                    action: {
+                        type: 'updatePrice',
+                        payload: {
+                            productId: p.id,
+                            price: targetPrice
+                        }
+                    }
+                });
+            }
+            // Warning: Supplier cost exceeds 65% of selling price (eroding gross margin below 35%)
+            else if (costRatio > 0.65) {
+                const targetPrice = Math.ceil((totalUnitMaterialCost / 0.60) / 10) * 10;
+                fallbackSuggestions.push({
+                    id: `SUG-PRICE-SUPPLIER-WARN-${p.id}`,
+                    title: `Supplier Cost Margin Alert: ${p.name}`,
+                    category: 'Pricing',
+                    severity: 'warning',
+                    description: `Supplier material cost for "${p.name}" is ₱${totalUnitMaterialCost.toFixed(2)} (${Math.round(costRatio * 100)}% of current retail price ₱${p.price.toFixed(2)}). Per business policy, price adjustments are reserved strictly for supplier cost increases. Recommend adjusting price to ₱${targetPrice.toFixed(2)} to maintain baseline profitability.`,
+                    actionText: `Adjust Price to ₱${targetPrice.toFixed(2)}`,
+                    action: {
+                        type: 'updatePrice',
+                        payload: {
+                            productId: p.id,
+                            price: targetPrice
+                        }
+                    }
+                });
+            }
         }
     });
 
@@ -348,12 +369,18 @@ Here is the current business status:
 - Total orders (last 365 days): ${totalOrders365D}
 - Total realized revenue (last 365 days): ₱${totalRevenue365D.toFixed(2)}
 - Safety spools status & depletion days: ${JSON.stringify(safetyStockProjections)}
-- Product price lists & sales velocities: ${JSON.stringify(products.map(p => ({ id: p.id, name: p.name, price: p.price, stock: p.count, velocity: (orderCounts[p.name.toLowerCase()] || 0) / 14 })))}
+- Product price lists: ${JSON.stringify(products.map(p => ({ id: p.id, name: p.name, price: p.price, stock: p.count })))}
 
 We have generated these automated baseline suggestions:
 ${JSON.stringify(fallbackSuggestions, null, 2)}
 
-Your task is to review these baseline suggestions, consolidate them, or refine their strategic reasoning to make them feel highly professional and descriptive.
+MANDATORY STORE BUSINESS POLICIES & CONSTRAINTS:
+1. ZERO DISCOUNTS: The store NEVER gives discounts, coupons, markdowns, or clearance sales under any circumstances. NEVER propose discounts, promotions, or price cuts.
+2. CONSERVATIVE PRICING: The store does NOT raise prices easily. NEVER suggest raising prices based on popularity, high sales velocity, seasonal demand, or A/B testing elasticity.
+3. SUPPLIER-COST-DRIVEN PRICING ONLY: The store ONLY raises a product's price if the supplier's raw material acquisition cost increases, threatening the business profit margin. If supplier costs are stable, prices MUST remain unchanged.
+4. INVENTORY PROCUREMENT: Focus recommendations on proactive procurement of depleted raw materials (spools, blanks) before safety limits run out, and prioritizing pending orders in queue.
+
+Your task is to review these baseline suggestions, consolidate them, or refine their strategic reasoning to make them feel highly professional and descriptive while strictly obeying the business policies above.
 Format your output as a raw JSON array of objects. Do not include markdown code block formatting (like \`\`\`json).
 Each object in the array must contain:
 - id: String (unique suggestion ID)
@@ -362,7 +389,7 @@ Each object in the array must contain:
 - severity: "info" | "warning" | "critical"
 - description: String (clear strategic reasoning referencing specific numbers, e.g. visits, spools count, depletion rate, or pending hours)
 - actionText: String (label for the implementation action button)
-- action: Object (the execution details, which must match one of the action formats from the baseline suggestions: restock, updatePrice, prioritizeOrder)
+- action: Object (the execution details: restock, updatePrice, prioritizeOrder)
 
 Return ONLY the valid JSON array of objects.`;
 
@@ -385,6 +412,22 @@ Return ONLY the valid JSON array of objects.`;
             console.warn('[BI Advisor Warning] LLM Suggestion failed, utilizing baseline heuristics:', err.message);
         }
     }
+
+    // Strict policy enforcement filter: ensure no discounts or arbitrary price tests ever leak through
+    suggestions = suggestions.filter(s => {
+        const titleLower = (s.title || '').toLowerCase();
+        const descLower = (s.description || '').toLowerCase();
+        const actLower = (s.actionText || '').toLowerCase();
+        const text = `${titleLower} ${descLower} ${actLower}`;
+
+        if (text.includes('discount') || text.includes('markdown') || text.includes('clearance') || text.includes('sale price')) {
+            return false;
+        }
+        if (text.includes('a/b test') || text.includes('price elasticity') || s.action?.type === 'startAbTest') {
+            return false;
+        }
+        return true;
+    });
 
     const metrics = {
         totalVisits: totalVisits365D,
@@ -555,6 +598,13 @@ exports.executeSuggestionAction = async (req, res) => {
             // Broadcast changes
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
         } 
+        else if (['acknowledge', 'monitorSupplierCost', 'initiateMarketing', 'reviewProcess'].includes(actionType)) {
+            entity = ENTITIES.SYSTEM;
+            entityId = payload?.productId || payload?.inventoryId || 'global';
+            actionDetails = `Confirmed strategy implementation: ${payload?.note || actionType}`;
+            logAiChange(username, 'Implement Strategy', actionDetails);
+            biCache = null;
+        }
         else {
             return res.status(400).json({ message: `Unknown BI action type: ${actionType}` });
         }

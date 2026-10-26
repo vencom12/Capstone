@@ -738,7 +738,7 @@ export default function PanelAnalytics({
                 </span>
               </div>
               <p className="text-xs text-text-dim mt-0.5">
-                Continuously analyzes historical sales velocity, price elasticity, and raw material usage to improve store workflows.
+                Continuously monitors supplier raw material costs, demand velocity, and inventory safety buffers to protect store margins.
               </p>
             </div>
           </div>
@@ -856,7 +856,7 @@ export default function PanelAnalytics({
             <div className="p-3.5 rounded-lg bg-white/5 border border-border-glass flex items-center gap-2.5 text-xs text-text-dim">
               <span className="text-emerald-400 font-bold">✓</span>
               <span>
-                <strong>System Optimal:</strong> All inventory safety limits, price elasticities, and machine queue throughput are operating at peak efficiency.
+                <strong>System Optimal:</strong> All raw material buffers, supplier cost margins, and machine queue throughput are operating at peak efficiency.
               </span>
             </div>
           )}
