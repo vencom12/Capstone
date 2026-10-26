@@ -142,38 +142,99 @@ export default function ProductModal({
     fontCss: "'Brush Script MT', 'Segoe Script', 'Great Vibes', cursive",
   };
 
-  const THREAD_COLORS = [
-    { name: 'Metallic Gold', hex: '#d4af37' },
-    { name: 'Pure White', hex: '#ffffff' },
-    { name: 'Obsidian Black', hex: '#1c1917' },
-    { name: 'Silver Platinum', hex: '#e2e8f0' },
-    { name: 'Royal Navy', hex: '#1e3a8a' },
-    { name: 'Crimson Red', hex: '#b91c1c' },
-    { name: 'Emerald Green', hex: '#047857' },
-    { name: 'Rose Blush', hex: '#fb7185' },
+  interface StudioThreadColor {
+    name: string;
+    hex: string;
+    isAvailable?: boolean;
+  }
+
+  const THREAD_COLORS: StudioThreadColor[] = [
+    { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
+    { name: 'Pure White', hex: '#ffffff', isAvailable: true },
+    { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
+    { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
+    { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
+    { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
+    { name: 'Emerald Green', hex: '#047857', isAvailable: true },
+    { name: 'Rose Blush', hex: '#fb7185', isAvailable: true },
   ];
 
-  const [availableColors, setAvailableColors] = useState<Array<{ name: string; hex: string }>>(THREAD_COLORS);
+  const [availableColors, setAvailableColors] = useState<StudioThreadColor[]>(THREAD_COLORS);
 
-  // Sync available studio thread colors from admin settings
-  useEffect(() => {
-    api.get<any>('/api/customer/settings')
-      .then((res) => {
-        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors)) {
-          const active = res.availableThreadColors
-            .filter((c: any) => c.isAvailable !== false)
-            .map((c: any) => ({ name: c.name, hex: c.hex }));
-          if (active.length > 0) {
-            setAvailableColors(active);
-            setThreadColor((prev) => {
-              const stillValid = active.some((c: any) => c.name === prev.name);
-              return stillValid ? prev : active[0];
-            });
+  // Sync available studio thread colors from admin settings in real time
+  const applyThreadColorConfig = (colors: any[], notifyIfSwitched = true) => {
+    if (!Array.isArray(colors) || colors.length === 0) return;
+    const mapped: StudioThreadColor[] = colors.map((c: any) => ({
+      name: c.name,
+      hex: c.hex,
+      isAvailable: c.isAvailable !== false,
+    }));
+    setAvailableColors(mapped);
+
+    // If currently selected color became unavailable, auto-switch to first available color
+    setThreadColor((prevSelected) => {
+      const match = mapped.find((c) => c.name === prevSelected.name);
+      if (!match || match.isAvailable === false) {
+        const firstActive = mapped.find((c) => c.isAvailable !== false);
+        if (firstActive) {
+          if (notifyIfSwitched && match) {
+            showToast(`"${prevSelected.name}" thread is temporarily unavailable. Switched to ${firstActive.name}.`, 'warning');
           }
+          return { name: firstActive.name, hex: firstActive.hex };
         }
-      })
-      .catch(() => {});
-  }, []);
+      }
+      return prevSelected;
+    });
+  };
+
+  useEffect(() => {
+    const fetchLatestColors = () => {
+      api.get<any>('/api/customer/settings')
+        .then((res) => {
+          if (res?.availableThreadColors) {
+            applyThreadColorConfig(res.availableThreadColors, true);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchLatestColors();
+
+    const handleSettingsEvent = (e: any) => {
+      if (e.detail?.availableThreadColors) {
+        applyThreadColorConfig(e.detail.availableThreadColors, true);
+      } else {
+        fetchLatestColors();
+      }
+    };
+
+    const handleDataChanged = (e: any) => {
+      if (e.detail?.entity === 'SETTINGS') {
+        fetchLatestColors();
+      }
+    };
+
+    const handleFocus = () => {
+      fetchLatestColors();
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsEvent);
+    window.addEventListener('dataChanged', handleDataChanged);
+    window.addEventListener('focus', handleFocus);
+
+    // Actively poll every 2.5s while customization modal is open so changes by admin show immediately
+    let interval: NodeJS.Timeout | null = null;
+    if (product) {
+      interval = setInterval(fetchLatestColors, 2500);
+    }
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsEvent);
+      window.removeEventListener('dataChanged', handleDataChanged);
+      window.removeEventListener('focus', handleFocus);
+      if (interval) clearInterval(interval);
+    };
+  }, [product]);
 
   // Sync state when product opens
   useEffect(() => {
@@ -186,8 +247,8 @@ export default function ProductModal({
       setCustomActiveImage(null);
       setIsZoomed(false);
       setImageFit('cover');
-      const defaultColor = availableColors.length > 0 ? availableColors[0] : { name: 'Metallic Gold', hex: '#d4af37' };
-      setThreadColor(defaultColor);
+      const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
+      setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         // Automatically select the first IN-STOCK variant; if all are out of stock, select none
         const firstInStock = product.variants.find((v) => (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0);
@@ -266,11 +327,20 @@ export default function ProductModal({
     }
 
     const trimmedCustomText = customText.trim();
-    if (isPersonalized && !trimmedCustomText) {
-      setMonogramError('Please enter the name or text you would like embroidered.');
-      setActionError('Please enter your embroidery text.');
-      showToast('Please enter the name or text you would like embroidered.', 'error');
-      return null;
+    if (isPersonalized) {
+      if (!trimmedCustomText) {
+        setMonogramError('Please enter the name or text you would like embroidered.');
+        setActionError('Please enter your embroidery text.');
+        showToast('Please enter the name or text you would like embroidered.', 'error');
+        return null;
+      }
+      const chosenColor = availableColors.find((c) => c.name === threadColor.name);
+      if (chosenColor && chosenColor.isAvailable === false) {
+        const err = `Thread color "${threadColor.name}" is temporarily unavailable. Please choose another color.`;
+        setActionError(err);
+        showToast(err, 'error');
+        return null;
+      }
     }
 
     const existing = items.find(
@@ -932,20 +1002,35 @@ export default function ProductModal({
                   <div className="flex flex-wrap gap-2">
                     {availableColors.map((tc) => {
                       const isSelected = threadColor.name === tc.name;
+                      const isAvailable = tc.isAvailable !== false;
                       return (
                         <button
                           key={tc.name}
                           type="button"
-                          onClick={() => setThreadColor(tc)}
-                          title={tc.name}
-                          className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
-                            isSelected
-                              ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110 border-white'
-                              : 'border-white/20 hover:scale-105'
+                          disabled={!isAvailable}
+                          onClick={() => {
+                            if (isAvailable) {
+                              setThreadColor({ name: tc.name, hex: tc.hex });
+                            }
+                          }}
+                          title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
+                          className={`relative w-7 h-7 rounded-full border flex items-center justify-center transition-all overflow-hidden ${
+                            !isAvailable
+                              ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/20 scale-90 bg-neutral-900/60'
+                              : isSelected
+                              ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110 border-white cursor-pointer'
+                              : 'border-white/20 hover:scale-105 cursor-pointer'
                           }`}
                           style={{ backgroundColor: tc.hex }}
                         >
-                          {isSelected && (
+                          {/* Strike-through diagonal slash when thread is crossed out */}
+                          {!isAvailable && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 transform shadow-xs" />
+                            </div>
+                          )}
+
+                          {isSelected && isAvailable && (
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={tc.hex === '#ffffff' || tc.hex === '#e2e8f0' ? 'text-black' : 'text-white'}>
                               <polyline points="20 6 9 17 4 12" />
                             </svg>

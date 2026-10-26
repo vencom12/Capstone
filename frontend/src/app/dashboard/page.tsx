@@ -299,6 +299,10 @@ export default function DashboardPage() {
 
       socket.on('ordersUpdated', handleLiveUpdate);
       socket.on('order:cancelled', handleLiveUpdate);
+
+      socket.on('settingsUpdated', (data: any) => {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
+      });
     };
 
     // Load Socket.IO client script if not already on window

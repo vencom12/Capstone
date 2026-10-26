@@ -1169,6 +1169,18 @@ exports.updateSettings = async (req, res) => {
             update: updateData,
             create: { id: 'global', ...updateData, inventoryAuditLog: true }
         });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('settingsUpdated', {
+                availableThreadColors: settings.availableThreadColors
+            });
+            io.emit('dataChanged', {
+                entity: 'SETTINGS',
+                action: 'UPDATE'
+            });
+        }
+
         res.json(settings);
     } catch (err) {
         console.error('Update settings error:', err);

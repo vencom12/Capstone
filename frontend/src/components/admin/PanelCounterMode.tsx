@@ -87,26 +87,67 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [customerContact, setCustomerContact] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [threadColor, setThreadColor] = useState('Metallic Gold');
-  const [activeThreadColors, setActiveThreadColors] = useState(THREAD_COLORS);
+  const [activeThreadColors, setActiveThreadColors] = useState<Array<{ name: string; hex: string; isAvailable?: boolean }>>(THREAD_COLORS);
 
-  // Sync available thread colors from studio settings
+  // Sync available thread colors from studio settings in real-time
+  const syncSettingsColors = (colors: any[]) => {
+    if (!Array.isArray(colors) || colors.length === 0) return;
+    const mapped = colors.map((c: any) => ({
+      name: c.name,
+      hex: c.hex,
+      isAvailable: c.isAvailable !== false,
+    }));
+    setActiveThreadColors(mapped);
+    setThreadColor((prev) => {
+      const matching = mapped.find((c: any) => c.name === prev);
+      if (!matching || matching.isAvailable === false) {
+        const firstAvail = mapped.find((c: any) => c.isAvailable !== false);
+        return firstAvail ? firstAvail.name : prev;
+      }
+      return prev;
+    });
+  };
+
   useEffect(() => {
-    api.get<any>('/api/customer/settings')
-      .then((res) => {
-        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors)) {
-          const active = res.availableThreadColors
-            .filter((c: any) => c.isAvailable !== false)
-            .map((c: any) => ({ name: c.name, hex: c.hex }));
-          if (active.length > 0) {
-            setActiveThreadColors(active);
-            setThreadColor((prev) => {
-              const stillValid = active.some((c: any) => c.name === prev);
-              return stillValid ? prev : active[0].name;
-            });
+    const fetchColors = () => {
+      api.get<any>('/api/customer/settings')
+        .then((res) => {
+          if (res?.availableThreadColors) {
+            syncSettingsColors(res.availableThreadColors);
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    };
+
+    fetchColors();
+
+    const handleSettingsEvent = (e: any) => {
+      if (e.detail?.availableThreadColors) {
+        syncSettingsColors(e.detail.availableThreadColors);
+      } else {
+        fetchColors();
+      }
+    };
+
+    const handleDataChanged = (e: any) => {
+      if (e.detail?.entity === 'SETTINGS') {
+        fetchColors();
+      }
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsEvent);
+    window.addEventListener('dataChanged', handleDataChanged);
+    window.addEventListener('focus', fetchColors);
+
+    // Live counter poll every 2.5 seconds to keep counter and workshop in absolute sync
+    const interval = setInterval(fetchColors, 2500);
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsEvent);
+      window.removeEventListener('dataChanged', handleDataChanged);
+      window.removeEventListener('focus', fetchColors);
+      clearInterval(interval);
+    };
   }, []);
 
   // Multi-Item Ticket Cart & Visual Verification
@@ -1116,18 +1157,29 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
                     {activeThreadColors.map(tc => {
                       const isSelected = threadColor === tc.name;
+                      const isAvailable = tc.isAvailable !== false;
                       return (
                         <button
                           key={tc.name}
                           type="button"
-                          onClick={() => setThreadColor(tc.name)}
-                          title={tc.name}
-                          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary'
-                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20'
+                          disabled={!isAvailable}
+                          onClick={() => {
+                            if (isAvailable) setThreadColor(tc.name);
+                          }}
+                          title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
+                          className={`relative flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition overflow-hidden ${
+                            !isAvailable
+                              ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/10 bg-black/20'
+                              : isSelected
+                              ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary cursor-pointer'
+                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20 cursor-pointer'
                           }`}
                         >
+                          {!isAvailable && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-[130%] h-[1.5px] bg-rose-500/80 rotate-45 transform" />
+                            </div>
+                          )}
                           <span
                             className="w-3.5 h-3.5 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
                             style={{ backgroundColor: tc.hex }}

@@ -109,6 +109,10 @@ export default function StorefrontPage() {
           }
         }
       });
+
+      socket.on('settingsUpdated', (data: any) => {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
+      });
     };
 
     document.head.appendChild(script);
