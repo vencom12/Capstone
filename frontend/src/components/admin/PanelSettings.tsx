@@ -3,25 +3,6 @@
 import { useState, useEffect } from 'react';
 import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
-import GlassModal from '@/components/ui/GlassModal';
-
-export interface StudioThreadColor {
-  name: string;
-  hex: string;
-  isAvailable: boolean;
-}
-
-export const DEFAULT_STUDIO_THREAD_COLORS: StudioThreadColor[] = [
-  { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
-  { name: 'Pure White', hex: '#ffffff', isAvailable: true },
-  { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
-  { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
-  { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
-  { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
-  { name: 'Emerald Green', hex: '#047857', isAvailable: true },
-  { name: 'Rose Blush', hex: '#fb7185', isAvailable: true },
-];
-
 interface PanelSettingsProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -78,13 +59,6 @@ export default function PanelSettings({
   const [largeOrderQuoteThreshold, setLargeOrderQuoteThreshold] = useState<number>(100);
   const [isSavingArtisan, setIsSavingArtisan] = useState(false);
 
-  // Studio Thread Palette State
-  const [threadColors, setThreadColors] = useState<StudioThreadColor[]>(DEFAULT_STUDIO_THREAD_COLORS);
-  const [isSavingThreads, setIsSavingThreads] = useState(false);
-  const [showAddColorModal, setShowAddColorModal] = useState(false);
-  const [newColorName, setNewColorName] = useState('');
-  const [newColorHex, setNewColorHex] = useState('#8B5CF6');
-
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingBiz, setIsSavingBiz] = useState(false);
@@ -132,20 +106,6 @@ export default function PanelSettings({
         if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerDay(res.maxBulkPiecesPerDay);
         if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
         if (res.largeOrderQuoteThreshold !== undefined) setLargeOrderQuoteThreshold(res.largeOrderQuoteThreshold);
-        if (res.availableThreadColors && Array.isArray(res.availableThreadColors) && res.availableThreadColors.length > 0) {
-          const loaded = res.availableThreadColors.map((c: any) => {
-            if (typeof c === 'string') {
-              const matched = DEFAULT_STUDIO_THREAD_COLORS.find(d => d.name === c);
-              return { name: c, hex: matched ? matched.hex : '#999999', isAvailable: true };
-            }
-            return {
-              name: String(c.name || 'Custom Color'),
-              hex: String(c.hex || '#ffffff'),
-              isAvailable: c.isAvailable !== false
-            };
-          });
-          setThreadColors(loaded);
-        }
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -158,71 +118,6 @@ export default function PanelSettings({
   useEffect(() => {
     fetchSettings();
   }, []);
-
-  const handleToggleThreadColor = (index: number) => {
-    setThreadColors(prev => prev.map((tc, idx) => 
-      idx === index ? { ...tc, isAvailable: !tc.isAvailable } : tc
-    ));
-  };
-
-  const handleEnableAllThreads = () => {
-    setThreadColors(prev => prev.map(tc => ({ ...tc, isAvailable: true })));
-    showToast('All thread colors enabled', 'info');
-  };
-
-  const handleDisableAllThreads = () => {
-    setThreadColors(prev => prev.map(tc => ({ ...tc, isAvailable: false })));
-    showToast('All thread colors disabled', 'info');
-  };
-
-  const handleResetThreadPalette = () => {
-    setThreadColors(DEFAULT_STUDIO_THREAD_COLORS);
-    showToast('Thread palette reset to defaults. Click Save.', 'info');
-  };
-
-  const handleDeleteColor = (index: number) => {
-    if (threadColors.length <= 1) {
-      showToast('At least one thread color must remain in the palette', 'warning');
-      return;
-    }
-    const toRemove = threadColors[index];
-    setThreadColors(prev => prev.filter((_, idx) => idx !== index));
-    showToast(`Removed "${toRemove.name}". Click Save to publish.`, 'info');
-  };
-
-  const handleAddCustomColor = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newColorName.trim()) {
-      showToast('Please enter a color name', 'error');
-      return;
-    }
-    if (threadColors.some(c => c.name.toLowerCase() === newColorName.trim().toLowerCase())) {
-      showToast('A color with this name already exists', 'error');
-      return;
-    }
-    setThreadColors(prev => [
-      ...prev,
-      { name: newColorName.trim(), hex: newColorHex, isAvailable: true }
-    ]);
-    setNewColorName('');
-    setShowAddColorModal(false);
-    showToast(`Added "${newColorName.trim()}" to palette. Click Save to publish.`, 'success');
-  };
-
-  const handleSaveThreadPalette = async () => {
-    setIsSavingThreads(true);
-    try {
-      await api.put('/api/admin/settings', {
-        availableThreadColors: threadColors
-      });
-      showToast('Studio embroidery thread palette saved successfully!', 'success');
-    } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Failed to save thread palette', 'error');
-    } finally {
-      setIsSavingThreads(false);
-    }
-  };
 
   const handleSaveAISettings = async () => {
     setIsSaving(true);
@@ -1037,152 +932,6 @@ export default function PanelSettings({
                   </button>
                 </div>
               </div>
-
-              {/* Studio Embroidery Thread Palette Card */}
-              <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col gap-6">
-                <div className="flex items-start justify-between pb-4 border-b border-border-glass flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 text-xl">
-                      🧵
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold m-0 text-text-main">Embroidery Thread Studio Palette</h3>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 font-bold">
-                          {threadColors.filter(c => c.isAvailable).length} of {threadColors.length} Active
-                        </span>
-                      </div>
-                      <p className="text-xs text-text-dim m-0 mt-0.5">
-                        Choose which thread colors are stocked and available in your workshop. Customers and counter staff can only select active colors.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bulk Actions */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={handleEnableAllThreads}
-                      className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-[11px] font-medium text-text-main cursor-pointer transition-all"
-                    >
-                      Enable All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddColorModal(true)}
-                      className="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/25 text-[11px] font-bold text-primary cursor-pointer transition-all flex items-center gap-1"
-                    >
-                      <span>+</span> Add Color
-                    </button>
-                  </div>
-                </div>
-
-                {/* Color Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {threadColors.map((tc, idx) => {
-                    return (
-                      <div
-                        key={tc.name}
-                        className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                          tc.isAvailable
-                            ? 'bg-white/[0.04] border-white/15 shadow-sm'
-                            : 'bg-white/[0.01] border-white/5 opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Color Swatch */}
-                          <div
-                            className="w-8 h-8 rounded-full border-2 border-white/20 shadow-inner shrink-0 flex items-center justify-center relative"
-                            style={{ backgroundColor: tc.hex }}
-                          >
-                            {!tc.isAvailable && (
-                              <div className="w-full h-0.5 bg-rose-500 rotate-45 absolute" />
-                            )}
-                          </div>
-                          
-                          {/* Color Info */}
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-bold text-text-main truncate">
-                              {tc.name}
-                            </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] font-mono text-text-dim">
-                                {tc.hex}
-                              </span>
-                              <span
-                                className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                                  tc.isAvailable
-                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                                    : 'bg-zinc-500/15 text-zinc-400 border border-zinc-500/20'
-                                }`}
-                              >
-                                {tc.isAvailable ? 'In Stock' : 'Out'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions: Toggle & Delete */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleThreadColor(idx)}
-                            title={tc.isAvailable ? `Mark ${tc.name} unavailable` : `Mark ${tc.name} available`}
-                            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer border-none p-0 ${
-                              tc.isAvailable ? 'bg-emerald-500' : 'bg-white/20'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                                tc.isAvailable ? 'translate-x-5' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteColor(idx)}
-                            title={`Delete ${tc.name} from studio palette`}
-                            className="p-1 rounded-md bg-white/5 hover:bg-rose-500/20 text-text-dim hover:text-rose-400 transition-colors border-none cursor-pointer"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-border-glass flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={handleResetThreadPalette}
-                    disabled={isSavingThreads}
-                    className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer transition-all"
-                  >
-                    Reset Standard Palette
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveThreadPalette}
-                    disabled={isSavingThreads}
-                    className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
-                  >
-                    {isSavingThreads ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                        Saving Palette...
-                      </>
-                    ) : (
-                      'Save Thread Palette'
-                    )}
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1674,69 +1423,7 @@ export default function PanelSettings({
               </div>
             </div>
           )}
-
         </div>
-
-        {/* Add Custom Thread Color Modal */}
-        <GlassModal
-          isOpen={showAddColorModal}
-          onClose={() => setShowAddColorModal(false)}
-          title="Add Specialty Thread Color"
-        >
-          <form onSubmit={handleAddCustomColor} className="flex flex-col gap-4">
-            <p className="text-xs text-text-dim m-0">
-              Add a new embroidery thread spool color to the studio palette. Once saved, customers and staff can select it immediately.
-            </p>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-main">Color Name</label>
-              <input
-                type="text"
-                required
-                value={newColorName}
-                onChange={(e) => setNewColorName(e.target.value)}
-                placeholder="e.g. Royal Purple, Tiffany Mint"
-                className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-text-main">Color Hex Code</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={newColorHex}
-                  onChange={(e) => setNewColorHex(e.target.value)}
-                  className="w-10 h-9 p-0.5 rounded border border-border-glass cursor-pointer bg-transparent"
-                />
-                <input
-                  type="text"
-                  required
-                  value={newColorHex}
-                  onChange={(e) => setNewColorHex(e.target.value)}
-                  placeholder="#8B5CF6"
-                  className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs font-mono flex-1 outline-none focus:border-primary transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-glass">
-              <button
-                type="button"
-                onClick={() => setShowAddColorModal(false)}
-                className="px-4 py-2 text-xs font-medium text-text-dim hover:text-text-main bg-transparent border border-border-glass rounded-lg cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 border-none rounded-lg cursor-pointer shadow-sm"
-              >
-                Add Color to Palette
-              </button>
-            </div>
-          </form>
-        </GlassModal>
     </section>
   );
 }
