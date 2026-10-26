@@ -153,6 +153,28 @@ export default function ProductModal({
     { name: 'Rose Blush', hex: '#fb7185' },
   ];
 
+  const [availableColors, setAvailableColors] = useState<Array<{ name: string; hex: string }>>(THREAD_COLORS);
+
+  // Sync available studio thread colors from admin settings
+  useEffect(() => {
+    api.get<any>('/api/customer/settings')
+      .then((res) => {
+        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors)) {
+          const active = res.availableThreadColors
+            .filter((c: any) => c.isAvailable !== false)
+            .map((c: any) => ({ name: c.name, hex: c.hex }));
+          if (active.length > 0) {
+            setAvailableColors(active);
+            setThreadColor((prev) => {
+              const stillValid = active.some((c: any) => c.name === prev.name);
+              return stillValid ? prev : active[0];
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Sync state when product opens
   useEffect(() => {
     if (product) {
@@ -164,7 +186,8 @@ export default function ProductModal({
       setCustomActiveImage(null);
       setIsZoomed(false);
       setImageFit('cover');
-      setThreadColor({ name: 'Metallic Gold', hex: '#d4af37' });
+      const defaultColor = availableColors.length > 0 ? availableColors[0] : { name: 'Metallic Gold', hex: '#d4af37' };
+      setThreadColor(defaultColor);
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
         // Automatically select the first IN-STOCK variant; if all are out of stock, select none
         const firstInStock = product.variants.find((v) => (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0);
@@ -907,7 +930,7 @@ export default function ProductModal({
                     <span className="text-text-main normal-case font-medium">{threadColor.name}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {THREAD_COLORS.map((tc) => {
+                    {availableColors.map((tc) => {
                       const isSelected = threadColor.name === tc.name;
                       return (
                         <button

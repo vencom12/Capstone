@@ -87,6 +87,27 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [customerContact, setCustomerContact] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [threadColor, setThreadColor] = useState('Metallic Gold');
+  const [activeThreadColors, setActiveThreadColors] = useState(THREAD_COLORS);
+
+  // Sync available thread colors from studio settings
+  useEffect(() => {
+    api.get<any>('/api/customer/settings')
+      .then((res) => {
+        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors)) {
+          const active = res.availableThreadColors
+            .filter((c: any) => c.isAvailable !== false)
+            .map((c: any) => ({ name: c.name, hex: c.hex }));
+          if (active.length > 0) {
+            setActiveThreadColors(active);
+            setThreadColor((prev) => {
+              const stillValid = active.some((c: any) => c.name === prev);
+              return stillValid ? prev : active[0].name;
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Multi-Item Ticket Cart & Visual Verification
   const [ticketItems, setTicketItems] = useState<CounterTicketItem[]>([]);
@@ -1093,7 +1114,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </span>
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                    {THREAD_COLORS.map(tc => {
+                    {activeThreadColors.map(tc => {
                       const isSelected = threadColor === tc.name;
                       return (
                         <button

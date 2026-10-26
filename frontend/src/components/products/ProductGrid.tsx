@@ -151,46 +151,52 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
           </div>
         ) : null
       ) : (
-        /* Dashboard Favorites: Filter Saved Designs */
-        <div className="flex flex-col gap-2.5 pb-2">
-          <div className="flex items-center justify-between gap-2 pb-1 text-xs text-text-dim">
-            <span className="font-semibold text-text-dim">Filter Saved Designs</span>
-          </div>
-          {categories.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 -mx-1 px-1">
-              {categories.map((category) => {
-                const isSelected = selectedCategory === category;
-                const count = categoryCounts[category] ?? 0;
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    suppressHydrationWarning
-                    onClick={() => setSelectedCategory(category)}
-                    className={`
-                      group px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center gap-2 border select-none shrink-0
-                      ${isSelected
-                        ? 'bg-primary text-white border-primary shadow-[0_4px_16px_rgba(220,38,38,0.35)] scale-[1.02]'
-                        : 'bg-white/5 hover:bg-white/10 text-text-dim hover:text-text-main border-border-glass hover:border-white/20'
-                      }
-                    `}
-                  >
-                    <span>{category === 'All' ? 'All Products' : category}</span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold transition-colors ${
-                        isSelected
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/5 text-text-dim group-hover:bg-white/10 group-hover:text-text-main'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+        /* Dashboard Favorites: Filter Saved Designs Dropdown */
+        categories.length > 1 ? (
+          <div className="flex items-center justify-between flex-wrap gap-3 pb-2 pt-0.5">
+            <div className="flex items-center gap-2.5">
+              <label htmlFor="favorites-category-select" className="text-xs font-semibold text-text-dim flex items-center gap-1.5 select-none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                <span>Filter Category:</span>
+              </label>
+              <div className="relative inline-flex items-center">
+                <select
+                  id="favorites-category-select"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="appearance-none bg-white/[0.06] hover:bg-white/[0.1] text-text-main text-xs sm:text-sm font-semibold pl-3 pr-8 py-2 rounded-xl border border-border-glass hover:border-white/20 focus:border-primary focus:ring-1 focus:ring-primary outline-none cursor-pointer transition-all shadow-sm"
+                >
+                  {categories.map((category) => {
+                    const count = categoryCounts[category] ?? 0;
+                    const label = category === 'All' ? 'All Saved Products' : category;
+                    return (
+                      <option key={category} value={category} className="bg-bg-surface text-text-main py-1">
+                        {label} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="pointer-events-none absolute right-2.5 flex items-center text-text-dim">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+
+            {selectedCategory !== 'All' && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('All')}
+                className="text-xs text-text-dim hover:text-text-main underline cursor-pointer bg-transparent border-none p-1 transition-colors"
+              >
+                Clear filter ({categoryCounts['All'] || baseProducts.length} total)
+              </button>
+            )}
+          </div>
+        ) : null
       )}
 
       {/* Loading skeletons */}

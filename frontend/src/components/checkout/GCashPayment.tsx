@@ -155,7 +155,6 @@ export default function GCashPayment({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[0.68rem] font-bold text-text-main px-1.5 py-0.5 rounded bg-white/[0.06] border border-border-glass shrink-0">GCash</span>
-            <span className="text-[0.8rem] font-bold text-text-main">GCash Express Pay</span>
           </div>
           <button
             type="button"

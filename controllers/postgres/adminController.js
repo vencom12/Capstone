@@ -1156,6 +1156,13 @@ exports.updateSettings = async (req, res) => {
         if (updateData.artisanDailyMinutes !== undefined) updateData.artisanDailyMinutes = parseFloat(updateData.artisanDailyMinutes) || 500.0;
         if (updateData.expressLanePercent !== undefined) updateData.expressLanePercent = parseFloat(updateData.expressLanePercent) || 35.0;
         if (updateData.efficiencyFactor !== undefined) updateData.efficiencyFactor = parseFloat(updateData.efficiencyFactor) || 0.85;
+        if (updateData.availableThreadColors !== undefined && typeof updateData.availableThreadColors === 'string') {
+            try {
+                updateData.availableThreadColors = JSON.parse(updateData.availableThreadColors);
+            } catch (e) {
+                // Ignore parse error
+            }
+        }
 
         const settings = await prisma.systemSettings.upsert({
             where: { id: 'global' },

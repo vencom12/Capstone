@@ -511,11 +511,6 @@ export default function CheckoutModal({
               Secure Checkout
             </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[0.62rem] font-medium text-text-dim px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border-glass/50">
-              Pick-up &amp; GCash
-            </span>
-          </div>
         </div>
 
         {/* 4-Step Sticky Checkout Progress Bar with Checkpoints (Fixed on scroll) */}
@@ -653,31 +648,6 @@ export default function CheckoutModal({
         <div className="grid grid-cols-[1.1fr_1fr] gap-5 max-md:grid-cols-1 max-md:gap-4">
           {/* Left Column: Store Pick-up Appointment & Order Items */}
           <div className="flex flex-col gap-3 min-w-0">
-            {/* Express Checkout Indicator */}
-            {checkoutItems && checkoutItems.length > 0 && (
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass shadow-xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[0.75rem] font-bold text-text-main truncate">
-                      Direct Checkout
-                    </span>
-                    <span className="text-[0.62rem] text-text-dim truncate">
-                      Checking out this item directly • Cart items preserved
-                    </span>
-                  </div>
-                </div>
-                {allBasketItems.length > 0 && onSwitchToFullBasket && (
-                  <button
-                    type="button"
-                    onClick={onSwitchToFullBasket}
-                    className="text-[0.68rem] text-primary hover:text-white font-semibold underline underline-offset-2 shrink-0 cursor-pointer bg-transparent border-none ml-2"
-                  >
-                    View cart ({allBasketItems.length}) ›
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Unified Store Pick-up & Schedule Card */}
             <div className="bg-white/[0.02] border border-border-glass/60 rounded-xl p-3 flex flex-col gap-2.5">
               {/* Card Header: Store Location & Policies */}
@@ -708,22 +678,6 @@ export default function CheckoutModal({
                 >
                   Policies ›
                 </button>
-              </div>
-
-              {/* Workshop Queue Information */}
-              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.02] border border-border-glass/40 text-[0.68rem]">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-text-dim font-medium truncate">
-                    {activeQueueOrdersCount === 0
-                      ? 'Workshop Queue: Available for stitching'
-                      : activeQueueOrdersCount <= 3
-                      ? `Workshop Queue: Normal load (${activeQueueOrdersCount} in line)`
-                      : `Workshop Queue: High demand (${activeQueueOrdersCount} in line)`}
-                  </span>
-                </div>
-                <span className="text-[0.62rem] text-text-dim font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-border-glass/40 shrink-0 ml-1">
-                  Pacific Mall Studio
-                </span>
               </div>
 
               {/* Single Pick-up Date Dropdown Picker */}
@@ -763,19 +717,10 @@ export default function CheckoutModal({
                   </div>
                 </div>
 
-                {/* Prompt user if not selected yet vs confirmed selection */}
-                {!selectedDateStr ? (
+                {/* Prompt user if not selected yet */}
+                {!selectedDateStr && (
                   <div className="px-2.5 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20 text-[0.68rem] text-amber-300 font-medium flex items-center gap-1.5">
                     <span>Please choose your pick-up date from the dropdown above.</span>
-                  </div>
-                ) : (
-                  <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.02] border border-border-glass/40 flex items-center justify-between text-[0.68rem]">
-                    <span className="font-semibold text-text-main truncate">
-                      Pick-up Date: {availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}
-                    </span>
-                    <span className="text-text-dim ml-2 shrink-0">
-                      Pacific Mall (10 AM – 8 PM)
-                    </span>
                   </div>
                 )}
               </div>

@@ -285,28 +285,6 @@ exports.submitOrder = async (req, res) => {
                 }
 
                 // Note: Variants share the product's unified stock pool since inventory is acquired in assorted colors.
-
-                // Check and lock recipe thread inventory items
-                if (product.recipe && Array.isArray(product.recipe)) {
-                    const { getReservedThreadCounts } = require('../../utils/inventoryManager');
-                    const reservedThreads = await getReservedThreadCounts(tx);
-                    for (const component of product.recipe) {
-                        const neededMaterial = Math.ceil(component.quantity * needed);
-
-                        // SELECT FOR UPDATE to lock the inventory row
-                        const invItems = await tx.$queryRaw`
-                            SELECT * FROM "Inventory" WHERE id = ${component.inventoryId} FOR UPDATE
-                        `;
-                        const inventoryItem = invItems[0];
-                        const invCount = inventoryItem ? inventoryItem.count : 0;
-                        const reservedCount = reservedThreads[component.inventoryId] || 0;
-                        const availableMaterial = Math.max(0, invCount - reservedCount);
-
-                        if (availableMaterial < neededMaterial) {
-                            throw new Error(`OutOfStockMaterial:${product.name}:${component.name}`);
-                        }
-                    }
-                }
             }
 
             // 2. Reserve garments in database (lock counts)
@@ -531,12 +509,6 @@ exports.submitOrder = async (req, res) => {
         res.json(successPayload);
     } catch (err) {
         console.error('submitOrder error:', err);
-        if (err.message && err.message.startsWith('OutOfStockMaterial:')) {
-            const parts = err.message.split('OutOfStockMaterial:')[1].split(':');
-            const productName = parts[0];
-            const materialName = parts[1];
-            return res.status(400).json({ message: `Sorry, "${productName}" cannot be ordered (insufficient "${materialName}" thread in inventory).` });
-        }
         if (err.message && err.message.startsWith('OutOfStockVariant:')) {
             const variantDetails = err.message.split('OutOfStockVariant:')[1];
             return res.status(400).json({ message: `Sorry, ${variantDetails} is currently out of stock.` });
@@ -1030,6 +1002,17 @@ exports.getPublicSettings = async (req, res) => {
         } catch (dbErr) {
             console.warn('[getPublicSettings] Database query notice, using default settings:', dbErr.message);
         }
+        const DEFAULT_THREAD_PALETTE = [
+            { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
+            { name: 'Pure White', hex: '#ffffff', isAvailable: true },
+            { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
+            { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
+            { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
+            { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
+            { name: 'Emerald Green', hex: '#047857', isAvailable: true },
+            { name: 'Rose Blush', hex: '#fb7185', isAvailable: true }
+        ];
+
         res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
@@ -1039,6 +1022,7 @@ exports.getPublicSettings = async (req, res) => {
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null,
+            availableThreadColors: (settings && settings.availableThreadColors) ? settings.availableThreadColors : DEFAULT_THREAD_PALETTE,
             emergencyNotice: settings?.emergencyNoticeActive ? {
                 active: true,
                 policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
@@ -1051,6 +1035,16 @@ exports.getPublicSettings = async (req, res) => {
         });
     } catch (err) {
         console.error('[getPublicSettings] Unexpected error:', err);
+        const DEFAULT_THREAD_PALETTE = [
+            { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
+            { name: 'Pure White', hex: '#ffffff', isAvailable: true },
+            { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
+            { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
+            { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
+            { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
+            { name: 'Emerald Green', hex: '#047857', isAvailable: true },
+            { name: 'Rose Blush', hex: '#fb7185', isAvailable: true }
+        ];
         // Fallback default response rather than 500 crash
         res.json({
             giftPackagingPrice: 5.00,
@@ -1061,6 +1055,7 @@ exports.getPublicSettings = async (req, res) => {
             receiptTagline: 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: null,
             gcashQrCodeUrl: null,
+            availableThreadColors: DEFAULT_THREAD_PALETTE,
             emergencyNotice: { active: false }
         });
     }

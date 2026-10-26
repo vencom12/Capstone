@@ -226,6 +226,7 @@ model SystemSettings {
   emergencyNoticeCreatedAt  DateTime?
   emergencyNoticeUpdatedBy  String?
   emergencyOrderingPolicy  String    @default("ALLOW_WITH_DELAY") // "ALLOW_WITH_DELAY" | "PAUSE_ORDERS"
+  availableThreadColors    Json?
 }
 
 model GlobalAuditLog {

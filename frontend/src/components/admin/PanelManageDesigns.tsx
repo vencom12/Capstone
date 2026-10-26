@@ -20,6 +20,23 @@ interface PanelManageDesignsProps {
 
 const DEFAULT_CATEGORIES = ['Towel', 'Bath Towel', 'Fan', 'Clothing', 'Custom'];
 
+export interface StudioThreadColor {
+  name: string;
+  hex: string;
+  isAvailable: boolean;
+}
+
+const DEFAULT_STUDIO_THREAD_COLORS: StudioThreadColor[] = [
+  { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
+  { name: 'Pure White', hex: '#ffffff', isAvailable: true },
+  { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
+  { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
+  { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
+  { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
+  { name: 'Emerald Green', hex: '#047857', isAvailable: true },
+  { name: 'Rose Blush', hex: '#fb7185', isAvailable: true },
+];
+
 export default function PanelManageDesigns({
   products,
   inventory,
@@ -30,6 +47,48 @@ export default function PanelManageDesigns({
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Studio Thread Palette State (Slim Section in Products Tab)
+  const [threadColors, setThreadColors] = useState<StudioThreadColor[]>(DEFAULT_STUDIO_THREAD_COLORS);
+
+  useEffect(() => {
+    api.get<any>('/api/customer/settings')
+      .then((res) => {
+        if (res?.availableThreadColors && Array.isArray(res.availableThreadColors) && res.availableThreadColors.length > 0) {
+          const loaded = res.availableThreadColors.map((c: any) => {
+            if (typeof c === 'string') {
+              const matched = DEFAULT_STUDIO_THREAD_COLORS.find(d => d.name === c);
+              return { name: c, hex: matched ? matched.hex : '#999999', isAvailable: true };
+            }
+            return {
+              name: String(c.name || 'Custom Color'),
+              hex: String(c.hex || '#ffffff'),
+              isAvailable: c.isAvailable !== false
+            };
+          });
+          setThreadColors(loaded);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleThreadColor = async (index: number) => {
+    const nextColors = threadColors.map((tc, idx) =>
+      idx === index ? { ...tc, isAvailable: !tc.isAvailable } : tc
+    );
+    setThreadColors(nextColors);
+    const toggled = nextColors[index];
+
+    try {
+      await api.put('/api/admin/settings', {
+        availableThreadColors: nextColors,
+      });
+      showToast(`${toggled.name}: ${toggled.isAvailable ? 'Available' : 'Unavailable'}`, 'info');
+    } catch (e: any) {
+      console.error(e);
+      showToast('Failed to update thread availability', 'error');
+    }
+  };
 
   // Design modal state
   const [isOpen, setIsOpen] = useState(false);
@@ -537,6 +596,34 @@ export default function PanelManageDesigns({
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
+      {/* Slim Thread Availability Bar */}
+      <div className="mb-4 p-2 rounded-2xl bg-white/[0.03] border border-border-glass flex items-center overflow-x-auto no-scrollbar gap-2 shadow-sm">
+        {threadColors.map((tc, idx) => (
+          <button
+            key={tc.name}
+            type="button"
+            onClick={() => handleToggleThreadColor(idx)}
+            title={tc.isAvailable ? `${tc.name}: Available (Click to mark unavailable)` : `${tc.name}: Unavailable (Click to mark available)`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 cursor-pointer transition-all shrink-0 select-none ${
+              tc.isAvailable
+                ? 'bg-white/10 border-white/20 text-text-main hover:bg-white/15'
+                : 'bg-white/[0.02] border-white/5 text-text-dim/40 line-through hover:text-text-dim'
+            }`}
+          >
+            <span
+              className="w-3.5 h-3.5 rounded-full border border-white/25 shrink-0 shadow-sm"
+              style={{ backgroundColor: tc.hex }}
+            />
+            <span className="text-[11px] font-semibold">{tc.name}</span>
+            {tc.isAvailable ? (
+              <span className="text-[10px] text-emerald-400 font-bold">✓</span>
+            ) : (
+              <span className="text-[10px] text-rose-400/70 font-bold">✕</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Compact Top Filter & Action Toolbar */}
       <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
         {isAdmin && (

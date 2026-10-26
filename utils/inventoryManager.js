@@ -139,34 +139,6 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
                     }
                 }
             }
-
-            // Explode Recipe BOM and deduct threads
-            if (product.recipe && Array.isArray(product.recipe)) {
-                for (const component of product.recipe) {
-                    const totalDeduction = Math.ceil(component.quantity * garmentQuantity);
-
-                    // Check/deduct from stockpile
-                    const inventoryItem = await tx.inventory.findUnique({ where: { id: component.inventoryId } });
-                    if (inventoryItem) {
-                        const updatedInv = await tx.inventory.update({
-                            where: { id: component.inventoryId },
-                            data: { count: { decrement: totalDeduction } }
-                        });
-                        
-                        if (logEnabled) {
-                            await tx.inventoryLog.create({
-                                data: {
-                                    inventoryId: component.inventoryId,
-                                    action: 'Deduct',
-                                    amount: totalDeduction,
-                                    newTotal: updatedInv.count,
-                                    userId: username
-                                }
-                            });
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -266,33 +238,6 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
                                 userId: `Rollback (${username}) (Blank: ${matchedMaterialName || 'Variant'})`
                             }
                         });
-                    }
-                }
-            }
-
-            // Restore raw thread spools
-            if (product.recipe && Array.isArray(product.recipe)) {
-                for (const component of product.recipe) {
-                    const totalDeduction = Math.ceil(component.quantity * garmentQuantity);
-
-                    const inventoryItem = await tx.inventory.findUnique({ where: { id: component.inventoryId } });
-                    if (inventoryItem) {
-                        const updatedInv = await tx.inventory.update({
-                            where: { id: component.inventoryId },
-                            data: { count: { increment: totalDeduction } }
-                        });
-
-                        if (logEnabled) {
-                            await tx.inventoryLog.create({
-                                data: {
-                                    inventoryId: component.inventoryId,
-                                    action: 'Add',
-                                    amount: totalDeduction,
-                                    newTotal: updatedInv.count,
-                                    userId: `Rollback (${username})`
-                                }
-                            });
-                        }
                     }
                 }
             }
@@ -450,32 +395,8 @@ async function reconcileReservedCounts(tx = prisma) {
  * @returns {Promise<object>} Map of inventoryId to reserved quantity
  */
 async function getReservedThreadCounts(tx = prisma) {
-    const activeOrders = await tx.order.findMany({
-        where: {
-            status: {
-                in: ['In Queue', 'Awaiting Payment', 'Pending Payment', 'On Hold - Awaiting Materials']
-            }
-        }
-    });
-
-    const reservedThreads = {};
-    for (const order of activeOrders) {
-        const items = Array.isArray(order.items) ? order.items : [];
-        for (const item of items) {
-            const productId = item.productId || item.id;
-            if (!productId) continue;
-
-            const product = await tx.product.findUnique({ where: { id: productId } });
-            if (product && product.recipe && Array.isArray(product.recipe)) {
-                const quantity = item.quantity || 1;
-                for (const component of product.recipe) {
-                    const needed = component.quantity * quantity;
-                    reservedThreads[component.inventoryId] = (reservedThreads[component.inventoryId] || 0) + needed;
-                }
-            }
-        }
-    }
-    return reservedThreads;
+    // Thread spools are continuously maintained workshop studio assets, not micro-metered per letter
+    return {};
 }
 
 /**
@@ -716,23 +637,8 @@ async function enrichProductsWithStock(products, tx = prisma) {
             };
         });
 
-        // Bottle-neck check from thread recipe (if any)
-        let maxCanProduce = totalVariantAvailable;
-        if (product.recipe && Array.isArray(product.recipe) && product.recipe.length > 0) {
-            for (const component of product.recipe) {
-                const invItem = inventory.find(i => i.id === component.inventoryId);
-                const invCount = invItem ? invItem.count : 0;
-                const reservedCount = reservedThreads[component.inventoryId] || 0;
-                const availableCount = Math.max(0, invCount - reservedCount);
-
-                const quantityRequired = component.quantity || 1;
-                const maxFromComponent = Math.floor(availableCount / quantityRequired);
-                maxCanProduce = Math.min(maxCanProduce, maxFromComponent);
-            }
-        }
-
         const dynamicReserved = reservedGarments[product.id] || 0;
-        const finalAvailable = Math.max(0, Math.min(totalVariantAvailable, maxCanProduce));
+        const finalAvailable = Math.max(0, totalVariantAvailable);
         const ratingInfo = ratingMap[product.id] || { rating: null, reviewCount: 0 };
 
         return {
