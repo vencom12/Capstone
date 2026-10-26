@@ -1900,17 +1900,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {verifyingOrderForRelease && isClient && createPortal(
             <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
               <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
-                <div className="flex items-center justify-between pb-3 border-b border-border-glass">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <h3 className="text-base font-extrabold text-white">
-                      Anti-Fraud Claim Verification
-                    </h3>
-                  </div>
+                <div className="flex items-center justify-end -mb-1">
                   <button
                     type="button"
                     onClick={() => setVerifyingOrderForRelease(null)}
-                    className="text-text-dim hover:text-text-main text-sm cursor-pointer"
+                    className="text-text-dim hover:text-text-main text-sm cursor-pointer p-1"
+                    title="Close"
                   >
                     ✕
                   </button>
