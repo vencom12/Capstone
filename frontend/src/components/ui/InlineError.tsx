@@ -82,14 +82,14 @@ export default function InlineError({
     <div
       id={id}
       role="alert"
-      className={`flex items-start gap-2.5 text-xs font-medium text-rose-300 bg-rose-500/10 border border-rose-500/30 px-3.5 py-2.5 rounded-xl mt-2 animate-fadeIn ${className}`}
+      className={`flex items-center gap-2 text-xs font-medium text-rose-300 bg-rose-500/10 border border-rose-500/25 py-2 px-3 rounded-lg mt-1.5 animate-fadeIn ${className}`}
     >
       <svg
-        className="w-4 h-4 shrink-0 text-rose-400 mt-0.5"
+        className="w-3.5 h-3.5 shrink-0 text-rose-400"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
@@ -97,9 +97,7 @@ export default function InlineError({
         <line x1="12" y1="8" x2="12" y2="12" />
         <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
-      <div className="flex-1 min-w-0">
-        <span className="leading-relaxed block">{text}</span>
-      </div>
+      <span className="leading-snug flex-1 min-w-0">{text}</span>
     </div>
   );
 }

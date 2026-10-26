@@ -291,12 +291,13 @@ export default function GCashPayment({
 
       {/* Verification Notice or Friendly Encouragement Box */}
       {aiVerificationResult && !analyzing && (
-        <div className={`flex flex-col gap-2 p-2.5 rounded-xl text-[0.72rem] font-medium border ${
-          verified 
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
-            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-        }`}>
-          <span className="leading-relaxed font-bold">{aiVerificationResult}</span>
+        <div className="flex flex-col gap-2 p-2.5 rounded-lg text-[0.72rem] font-medium border border-border-glass bg-white/[0.04] text-text-main">
+          <div className="flex items-center gap-1.5 font-bold">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-text-main">
+              {verified ? <polyline points="20 6 9 17 4 12" /> : <circle cx="12" cy="12" r="10" />}
+            </svg>
+            <span className="leading-relaxed">{aiVerificationResult}</span>
+          </div>
           
           {Boolean(
             aiVerificationResult.toLowerCase().includes('already') || 

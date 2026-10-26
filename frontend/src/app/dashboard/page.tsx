@@ -624,7 +624,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-text-main m-0">{user?.username || 'Customer'}</h3>
-                      <p className="text-xs sm:text-sm text-text-dim m-0 mt-0.5">{user?.email || 'Frictionless Account (No email set)'}</p>
+                      <p className="text-xs sm:text-sm text-text-dim m-0 mt-0.5">{user?.email || 'No email linked'}</p>
                     </div>
                   </div>
 
@@ -745,14 +745,14 @@ export default function DashboardPage() {
                             )
                           ) : (
                             <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/5 text-text-dim border border-border-glass">
-                              Frictionless (No Email)
+                              No email linked
                             </span>
                           )}
                         </div>
                         <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">
                           {user?.email 
                             ? user.email 
-                            : 'Link an email with 6-digit verification code to receive receipts & notifications.'}
+                            : 'Add an email to receive order status updates, receipts, and password resets.'}
                         </p>
                       </div>
                     </div>
@@ -1215,18 +1215,17 @@ export default function DashboardPage() {
             Are you sure you want to delete your account? This action is <b className="text-danger font-bold">permanent and irreversible</b>.
           </p>
 
-          <div className="p-3.5 rounded-xl bg-white/5 border border-border-glass text-xs text-text-dim flex flex-col gap-1.5 leading-relaxed">
-            <div className="flex items-center gap-2 text-text-main font-semibold">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-main shrink-0">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
+          <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-text-dim flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 text-text-main font-semibold">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
-              <span>Important information before deleting:</span>
+              <span>Before closing your account:</span>
             </div>
-            <ul className="m-0 pl-4 list-disc space-y-1">
-              <li>Your personal profile (name, email, phone, addresses) will be permanently erased.</li>
-              <li>You will be logged out immediately and cannot access this account again.</li>
+            <ul className="m-0 pl-4 list-disc space-y-0.5 text-[0.72rem] text-text-dim/80 leading-relaxed">
+              <li>Your personal profile details will be permanently removed.</li>
               <li>Past completed orders remain preserved as anonymous records for business receipts and accounting.</li>
             </ul>
           </div>

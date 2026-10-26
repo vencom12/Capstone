@@ -740,7 +740,8 @@ export default function AuthModal() {
         const val = (customVal !== undefined ? customVal : email).trim();
         if (mode === 'register') {
           if (!val) {
-            next.email = 'Please enter your email address.';
+            // Optional during registration: empty is completely valid
+            delete next.email;
           } else {
             const emailCheck = validateEmail(val);
             if (!emailCheck.isValid) {
@@ -863,10 +864,13 @@ export default function AuthModal() {
               <InlineError variant="banner" message={forgotError} />
             </form>
           ) : (
-            <div className="flex flex-col gap-3">
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 text-center">
-                ✓ Reset instructions dispatched to <strong className="text-white">{email}</strong> if registered.
-              </div>
+            <div className="flex flex-col gap-2.5">
+              <p className="py-2 px-3 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-text-main flex items-center justify-center gap-2 text-center m-0">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-main shrink-0">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Instructions sent to <strong className="text-white">{email}</strong> if registered.</span>
+              </p>
               <GlassButton 
                 type="button" 
                 variant="secondary" 
@@ -1341,7 +1345,7 @@ export default function AuthModal() {
                   </div>
                 )}
                 {!checkingUsername && isUsernameAvailable && !fieldErrors.username && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none animate-fadeIn">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-main pointer-events-none animate-fadeIn">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
@@ -1371,7 +1375,7 @@ export default function AuthModal() {
                     )}
                   </>
                 ) : mode === 'register' && email.trim() && !checkingEmail && isEmailAvailable ? (
-                  <span className="text-[0.7rem] text-emerald-400 font-semibold flex items-center gap-1 animate-fadeIn leading-none whitespace-nowrap">
+                  <span className="text-[0.7rem] text-text-main font-semibold flex items-center gap-1 animate-fadeIn leading-none whitespace-nowrap">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
@@ -1411,7 +1415,7 @@ export default function AuthModal() {
                 </div>
               )}
               {mode === 'register' && !checkingEmail && isEmailAvailable && !fieldErrors.email && email.trim() && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none animate-fadeIn">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-main pointer-events-none animate-fadeIn">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -1420,26 +1424,22 @@ export default function AuthModal() {
             </div>
             {mode === 'register' && (
               !email.trim() ? (
-                <div className="mt-1 p-2 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-start gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-text-dim">
+                <p className="mt-1 text-[0.72rem] text-text-dim flex items-center gap-1.5 leading-snug">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-text-dim/80">
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="16" x2="12" y2="12" />
                     <line x1="12" y1="8" x2="12.01" y2="8" />
                   </svg>
-                  <span className="leading-relaxed">
-                    <strong className="text-text-main font-semibold">Frictionless mode:</strong> Registration without email is enabled. You can order and track via Order ID + GCash. You won't receive email receipts or automated password resets, but you can link an email anytime.
-                  </span>
-                </div>
+                  <span>Optional — You can register with just your username and link an email later for receipts.</span>
+                </p>
               ) : (
-                <div className="mt-1 p-2 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-start gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-text-dim">
+                <p className="mt-1 text-[0.72rem] text-text-dim flex items-center gap-1.5 leading-snug">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-text-dim/80">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                     <polyline points="22,6 12,13 2,6" />
                   </svg>
-                  <span className="leading-relaxed">
-                    A 6-digit verification code will be sent to confirm this email before creating your account.
-                  </span>
-                </div>
+                  <span>A 6-digit verification code will be sent to confirm this email.</span>
+                </p>
               )
             )}
           </div>

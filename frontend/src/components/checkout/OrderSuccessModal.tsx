@@ -125,7 +125,7 @@ export default function OrderSuccessModal({
         {/* Header matching CheckoutModal style */}
         <div className="flex justify-between items-center pb-3 border-b border-border-glass/40 pr-8">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-text-main shrink-0">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -139,7 +139,7 @@ export default function OrderSuccessModal({
               </p>
             </div>
           </div>
-          <span className="text-[0.62rem] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full shrink-0">
+          <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0">
             Paid &amp; In Queue
           </span>
         </div>

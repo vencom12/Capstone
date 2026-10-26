@@ -591,18 +591,18 @@ export default function CheckoutModal({
         {/* Emergency Workshop Leave Banner (Option A or Option B) */}
         {emergencyNotice?.active && (
           emergencyNotice.policy === 'PAUSE_ORDERS' ? (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex flex-col gap-1.5 text-xs text-left mb-2">
-              <div className="flex items-center gap-2 font-bold text-amber-200">
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
+                <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <rect x="6" y="4" width="4" height="16" />
                   <rect x="14" y="4" width="4" height="16" />
                 </svg>
-                <span>Online Ordering is Temporarily Paused</span>
+                <span>Online Ordering Temporarily Paused</span>
               </div>
               <p className="text-[11px] text-text-dim leading-relaxed m-0">
                 Our workshop is closed for <strong>{emergencyNotice.reason || 'scheduled leave'}</strong>.
                 {emergencyNotice.resumeDate
-                  ? ` We will resume accepting new orders on ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
+                  ? ` New orders resume on ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
                   : ' Please check back soon.'}
               </p>
               {emergencyNotice.message && (
@@ -610,36 +610,33 @@ export default function CheckoutModal({
                   &ldquo;{emergencyNotice.message}&rdquo;
                 </p>
               )}
-              <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider pt-1">
-                ⚠️ Order placement is currently locked until reopening
-              </div>
             </div>
           ) : (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex flex-col gap-2 text-xs text-left mb-2">
-              <div className="flex items-center gap-2 font-bold text-amber-200">
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
+                <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <span>Workshop Leave: Adjusted Production Schedule</span>
+                <span>Workshop Leave Schedule</span>
               </div>
               <p className="text-[11px] text-text-dim leading-relaxed m-0">
-                Our workshop is temporarily on leave (<strong>{emergencyNotice.reason}</strong>). You can still reserve your spot in the queue now! Machine stitching will commence upon shop reopening on{' '}
-                <strong className="text-amber-200">
+                Workshop is temporarily on leave (<strong>{emergencyNotice.reason}</strong>). You can reserve your spot in the queue now. Stitching starts when the shop reopens on{' '}
+                <strong className="text-text-main">
                   {emergencyNotice.resumeDate
                     ? new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : 'soon'}
                 </strong>.
               </p>
-              <label className="flex items-start gap-2 pt-1 border-t border-amber-500/20 text-[11px] text-text-main cursor-pointer">
+              <label className="flex items-start gap-2 pt-1 border-t border-border-glass/40 text-[11px] text-text-main cursor-pointer">
                 <input
                   type="checkbox"
                   checked={hasAcknowledgedDelay}
                   onChange={(e) => setHasAcknowledgedDelay(e.target.checked)}
-                  className="mt-0.5 accent-amber-400 cursor-pointer"
+                  className="mt-0.5 accent-primary cursor-pointer"
                 />
-                <span>I understand and accept that production begins upon workshop reopening.</span>
+                <span>I accept that production begins upon workshop reopening.</span>
               </label>
             </div>
           )
