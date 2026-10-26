@@ -798,11 +798,28 @@ exports.updateInventoryItem = async (req, res) => {
 exports.createInventoryItem = async (req, res) => {
     try {
         const { item, count, unit, minThreshold, supplierUnitCost, packSize } = req.body;
-        if (!item) return res.status(400).json({ message: 'Item name is required' });
+        const cleanItem = (item || '').trim();
+        if (!cleanItem) return res.status(400).json({ message: 'Item name is required' });
+
+        // Pre-check for duplicate material name (case-insensitive)
+        const existing = await prisma.inventory.findFirst({
+            where: {
+                item: {
+                    equals: cleanItem,
+                    mode: 'insensitive'
+                }
+            }
+        });
+
+        if (existing) {
+            return res.status(409).json({
+                message: `Item "${cleanItem}" already exists in materials. Please edit or restock the existing item instead.`
+            });
+        }
 
         const inventory = await prisma.inventory.create({
             data: {
-                item,
+                item: cleanItem,
                 count: parseInt(count) || 0,
                 unit: unit || 'Cones',
                 minThreshold: parseInt(minThreshold) || 10,
@@ -872,8 +889,13 @@ exports.createInventoryItem = async (req, res) => {
         res.json(inventory);
     } catch (err) {
         console.error("Error creating inventory item:", err);
+        if (err.code === 'P2002') {
+            return res.status(409).json({
+                message: `Item "${req.body?.item || 'Material'}" already exists in materials. Please edit or restock the existing item instead.`
+            });
+        }
         res.status(500).json({
-            message: 'Error creating inventory item',
+            message: err.message || 'Error creating inventory item',
             error: err.message,
             code: err.code // Prisma error codes (e.g., P2002 for unique constraint)
         });
@@ -1738,10 +1760,21 @@ exports.createWalkInOrder = async (req, res) => {
         const customerDisplayName = trimmedName || (personalizationText && personalizationText.trim() ? `Walk-In (${personalizationText.trim()})` : `Walk-In #${randHex}`);
         const numTotal = parseFloat(totalAmount) || 0;
         const isCompleted = Boolean(req.body.isAlreadyCompleted);
+        const isHoldForPickup = Boolean(req.body.isHoldForPickup);
         const isPaid = isCompleted || paymentStatus === 'paid' || paymentMethod === 'Cash';
 
-        const initialStatus = isPaid ? 'In Queue' : 'Pending Payment';
-        const initialProgress = isPaid ? 5 : 0;
+        let initialStatus = 'Pending Payment';
+        let initialProgress = 0;
+        if (isCompleted) {
+            initialStatus = 'Completed';
+            initialProgress = 100;
+        } else if (isHoldForPickup) {
+            initialStatus = 'Ready For Pick Up';
+            initialProgress = 90;
+        } else if (isPaid) {
+            initialStatus = 'In Queue';
+            initialProgress = 5;
+        }
 
         const orderData = {
             orderId,
@@ -1754,8 +1787,8 @@ exports.createWalkInOrder = async (req, res) => {
             paymentStatus: isPaid ? 'paid' : 'unpaid',
             status: initialStatus,
             address: 'Physical Store (Eds Towels & Caps Pacific Mall Lucena)',
-            deliveryTime: isCompleted ? 'Completed On-Site' : (isRush ? 'Rush Walk-In' : 'Standard Walk-In'),
-            notes: notes || (isCompleted ? 'Quick Walk-In slip punch' : 'Walk-in counter order'),
+            deliveryTime: isCompleted ? 'Completed On-Site (Direct Handover)' : (isHoldForPickup ? 'Ready for Pickup (Bagged on Counter)' : (isRush ? 'Rush Walk-In' : 'Standard Walk-In')),
+            notes: notes || (isCompleted ? 'Walk-in direct sale (handed over immediately)' : 'Walk-in counter order'),
             progress: initialProgress,
             isByog: Boolean(isByog),
             waiverSigned: true,

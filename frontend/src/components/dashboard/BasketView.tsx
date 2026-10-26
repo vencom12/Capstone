@@ -322,7 +322,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                   />
                                 )}
                                 <span className="opacity-75 font-normal text-[0.65rem]">
-                                  ({item.personalization.threadColor || 'Gold'})
+                                  ({(typeof item.personalization.threadColor === 'object' ? (item.personalization.threadColor as any)?.name : item.personalization.threadColor) || 'Gold'})
                                 </span>
                               </span>
                             )}

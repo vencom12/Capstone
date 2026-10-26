@@ -351,7 +351,8 @@ export default function InvoiceModal({
                         .join(' • ');
 
                       const persText = item.personalization?.text || (order as any)?.personalization?.text;
-                      const persColor = item.personalization?.threadColor || (order as any)?.personalization?.threadColor || (order as any)?.personalization?.color;
+                      const rawPersColor = item.personalization?.threadColor || (order as any)?.personalization?.threadColor || (order as any)?.personalization?.color;
+                      const persColor = typeof rawPersColor === 'object' && rawPersColor !== null ? (rawPersColor.name || '') : (typeof rawPersColor === 'string' ? rawPersColor : '');
 
                       const linePrice = (parseFloat(item.price || 0)) * (item.quantity || 1);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
@@ -26,6 +26,7 @@ import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
 import { printBagSlip } from '@/lib/printBagSlip';
+import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -129,11 +130,7 @@ export default function EmployeePage() {
   const [orderProgressInput, setOrderProgressInput] = useState('10');
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
 
-  // 1-Scan Counter Handover State
-  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [handoverScanInput, setHandoverScanInput] = useState('');
-  const [isClaimingHandover, setIsClaimingHandover] = useState(false);
-  const [lastClaimedOrder, setLastClaimedOrder] = useState<any>(null);
+
   const [confirmingHandoverOrder, setConfirmingHandoverOrder] = useState<any>(null);
 
   // In-flight status update locks to prevent double-clicks & state reverting
@@ -144,6 +141,41 @@ export default function EmployeePage() {
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  // Touch Swipe Navigation for Employee Workbench Tabs
+  const WORKBENCH_TABS = ['orders', 'counter', 'history', 'support', 'settings'];
+
+  const handleWorkbenchSwipeLeft = useCallback(() => {
+    setActiveTab((prev) => {
+      const idx = WORKBENCH_TABS.indexOf(prev);
+      if (idx !== -1 && idx < WORKBENCH_TABS.length - 1) {
+        return WORKBENCH_TABS[idx + 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleWorkbenchSwipeRight = useCallback(() => {
+    setActiveTab((prev) => {
+      const idx = WORKBENCH_TABS.indexOf(prev);
+      if (idx > 0) {
+        return WORKBENCH_TABS[idx - 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const touchSwipeHandlers = useTouchSwipe({
+    onSwipeLeft: handleWorkbenchSwipeLeft,
+    onSwipeRight: handleWorkbenchSwipeRight,
+    disabled:
+      activeTab === 'counter' ||
+      isMobilePanelOpen ||
+      isProcessModalOpen ||
+      Boolean(confirmingHandoverOrder) ||
+      isReceiptModalOpen ||
+      isChangePasswordOpen,
+  });
 
   const fetchEmployeeData = async () => {
     if (isLoggingOutRef.current) return;
@@ -313,8 +345,19 @@ export default function EmployeePage() {
         if (data.entity === 'ORDER') {
           if (data.action === 'CREATE') {
             fetchEmployeeData();
-            playOrderChime();
-            showToast('New customer order ticket received!', 'info');
+            const orderPayload = data.payload || data.data || {};
+            const createdOrderId = orderPayload.orderId || orderPayload.id;
+            const isSelfCreated = Boolean(
+              createdOrderId &&
+              typeof window !== 'undefined' &&
+              (window as any).__lastSelfCreatedOrderId === createdOrderId &&
+              Date.now() - ((window as any).__lastSelfCreatedOrderTime || 0) < 6000
+            );
+
+            if (!isSelfCreated) {
+              playOrderChime();
+              showToast('New customer order ticket received!', 'info');
+            }
           } else if (data.action === 'UPDATE' && (data.payload || data.data)) {
             handleInPlaceOrderUpdate(data.payload || data.data);
           }
@@ -463,37 +506,6 @@ export default function EmployeePage() {
     }
   };
 
-  const handleScanClaimHandover = async (codeToSubmit?: string) => {
-    const rawCode = (codeToSubmit || handoverScanInput).trim();
-    if (!rawCode) {
-      showToast('Please scan customer QR or enter claim ticket code', 'error');
-      return;
-    }
-    setIsClaimingHandover(true);
-    try {
-      const res: any = await api.post('/api/employee/orders/scan-claim', {
-        claimCode: rawCode
-      });
-      if (res && res.success) {
-        showToast(res.message || 'Counter handover complete! Order marked Completed.', 'success');
-        setLastClaimedOrder({ ...res.order, stagingCubby: res.cubby || res.order?.stagingCubby });
-        setHandoverScanInput('');
-        if (res.order && (res.order.id || res.order.orderId)) {
-          setOrders(prev => prev.map(o => (o.id === res.order.id || o.orderId === res.order.orderId) ? { ...o, ...res.order, status: 'Completed', stagingCubby: null } : o));
-        }
-        fetchEmployeeData();
-        return res;
-      } else {
-        showToast(res?.message || 'Handover failed', 'error');
-      }
-    } catch (err: any) {
-      console.error('Scan-claim error:', err);
-      showToast(err?.message || 'Invalid or unrecognized claim code', 'error');
-    } finally {
-      setIsClaimingHandover(false);
-    }
-  };
-
   const handleBatchStatusUpdate = async () => {
     if (selectedOrderIds.length === 0) {
       showToast('No orders selected for batch update', 'error');
@@ -606,22 +618,6 @@ export default function EmployeePage() {
 
             {/* Compact Top Filter & Action Toolbar */}
             <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setHandoverScanInput('');
-                  setLastClaimedOrder(null);
-                  setIsHandoverModalOpen(true);
-                }}
-                className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none whitespace-nowrap"
-                title="Scan customer QR code or enter claim ticket for handover"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
-                </svg>
-                <span>Scan QR Handover</span>
-              </button>
               <input 
                 type="text" 
                 placeholder="Search queue..." 
@@ -697,9 +693,12 @@ export default function EmployeePage() {
                                <div className="flex flex-col text-left">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                                  {o.stagingCubby && (
-                                    <span className="text-[10px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
-                                      {o.stagingCubby}
+                                  <span className="text-[10px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
+                                    {o.claimCode || o.personalization?.claimCode || `#A-${(o.orderId || '').slice(-4).toUpperCase()}`}
+                                  </span>
+                                  {o.isPlainOrder && (
+                                    <span className="text-[10px] font-medium text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
+                                      Plain (2–5m)
                                     </span>
                                   )}
                                 </div>
@@ -751,7 +750,8 @@ export default function EmployeePage() {
                                     {o.items.map((item: any, idx: number) => {
                                       const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                                       const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
-                                      const threadColor = item.personalization?.threadColor || item.personalization?.color;
+                                      const rawColor = item.personalization?.threadColor || item.personalization?.color;
+                                      const threadColor = typeof rawColor === 'object' && rawColor !== null ? (rawColor.name || '') : (typeof rawColor === 'string' ? rawColor : '');
                                       return (
                                         <div key={idx} className="flex flex-col text-xs">
                                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -829,9 +829,9 @@ export default function EmployeePage() {
                                       onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
                                       disabled={updatingOrderIds[o.id]}
                                       className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
-                                      title="Finish stitching and auto-assign staging shelf"
+                                      title="Finish stitching, package order with claim slip, and place on side"
                                     >
-                                      <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Stage'}</span>
+                                      <span>{updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Bag'}</span>
                                     </button>
                                   )}
 
@@ -841,9 +841,9 @@ export default function EmployeePage() {
                                         setConfirmingHandoverOrder(o);
                                       }}
                                       className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                      title={`1-Click Handover from ${o.stagingCubby || 'Counter Shelf'}`}
+                                      title="Match claim slip code on bag and hand over to customer"
                                     >
-                                      <span>Handover</span>
+                                      <span>Hand Over</span>
                                     </button>
                                   )}
 
@@ -940,7 +940,8 @@ export default function EmployeePage() {
                               o.items.map((item: any, idx: number) => {
                                 const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                                 const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
-                                const threadColor = item.personalization?.threadColor || item.personalization?.color;
+                                const rawColor2 = item.personalization?.threadColor || item.personalization?.color;
+                                const threadColor = typeof rawColor2 === 'object' && rawColor2 !== null ? (rawColor2.name || '') : (typeof rawColor2 === 'string' ? rawColor2 : '');
                                 return (
                                   <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex flex-col gap-0.5">
                                     <div className="flex items-center justify-between gap-1.5">
@@ -1380,7 +1381,7 @@ export default function EmployeePage() {
       )}
       
       {/* Main Viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative h-full touch-pan-y" {...touchSwipeHandlers}>
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
         <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-5 py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-4">
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -1409,6 +1410,14 @@ export default function EmployeePage() {
               <span className="font-bold text-text-main text-base tracking-tight">
                 {tabTitles[activeTab] || 'Workbench'}
               </span>
+              {activeTab !== 'counter' && (
+                <span className="hidden xl:inline-flex items-center gap-1 text-[11px] text-text-dim/60 font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-border-glass select-none ml-2">
+                  <svg className="w-3 h-3 text-primary/70 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Swipe &larr; &rarr; tabs
+                </span>
+              )}
             </div>
           </div>
 
@@ -1509,215 +1518,7 @@ export default function EmployeePage() {
 
 
 
-      {/* 1-Scan Counter Handover & QR Verification Modal */}
-      <GlassModal
-        isOpen={isHandoverModalOpen}
-        onClose={() => {
-          setIsHandoverModalOpen(false);
-          setHandoverScanInput('');
-          setLastClaimedOrder(null);
-        }}
-        title="1-Scan Counter Handover"
-        maxWidth="max-w-[520px]"
-      >
-        <div className="flex flex-col gap-5 text-left">
-          {/* Header Explanation */}
-          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-white/5 border border-border-glass">
-            <div className="w-9 h-9 rounded-xl bg-white/5 border border-border-glass text-text-main flex items-center justify-center shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M7 7h.01M7 17h.01M17 7h.01M12 12h.01" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-text-main">Automated Counter Handover Station</span>
-              <span className="text-[11px] text-text-dim">
-                Scan customer's pickup QR code (#A-XXXX) or enter claim ticket. Auto-verifies token, frees shelf cubby, and completes order.
-              </span>
-            </div>
-          </div>
-
-          {/* Scanner Input Bar */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleScanClaimHandover();
-            }}
-            className="flex flex-col gap-2.5"
-          >
-            <label className="text-xs font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
-              <span>Customer QR / Claim Code / Order ID</span>
-              <span className="text-[10px] text-primary lowercase font-normal">Auto-claims on 4 digits (e.g. 4D0B)</span>
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Scan QR or type 4-digit code (e.g. 4D0B)..."
-                  value={handoverScanInput}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setHandoverScanInput(val);
-                    const clean = val.trim().toUpperCase();
-                    const rawAlphanumeric = clean.replace(/[^A-Z0-9]/g, '');
-                    // Auto-claim when 4 characters entered or #A-XXXX (7 chars)
-                    if (rawAlphanumeric.length === 4 || (clean.startsWith('#A-') && clean.length === 7)) {
-                      handleScanClaimHandover(clean);
-                    }
-                  }}
-                  className="w-full bg-bg-surface border border-border-glass focus:border-primary/60 rounded-xl py-3 pl-4 pr-36 text-text-main font-mono text-sm outline-none transition-all placeholder:text-text-dim/40"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/25 px-2 py-0.5 rounded pointer-events-none select-none">
-                  SCANNER ACTIVE
-                </span>
-              </div>
-              <button
-                type="submit"
-                disabled={isClaimingHandover || !handoverScanInput.trim()}
-                className="bg-primary hover:bg-primary-light active:scale-[0.98] disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl transition-all cursor-pointer text-sm shrink-0 flex items-center gap-1.5"
-              >
-                {isClaimingHandover ? (
-                  <span>Verifying...</span>
-                ) : (
-                  <span>Verify &amp; Claim</span>
-                )}
-              </button>
-            </div>
-
-            {/* Quick Live Preview Match if typing */}
-            {(() => {
-              const query = handoverScanInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-              if (!query || query.length < 2) return null;
-              const match = orders.find(o => {
-                if (o.status !== 'Ready For Pick Up') return false;
-                const c = (o.claimCode || o.personalization?.claimCode || o.orderId || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-                const client = (o.client || '').toUpperCase();
-                return c.includes(query) || client.includes(query);
-              });
-              if (!match) return null;
-              return (
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs animate-[fadeIn_0.15s_ease-out]">
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
-                    <span className="font-mono font-bold text-text-main shrink-0">{match.orderId}</span>
-                    <span className="text-text-dim truncate">&bull; {match.client}</span>
-                    {match.stagingCubby && (
-                      <span className="font-mono font-bold text-primary bg-primary/20 px-2 py-0.5 rounded text-[11px] shrink-0">
-                        {match.stagingCubby}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleScanClaimHandover(match.claimCode || match.orderId)}
-                    className="ml-2 px-2.5 py-1 rounded bg-primary hover:bg-primary-light text-white font-bold text-[11px] transition-all cursor-pointer shrink-0"
-                  >
-                    Claim &rarr;
-                  </button>
-                </div>
-              );
-            })()}
-          </form>
-
-          {/* Success Banner & Released Cubby details */}
-          {lastClaimedOrder && (
-            <div className="p-4 rounded-xl bg-white/5 border border-border-glass flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="font-semibold text-xs tracking-wide text-text-main">
-                    Handover Confirmed &bull; Order Completed
-                  </span>
-                </div>
-                {lastClaimedOrder.stagingCubby && (
-                  <span className="text-xs font-mono text-text-dim bg-white/5 border border-border-glass px-2.5 py-0.5 rounded">
-                    Released: {lastClaimedOrder.stagingCubby}
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs bg-black/20 p-3 rounded-lg border border-white/5">
-                <div>
-                  <span className="text-text-dim block text-[10px] uppercase font-bold">Order ID</span>
-                  <span className="font-mono font-bold text-text-main">{lastClaimedOrder.orderId}</span>
-                </div>
-                <div>
-                  <span className="text-text-dim block text-[10px] uppercase font-bold">Customer</span>
-                  <span className="font-bold text-text-main">{lastClaimedOrder.client || 'Counter Pickup'}</span>
-                </div>
-                <div>
-                  <span className="text-text-dim block text-[10px] uppercase font-bold">Total Amount</span>
-                  <span className="font-mono font-bold text-primary">₱{parseFloat(lastClaimedOrder.totalAmount || lastClaimedOrder.amount || 0).toFixed(2)}</span>
-                </div>
-                <div>
-                  <span className="text-text-dim block text-[10px] uppercase font-bold">Claim Timestamp</span>
-                  <span className="text-text-main">{new Date().toLocaleTimeString()}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewingReceiptOrder(lastClaimedOrder);
-                    setIsReceiptModalOpen(true);
-                  }}
-                  className="flex-1 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 border border-border-glass text-text-main font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span>Print Receipt</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLastClaimedOrder(null)}
-                  className="py-2 px-4 rounded-lg bg-white/10 hover:bg-white/15 border border-border-glass text-text-main font-medium text-xs transition-all cursor-pointer"
-                >
-                  Next Customer
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Quick List of Ready for Pickup Orders waiting at the Counter */}
-          <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
-              <span>Orders Waiting in Staging Bins ({orders.filter(o => o.status === 'Ready For Pick Up').length})</span>
-              <span className="text-[10px] text-primary lowercase">tap to instant-claim</span>
-            </span>
-            <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin">
-              {orders.filter(o => o.status === 'Ready For Pick Up').length === 0 ? (
-                <span className="text-xs text-text-dim italic py-2 text-center">No orders currently waiting in shelf cubbies.</span>
-              ) : (
-                orders.filter(o => o.status === 'Ready For Pick Up').map(o => (
-                  <div
-                    key={o.id || o.orderId}
-                    onClick={() => handleScanClaimHandover(o.claimCode || o.orderId)}
-                    className="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/40 flex items-center justify-between cursor-pointer transition-all text-xs group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-text-main group-hover:text-primary transition-colors">{o.orderId}</span>
-                      <span className="text-text-dim">&bull; {o.client}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {o.stagingCubby && (
-                        <span className="font-mono text-text-dim bg-white/5 border border-border-glass px-2 py-0.5 rounded text-[10px]">
-                          {o.stagingCubby}
-                        </span>
-                      )}
-                      <span className="text-text-main font-medium opacity-0 group-hover:opacity-100 transition-opacity text-[11px]">
-                        Select
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* 1-Click Direct Handover Confirmation Modal */}
+      {/* Direct Handover Confirmation Modal */}
       <GlassModal
         isOpen={!!confirmingHandoverOrder}
         onClose={() => setConfirmingHandoverOrder(null)}
@@ -1728,11 +1529,15 @@ export default function EmployeePage() {
           <div className="flex flex-col gap-4 text-left">
             <div className="p-4 rounded-xl bg-white/5 border border-border-glass flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Release From Shelf</span>
-                <span className="px-3 py-1 rounded-lg bg-primary/20 border border-primary/40 font-mono font-bold text-primary text-sm">
-                  {confirmingHandoverOrder.stagingCubby || confirmingHandoverOrder.personalization?.stagingCubby || 'Counter Shelf'}
+                <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Claim Slip on Bag</span>
+                <span className="px-3 py-1 rounded-lg bg-white/5 border border-border-glass font-mono font-bold text-text-main text-sm">
+                  {confirmingHandoverOrder.claimCode || confirmingHandoverOrder.personalization?.claimCode || `#A-${(confirmingHandoverOrder.orderId || '').slice(-4).toUpperCase()}`}
                 </span>
               </div>
+
+              <p className="text-[11px] text-text-dim">
+                Find the packaged bag on the side matching this claim code, hand it to the customer, and confirm below.
+              </p>
 
               <div className="border-t border-white/5 pt-3 flex flex-col gap-2">
                 <div className="flex justify-between items-center text-xs">
@@ -1744,14 +1549,8 @@ export default function EmployeePage() {
                   <span className="font-mono font-bold text-text-main">{confirmingHandoverOrder.orderId}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim">Claim Code:</span>
-                  <span className="font-mono font-bold text-primary">
-                    {confirmingHandoverOrder.claimCode || confirmingHandoverOrder.personalization?.claimCode || `#A-${confirmingHandoverOrder.orderId.slice(-4)}`}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-text-dim">Total Paid:</span>
-                  <span className="font-mono font-bold text-emerald-400">
+                  <span className="text-text-dim">Total:</span>
+                  <span className="font-mono font-bold text-text-main">
                     ₱{parseFloat(confirmingHandoverOrder.totalAmount || confirmingHandoverOrder.amount || 0).toFixed(2)}
                   </span>
                 </div>
@@ -1768,16 +1567,15 @@ export default function EmployeePage() {
               </button>
               <button
                 type="button"
-                disabled={isClaimingHandover}
                 onClick={async () => {
                   const target = confirmingHandoverOrder;
-                  const code = target.claimCode || target.personalization?.claimCode || target.orderId;
                   setConfirmingHandoverOrder(null);
-                  await handleScanClaimHandover(code);
+                  await advanceOrderStatus(target, 'Completed', 100);
+                  showToast(`Order #${target.orderId} marked Completed!`, 'success');
                 }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20"
               >
-                {isClaimingHandover ? 'Completing...' : '✓ Confirm Handover'}
+                Confirm Handover
               </button>
             </div>
           </div>

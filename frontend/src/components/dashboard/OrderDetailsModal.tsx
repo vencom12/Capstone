@@ -264,7 +264,8 @@ export default function OrderDetailsModal({
                 ].filter(Boolean).join(' • ');
 
                 const persText = item.personalization?.text || (order.personalization as any)?.text;
-                const persColor = item.personalization?.threadColor || (order.personalization as any)?.threadColor || (order.personalization as any)?.color;
+                const rawPersColor = item.personalization?.threadColor || (order.personalization as any)?.threadColor || (order.personalization as any)?.color;
+                const persColor = typeof rawPersColor === 'object' && rawPersColor !== null ? (rawPersColor.name || '') : (typeof rawPersColor === 'string' ? rawPersColor : '');
 
                 return (
                   <div key={idx} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/[0.02] border border-white/5">

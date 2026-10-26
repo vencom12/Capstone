@@ -85,7 +85,7 @@ async function recalculateQueuePriorities(io) {
                 }
             } else if (order.deliveryTime) {
                 const delLower = order.deliveryTime.toLowerCase().trim();
-                if (delLower.includes('today') || delLower.includes('hour') || delLower.includes('asap')) {
+                if (delLower.includes('today') || delLower.includes('hour') || delLower.includes('asap') || delLower.includes('walk-in')) {
                     urgencyScore = 40;
                 } else if (delLower.includes('tomorrow')) {
                     urgencyScore = 25;
@@ -107,7 +107,15 @@ async function recalculateQueuePriorities(io) {
             }
             score += urgencyScore;
 
-            // B. Rush Processing flat boost (Max 30 points)
+            // B. Walk-in Order Priority Boost (Priority 3: Walk-in with embroidery over online embroidery)
+            const isWalkIn = (order.orderId && order.orderId.startsWith('WI-')) ||
+                (order.notes && order.notes.toLowerCase().includes('walk-in')) ||
+                (order.deliveryTime && order.deliveryTime.toLowerCase().includes('walk-in'));
+            if (isWalkIn) {
+                score += 25; // Prioritizes walk-in custom embroidery ahead of online scheduled orders
+            }
+
+            // C. Rush Processing flat boost (Max 30 points)
             if (order.isRush) {
                 score += 30;
             }

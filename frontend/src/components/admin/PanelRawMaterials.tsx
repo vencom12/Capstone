@@ -1331,16 +1331,30 @@ export default function PanelRawMaterials({
     const resolvedName = getComputedItemName();
     if (!resolvedName) return showToast('Item name is required', 'error');
 
+    // Prevent duplicate materials (case-insensitive)
+    const existing = inventory.find(
+      (m) => (m.item || '').trim().toLowerCase() === resolvedName.trim().toLowerCase()
+    );
+    if (existing) {
+      showToast(`"${resolvedName}" already exists in materials. Please edit or adjust its stock instead.`, 'error');
+      return;
+    }
+
+    const countVal = parseInt(itemCount) || 0;
+    const unitVal = itemUnit || 'PCs';
+    const minThresholdVal = parseInt(itemThreshold) || 10;
+    const supplierCostVal = itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined;
     const newPackSize = Math.max(1, parseInt(itemPackSize) || 1);
+
     const tempId = `temp_mat_${Date.now()}`;
     const newMaterial = {
       id: tempId,
       _id: tempId,
       item: resolvedName,
-      count: parseInt(itemCount) || 0,
-      unit: itemUnit,
-      minThreshold: parseInt(itemThreshold) || 10,
-      supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined,
+      count: countVal,
+      unit: unitVal,
+      minThreshold: minThresholdVal,
+      supplierUnitCost: supplierCostVal,
       packSize: newPackSize
     };
 
@@ -1365,10 +1379,10 @@ export default function PanelRawMaterials({
     try {
       const res: any = await api.post('/api/admin/inventory', {
         item: resolvedName,
-        count: parseInt(itemCount) || 0,
-        unit: itemUnit,
-        minThreshold: parseInt(itemThreshold) || 10,
-        supplierUnitCost: itemSupplierCost !== '' ? parseFloat(itemSupplierCost) : undefined,
+        count: countVal,
+        unit: unitVal,
+        minThreshold: minThresholdVal,
+        supplierUnitCost: supplierCostVal,
         packSize: newPackSize
       });
 
@@ -1379,12 +1393,12 @@ export default function PanelRawMaterials({
       }
       refreshData().catch(() => {});
       fetchAuditLogs().catch(() => {});
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       if (setInventory) {
         setInventory(prevInventory);
       }
-      showToast('Failed to add material', 'error');
+      showToast(err?.message || 'Failed to add material', 'error');
     }
   };
 

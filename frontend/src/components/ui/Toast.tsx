@@ -81,10 +81,12 @@ export default function ToastContainer() {
 
   useEffect(() => {
     const handler = (toast: ToastMessage) => {
-      setToasts((prev) => [...prev, toast]);
+      // Limit to at most 2 simultaneous toasts so screen is never cluttered
+      setToasts((prev) => [...prev.slice(-1), toast]);
+      const dismissTime = toast.type === 'error' ? 4500 : 3200;
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
-      }, 5000);
+      }, dismissTime);
     };
 
     listeners.add(handler);
@@ -98,7 +100,7 @@ export default function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      className="fixed top-5 left-1/2 -translate-x-1/2 z-[100020] flex flex-col items-center gap-2.5 pointer-events-none w-full max-w-md px-4"
+      className="fixed top-4 right-4 z-[100020] flex flex-col items-end gap-2 pointer-events-none w-auto max-w-[340px] px-2 sm:px-0"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === 'success';
@@ -110,9 +112,9 @@ export default function ToastContainer() {
             key={toast.id}
             role="status"
             className="
-              pointer-events-auto flex items-center justify-between gap-3 w-full
-              px-4 py-3 rounded-xl text-xs
-              bg-[#12151b] border border-white/10 text-white shadow-xl shadow-black/60
+              pointer-events-auto flex items-center justify-between gap-2.5 w-full
+              px-3.5 py-2.5 rounded-xl text-xs
+              bg-[#12151b]/95 backdrop-blur-md border border-white/15 text-white shadow-2xl shadow-black/80
               transition-all duration-200 animate-fadeIn
             "
           >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
@@ -9,6 +9,7 @@ import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
 import type { Product, ProductVariant } from '@/lib/types';
 import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
 import Pagination from '@/components/ui/Pagination';
+import { useTouchSwipe } from '@/hooks/useTouchSwipe';
 
 interface PanelCounterModeProps {
   orders: any[];
@@ -56,7 +57,7 @@ const FALLBACK_STORE_ITEMS = [
   { id: 'chinese_fan_small', name: 'Chinese Fan (Small)', category: 'Fans', price: 80, stock: 50 },
   { id: 'regular_fan_big', name: 'Regular Fan (Big)', category: 'Fans', price: 80, stock: 49 },
   { id: 'regular_fan_small', name: 'Regular Fan (Small)', category: 'Fans', price: 45, stock: 40 },
-  { id: 'byog', name: 'Client-Provided Garment (BYOG)', category: 'Custom', price: 100, stock: 999 },
+  { id: 'byog', name: 'Client-Provided Garment (BYOG)', category: 'Custom', price: 0, stock: 999 },
 ];
 
 export default function PanelCounterMode({ orders, refreshData, setOrders }: PanelCounterModeProps) {
@@ -80,6 +81,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   // Step 2: Monogram text
   const [monogramText, setMonogramText] = useState('');
+  const [isHoldForPickup, setIsHoldForPickup] = useState(false);
 
   // Step 3: Payment & Optional Google Link
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'GCash'>('Cash');
@@ -150,9 +152,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     };
   }, []);
 
-  // Multi-Item Ticket Cart & Visual Verification
+  // Multi-Item Ticket Cart
   const [ticketItems, setTicketItems] = useState<CounterTicketItem[]>([]);
-  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
   // Quick Slip Punch Form fields (Solution 1: Nanay Slips)
   const [quickProductId, setQuickProductId] = useState<string>('');
@@ -178,18 +179,45 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [quickPunchError, setQuickPunchError] = useState<string | null>(null);
 
-  // Turn-Over Desk state
+  // Claim & Handover Desk state
   const [turnOverSearch, setTurnOverSearch] = useState('');
-  const [queueFilterStage, setQueueFilterStage] = useState<'all' | 'in_queue' | 'stitching' | 'ready'>('all');
-  const [queueScope, setQueueScope] = useState<'all' | 'walkin_only'>('all');
   const [turnOverPage, setTurnOverPage] = useState(1);
   const [turnOverPageSize, setTurnOverPageSize] = useState(8);
   const [verifyingOrderForRelease, setVerifyingOrderForRelease] = useState<any | null>(null);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 
+  // Touch Swipe Navigation between Counter Desks (Intake ↔ Quick Slips ↔ Handover)
+  const DESK_TABS: Array<'register' | 'quick_punch' | 'turnover'> = ['register', 'quick_punch', 'turnover'];
+
+  const handleDeskSwipeLeft = useCallback(() => {
+    setActiveTab((prev) => {
+      const idx = DESK_TABS.indexOf(prev);
+      if (idx < DESK_TABS.length - 1) {
+        return DESK_TABS[idx + 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleDeskSwipeRight = useCallback(() => {
+    setActiveTab((prev) => {
+      const idx = DESK_TABS.indexOf(prev);
+      if (idx > 0) {
+        return DESK_TABS[idx - 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const touchSwipeHandlers = useTouchSwipe({
+    onSwipeLeft: handleDeskSwipeLeft,
+    onSwipeRight: handleDeskSwipeRight,
+    disabled: Boolean(createdOrderTicket) || Boolean(verifyingOrderForRelease),
+  });
+
   useEffect(() => {
     setTurnOverPage(1);
-  }, [turnOverSearch, queueFilterStage, queueScope]);
+  }, [turnOverSearch]);
 
   // Audio chime for Nanay when orders advance
   const playQueueChime = (type: 'start' | 'ready') => {
@@ -278,7 +306,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         id: 'byog_client_item',
         name: 'Client-Provided Garment (BYOG)',
         category: 'Custom',
-        price: 100,
+        price: 0,
         stock: 999,
         variants: [],
         isByog: true
@@ -358,7 +386,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   };
 
   // Lettering extra pricing rule:
-  // First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
+  // Store products: First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
+  // BYOG: Customer brings garment. Every single letter has a fee (₱7 small, ₱10 big). No free first word.
   const isSelectedBigGarment = useMemo(() => {
     if (activeSelectedItem?.isByog) {
       return byogGarmentType === 'big';
@@ -367,8 +396,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   }, [activeSelectedItem, customByogName, byogGarmentType]);
 
   const counterLettering = useMemo(() => {
-    return calculateLetteringCost(monogramText, isSelectedBigGarment);
-  }, [monogramText, isSelectedBigGarment]);
+    return calculateLetteringCost(
+      monogramText,
+      isSelectedBigGarment,
+      {},
+      Boolean(activeSelectedItem?.isByog)
+    );
+  }, [monogramText, isSelectedBigGarment, activeSelectedItem?.isByog]);
 
   const effectiveUnitPrice = (unitPrice || 0) + counterLettering.extraCost;
 
@@ -385,8 +419,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   }, [activeQuickItem, quickByogGarmentType]);
 
   const quickLettering = useMemo(() => {
-    return calculateLetteringCost(quickText, isQuickBigGarment);
-  }, [quickText, isQuickBigGarment]);
+    return calculateLetteringCost(
+      quickText,
+      isQuickBigGarment,
+      {},
+      Boolean(activeQuickItem?.isByog)
+    );
+  }, [quickText, isQuickBigGarment, activeQuickItem?.isByog]);
 
   const effectiveQuickPrice = (quickPrice || 0) + quickLettering.extraCost;
 
@@ -409,6 +448,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     return quantity;
   }, [ticketItems, quantity]);
 
+  const hasAnyEmbroidery = useMemo(() => {
+    if (ticketItems.length > 0) {
+      return ticketItems.some(it => (it.text || '').trim().length > 0);
+    }
+    return monogramText.trim().length > 0;
+  }, [ticketItems, monogramText]);
+
   const handleAddCurrentItemToTicket = () => {
     const isByog = Boolean(activeSelectedItem.isByog);
     const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
@@ -429,7 +475,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       byogType: byogGarmentType,
       variantName: selectedVariant?.name,
       text: cleanText,
-      threadColor: threadColor,
+      threadColor: cleanText ? threadColor : 'None (Plain)',
       quantity: Math.max(1, quantity),
       basePrice: unitPrice,
       extraLetteringCost: counterLettering.extraCost,
@@ -452,7 +498,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setTicketItems(prev => prev.filter(it => it.id !== itemId));
   };
 
-  const handleResetForm = () => {
+  const resetIntakeInputs = () => {
     setMonogramText('');
     setCustomerName('');
     setCustomerContact('');
@@ -460,8 +506,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setQuantity(1);
     setSelectedVariant(null);
     setCustomByogName('');
-    setCreatedOrderTicket(null);
     setTicketItems([]);
+    setIsHoldForPickup(false);
+  };
+
+  const handleResetForm = () => {
+    resetIntakeInputs();
+    setCreatedOrderTicket(null);
   };
 
   // Submit Intake Order
@@ -519,8 +570,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             selectedVariant: selectedVariant?.name || null,
             personalization: {
               text: cleanText,
-              threadColor: { name: threadColor },
-              color: threadColor,
+              threadColor: cleanText ? { name: threadColor } : null,
+              color: cleanText ? threadColor : 'None (Plain)',
               placement: activeSelectedItem.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
               variant: selectedVariant?.name || null,
               extraLetteringCost: counterLettering.extraCost,
@@ -536,6 +587,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       const isEmail = customerContact.includes('@');
       const isPhone = customerContact.replace(/\D/g, '').length >= 7;
 
+      const isPlainOrder = !hasAnyEmbroidery;
+      const isDirectComplete = isPlainOrder && !isHoldForPickup;
+
       const payload = {
         clientName: customerName.trim() || defaultClientName,
         clientPhone: isPhone ? customerContact.trim() : undefined,
@@ -548,9 +602,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         isByog: finalItems.some(i => i.isByog),
         isImmediate: true,
         executionMode: 'immediate',
+        isAlreadyCompleted: isDirectComplete,
+        isHoldForPickup: isPlainOrder && isHoldForPickup,
         personalizationText: finalItems[0]?.personalization?.text || '',
-        threadColor: finalItems[0]?.personalization?.threadColor || threadColor,
+        threadColor: hasAnyEmbroidery ? (finalItems[0]?.personalization?.threadColor?.name || finalItems[0]?.personalization?.threadColor || threadColor) : 'None (Plain)',
         notes: [
+          isPlainOrder ? (isHoldForPickup ? 'Plain Walk-In (Packaged & held on side for pickup)' : 'Plain Walk-In (Direct off-the-shelf sale)') : '',
           finalItems.length > 1 ? `Multi-item batch (${finalItems.length} items)` : '',
           customerContact ? `Contact: ${customerContact}` : '',
           gcashRef.trim() ? `GCash Ref: ${gcashRef.trim()}` : '',
@@ -561,6 +618,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       const res = await api.post<{ success: boolean; message: string; order: any }>('/api/admin/orders/walk-in', payload);
 
       if (res && res.order) {
+        if (typeof window !== 'undefined') {
+          (window as any).__lastSelfCreatedOrderId = res.order.orderId;
+          (window as any).__lastSelfCreatedOrderTime = Date.now();
+        }
         showToast(`Ticket #${res.order.orderId} registered!`, 'success');
         setCreatedOrderTicket({
           ...res.order,
@@ -569,10 +630,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           totalAmount: totalAmountToSubmit,
           paymentMethod,
           readyBy: estimatedReadyTime,
-          verificationCode: `#${res.order.orderId.replace('WI-', 'A-')}`
+          verificationCode: `#${res.order.orderId.replace('WI-', 'A-')}`,
+          isDirectSale: isDirectComplete,
+          isHoldForPickup: isPlainOrder && isHoldForPickup,
+          status: isDirectComplete ? 'Completed' : (res.order.status || 'In Queue')
         });
-        setTicketItems([]);
-        handleResetForm();
+        resetIntakeInputs();
         await refreshData();
       }
     } catch (err: any) {
@@ -619,9 +682,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
     // 2. Dispatch to server in background
     try {
+      const hasEmbroidery = cleanText.length > 0;
       const payload = {
         clientName: cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer',
-        design: `${itemName} — "${cleanText || 'Monogram'}"`,
+        design: cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`,
         items: [
           {
             productId: activeQuickItem.isByog ? undefined : activeQuickItem.id,
@@ -639,9 +703,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         totalAmount,
         paymentMethod: quickPayment,
         paymentStatus: 'paid',
-        isAlreadyCompleted: true,
+        isAlreadyCompleted: !hasEmbroidery,
         personalizationText: cleanText,
-        notes: `Quick Slip Punch from Nanay's cash tin`
+        notes: hasEmbroidery ? `Quick Slip Punch (Stitching required)` : `Quick Slip Punch: Plain sale`
       };
 
       const res = await api.post<{ success: boolean; message: string; order: any }>('/api/admin/orders/walk-in', payload);
@@ -659,117 +723,41 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     }
   };
 
-  // Turn-Over Desk & Queue Progression
-  const allActiveQueueOrders = useMemo(() => {
+  // Claim & Handover Desk (Cashier Counter Pickup)
+  const readyForClaimOrders = useMemo(() => {
     return (orders || []).filter((o) => {
-      return ['Preparing Order', 'In Production', 'Processing', 'In Queue', 'Ready For Pick Up', 'Ready for Pickup'].includes(o.status);
+      return ['Ready For Pick Up', 'Ready for Pickup'].includes(o.status);
     });
   }, [orders]);
 
-  const walkInActiveOrders = useMemo(() => {
-    return allActiveQueueOrders.filter((o) => {
-      return o.orderId?.startsWith('WI-') || o.deliveryTime?.toLowerCase().includes('walk-in') || o.deliveryTime?.toLowerCase().includes('wait');
-    });
-  }, [allActiveQueueOrders]);
-
-  const inQueueCount = useMemo(() => {
-    return allActiveQueueOrders.filter(o => o.status === 'In Queue').length;
-  }, [allActiveQueueOrders]);
-
-  const stitchingCount = useMemo(() => {
-    return allActiveQueueOrders.filter(o => ['Preparing Order', 'In Production', 'Processing'].includes(o.status)).length;
-  }, [allActiveQueueOrders]);
-
-  const readyCount = useMemo(() => {
-    return allActiveQueueOrders.filter(o => ['Ready For Pick Up', 'Ready for Pickup'].includes(o.status)).length;
-  }, [allActiveQueueOrders]);
-
-  const filteredTurnOverOrders = useMemo(() => {
-    let base = queueScope === 'all' ? allActiveQueueOrders : walkInActiveOrders;
-
-    if (queueFilterStage === 'in_queue') {
-      base = base.filter(o => o.status === 'In Queue');
-    } else if (queueFilterStage === 'stitching') {
-      base = base.filter(o => ['Preparing Order', 'In Production', 'Processing'].includes(o.status));
-    } else if (queueFilterStage === 'ready') {
-      base = base.filter(o => ['Ready For Pick Up', 'Ready for Pickup'].includes(o.status));
+  const filteredClaimOrders = useMemo(() => {
+    if (!turnOverSearch.trim()) {
+      return readyForClaimOrders;
     }
-
-    if (!turnOverSearch.trim()) return base;
     const q = turnOverSearch.toLowerCase().trim();
-    return base.filter((o) =>
-      o.orderId?.toLowerCase().includes(q) ||
-      o.client?.toLowerCase().includes(q) ||
-      o.design?.toLowerCase().includes(q)
-    );
-  }, [allActiveQueueOrders, walkInActiveOrders, queueScope, queueFilterStage, turnOverSearch]);
+    const cleanQ = q.replace(/^#/, '');
 
-  const paginatedTurnOverOrders = useMemo(() => {
+    return (orders || []).filter((o) => {
+      const claimCode = (o.claimCode || o.personalization?.claimCode || getVerificationCode(o.orderId) || '').toLowerCase();
+      const orderId = (o.orderId || '').toLowerCase();
+      const client = (o.client || '').toLowerCase();
+      const text = (o.personalization?.text || o.design || '').toLowerCase();
+
+      return (
+        claimCode.includes(q) ||
+        claimCode.includes(cleanQ) ||
+        orderId.includes(q) ||
+        orderId.includes(cleanQ) ||
+        client.includes(q) ||
+        text.includes(q)
+      );
+    });
+  }, [orders, readyForClaimOrders, turnOverSearch]);
+
+  const paginatedClaimOrders = useMemo(() => {
     const start = (turnOverPage - 1) * turnOverPageSize;
-    return filteredTurnOverOrders.slice(start, start + turnOverPageSize);
-  }, [filteredTurnOverOrders, turnOverPage, turnOverPageSize]);
-
-  const handleStartStitching = async (order: any) => {
-    const prevOrders = [...orders];
-    const targetStatus = 'Preparing Order';
-    setActionInProgressId(order.id);
-
-    // Play pleasant cue for Nanay
-    playQueueChime('start');
-
-    // 1. Optimistic instant UI update (0ms)
-    if (setOrders) {
-      setOrders(prev => prev.map(o => (o.id === order.id || o._id === order.id) ? { ...o, status: targetStatus } : o));
-    }
-    showToast(`Started stitching #${order.orderId} on machine!`, 'success');
-
-    // 2. Dispatch to server in background
-    try {
-      await api.post('/api/admin/orders/batch-status', {
-        ids: [order.id || order._id],
-        status: targetStatus,
-        note: `Stitching initiated on Nanay's machine.`
-      });
-      refreshData().catch(() => { });
-    } catch (err: any) {
-      // 3. Rollback on error
-      if (setOrders) setOrders(prevOrders);
-      showToast(err.message || 'Failed to start stitching. Reverted.', 'error');
-    } finally {
-      setActionInProgressId(null);
-    }
-  };
-
-  const handleMarkStitchingDone = async (order: any) => {
-    const prevOrders = [...orders];
-    const targetStatus = 'Ready For Pick Up';
-    setActionInProgressId(order.id);
-
-    // Play ready chime
-    playQueueChime('ready');
-
-    // 1. Optimistic instant UI update (0ms)
-    if (setOrders) {
-      setOrders(prev => prev.map(o => (o.id === order.id || o._id === order.id) ? { ...o, status: targetStatus } : o));
-    }
-    showToast(`Stitching complete! #${order.orderId} ready for claim.`, 'success');
-
-    // 2. Dispatch to server in background
-    try {
-      await api.post('/api/admin/orders/batch-status', {
-        ids: [order.id || order._id],
-        status: targetStatus,
-        note: `Stitching finished on machine for ${order.client}.`
-      });
-      refreshData().catch(() => { });
-    } catch (err: any) {
-      // 3. Rollback on error
-      if (setOrders) setOrders(prevOrders);
-      showToast(err.message || 'Failed to update order status. Reverted.', 'error');
-    } finally {
-      setActionInProgressId(null);
-    }
-  };
+    return filteredClaimOrders.slice(start, start + turnOverPageSize);
+  }, [filteredClaimOrders, turnOverPage, turnOverPageSize]);
 
   const handleTurnOverToCustomer = async (order: any) => {
     const prevOrders = [...orders];
@@ -800,7 +788,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   };
 
   return (
-    <div className="flex flex-col gap-3 text-left max-w-6xl mx-auto pb-4 font-sans">
+    <div className="flex flex-col gap-3 text-left max-w-6xl mx-auto pb-4 font-sans touch-pan-y" {...touchSwipeHandlers}>
       {/* Print stylesheet targeting only thermal claim stub */}
       <style jsx global>{`
         @media print {
@@ -824,7 +812,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       `}</style>
 
       {/* Clean Top Tab Switcher */}
-      <div className="flex flex-row items-center justify-start pb-2 border-b border-border-glass mb-1">
+      <div className="flex flex-row items-center justify-between pb-2 border-b border-border-glass mb-1 gap-2">
         {/* Tab Switcher */}
         <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 gap-1">
           <button
@@ -862,15 +850,23 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>Queue &amp; Claim Desk</span>
-            {allActiveQueueOrders.length > 0 && (
-              <span className="bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
-                {allActiveQueueOrders.length}
+            <span>Claim &amp; Handover</span>
+            {readyForClaimOrders.length > 0 && (
+              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                {readyForClaimOrders.length} Ready
               </span>
             )}
           </button>
+        </div>
+
+        {/* Touch Swipe Hint Badge for Mobile / Tablets */}
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-dim/60 font-medium select-none bg-white/[0.03] border border-border-glass px-2.5 py-1 rounded-lg">
+          <svg className="w-3.5 h-3.5 text-primary/70 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>Swipe &larr; &rarr; to change desk</span>
         </div>
       </div>
 
@@ -1055,7 +1051,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                             Garment Size &amp; Lettering Rate
                           </label>
-                          <span className="text-[10px] text-text-dim">1st word included in base price</span>
+                          <span className="text-[10px] text-amber-400 font-semibold">No free 1st word • All letters charged</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -1128,7 +1124,15 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 {monogramText.trim() && (
                   <div className="mt-2 text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
                     <span className="text-text-dim text-[11px]">
-                      {counterLettering.extraCost > 0 ? (
+                      {activeSelectedItem.isByog ? (
+                        counterLettering.extraCost > 0 ? (
+                          <>
+                            BYOG Lettering: <strong className="text-amber-400">{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                          </>
+                        ) : (
+                          <span>BYOG: ₱{counterLettering.ratePerLetter}/letter ({isSelectedBigGarment ? 'big garment' : 'small garment'} • all letters charged)</span>
+                        )
+                      ) : counterLettering.extraCost > 0 ? (
                         <>
                           First word included. Additional letters: <strong className="text-amber-400">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
                         </>
@@ -1144,54 +1148,63 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </div>
                 )}
 
-                {/* Thread Color Selector */}
-                <div className="mt-3 pt-3 border-t border-border-glass">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                      Thread Color
-                    </span>
-                    <span className="text-xs font-mono font-semibold text-text-main">
-                      {threadColor}
-                    </span>
+                {/* Thread Color Selector - Only shown when text is entered */}
+                {monogramText.trim() ? (
+                  <div className="mt-3 pt-3 border-t border-border-glass animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                        Thread Color
+                      </span>
+                      <span className="text-xs font-mono font-semibold text-text-main">
+                        {threadColor}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                      {activeThreadColors.map(tc => {
+                        const isSelected = threadColor === tc.name;
+                        const isAvailable = tc.isAvailable !== false;
+                        return (
+                          <button
+                            key={tc.name}
+                            type="button"
+                            disabled={!isAvailable}
+                            onClick={() => {
+                              if (isAvailable) setThreadColor(tc.name);
+                            }}
+                            title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
+                            className={`relative flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition overflow-hidden ${
+                              !isAvailable
+                                ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/10 bg-black/20'
+                                : isSelected
+                                ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary cursor-pointer'
+                                : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20 cursor-pointer'
+                            }`}
+                          >
+                            {!isAvailable && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-[130%] h-[1.5px] bg-rose-500/80 rotate-45 transform" />
+                              </div>
+                            )}
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
+                              style={{ backgroundColor: tc.hex }}
+                            />
+                            <span className="truncate w-full text-center text-[10px] leading-tight">
+                              {tc.name.split(' ')[0]}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                    {activeThreadColors.map(tc => {
-                      const isSelected = threadColor === tc.name;
-                      const isAvailable = tc.isAvailable !== false;
-                      return (
-                        <button
-                          key={tc.name}
-                          type="button"
-                          disabled={!isAvailable}
-                          onClick={() => {
-                            if (isAvailable) setThreadColor(tc.name);
-                          }}
-                          title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
-                          className={`relative flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition overflow-hidden ${
-                            !isAvailable
-                              ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/10 bg-black/20'
-                              : isSelected
-                              ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary cursor-pointer'
-                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20 cursor-pointer'
-                          }`}
-                        >
-                          {!isAvailable && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-[130%] h-[1.5px] bg-rose-500/80 rotate-45 transform" />
-                            </div>
-                          )}
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
-                            style={{ backgroundColor: tc.hex }}
-                          />
-                          <span className="truncate w-full text-center text-[10px] leading-tight">
-                            {tc.name.split(' ')[0]}
-                          </span>
-                        </button>
-                      );
-                    })}
+                ) : (
+                  <div className="mt-3 pt-3 border-t border-border-glass">
+                    <div className="px-3 py-2 rounded-lg bg-white/[0.02] border border-dashed border-border-glass text-[11px] text-text-dim flex items-center justify-between">
+                      <span>No letters entered • <strong>Plain product (No thread needed)</strong></span>
+                      <span className="text-[10px] text-text-dim/60">Type a name above to pick thread color</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Staging / Add to Ticket Action Button */}
                 <div className="mt-3.5 pt-3 border-t border-border-glass flex items-center justify-between gap-2">
@@ -1399,17 +1412,32 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 />
               </div>
 
-              {/* Double-Check Spelling with Customer (Foolproof Verification) */}
-              <button
-                type="button"
-                onClick={() => setIsVerificationModalOpen(true)}
-                className="w-full py-2 px-3 rounded-lg bg-bg-card hover:bg-white/5 border border-border-glass text-text-main text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Double-Check Spelling with Customer</span>
-              </button>
+              {/* Plain Item Direct Sale Indicator */}
+              {!hasAnyEmbroidery && (
+                <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-text-main">
+                        {isHoldForPickup ? 'Hold on Side for Pickup Later' : 'Direct Off-the-Shelf Sale'}
+                      </span>
+                      <span className="text-[11px] text-text-dim">
+                        {isHoldForPickup
+                          ? 'Bag order now with claim slip and place on the side.'
+                          : 'Plain item (no embroidery) — hand over directly at counter.'}
+                      </span>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer pt-1.5 border-t border-border-glass text-xs font-medium text-text-dim hover:text-text-main select-none">
+                    <input
+                      type="checkbox"
+                      checked={isHoldForPickup}
+                      onChange={(e) => setIsHoldForPickup(e.target.checked)}
+                      className="rounded border-border-glass accent-primary"
+                    />
+                    <span>Customer will pick up later (Hold on side with claim slip)</span>
+                  </label>
+                </div>
+              )}
 
               {/* Big Action Button */}
               <button
@@ -1422,10 +1450,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </svg>
                 <span>
                   {isSubmitting
-                    ? 'Queueing...'
-                    : ticketItems.length > 0
-                      ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Print Claim Stub`
-                      : 'Punch Order & Print Claim Stub'}
+                    ? 'Processing...'
+                    : !hasAnyEmbroidery
+                      ? (isHoldForPickup ? 'Bag Order & Print Claim Slip' : 'Direct Sale & Hand Over (Complete)')
+                      : (ticketItems.length > 0
+                        ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Queue for Stitching`
+                        : 'Punch Order & Queue for Stitching')}
                 </span>
               </button>
               <InlineError error={intakeError} />
@@ -1547,7 +1577,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                           Slip Garment Rate
                         </span>
-                        <span className="text-[10px] text-text-dim">1st word included</span>
+                        <span className="text-[10px] text-amber-400 font-semibold">No free 1st word • All letters charged</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <button
@@ -1596,7 +1626,15 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 {quickText.trim() && (
                   <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
                     <span className="text-text-dim text-[11px]">
-                      {quickLettering.extraCost > 0 ? (
+                      {activeQuickItem?.isByog ? (
+                        quickLettering.extraCost > 0 ? (
+                          <>
+                            BYOG: <strong className="text-amber-400">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                          </>
+                        ) : (
+                          <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
+                        )
+                      ) : quickLettering.extraCost > 0 ? (
                         <>
                           First word included. Extra: <strong className="text-amber-400">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
                         </>
@@ -1722,251 +1760,164 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* TAB 2: QUEUE PROGRESSION & CLAIM DESK (PICKUP SHELF)          */}
+      {/* TAB 3: CUSTOMER CLAIM & HANDOVER DESK                         */}
       {/* ───────────────────────────────────────────────────────────── */}
       {activeTab === 'turnover' && (
-        <div className="flex flex-col gap-4">
-          {/* Controls Bar: Search, Scope Switcher, & Stage Filters */}
-          <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="w-full sm:w-80">
-                <input
-                  type="text"
-                  placeholder="Search ticket # (e.g. WI-A12B), claim #, or customer..."
-                  value={turnOverSearch}
-                  onChange={(e) => setTurnOverSearch(e.target.value)}
-                  className="w-full bg-white/[0.03] border border-border-glass focus:border-primary/60 px-3 py-2 rounded-lg text-text-main text-xs outline-none"
-                />
-              </div>
-
-              {/* Scope Switcher: All vs Walk-In Only */}
-              <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 text-xs font-bold self-stretch sm:self-auto">
+        <div className="flex flex-col gap-4 animate-fade">
+          {/* Controls Bar: Search & Status Count */}
+          <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+            <div className="w-full sm:w-96 relative">
+              <input
+                type="text"
+                placeholder="🔍 Search Claim Code (#A-XXXX), Ticket #, or Customer..."
+                value={turnOverSearch}
+                onChange={(e) => {
+                  setTurnOverSearch(e.target.value);
+                  setTurnOverPage(1);
+                }}
+                className="w-full bg-white/[0.03] border border-border-glass focus:border-primary/60 px-3.5 py-2 rounded-lg text-text-main text-xs outline-none font-mono"
+              />
+              {turnOverSearch && (
                 <button
                   type="button"
-                  onClick={() => setQueueScope('all')}
-                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'all'
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-dim hover:text-text-main'
-                    }`}
+                  onClick={() => setTurnOverSearch('')}
+                  className="absolute right-2.5 top-2 text-xs text-text-dim hover:text-text-main cursor-pointer"
                 >
-                  All Shop Orders ({allActiveQueueOrders.length})
+                  ✕
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setQueueScope('walkin_only')}
-                  className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md transition cursor-pointer ${queueScope === 'walkin_only'
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-dim hover:text-text-main'
-                    }`}
-                >
-                  Walk-In Slips Only ({walkInActiveOrders.length})
-                </button>
-              </div>
+              )}
             </div>
 
-            {/* Stage Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border-glass">
-              <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider mr-1">
-                Stage:
-              </span>
-              <button
-                type="button"
-                onClick={() => setQueueFilterStage('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${queueFilterStage === 'all'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-              >
-                All Stages ({queueScope === 'all' ? allActiveQueueOrders.length : walkInActiveOrders.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setQueueFilterStage('in_queue')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'in_queue'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-                <span>In Queue</span>
-                <span className="font-mono text-[11px] opacity-80">({inQueueCount})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setQueueFilterStage('stitching')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'stitching'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-                <span>Now Stitching</span>
-                <span className="font-mono text-[11px] opacity-80">({stitchingCount})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setQueueFilterStage('ready')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${queueFilterStage === 'ready'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-                <span>Ready for Claim</span>
-                <span className="font-mono text-[11px] opacity-80">({readyCount})</span>
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{readyForClaimOrders.length} Packaged Bag(s) Waiting on Side</span>
+              </div>
             </div>
           </div>
 
           {/* Orders Cards Grid */}
-          {filteredTurnOverOrders.length === 0 ? (
+          {filteredClaimOrders.length === 0 ? (
             <div className="bg-bg-surface border border-border-glass rounded-xl p-12 text-center text-xs text-text-dim flex flex-col items-center gap-2">
-              <svg className="w-8 h-8 text-text-dim opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg className="w-10 h-10 text-emerald-400/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>No active orders match this filter right now.</span>
+              <span className="font-bold text-text-main text-sm">
+                {turnOverSearch ? 'No matching order found for this search.' : 'All packaged orders have been claimed!'}
+              </span>
+              <span className="text-[11px] text-text-dim">
+                {turnOverSearch ? 'Check the claim slip code or order number on the customer slip.' : 'No bags currently waiting on the side for pickup.'}
+              </span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {paginatedTurnOverOrders.map((order) => {
+              {paginatedClaimOrders.map((order) => {
                 const isReady = order.status === 'Ready For Pick Up' || order.status === 'Ready for Pickup';
                 const isStitching = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
-                const isInQueue = order.status === 'In Queue';
+                const isCompleted = order.status === 'Completed' || order.status === 'Order Delivered';
                 const personalization = order.personalization || {};
                 const textToStitch = personalization.text || '';
                 const isBusy = actionInProgressId === order.id;
                 const qty = getOrderQuantity(order);
-                const isExpress = qty === 1;
                 const claimCode = getVerificationCode(order.orderId);
 
                 return (
                   <div
                     key={order.id}
-                    className={`bg-bg-card rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition hover:shadow-md ${isReady
-                        ? 'border-emerald-500/40'
-                        : isStitching
-                          ? 'border-primary/40'
-                          : 'border-border-glass'
-                      }`}
+                    className={`bg-bg-card rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition ${
+                      isReady
+                        ? 'border-emerald-500/50 bg-emerald-500/[0.02]'
+                        : isCompleted
+                        ? 'border-border-glass opacity-70'
+                        : 'border-amber-500/30'
+                    }`}
                   >
                     <div>
-                      {/* Top Row: IDs, Claim Badge, & Stage Indicator */}
+                      {/* Top Row: Claim Slip Code & Status */}
                       <div className="flex justify-between items-start mb-2.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-base font-extrabold text-text-main font-mono tracking-wider">
-                              #{order.orderId}
-                            </span>
-                            {/* Visual Anti-Fraud Claim Code */}
-                            <span className="px-2 py-0.5 rounded bg-bg-surface font-mono text-xs font-bold text-text-main border border-border-glass">
+                            {/* Big visual claim code to match the bag tag */}
+                            <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 font-mono text-sm font-extrabold border border-emerald-500/40">
                               {claimCode}
                             </span>
+                            <span className="text-xs font-mono font-bold text-text-dim">
+                              #{order.orderId}
+                            </span>
                           </div>
-                          <span className="text-xs text-text-dim block mt-0.5 font-medium">
-                            Customer: <strong className="text-text-main font-bold">{order.client}</strong>
+                          <span className="text-xs text-text-dim block mt-1.5 font-medium">
+                            Customer: <strong className="text-text-main font-bold text-sm">{order.client || 'Walk-In Customer'}</strong>
                           </span>
                         </div>
 
-                        {/* Stage Badge */}
-                        <div className="flex flex-col items-end gap-1">
-                          <span
-                            className={`text-xs px-2.5 py-1 rounded-md font-bold border flex items-center gap-1.5 ${isReady
-                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-                                : isStitching
-                                  ? 'bg-primary/15 border-primary/30 text-primary-light'
-                                  : 'bg-white/5 border-border-glass text-text-muted'
-                              }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${isReady ? 'bg-emerald-400' : isStitching ? 'bg-primary-light' : 'bg-text-dim'}`} />
-                            <span>
-                              {isReady ? 'Ready for Claim' : isStitching ? 'Now Stitching' : 'In Queue'}
+                        {/* Status Indicator */}
+                        <div>
+                          {isReady ? (
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              <span>Bagged • Ready for Handover</span>
                             </span>
-                          </span>
-
-                          {/* Express vs Bulk Badge */}
-                          {isExpress ? (
-                            <span className="text-[10px] font-bold text-text-dim px-2 py-0.5 rounded bg-white/5 border border-border-glass flex items-center gap-1">
-                              <svg className="w-3 h-3 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              Express (~15m)
+                          ) : isCompleted ? (
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-border-glass bg-white/5 text-text-dim">
+                              ✓ Already Handed Over
+                            </span>
+                          ) : isStitching ? (
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-primary/30 bg-primary/10 text-primary-light">
+                              In Workshop Stitching
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold text-text-dim px-2 py-0.5 rounded bg-white/5 border border-border-glass flex items-center gap-1">
-                              <svg className="w-3 h-3 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              Bulk ({qty} pcs)
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-amber-500/30 bg-amber-500/10 text-amber-300">
+                              In Workshop Queue
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Detail Box */}
+                      {/* Item Details */}
                       <div className="bg-bg-surface border border-border-glass p-3 rounded-lg flex flex-col gap-1.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-text-dim">Item Blank:</span>
-                          <span className="font-semibold text-text-main">{order.design}</span>
+                          <span className="text-text-dim">Item(s):</span>
+                          <span className="font-semibold text-text-main text-right">{order.design || `${qty} item(s)`}</span>
                         </div>
                         {textToStitch && (
                           <div className="flex justify-between items-center bg-bg-card p-1.5 rounded-md border border-border-glass">
-                            <span className="text-text-dim text-[11px]">Monogram Text:</span>
-                            <span className="font-bold text-primary uppercase font-mono text-sm tracking-wider">
+                            <span className="text-text-dim text-[11px]">Embroidery:</span>
+                            <span className="font-bold text-primary uppercase font-mono text-xs tracking-wider">
                               "{textToStitch}"
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between pt-1 border-t border-border-glass">
-                          <span className="text-text-dim">Payment:</span>
-                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                            ₱{order.totalAmount?.toFixed(2)} ({order.paymentStatus === 'paid' ? 'PAID' : 'UNPAID'})
+                          <span className="text-text-dim">Payment Status:</span>
+                          <span className="font-mono text-emerald-400 font-bold">
+                            ₱{order.totalAmount?.toFixed(2)} ({order.paymentStatus === 'paid' ? 'PAID' : 'COLLECT AT COUNTER'})
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* 3-State 1-Tap Action Progression Buttons */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-border-glass">
-                      {isInQueue && (
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleStartStitching(order)}
-                          className="flex-1 py-2.5 px-3 rounded-lg bg-primary/10 hover:bg-primary border border-primary/30 hover:border-primary text-primary hover:text-white active:scale-[0.99] text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <span>{isBusy ? 'Starting...' : 'Start Stitching'}</span>
-                        </button>
-                      )}
-
-                      {isStitching && (
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleMarkStitchingDone(order)}
-                          className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-500/15 hover:bg-emerald-600 border border-emerald-500/30 hover:border-emerald-600 text-emerald-600 dark:text-emerald-300 hover:text-white active:scale-[0.99] text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <span>{isBusy ? 'Updating...' : 'Mark Ready for Claim'}</span>
-                        </button>
-                      )}
-
-                      {isReady && (
+                    {/* Action Button: Only Handover if ready, or workshop hint if in progress */}
+                    <div className="pt-2 border-t border-border-glass">
+                      {isReady ? (
                         <button
                           type="button"
                           disabled={isBusy}
                           onClick={() => setVerifyingOrderForRelease(order)}
-                          className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          className="w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                         >
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                          <span>{isBusy ? 'Releasing...' : `Verify Claim & Release (${claimCode})`}</span>
+                          <span>{isBusy ? 'Processing...' : `Hand Over to Customer (${claimCode})`}</span>
                         </button>
+                      ) : isCompleted ? (
+                        <div className="text-center text-[11px] text-text-dim py-1">
+                          Order was previously handed over and completed.
+                        </div>
+                      ) : (
+                        <div className="text-center text-[11px] text-amber-400/90 py-1 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                          ⏳ Currently being stitched in workshop. Not yet bagged.
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1975,19 +1926,21 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </div>
           )}
 
-          {/* Turn-Over Desk Pagination Controls */}
-          <Pagination
-            currentPage={turnOverPage}
-            totalItems={filteredTurnOverOrders.length}
-            pageSize={turnOverPageSize}
-            onPageChange={setTurnOverPage}
-            pageSizeOptions={[4, 8, 12, 24]}
-            onPageSizeChange={(newSize) => {
-              setTurnOverPageSize(newSize);
-              setTurnOverPage(1);
-            }}
-            itemLabel="turnover orders"
-          />
+          {filteredClaimOrders.length > turnOverPageSize && (
+            <Pagination
+              currentPage={turnOverPage}
+              totalItems={filteredClaimOrders.length}
+              pageSize={turnOverPageSize}
+              onPageChange={setTurnOverPage}
+              pageSizeOptions={[4, 8, 12, 24]}
+              onPageSizeChange={(newSize) => {
+                setTurnOverPageSize(newSize);
+                setTurnOverPage(1);
+              }}
+              itemLabel="claim orders"
+            />
+          )}
+
 
           {/* ───────────────────────────────────────────────────────────── */}
           {/* ANTI-FRAUD VERIFICATION POPUP MODAL (1-TAP TURNOVER)          */}
@@ -2013,13 +1966,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
                   <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300 block mb-1">
-                    Match Customer Paper Stub Code
+                    Match Claim Slip Code on Bag
                   </span>
                   <div className="text-4xl font-black font-mono tracking-widest text-emerald-300 my-1">
                     {getVerificationCode(verifyingOrderForRelease.orderId)}
                   </div>
                   <span className="text-xs text-text-dim">
-                    Inspect customer's paper stub and verify it matches the bag tag.
+                    Find the packaged bag on the side matching this claim code, hand it to the customer, and confirm below.
                   </span>
                 </div>
 
@@ -2070,7 +2023,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span>Stub Matches — Complete Turnover</span>
+                    <span>Claim Slip Matches — Hand Over</span>
                   </button>
                 </div>
               </div>
@@ -2079,123 +2032,34 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         </div>
       )}
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* CUSTOMER VERIFICATION MODAL (ANTI-ERROR / ANTI-SPOILAGE)      */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <GlassModal
-        isOpen={isVerificationModalOpen}
-        onClose={() => setIsVerificationModalOpen(false)}
-        title="Double-Check Order with Customer"
-        maxWidth="max-w-lg"
-      >
-        <div className="flex flex-col gap-4 text-text-main">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs flex items-start gap-2.5">
-            <svg className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div>
-              <span className="font-bold text-amber-300 block">Show screen to customer for sign-off</span>
-              <span className="text-text-dim text-[11px]">
-                Once threads are machine-stitched into the garment fabric, they cannot be undone. Verify all names, letters, and thread colors with customer before submitting.
-              </span>
-            </div>
-          </div>
 
-          <div className="flex flex-col gap-2.5 max-h-72 overflow-y-auto pr-1">
-            {(ticketItems.length > 0 ? ticketItems : [{
-              id: 'current_preview',
-              name: activeSelectedItem.isByog
-                ? `BYOG [${byogGarmentType === 'big' ? 'Big Item' : 'Small Item'}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
-                : selectedVariant
-                  ? `${activeSelectedItem.name} - ${selectedVariant.name}`
-                  : activeSelectedItem.name,
-              text: monogramText.trim().toUpperCase(),
-              threadColor: threadColor,
-              quantity: quantity,
-              totalPrice: grandTotal
-            }]).map((item, idx) => (
-              <div key={item.id || idx} className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-text-main">
-                    #{idx + 1}: {item.name}
-                  </span>
-                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/5 border border-border-glass text-text-dim">
-                    Qty: {item.quantity}
-                  </span>
-                </div>
-
-                <div className="bg-bg-surface border border-border-glass rounded-lg p-2.5 flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-text-dim tracking-wider">
-                    Embroidery Name / Word:
-                  </span>
-                  {item.text ? (
-                    <span className="text-lg font-black font-mono tracking-widest text-primary break-all bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20">
-                      "{item.text}"
-                    </span>
-                  ) : (
-                    <span className="text-xs italic text-text-dim py-1">
-                      (No embroidery text — plain blank item)
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass/50">
-                  <div className="flex items-center gap-1.5 text-text-dim">
-                    <span>Thread:</span>
-                    <span className="font-semibold text-text-main">{item.threadColor || 'Standard'}</span>
-                  </div>
-                  <span className="font-mono font-bold text-emerald-400">
-                    ₱{item.totalPrice.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-border-glass text-xs">
-            <span className="text-text-dim font-bold">Total Pieces: {ticketTotalPieces} pcs</span>
-            <span className="text-base font-black font-mono text-emerald-400">
-              Total Due: ₱{ticketGrandTotal.toFixed(2)}
-            </span>
-          </div>
-
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setIsVerificationModalOpen(false)}
-              className="flex-1 py-2.5 rounded-lg border border-border-glass bg-white/5 hover:bg-white/10 text-text-main text-xs font-bold transition cursor-pointer"
-            >
-              Make Corrections
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsVerificationModalOpen(false)}
-              className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <span>Customer Confirmed ✓</span>
-            </button>
-          </div>
-        </div>
-      </GlassModal>
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* THERMAL CLAIM STUB MODAL (ANTI-FRAUD PROTECTION)            */}
       {/* ───────────────────────────────────────────────────────────── */}
       {createdOrderTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-bg-surface border border-border-glass rounded-xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto animate-fade">
+          <div className="bg-bg-surface border border-border-glass rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 text-left">
+            <div className="flex items-center justify-between pb-2 border-b border-border-glass">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-dim">
+                {createdOrderTicket.isDirectSale || createdOrderTicket.status === 'Completed' ? 'Official Sales Receipt' : 'Counter Claim Slip'}
+              </span>
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="text-text-dim hover:text-text-main text-xs p-1 rounded hover:bg-white/5 cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
             <OfficialClaimSlip order={createdOrderTicket} showPrintAction={true} />
             <button
               type="button"
               onClick={handleResetForm}
-              className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition cursor-pointer"
+              className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              Next Customer
+              Next Customer &rarr;
             </button>
           </div>
         </div>

@@ -122,14 +122,19 @@ exports.submitOrder = async (req, res) => {
                     referenceNumber: cleanRef
                 };
 
+                const itemsList = Array.isArray(existingOrder.items) ? existingOrder.items : [];
+                const orderNeedsStitching = itemsList.some(item => Boolean(item.personalization?.text && String(item.personalization.text).trim().length > 0));
+                const validatedStatus = isBypassActive ? (orderNeedsStitching ? 'In Queue' : 'Ready For Pick Up') : existingOrder.status;
+                const validatedProgress = isBypassActive ? (orderNeedsStitching ? 5 : 90) : existingOrder.progress;
+
                 const updatedOrder = await prisma.order.update({
                     where: { id: existingOrder.id },
                     data: {
                         personalization: updatedPersonalization,
                         notes: notes || existingOrder.notes,
-                        status: isBypassActive ? 'In Queue' : existingOrder.status,
+                        status: validatedStatus,
                         paymentStatus: isBypassActive ? 'paid' : existingOrder.paymentStatus,
-                        progress: isBypassActive ? 5 : existingOrder.progress,
+                        progress: validatedProgress,
                     }
                 });
 
@@ -195,6 +200,12 @@ exports.submitOrder = async (req, res) => {
         // Correctly factors in variant price overrides (e.g. promotional/test variants)
         let serverTotal = 0;
         for (const item of items) {
+            if (item.isByog || isByog) {
+                const itemPrice = parseFloat(item.price) || 0;
+                serverTotal += itemPrice * (item.quantity || 1);
+                continue;
+            }
+
             const productId = item.productId || item.id;
             if (!productId) return res.status(400).json({ message: 'One of the items in your basket is missing details. Please remove and re-add it.' });
             const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -266,6 +277,8 @@ exports.submitOrder = async (req, res) => {
         const result = await prisma.$transaction(async (tx) => {
             // 1. Check stock availability for all items in the cart (with row locking)
             for (const item of items) {
+                if (item.isByog || isByog) continue; // BYOG items provided by customer
+
                 const productId = item.productId || item.id;
                 // Execute SELECT FOR UPDATE to lock this product row
                 const products = await tx.$queryRaw`
@@ -289,6 +302,8 @@ exports.submitOrder = async (req, res) => {
 
             // 2. Reserve garments in database (lock counts)
             for (const item of items) {
+                if (item.isByog || isByog) continue; // Customer provided garment
+
                 const productId = item.productId || item.id;
                 const needed = item.quantity || 1;
                 await tx.product.update({
@@ -365,7 +380,13 @@ exports.submitOrder = async (req, res) => {
                 return item;
             }) : [];
 
-            // 4. Create Order with descriptive design summary & empirical AI turnaround estimation
+            // Check if any item in the order has custom embroidery text
+            const requiresEmbroidery = sanitizedItems.some(item => {
+                const text = item.personalization?.text;
+                return Boolean(text && String(text).trim().length > 0);
+            });
+
+            // 4. Create Order with descriptive design summary & empirical turnaround estimation
             const designSummary = sanitizedItems.length > 0
                 ? sanitizedItems.map(i => {
                     const variantInfo = i.selectedVariant ? ` [${i.selectedVariant}]` : '';
@@ -375,34 +396,50 @@ exports.submitOrder = async (req, res) => {
                 : "Cart Order";
 
             const { estimateProductionTime } = require('../../utils/aiScheduler');
-            const calculatedEstTime = Math.ceil(estimateProductionTime({
-                design: designSummary,
-                items: sanitizedItems,
-                personalization: orderPersonalization
-            }));
+            const calculatedEstTime = requiresEmbroidery 
+                ? Math.ceil(estimateProductionTime({
+                    design: designSummary,
+                    items: sanitizedItems,
+                    personalization: orderPersonalization
+                }))
+                : 5; // Plain retail items: 2-5 minutes packaging only
 
-            // O(1) High-Efficiency Queue Watermark Scheduling
-            const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
-            const scheduling = await scheduleIncomingOrder({
-                orderDurationMinutes: calculatedEstTime,
-                prisma: tx
-            });
+            let finalClaimSchedule = 'Ready in 2–5 mins (Packaging Only)';
+            let finalDueDate = new Date(Date.now() + 5 * 60 * 1000);
 
-            const finalClaimSchedule = scheduling.readyLabel;
-            let finalDueDate = scheduling.estimatedReadyDate;
-            if (dueDate) {
-                const parsedDue = new Date(dueDate);
-                if (!isNaN(parsedDue.getTime()) && parsedDue.getTime() >= scheduling.estimatedReadyDate.getTime()) {
-                    finalDueDate = parsedDue;
+            if (requiresEmbroidery) {
+                // High-Efficiency Queue Watermark Scheduling for custom embroidery
+                const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
+                const scheduling = await scheduleIncomingOrder({
+                    orderDurationMinutes: calculatedEstTime,
+                    prisma: tx
+                });
+                finalClaimSchedule = scheduling.readyLabel;
+                finalDueDate = scheduling.estimatedReadyDate;
+                if (dueDate) {
+                    const parsedDue = new Date(dueDate);
+                    if (!isNaN(parsedDue.getTime()) && parsedDue.getTime() >= scheduling.estimatedReadyDate.getTime()) {
+                        finalDueDate = parsedDue;
+                    }
                 }
+                orderPersonalization.queuePosition = scheduling.queuePosition;
+                orderPersonalization.ordersAhead = scheduling.ordersAhead;
+                orderPersonalization.queueWaitMinutes = scheduling.queueWaitMinutes;
             }
 
             orderPersonalization.readyLabel = finalClaimSchedule;
-            orderPersonalization.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
-            orderPersonalization.queuePosition = scheduling.queuePosition;
-            orderPersonalization.ordersAhead = scheduling.ordersAhead;
-            orderPersonalization.queueWaitMinutes = scheduling.queueWaitMinutes;
-            orderPersonalization.estimatedStitchMinutes = calculatedEstTime;
+            orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
+            orderPersonalization.estimatedStitchMinutes = requiresEmbroidery ? calculatedEstTime : 0;
+            orderPersonalization.isPlainOrder = !requiresEmbroidery;
+            orderPersonalization.requiresEmbroidery = requiresEmbroidery;
+            orderPersonalization.packagingPriority = !requiresEmbroidery ? 2 : undefined;
+
+            const initialOnlineStatus = isInstantApproved 
+                ? (requiresEmbroidery ? 'In Queue' : 'Ready For Pick Up') 
+                : 'Awaiting Payment';
+            const initialOnlineProgress = isInstantApproved 
+                ? (requiresEmbroidery ? 5 : 90) 
+                : 0;
 
             const order = await tx.order.create({
                 data: {
@@ -414,11 +451,11 @@ exports.submitOrder = async (req, res) => {
                     totalAmount: numTotal,
                     paymentMethod,
                     paymentStatus: isInstantApproved ? 'paid' : 'unpaid',
-                    status: isInstantApproved ? 'In Queue' : 'Awaiting Payment',
+                    status: initialOnlineStatus,
                     address,
                     deliveryTime: finalClaimSchedule,
-                    notes,
-                    progress: isInstantApproved ? 5 : 0,
+                    notes: notes || (!requiresEmbroidery ? 'Plain items — packaging only (2-5 mins)' : null),
+                    progress: initialOnlineProgress,
                     isByog: isByog || false,
                     waiverSigned: waiverSigned || false,
                     giftPackaging: giftPackaging || false,

@@ -1911,12 +1911,18 @@ Output ONLY a JSON object:
 
         // Update Order status based on verdict
         if (willAutoApproveToQueue) {
+            const targetOrder = await prisma.order.findFirst({ where: { orderId: orderId } });
+            const itemsList = Array.isArray(targetOrder?.items) ? targetOrder.items : [];
+            const needsStitching = itemsList.some(item => Boolean(item.personalization?.text && String(item.personalization.text).trim().length > 0));
+            const verifiedStatus = needsStitching ? 'In Queue' : 'Ready For Pick Up';
+            const verifiedProgress = needsStitching ? 5 : 90;
+
             await prisma.order.updateMany({
                 where: { orderId: orderId },
                 data: {
                     paymentStatus: 'paid',
-                    status: 'In Queue',
-                    progress: 5
+                    status: verifiedStatus,
+                    progress: verifiedProgress
                 }
             });
 
@@ -1925,7 +1931,7 @@ Output ONLY a JSON object:
             if (io) {
                 const socketUtil = require('../../utils/socketUtil');
                 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
-                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { orderId, status: 'In Queue' });
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { orderId, status: verifiedStatus });
             }
 
             // Dispatch verified order confirmation email with estimated ready date & attendant

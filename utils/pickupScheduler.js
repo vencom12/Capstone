@@ -324,36 +324,12 @@ function sliceBulkOrderIntoDailyBatches({ totalPieces = 1, maxPiecesPerDay = 50,
 }
 
 /**
- * Algorithmically assigns the next available physical storage shelf cubby at Pacific Mall Lucena kiosk.
- * Recycles empty cubbies from claimed/completed orders (Bin A-1 to A-10, B-1 to B-10, C-1 to C-10).
- * 
- * @param {Array<Object>} activeOrders Currently active orders with stagingCubby assigned
- * @returns {string} Assigned cubby name (e.g. "Bin A-1")
+ * Handover identification is handled via claim slip code (#A-XXXX) attached to each
+ * packaged order placed on the side, rather than fixed shelf cubby numbers.
+ * @returns {null}
  */
-function assignNextAvailableCubby(activeOrders = []) {
-    const occupied = new Set();
-    if (Array.isArray(activeOrders)) {
-        activeOrders.forEach(o => {
-            const cubby = o.stagingCubby || o.personalization?.stagingCubby;
-            if (cubby && ['ready for pick up', 'ready for pickup', 'preparing order', 'in queue'].includes((o.status || '').toLowerCase())) {
-                occupied.add(cubby.trim());
-            }
-        });
-    }
-
-    // Shelves A, B, C with 10 cubbies each
-    const shelves = ['A', 'B', 'C'];
-    for (const shelf of shelves) {
-        for (let slot = 1; slot <= 10; slot++) {
-            const candidate = `Bin ${shelf}-${slot}`;
-            if (!occupied.has(candidate)) {
-                return candidate;
-            }
-        }
-    }
-
-    // Overflow shelf
-    return `Bin Overflow-${occupied.size + 1}`;
+function assignNextAvailableCubby() {
+    return null;
 }
 
 module.exports = {

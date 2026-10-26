@@ -321,12 +321,10 @@ exports.scanClaimHandover = async (req, res) => {
             });
         }
 
-        const cubbyLocation = order.stagingCubby || order.personalization?.stagingCubby || 'Front Counter Shelf';
-
         // Auto-transition to Completed via atomic state manager
         const updatedOrder = await prisma.$transaction(async (tx) => {
             return await handleOrderStateTransition(tx, order.id, 'Completed', username, {
-                note: `Claim verified via counter QR scan. Handed over from ${cubbyLocation}.`
+                note: `Claim slip verified. Handed over to customer (${order.client}).`
             });
         });
 
@@ -339,9 +337,8 @@ exports.scanClaimHandover = async (req, res) => {
         res.json({
             success: true,
             order: updatedOrder,
-            cubby: cubbyLocation,
             client: order.client,
-            message: `Verified! Hand over items from ${cubbyLocation}.`
+            message: `Verified! Hand over packaged order to ${order.client}.`
         });
     } catch (err) {
         console.error('Scan Claim Handover Error:', err);

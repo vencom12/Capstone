@@ -11,6 +11,7 @@
 export interface LetteringCostBreakdown {
   isPersonalized: boolean;
   isBigGarment: boolean;
+  isByog?: boolean;
   baseText: string;
   extraText: string;
   extraLettersCount: number;
@@ -45,7 +46,8 @@ export function isBigGarment(category?: string, name?: string): boolean {
 export function calculateLetteringCost(
   rawText: string,
   isBig: boolean,
-  rates: { smallRate?: number; bigRate?: number } = {}
+  rates: { smallRate?: number; bigRate?: number } = {},
+  isByog: boolean = false
 ): LetteringCostBreakdown {
   const smallRate = rates.smallRate ?? 7;
   const bigRate = rates.bigRate ?? 10;
@@ -56,21 +58,51 @@ export function calculateLetteringCost(
     return {
       isPersonalized: false,
       isBigGarment: isBig,
+      isByog,
       baseText: '',
       extraText: '',
       extraLettersCount: 0,
       ratePerLetter,
       extraCost: 0,
-      explanation: 'First name is included in base price.',
+      explanation: isByog
+        ? `BYOG lettering: ₱${ratePerLetter}/letter (${isBig ? 'Big Garment' : 'Small Garment'}). Every letter is charged.`
+        : 'First name is included in base price.',
     };
   }
 
+  // BYOG (Bring Your Own Garment):
+  // Customer provides their own garment (no blank purchased from shop).
+  // There is NO free first word. Every single letter has a fee (₱7 small, ₱10 big).
+  if (isByog) {
+    const lettersOnly = trimmed.replace(/\s+/g, '');
+    const totalLetters = lettersOnly.length;
+    const totalCost = totalLetters * ratePerLetter;
+
+    return {
+      isPersonalized: totalLetters > 0,
+      isBigGarment: isBig,
+      isByog: true,
+      baseText: '',
+      extraText: trimmed,
+      extraLettersCount: totalLetters,
+      ratePerLetter,
+      extraCost: totalCost,
+      explanation: totalLetters > 0
+        ? `₱${totalCost} (${totalLetters} letters × ₱${ratePerLetter} for BYOG ${isBig ? 'big garment' : 'small garment'} — every letter is charged)`
+        : 'BYOG lettering fee: ₱7/letter (small) or ₱10/letter (big)',
+    };
+  }
+
+  // STANDARD STORE PRODUCT:
+  // First word is included in the base product price.
+  // Any lettering requested after a space is charged per letter.
   const firstSpaceIndex = trimmed.indexOf(' ');
   if (firstSpaceIndex === -1) {
     // Only one word: included in base price!
     return {
       isPersonalized: true,
       isBigGarment: isBig,
+      isByog: false,
       baseText: trimmed,
       extraText: '',
       extraLettersCount: 0,
@@ -95,6 +127,7 @@ export function calculateLetteringCost(
   return {
     isPersonalized: true,
     isBigGarment: isBig,
+    isByog: false,
     baseText,
     extraText,
     extraLettersCount,

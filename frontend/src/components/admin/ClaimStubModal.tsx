@@ -17,13 +17,17 @@ export default function ClaimStubModal({ isOpen, onClose, order }: ClaimStubModa
   const isReadyForPickup = !isCanceled && rawStatus.includes('ready');
   const isClaimed = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || Number(order.progress) >= 100);
 
+  const isDirectSale = order.isDirectSale || (!order.personalizationText && (!order.items || !Array.isArray(order.items) || !order.items.some((i: any) => i.personalization?.text)) && isClaimed);
+
   const modalTitle = isCanceled
     ? 'Store Counter Claim Slip (Voided)'
-    : isReadyForPickup
-      ? 'Counter Claim Slip (Ready for Pick-up)'
-      : isClaimed
-        ? 'Store Counter Receipt (Claimed)'
-        : 'Order Ticket & Intake Receipt';
+    : isDirectSale
+      ? 'Official Sales Receipt'
+      : isReadyForPickup
+        ? 'Counter Claim Slip (Ready for Pick-up)'
+        : isClaimed
+          ? 'Store Counter Receipt (Claimed)'
+          : 'Order Ticket & Intake Claim Slip';
 
   return (
     <GlassModal

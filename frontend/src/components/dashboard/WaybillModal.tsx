@@ -18,13 +18,17 @@ export default function WaybillModal({ isOpen, onClose, order }: WaybillModalPro
   const isReadyForPickup = !isCanceled && rawStatus.includes('ready');
   const isClaimed = !isCanceled && (rawStatus === 'completed' || rawStatus === 'order delivered' || Number(order.progress) >= 100);
 
+  const isDirectSale = (order as any).isDirectSale || (!(order as any).personalizationText && (!order.items || !Array.isArray(order.items) || !order.items.some((i: any) => i.personalization?.text)) && isClaimed);
+
   const modalTitle = isCanceled
     ? 'Store Counter Claim Slip (Voided)'
-    : isReadyForPickup
-      ? 'Counter Claim Slip (Ready for Pick-up)'
-      : isClaimed
-        ? 'Store Counter Receipt (Claimed)'
-        : 'Official Store Counter Claim Slip';
+    : isDirectSale
+      ? 'Official Sales Receipt'
+      : isReadyForPickup
+        ? 'Counter Claim Slip (Ready for Pick-up)'
+        : isClaimed
+          ? 'Store Counter Receipt (Claimed)'
+          : 'Official Store Counter Claim Slip';
 
   return (
     <GlassModal

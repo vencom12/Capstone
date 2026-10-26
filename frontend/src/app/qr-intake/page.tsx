@@ -32,10 +32,10 @@ export default function QRIntakePage() {
 
   const isBig = garmentType === 'big';
   const lettering = useMemo(() => {
-    return calculateLetteringCost(text, isBig);
+    return calculateLetteringCost(text, isBig, {}, true);
   }, [text, isBig]);
 
-  const basePrice = 100;
+  const basePrice = 0;
   const totalAmount = basePrice + lettering.extraCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +96,7 @@ export default function QRIntakePage() {
              <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Garment Category</label>
-                  <span className="text-[11px] text-text-dim">1st word included in base fee</span>
+                  <span className="text-[11px] text-amber-400 font-semibold">No free 1st word • All letters charged</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -148,12 +148,12 @@ export default function QRIntakePage() {
                 {text.trim() && (
                   <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.04] border border-border-glass text-xs mt-1">
                     <span className="text-text-dim text-[11px]">
-                      {lettering.extraCost > 0
-                        ? `Extra name lettering (${lettering.extraLettersCount} letters after space × ₱${lettering.ratePerLetter}):`
-                        : 'First word:'}
+                      {lettering.extraLettersCount > 0
+                        ? `BYOG Lettering (${lettering.extraLettersCount} letters × ₱${lettering.ratePerLetter} — every letter charged):`
+                        : `BYOG Lettering (₱${lettering.ratePerLetter}/letter • all letters charged):`}
                     </span>
-                    <span className={`font-mono font-bold text-xs ${lettering.extraCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
-                      {lettering.extraCost > 0 ? `+₱${lettering.extraCost.toFixed(2)}` : 'Included (₱0)'}
+                    <span className="font-mono font-bold text-xs text-primary">
+                      ₱{lettering.extraCost.toFixed(2)}
                     </span>
                   </div>
                 )}
