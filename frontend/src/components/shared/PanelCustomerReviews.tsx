@@ -68,8 +68,9 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   const [isLoading, setIsLoading] = useState<boolean>(() => !cached);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Filters
-  const [filterTab, setFilterTab] = useState<string>('all');
+  // Filters (Separated into Customer Star Rating vs Staff Moderation Status)
+  const [ratingFilter, setRatingFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(() => cached?.totalItems || 0);
@@ -92,12 +93,17 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
       setIsSyncing(true);
       try {
         const params = new URLSearchParams();
-        if (filterTab === 'pending') {
-          params.append('status', 'Pending');
-        } else if (filterTab === 'critical') {
+
+        // 1. Staff Workflow / Moderation Status
+        if (statusFilter !== 'all') {
+          params.append('status', statusFilter);
+        }
+
+        // 2. Customer Review Star Rating
+        if (ratingFilter === 'critical') {
           params.append('rating', 'critical');
-        } else if (['5', '4', '3'].includes(filterTab)) {
-          params.append('rating', filterTab);
+        } else if (['5', '4', '3'].includes(ratingFilter)) {
+          params.append('rating', ratingFilter);
         }
 
         if (searchQuery.trim()) {
@@ -134,7 +140,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         setIsSyncing(false);
       }
     },
-    [apiPrefix, role, filterTab, searchQuery, currentPage, pageSize]
+    [apiPrefix, role, ratingFilter, statusFilter, searchQuery, currentPage, pageSize]
   );
 
   useEffect(() => {
@@ -145,7 +151,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   useEffect(() => {
     setCurrentPage(1);
     setExpandedId(null);
-  }, [filterTab, searchQuery]);
+  }, [ratingFilter, statusFilter, searchQuery]);
 
   // Handle accordion toggle
   const toggleExpand = (feedback: FeedbackItem) => {
@@ -295,84 +301,187 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         </button>
       </div>
 
-      {/* 3 Simple Summary Cards (No colorful graphics) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5">
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-          <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Average Rating</span>
-          <div className="my-1.5 flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-text-main">
-              {metrics.averageRating.toFixed(1)}
-            </span>
-            <span className="text-xs text-text-dim">/ 5.0</span>
+      {/* Option 1: Compact Single-Row Summary Stat Bar */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl px-4 py-3 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 divide-y sm:divide-y-0 sm:divide-x divide-white/5 text-xs shadow-xs">
+        {/* Metric 1: Average Rating */}
+        <div className="flex items-center gap-3 pr-3 flex-1 min-w-0">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-400/10 text-amber-400 font-bold shrink-0 text-sm">
+            ★
           </div>
-          <span className="text-[11px] text-text-dim">Based on customer submissions</span>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider">Average Rating</div>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-base font-black font-mono text-text-main">
+                {metrics.averageRating.toFixed(1)}
+              </span>
+              <span className="text-[11px] text-text-dim">/ 5.0</span>
+              <span className="text-[11px] text-text-dim ml-1 font-mono">
+                ({metrics.totalCount} {metrics.totalCount === 1 ? 'review' : 'reviews'})
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-          <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Total Reviews</span>
-          <div className="my-1.5 text-2xl font-black font-mono text-text-main">
-            {metrics.totalCount}
+        {/* Metric 2: Customer Sentiment */}
+        <div className="flex items-center gap-3 px-0 sm:px-3 py-2 sm:py-0 flex-1 min-w-0">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 text-text-main font-bold shrink-0 text-xs">
+            💬
           </div>
-          <span className="text-[11px] text-text-dim">
-            {metrics.fiveStarCount} customers rated 5 stars
-          </span>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider">Customer Sentiment</div>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-base font-black font-mono text-text-main">
+                {metrics.sentimentRate || 100}%
+              </span>
+              <span className="text-[11px] text-text-dim">Positive</span>
+              <span className="text-[11px] text-text-dim ml-1 truncate">
+                ({metrics.fiveStarCount} rated 5★)
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-bg-surface border border-border-glass rounded-xl p-4 flex flex-col justify-between">
-          <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Pending Attention</span>
-          <div className="my-1.5 text-2xl font-black font-mono text-text-main">
-            {metrics.pendingCount}
+        {/* Metric 3: Workflow Action Queue (Pending Attention) */}
+        <div
+          onClick={() => {
+            setStatusFilter((prev) => (prev === 'Pending' ? 'all' : 'Pending'));
+          }}
+          className={`flex items-center gap-3 pl-0 sm:pl-3 pt-2 sm:pt-0 flex-1 min-w-0 cursor-pointer group transition rounded-lg ${
+            statusFilter === 'Pending' ? 'bg-amber-400/10 p-1.5 -m-1.5 rounded-lg' : ''
+          }`}
+          title="Click to toggle filtering by reviews needing attention"
+        >
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 font-bold text-xs ${
+              metrics.pendingCount > 0
+                ? 'bg-amber-400/15 text-amber-400'
+                : 'bg-emerald-400/10 text-emerald-400'
+            }`}
+          >
+            {metrics.pendingCount > 0 ? '⚠️' : '✓'}
           </div>
-          <span className="text-[11px] text-text-dim">
-            {metrics.pendingCount > 0 ? 'Awaiting review or response' : 'All reviews reviewed'}
-          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase font-bold text-text-dim tracking-wider flex items-center justify-between">
+              <span>Pending Attention</span>
+              <span className="text-[9px] text-text-dim group-hover:text-amber-400 font-medium">
+                {statusFilter === 'Pending' ? 'Filter Active' : 'Filter Queue'}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className={`text-base font-black font-mono ${
+                  metrics.pendingCount > 0 ? 'text-amber-400' : 'text-emerald-400'
+                }`}
+              >
+                {metrics.pendingCount}
+              </span>
+              <span className="text-[11px] text-text-dim truncate">
+                {metrics.pendingCount > 0 ? 'Awaiting staff action' : 'All reviews reviewed'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      {/* Filter Tabs & Search: Complete separation between Customer Rating and Moderation Workflow */}
+      <div className="bg-bg-surface border border-border-glass rounded-xl p-2.5 mb-4 space-y-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          {/* Customer Rating Filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-dim px-1 shrink-0">
+              Score:
+            </span>
+            {[
+              { id: 'all', label: 'All Ratings' },
+              { id: '5', label: '5 Stars' },
+              { id: '4', label: '4 Stars' },
+              { id: '3', label: '3 Stars' },
+              { id: 'critical', label: '1-2 Stars' },
+            ].map((pill) => {
+              const isActive = ratingFilter === pill.id;
+              return (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setRatingFilter(pill.id)}
+                  className={`px-2.5 py-1.5 rounded-lg font-semibold transition cursor-pointer border shrink-0 text-xs ${
+                    isActive
+                      ? 'bg-white/10 text-text-main border-white/20 shadow-xs'
+                      : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative min-w-[210px]">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search customer, order, message..."
+              className="w-full bg-bg-card border border-border-glass px-3 py-1.5 rounded-lg text-xs text-text-main outline-none focus:border-white/30 transition placeholder:text-text-dim"
+            />
+          </div>
+        </div>
+
+        {/* Workflow Status Filter (Separated row) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-white/5 text-xs flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-dim px-1 shrink-0">
+            Workflow:
+          </span>
           {[
-            { id: 'all', label: 'All' },
-            { id: 'pending', label: 'Pending', count: metrics.pendingCount },
-            { id: '5', label: '5 Stars' },
-            { id: '4', label: '4 Stars' },
-            { id: '3', label: '3 Stars' },
-            { id: 'critical', label: '1-2 Stars' },
+            { id: 'all', label: 'All Statuses' },
+            { id: 'Pending', label: '⚠️ Needs Attention', count: metrics.pendingCount, isPending: true },
+            { id: 'Reviewed', label: 'Reviewed' },
+            { id: 'Resolved', label: 'Resolved' },
           ].map((pill) => {
-            const isActive = filterTab === pill.id;
+            const isActive = statusFilter === pill.id;
             return (
               <button
                 key={pill.id}
                 type="button"
-                onClick={() => setFilterTab(pill.id)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer border ${
+                onClick={() => setStatusFilter(pill.id)}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer border flex items-center gap-1.5 shrink-0 text-xs ${
                   isActive
-                    ? 'bg-white/10 text-text-main border-white/20 shadow-xs'
+                    ? pill.isPending
+                      ? 'bg-amber-400/15 text-amber-300 border-amber-400/40 shadow-xs'
+                      : 'bg-white/10 text-text-main border-white/20 shadow-xs'
+                    : pill.isPending && (pill.count || 0) > 0
+                    ? 'text-amber-400 border-amber-400/20 bg-amber-400/5 hover:bg-amber-400/10'
                     : 'text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
                 }`}
               >
                 <span>{pill.label}</span>
                 {pill.count !== undefined && pill.count > 0 && (
-                  <span className="ml-1.5 text-[10px] font-mono px-1 rounded bg-white/10 text-text-main">
+                  <span
+                    className={`text-[10px] font-mono px-1 rounded ${
+                      isActive ? 'bg-amber-400/25 text-amber-200' : 'bg-amber-400/15 text-amber-300'
+                    }`}
+                  >
                     {pill.count}
                   </span>
                 )}
               </button>
             );
           })}
-        </div>
 
-        {/* Search Input */}
-        <div className="relative min-w-[200px]">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search customer or order..."
-            className="w-full bg-bg-surface border border-border-glass px-3 py-1.5 rounded-xl text-xs text-text-main outline-none focus:border-white/30 transition placeholder:text-text-dim"
-          />
+          {(ratingFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+            <button
+              type="button"
+              onClick={() => {
+                setRatingFilter('all');
+                setStatusFilter('all');
+                setSearchQuery('');
+              }}
+              className="ml-auto text-[11px] text-text-dim hover:text-text-main underline cursor-pointer px-1 shrink-0"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -398,8 +507,21 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
             Loading reviews...
           </div>
         ) : feedbacks.length === 0 ? (
-          <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl">
-            No customer reviews found matching your filters.
+          <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl flex flex-col items-center gap-2">
+            <span>No customer reviews found matching your filters.</span>
+            {(ratingFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRatingFilter('all');
+                  setStatusFilter('all');
+                  setSearchQuery('');
+                }}
+                className="text-xs text-text-main font-semibold underline cursor-pointer"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           feedbacks.map((item) => {
@@ -453,19 +575,21 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                   <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t border-white/[0.04] sm:border-0 mt-0.5 sm:mt-0">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
                           item.status === 'Pending'
-                            ? 'bg-white/5 text-text-dim border-border-glass'
+                            ? 'bg-amber-400/10 text-amber-300 border-amber-400/30'
                             : item.status === 'Resolved'
-                            ? 'bg-white/10 text-text-main border-white/20'
+                            ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/20'
                             : 'bg-white/5 text-text-main border-border-glass'
                         }`}
                       >
-                        {item.status}
+                        {item.status === 'Pending' && <span className="text-[9px]">⚠️</span>}
+                        {item.status === 'Resolved' && <span className="text-[9px]">✓</span>}
+                        {item.rating >= 4 ? 'Published' : item.status === 'Pending' ? 'Needs Attention' : item.status}
                       </span>
 
                       {item.merchantReply && (
-                        <span className="text-[11px] font-medium text-text-dim">
+                        <span className="text-[10px] font-medium text-text-dim px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
                           Replied
                         </span>
                       )}
@@ -569,22 +693,32 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                           <div className="text-[11px] font-semibold text-text-dim uppercase tracking-wider mb-1">
                             Review Status
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            {(['Pending', 'Reviewed', 'Resolved'] as const).map((st) => (
+                          {item.rating >= 4 ? (
+                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                              <span className="text-xs font-semibold text-text-main px-2.5 py-1 rounded-md bg-white/[0.04] border border-border-glass flex items-center gap-1.5">
+                                <span>✓</span> Published on Storefront
+                              </span>
+                              <span className="text-[11px] text-text-dim">Positive review • No issue to resolve</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
                               <button
-                                key={st}
                                 type="button"
-                                onClick={() => handleStatusChange(item, st)}
-                                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer border transition ${
-                                  item.status === st
-                                    ? 'bg-white/15 text-text-main border-white/20'
-                                    : 'bg-white/5 text-text-dim border-border-glass hover:text-text-main'
+                                onClick={() => handleStatusChange(item, item.status === 'Resolved' ? 'Pending' : 'Resolved')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition flex items-center gap-1.5 ${
+                                  item.status === 'Resolved'
+                                    ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/25'
+                                    : 'bg-amber-400/15 text-amber-300 border-amber-400/35 hover:bg-amber-400/20'
                                 }`}
                               >
-                                {st}
+                                {item.status === 'Resolved' ? (
+                                  <><span>✓</span> Issue Marked Resolved (Click to Reopen)</>
+                                ) : (
+                                  <><span>⚠️</span> Mark Issue as Resolved</>
+                                )}
                               </button>
-                            ))}
-                          </div>
+                            </div>
+                          )}
                         </div>
 
                         {role === 'admin' && (

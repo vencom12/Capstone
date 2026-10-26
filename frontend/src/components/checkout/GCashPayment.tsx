@@ -154,7 +154,7 @@ export default function GCashPayment({
       <div className="bg-white/[0.03] border border-border-glass/60 p-2.5 sm:p-3 rounded-xl flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="bg-[#007df2] text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[0.65rem] shrink-0">G</span>
+            <span className="text-[0.68rem] font-bold text-text-main px-1.5 py-0.5 rounded bg-white/[0.06] border border-border-glass shrink-0">GCash</span>
             <span className="text-[0.8rem] font-bold text-text-main">GCash Express Pay</span>
           </div>
           <button
@@ -210,8 +210,8 @@ export default function GCashPayment({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
             Upload GCash Receipt Screenshot
           </h4>
-          <span className="text-[0.62rem] text-primary font-bold flex items-center gap-1">
-            <span>⚡ Paste (Ctrl+V) Supported</span>
+          <span className="text-[0.65rem] text-text-dim font-medium">
+            Screenshot or photo accepted
           </span>
         </div>
         <div 
@@ -246,7 +246,7 @@ export default function GCashPayment({
               )}
               <div className="flex flex-col text-left min-w-0 flex-1">
                 <span className="text-[0.78rem] text-text-main font-bold truncate">{receiptFile.name}</span>
-                <span className="text-[0.62rem] text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="text-[0.62rem] text-text-dim font-semibold flex items-center gap-1">
                   <span>✓</span>
                   <span>{(receiptFile.size / 1024).toFixed(0)} KB • Ready for scan</span>
                 </span>
@@ -269,8 +269,8 @@ export default function GCashPayment({
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <polyline points="21 15 16 10 5 21" />
               </svg>
-              <span className="text-[0.78rem] text-text-main font-semibold">Click to upload, drag &amp; drop, or press Ctrl+V</span>
-              <span className="text-[0.62rem] text-text-dim">Auto-detects pasted screenshot from clipboard • JPG, PNG, WEBP</span>
+              <span className="text-[0.78rem] text-text-main font-semibold">Tap to choose receipt from your phone or computer</span>
+              <span className="text-[0.65rem] text-text-dim">Upload your GCash payment screenshot showing the amount</span>
             </div>
           )}
         </div>
@@ -278,8 +278,11 @@ export default function GCashPayment({
 
       {/* Receipt Processing Status */}
       {analyzing && (
-        <div className="flex items-center gap-2.5 bg-white/[0.04] border border-border-glass p-2.5 rounded-xl animate-pulse">
-          <div className="w-2.5 h-2.5 bg-white rounded-full animate-ping"></div>
+        <div className="flex items-center gap-2.5 bg-white/[0.04] border border-border-glass p-2.5 rounded-xl">
+          <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+            <path d="M12 2a10 10 0 0 1 10 10" />
+          </svg>
           <div className="flex flex-col">
             <span className="text-[0.75rem] text-text-main font-bold">Checking your receipt...</span>
             <span className="text-[0.65rem] text-text-dim">Confirming payment details</span>

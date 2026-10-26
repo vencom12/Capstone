@@ -145,45 +145,24 @@ export default function CheckoutModal({
     return list;
   }, [estimatedReadyDate]);
 
-  useEffect(() => {
-    if (availableDates.length > 0 && !selectedDateStr) {
-      setSelectedDateStr(availableDates[0].dateStr);
-    }
-  }, [availableDates, selectedDateStr]);
-
   const { chosenDueDate, chosenDeliveryTimeLabel } = useMemo(() => {
-    const dateObj = availableDates.find(d => d.dateStr === selectedDateStr) || availableDates[0];
+    const dateObj = availableDates.find(d => d.dateStr === selectedDateStr);
 
     if (!selectedDateStr || !dateObj) {
       return {
         chosenDueDate: estimatedReadyDate || undefined,
-        chosenDeliveryTimeLabel: readyLabel || 'Earliest Available (10 AM–8 PM)'
+        chosenDeliveryTimeLabel: 'Store Pick-up (Pacific Mall Lucena • 10 AM–8 PM)'
       };
     }
 
-    const earliestDateStr = availableDates[0]?.dateStr;
-    const isEarliestDate = selectedDateStr === earliestDateStr;
-
-    let chosen: Date;
-    if (isEarliestDate && estimatedReadyDate) {
-      chosen = new Date(estimatedReadyDate);
-    } else {
-      const [year, month, day] = selectedDateStr.split('-').map(Number);
-      // For future dates, default to 10:00 AM store opening, but never earlier than estimatedReadyDate
-      chosen = new Date(year, month - 1, day, 10, 0, 0);
-      if (estimatedReadyDate && chosen.getTime() < new Date(estimatedReadyDate).getTime()) {
-        chosen = new Date(estimatedReadyDate);
-      }
-    }
-
-    const dateLabel = dateObj.friendlyLabel;
-    const label = `${dateLabel} (Estimated completion${readyLabel ? `: ${readyLabel}` : ''})`;
+    const [year, month, day] = selectedDateStr.split('-').map(Number);
+    const chosen = new Date(year, month - 1, day, 10, 0, 0);
 
     return {
       chosenDueDate: chosen.toISOString(),
-      chosenDeliveryTimeLabel: label
+      chosenDeliveryTimeLabel: `Pick-up: ${dateObj.friendlyLabel} (10 AM–8 PM)`
     };
-  }, [selectedDateStr, availableDates, estimatedReadyDate, readyLabel]);
+  }, [selectedDateStr, availableDates, estimatedReadyDate]);
 
   const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const finalTotal = itemsTotal;
@@ -198,6 +177,11 @@ export default function CheckoutModal({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
+
+    if (!selectedDateStr) {
+      showToast('Please select your preferred pick-up date first.', 'error');
+      return;
+    }
 
     if (emergencyNotice?.active) {
       if (emergencyNotice.policy === 'PAUSE_ORDERS') {
@@ -339,6 +323,11 @@ export default function CheckoutModal({
       return;
     }
 
+    if (!selectedDateStr) {
+      showToast('Please choose your preferred pick-up date first.', 'error');
+      return;
+    }
+
     if (emergencyNotice?.active) {
       if (emergencyNotice.policy === 'PAUSE_ORDERS') {
         showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice.reason || 'Leave'}).`, 'error');
@@ -412,6 +401,11 @@ export default function CheckoutModal({
   const handleBypassGCash = async () => {
     if (items.length === 0) {
       showToast('Your basket is empty. Please add items before checking out.', 'error');
+      return;
+    }
+
+    if (!selectedDateStr) {
+      showToast('Please choose your preferred pick-up date first.', 'error');
       return;
     }
 
@@ -528,7 +522,7 @@ export default function CheckoutModal({
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-3 mb-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span className="text-[11px] font-bold text-text-main">
                 Step {checkoutActiveStep} of 4:
               </span>
@@ -661,15 +655,14 @@ export default function CheckoutModal({
           <div className="flex flex-col gap-3 min-w-0">
             {/* Express Checkout Indicator */}
             {checkoutItems && checkoutItems.length > 0 && (
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/35 shadow-sm">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass shadow-xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-ping shrink-0" />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[0.75rem] font-bold text-text-main flex items-center gap-1.5 truncate">
-                      ⚡ 1-Click Express Checkout
+                    <span className="text-[0.75rem] font-bold text-text-main truncate">
+                      Direct Checkout
                     </span>
                     <span className="text-[0.62rem] text-text-dim truncate">
-                      Checking out this item directly • Your saved cart remains intact
+                      Checking out this item directly • Cart items preserved
                     </span>
                   </div>
                 </div>
@@ -691,7 +684,7 @@ export default function CheckoutModal({
               <div className="flex items-center justify-between pb-2 border-b border-border-glass/40">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-border-glass/60 flex items-center justify-center text-text-main shrink-0">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                       <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
@@ -717,113 +710,74 @@ export default function CheckoutModal({
                 </button>
               </div>
 
-              {/* Live Workshop Queue Capacity Meter */}
-              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass/50 text-[0.68rem]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${activeQueueOrdersCount === 0 ? 'bg-emerald-400' : activeQueueOrdersCount <= 3 ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
-                  <span className="font-bold text-text-main truncate">
+              {/* Workshop Queue Information */}
+              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.02] border border-border-glass/40 text-[0.68rem]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-text-dim font-medium truncate">
                     {activeQueueOrdersCount === 0
-                      ? 'Workshop Queue: Ready • Instant Setup'
+                      ? 'Workshop Queue: Available for stitching'
                       : activeQueueOrdersCount <= 3
-                      ? `Normal Workshop Load • ${activeQueueOrdersCount} in line (~${estimatedMinutes || 20}m)`
-                      : `High Artisan Demand • ${activeQueueOrdersCount} orders ahead in queue`}
+                      ? `Workshop Queue: Normal load (${activeQueueOrdersCount} in line)`
+                      : `Workshop Queue: High demand (${activeQueueOrdersCount} in line)`}
                   </span>
                 </div>
-                <span className="text-[0.62rem] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0 ml-1">
-                  {readyLabel ? readyLabel : 'Fast Turnaround'}
+                <span className="text-[0.62rem] text-text-dim font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-border-glass/40 shrink-0 ml-1">
+                  Pacific Mall Studio
                 </span>
               </div>
 
-              {/* Smart Quick Slot Chips & Target Claim Date Selection */}
+              {/* Single Pick-up Date Dropdown Picker */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[0.62rem] font-bold text-text-dim uppercase tracking-wider">
-                    Pick-up Schedule Slot
+                  <label htmlFor="pickup-date-select" className="text-[0.68rem] font-bold text-text-main uppercase tracking-wider">
+                    Pick-up Date <span className="text-amber-400">*</span>
                   </label>
-                  <span className="text-[0.6rem] text-text-dim/70 font-mono font-normal">Held 30 Days Free</span>
+                  <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free</span>
                 </div>
 
-                {/* Quick Date Chips */}
-                {availableDates.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {/* Earliest Slot Pill */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDateStr(availableDates[0].dateStr)}
-                      className={`px-2.5 py-1.5 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
-                        selectedDateStr === availableDates[0].dateStr
-                          ? 'bg-primary/20 border-primary text-white ring-1 ring-primary/40'
-                          : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main hover:border-white/20'
-                      }`}
-                    >
-                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-primary">⚡ Earliest</span>
-                      <span className="text-[0.72rem] font-bold text-text-main truncate">
-                        {availableDates[0].friendlyLabel}
-                      </span>
-                    </button>
+                <div className="relative">
+                  <select
+                    id="pickup-date-select"
+                    value={selectedDateStr}
+                    onChange={(e) => setSelectedDateStr(e.target.value)}
+                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
+                    className={`w-full bg-bg-surface border text-text-main text-xs rounded-xl px-3 py-2.5 outline-none cursor-pointer font-medium transition-all ${
+                      !selectedDateStr
+                        ? 'border-amber-400/60 bg-amber-400/[0.03]'
+                        : 'border-border-glass focus:border-white/40'
+                    }`}
+                  >
+                    <option value="" disabled className="bg-[#12141c] text-text-dim">
+                      -- Please select your pick-up date --
+                    </option>
+                    {availableDates.map((item) => (
+                      <option key={item.dateStr} value={item.dateStr} className="bg-[#12141c] text-white">
+                        {item.friendlyLabel} (Mall Hours: 10:00 AM – 8:00 PM)
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim flex items-center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </div>
+                </div>
 
-                    {/* Tomorrow Slot Pill (if available) */}
-                    {availableDates.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDateStr(availableDates[1].dateStr)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
-                          selectedDateStr === availableDates[1].dateStr
-                            ? 'bg-primary/20 border-primary text-white ring-1 ring-primary/40'
-                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main hover:border-white/20'
-                        }`}
-                      >
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-text-dim">🗓️ Tomorrow</span>
-                        <span className="text-[0.72rem] font-bold text-text-main truncate">
-                          {availableDates[1].friendlyLabel}
-                        </span>
-                      </button>
-                    )}
-
-                    {/* Later Dates Dropdown Picker */}
-                    <div className="relative col-span-2 sm:col-span-1">
-                      <select
-                        value={selectedDateStr}
-                        onChange={(e) => setSelectedDateStr(e.target.value)}
-                        style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
-                        className={`w-full h-full min-h-[42px] bg-bg-surface border text-text-main text-xs rounded-lg pl-2.5 pr-6 py-1 outline-none cursor-pointer font-medium transition-all ${
-                          selectedDateStr !== availableDates[0]?.dateStr && selectedDateStr !== availableDates[1]?.dateStr
-                            ? 'border-primary ring-1 ring-primary/40'
-                            : 'border-border-glass/70 hover:border-white/40'
-                        }`}
-                      >
-                        <option value="" disabled className="bg-[#12141c] text-text-dim">More dates...</option>
-                        {availableDates.slice(2).map((item) => (
-                          <option key={item.dateStr} value={item.dateStr} className="bg-[#12141c] text-white">
-                            {item.friendlyLabel}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim flex items-center">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
-                      </div>
-                    </div>
+                {/* Prompt user if not selected yet vs confirmed selection */}
+                {!selectedDateStr ? (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20 text-[0.68rem] text-amber-300 font-medium flex items-center gap-1.5">
+                    <span>Please choose your pick-up date from the dropdown above.</span>
+                  </div>
+                ) : (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.02] border border-border-glass/40 flex items-center justify-between text-[0.68rem]">
+                    <span className="font-semibold text-text-main truncate">
+                      Pick-up Date: {availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}
+                    </span>
+                    <span className="text-text-dim ml-2 shrink-0">
+                      Pacific Mall (10 AM – 8 PM)
+                    </span>
                   </div>
                 )}
-              </div>
-
-              {/* Dynamic Status Bar */}
-              <div className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-border-glass/50 flex flex-col gap-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[0.7rem] font-semibold text-text-main truncate">
-                    {selectedDateStr === (availableDates[0]?.dateStr)
-                      ? `Target Ready: ${readyLabel || 'Today within 1-2 hours'}`
-                      : `Scheduled Claim Date: ${availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}`}
-                  </span>
-                  <span className="text-[0.62rem] text-text-dim font-medium ml-2 shrink-0">
-                    Pacific Mall (10 AM – 8 PM)
-                  </span>
-                </div>
-                <p className="text-[0.62rem] text-text-dim m-0 leading-normal">
-                  ⏱️ Note: Once payment is submitted, your personalized item enters the live machine queue and counter claim code is locked in.
-                </p>
               </div>
             </div>
 

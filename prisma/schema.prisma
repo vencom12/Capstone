@@ -16,21 +16,27 @@ model User {
   username        String        @unique
   email           String        @unique
   password        String
-  role            Role          @default(customer)
-  createdAt       DateTime      @default(now())
-  tokenVersion    Int           @default(0)
-  shiftStatus     String        @default("offline")
-  isEmailVerified Boolean       @default(false)
-  disabledAt      DateTime?
-  disabledReason  String?
-  isActive        Boolean       @default(true)
-  lastActiveAt    DateTime?
-  lastLoginAt     DateTime?
-  machines        Machine[]
-  orders          Order[]
-  receipts        Receipt[]
-  transactions    Transaction[]
-  favorites       Product[]     @relation("UserFavorites")
+  role                  Role          @default(customer)
+  walletBalance         Float         @default(0)
+  phoneNumber           String?
+  isPhoneVerified       Boolean       @default(false)
+  isEmailVerified       Boolean       @default(false)
+  address               String?
+  preferredDeliveryTime String?
+  savedAddresses        Json?         @default("[]")
+  tokenVersion          Int           @default(0)
+  createdAt             DateTime      @default(now())
+  shiftStatus           String        @default("offline")
+  disabledAt            DateTime?
+  disabledReason        String?
+  isActive              Boolean       @default(true)
+  lastActiveAt          DateTime?
+  lastLoginAt           DateTime?
+  machines              Machine[]
+  orders                Order[]
+  receipts              Receipt[]
+  transactions          Transaction[]
+  favorites             Product[]     @relation("UserFavorites")
 }
 
 model Product {
