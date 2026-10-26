@@ -227,16 +227,19 @@ exports.createUser = async (req, res) => {
             const bcrypt = require('bcryptjs');
             const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
+            const updateData = {
+                role: role || 'employee',
+                username: normalizedUsername || existingCustomer.username,
+                email: normalizedEmail || existingCustomer.email,
+                password: hashedPassword
+            };
+            if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
+                updateData.phoneNumber = phoneNumber.trim();
+            }
+
             const updatedUser = await prisma.user.update({
                 where: { id: existingCustomer.id },
-                data: {
-                    role: role || 'employee',
-                    username: normalizedUsername || existingCustomer.username,
-                    email: normalizedEmail || existingCustomer.email,
-                    password: hashedPassword,
-                    phoneNumber: phoneNumber ? phoneNumber.trim() : (existingCustomer.phoneNumber || null),
-                    address: address ? address.trim() : (existingCustomer.address || null)
-                }
+                data: updateData
             });
 
             return res.json({
@@ -262,15 +265,19 @@ exports.createUser = async (req, res) => {
         const bcrypt = require('bcryptjs');
         const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
+        const createData = {
+            username: normalizedUsername,
+            email: normalizedEmail,
+            password: hashedPassword,
+            role: role || 'employee'
+        };
+
+        if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
+            createData.phoneNumber = phoneNumber.trim();
+        }
+
         const user = await prisma.user.create({
-            data: {
-                username: normalizedUsername,
-                email: normalizedEmail,
-                password: hashedPassword,
-                role: role || 'employee',
-                phoneNumber: phoneNumber ? phoneNumber.trim() : null,
-                address: address ? address.trim() : null
-            }
+            data: createData
         });
         res.json({ id: user.id, message: 'User created successfully', user: { id: user.id, username: user.username, role: user.role } });
     } catch (err) {

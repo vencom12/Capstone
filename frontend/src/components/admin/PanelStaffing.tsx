@@ -47,7 +47,6 @@ export default function PanelStaffing({
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('employee');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ username?: string; email?: string; password?: string; phone?: string }>({});
   const [touched, setTouched] = useState<{ username?: boolean; email?: boolean; password?: boolean; phone?: boolean }>({});
   const [shakeKey, setShakeKey] = useState(0);
@@ -183,7 +182,6 @@ export default function PanelStaffing({
       setPassword(''); // Do not populate password on edit
       setRole(staff.role || 'employee');
       setPhone(staff.phoneNumber || '');
-      setAddress(staff.address || '');
     } else {
       setEditingStaff(null);
       setUsername('');
@@ -191,7 +189,6 @@ export default function PanelStaffing({
       setPassword('');
       setRole('employee');
       setPhone('');
-      setAddress('');
     }
     setIsOpen(true);
   };
@@ -221,8 +218,7 @@ export default function PanelStaffing({
       username: username.trim(),
       email: email.trim(),
       role,
-      phoneNumber: phone.trim(),
-      address: address.trim()
+      phoneNumber: phone.trim() ? phone.trim() : undefined
     };
 
     if (password.trim()) {
@@ -234,8 +230,7 @@ export default function PanelStaffing({
       username: username.trim(),
       email: email.trim(),
       role,
-      phoneNumber: phone.trim(),
-      address: address.trim(),
+      phoneNumber: phone.trim() || undefined,
       shiftStatus: editingStaff?.shiftStatus || 'offline',
       isEmailVerified: editingStaff?.isEmailVerified ?? false
     };
@@ -767,19 +762,21 @@ export default function PanelStaffing({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs font-medium">
+                <div className={`grid ${customer ? 'grid-cols-2' : 'grid-cols-1'} gap-4 text-xs font-medium`}>
                   <div>
                     <span className="text-[0.65rem] text-text-dim block mb-0.5">Phone Number</span>
                     <span className="font-mono text-text-main font-bold">
                       {u.phoneNumber || 'N/A'}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-[0.65rem] text-text-dim block mb-0.5">Address</span>
-                    <span className="text-text-main font-bold truncate block max-w-[120px]">
-                      {u.address || 'N/A'}
-                    </span>
-                  </div>
+                  {customer && (
+                    <div>
+                      <span className="text-[0.65rem] text-text-dim block mb-0.5">Address</span>
+                      <span className="text-text-main font-bold truncate block max-w-[120px]">
+                        {u.address || 'N/A'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {customer && (
@@ -860,7 +857,6 @@ export default function PanelStaffing({
           setPassword('');
           setRole('employee');
           setPhone('');
-          setAddress('');
           setFieldErrors({});
           setTouched({});
         }}
@@ -1006,17 +1002,6 @@ export default function PanelStaffing({
             {touched.phone && fieldErrors.phone && (
               <InlineError message={fieldErrors.phone} variant="field" />
             )}
-          </div>
-
-          <div className="modal-section">
-            <label className="modal-label">Physical Address (Optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. City Central, Lucena"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans focus:border-white/40"
-            />
           </div>
 
           <button
@@ -1167,12 +1152,14 @@ export default function PanelStaffing({
                 <span className="text-text-dim font-bold">Contact Phone:</span>
                 <span className="font-mono text-text-main font-bold">{viewingProfileUser.phoneNumber || 'Not provided'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-text-dim font-bold">Address:</span>
-                <span className="text-text-main font-medium max-w-[260px] text-right truncate">
-                  {viewingProfileUser.address || 'Not provided'}
-                </span>
-              </div>
+              {(viewingProfileUser.role === 'customer' || viewingProfileUser.address) && (
+                <div className="flex justify-between">
+                  <span className="text-text-dim font-bold">Address:</span>
+                  <span className="text-text-main font-medium max-w-[260px] text-right truncate">
+                    {viewingProfileUser.address || 'Not provided'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-text-dim font-bold">Registered Date:</span>
                 <span className="text-text-main font-mono">
