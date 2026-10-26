@@ -2386,23 +2386,6 @@ export default function PanelRawMaterials({
             />
           </div>
 
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between mt-2">
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Audit Trail Registry (Mandatory)</span>
-              </span>
-              <span className="text-[0.68rem] text-text-dim mt-0.5">
-                Physical adjustments and arrivals are permanently recorded in DB logs for accounting and fraud prevention.
-              </span>
-            </div>
-            <span className="text-emerald-400 text-[0.65rem] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 shrink-0 ml-2">
-              ALWAYS ON
-            </span>
-          </div>
-
           <button
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"

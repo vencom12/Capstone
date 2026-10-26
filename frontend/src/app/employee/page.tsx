@@ -53,7 +53,6 @@ export default function EmployeePage() {
   const [dbType, setDbType] = useState<string>('supabase');
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
-  const [shiftStatus, setShiftStatus] = useState('offline');
   const [isChimeActive, setIsChimeActive] = useState(true);
   const prevOrdersCountRef = useRef<number>(0);
 
@@ -218,18 +217,6 @@ export default function EmployeePage() {
       }
       setHasInitialDataLoaded(true);
       useUIStore.getState().markDashboardReady();
-    }
-  };
-
-
-  const handleToggleShift = async () => {
-    try {
-      const res: any = await api.put('/api/employee/shift', {});
-      const newStatus = res?.shiftStatus || (shiftStatus === 'clocked_in' ? 'offline' : 'clocked_in');
-      setShiftStatus(newStatus);
-      showToast(newStatus === 'clocked_in' ? 'Clocked in! You are now on shift.' : 'Clocked out. Have a good rest!', 'success');
-    } catch (err) {
-      showToast('Failed to toggle shift status', 'error');
     }
   };
 
@@ -1458,19 +1445,6 @@ export default function EmployeePage() {
                 {!isChimeActive && <line x1="2" y1="2" x2="22" y2="22"/>}
               </svg>
               <span className="hidden lg:inline">{isChimeActive ? 'Chime Alert On' : 'Chime Muted'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleToggleShift}
-              title="Click to toggle clock-in / clock-out"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                shiftStatus === 'clocked_in'
-                  ? 'bg-success/15 border-success/30 text-success hover:bg-success/25'
-                  : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${shiftStatus === 'clocked_in' ? 'bg-success animate-pulse' : 'bg-amber-400'}`}></span>
-              <span>{shiftStatus === 'clocked_in' ? 'Shift: Clocked In' : 'Clock In'}</span>
             </button>
 
             <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-border-glass/40">
