@@ -50,6 +50,10 @@ export default function PanelManageDesigns({
 
   // Studio Thread Palette State (Slim Section in Products Tab)
   const [threadColors, setThreadColors] = useState<StudioThreadColor[]>(DEFAULT_STUDIO_THREAD_COLORS);
+  const [showAddColorModal, setShowAddColorModal] = useState(false);
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorHex, setNewColorHex] = useState('#8B5CF6');
+  const [isSubmittingColor, setIsSubmittingColor] = useState(false);
 
   useEffect(() => {
     api.get<any>('/api/customer/settings')
@@ -87,6 +91,61 @@ export default function PanelManageDesigns({
     } catch (e: any) {
       console.error(e);
       showToast('Failed to update thread availability', 'error');
+    }
+  };
+
+  const handleAddThreadColor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newColorName.trim();
+    if (!cleanName) {
+      showToast('Please enter a thread color name', 'error');
+      return;
+    }
+    if (threadColors.some(c => c.name.toLowerCase() === cleanName.toLowerCase())) {
+      showToast(`"${cleanName}" already exists in the palette`, 'error');
+      return;
+    }
+
+    const nextColors = [
+      ...threadColors,
+      { name: cleanName, hex: newColorHex, isAvailable: true }
+    ];
+    setThreadColors(nextColors);
+    setIsSubmittingColor(true);
+
+    try {
+      await api.put('/api/admin/settings', {
+        availableThreadColors: nextColors,
+      });
+      showToast(`Added "${cleanName}" to studio palette`, 'success');
+      setNewColorName('');
+      setShowAddColorModal(false);
+    } catch (err: any) {
+      console.error(err);
+      showToast('Failed to save new thread color', 'error');
+    } finally {
+      setIsSubmittingColor(false);
+    }
+  };
+
+  const handleDeleteThreadColor = async (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (threadColors.length <= 1) {
+      showToast('At least one thread color must remain in the palette', 'warning');
+      return;
+    }
+    const toRemove = threadColors[index];
+    const nextColors = threadColors.filter((_, idx) => idx !== index);
+    setThreadColors(nextColors);
+
+    try {
+      await api.put('/api/admin/settings', {
+        availableThreadColors: nextColors,
+      });
+      showToast(`Removed "${toRemove.name}" from palette`, 'info');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Failed to remove thread color', 'error');
     }
   };
 
@@ -596,32 +655,70 @@ export default function PanelManageDesigns({
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left">
-      {/* Slim Thread Availability Bar */}
+      {/* Slim Thread Availability & Management Bar */}
       <div className="mb-4 p-2 rounded-2xl bg-white/[0.03] border border-border-glass flex items-center overflow-x-auto no-scrollbar gap-2 shadow-sm">
         {threadColors.map((tc, idx) => (
-          <button
+          <div
             key={tc.name}
-            type="button"
-            onClick={() => handleToggleThreadColor(idx)}
-            title={tc.isAvailable ? `${tc.name}: Available (Click to mark unavailable)` : `${tc.name}: Unavailable (Click to mark available)`}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 cursor-pointer transition-all shrink-0 select-none ${
+            className={`group relative px-2.5 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all shrink-0 select-none ${
               tc.isAvailable
                 ? 'bg-white/10 border-white/20 text-text-main hover:bg-white/15'
-                : 'bg-white/[0.02] border-white/5 text-text-dim/40 line-through hover:text-text-dim'
+                : 'bg-white/[0.02] border-white/5 text-text-dim/40 hover:text-text-dim'
             }`}
           >
-            <span
-              className="w-3.5 h-3.5 rounded-full border border-white/25 shrink-0 shadow-sm"
-              style={{ backgroundColor: tc.hex }}
-            />
-            <span className="text-[11px] font-semibold">{tc.name}</span>
-            {tc.isAvailable ? (
-              <span className="text-[10px] text-emerald-400 font-bold">✓</span>
-            ) : (
-              <span className="text-[10px] text-rose-400/70 font-bold">✕</span>
+            {/* Clickable body to toggle availability */}
+            <button
+              type="button"
+              onClick={() => handleToggleThreadColor(idx)}
+              title={tc.isAvailable ? `${tc.name}: Available (Click to mark unavailable)` : `${tc.name}: Unavailable (Click to mark available)`}
+              className="flex items-center gap-1.5 bg-transparent border-none p-0 cursor-pointer text-inherit"
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full border border-white/25 shrink-0 shadow-sm relative overflow-hidden"
+                style={{ backgroundColor: tc.hex }}
+              >
+                {!tc.isAvailable && (
+                  <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="w-full h-[1.5px] bg-rose-500 rotate-45 transform" />
+                  </span>
+                )}
+              </span>
+              <span className={`text-[11px] font-semibold ${!tc.isAvailable ? 'line-through text-text-dim/50' : ''}`}>
+                {tc.name}
+              </span>
+              {tc.isAvailable ? (
+                <span className="text-[10px] text-emerald-400 font-bold">✓</span>
+              ) : (
+                <span className="text-[10px] text-rose-400/80 font-bold">✕</span>
+              )}
+            </button>
+
+            {/* Quick Delete / Remove Button */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => handleDeleteThreadColor(idx, e)}
+                title={`Delete ${tc.name} from studio palette`}
+                className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 p-0.5 rounded hover:bg-rose-500/20 text-text-dim hover:text-rose-400 cursor-pointer border-none bg-transparent text-[11px] leading-none"
+              >
+                &times;
+              </button>
             )}
-          </button>
+          </div>
         ))}
+
+        {/* Add Color Button */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowAddColorModal(true)}
+            title="Add a new embroidery thread color"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1 cursor-pointer transition-all shrink-0 whitespace-nowrap shadow-xs"
+          >
+            <span className="text-sm font-bold leading-none">+</span>
+            <span>Add Color</span>
+          </button>
+        )}
       </div>
 
       {/* Compact Top Filter & Action Toolbar */}
@@ -1419,6 +1516,68 @@ export default function PanelManageDesigns({
             </button>
           </div>
         </div>
+      </GlassModal>
+
+      {/* Add Custom Thread Color Modal */}
+      <GlassModal
+        isOpen={showAddColorModal}
+        onClose={() => setShowAddColorModal(false)}
+        title="Add Studio Thread Color"
+      >
+        <form onSubmit={handleAddThreadColor} className="flex flex-col gap-4 text-left">
+          <p className="text-xs text-text-dim m-0 leading-relaxed">
+            Add a new embroidery thread spool color to the studio palette. Once saved, customers and staff can select it immediately.
+          </p>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-text-main">Color Name</label>
+            <input
+              type="text"
+              required
+              value={newColorName}
+              onChange={(e) => setNewColorName(e.target.value)}
+              placeholder="e.g. Royal Purple, Tiffany Mint, Champagne"
+              className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-text-main">Color Hex Code</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={newColorHex}
+                onChange={(e) => setNewColorHex(e.target.value)}
+                className="w-10 h-9 p-0.5 rounded border border-border-glass cursor-pointer bg-transparent shrink-0"
+              />
+              <input
+                type="text"
+                required
+                value={newColorHex}
+                onChange={(e) => setNewColorHex(e.target.value)}
+                placeholder="#8B5CF6"
+                className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs font-mono flex-1 outline-none focus:border-primary transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-glass">
+            <button
+              type="button"
+              onClick={() => setShowAddColorModal(false)}
+              className="px-4 py-2 text-xs font-medium text-text-dim hover:text-text-main bg-transparent border border-border-glass rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingColor}
+              className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 border-none rounded-lg cursor-pointer shadow-sm disabled:opacity-50"
+            >
+              {isSubmittingColor ? 'Adding...' : 'Add Color to Studio'}
+            </button>
+          </div>
+        </form>
       </GlassModal>
 
     </section>

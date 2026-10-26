@@ -162,13 +162,21 @@ export default function ProductModal({
   const [availableColors, setAvailableColors] = useState<StudioThreadColor[]>(THREAD_COLORS);
 
   // Sync available studio thread colors from admin settings in real time
-  const applyThreadColorConfig = (colors: any[], notifyIfSwitched = true) => {
-    if (!Array.isArray(colors) || colors.length === 0) return;
-    const mapped: StudioThreadColor[] = colors.map((c: any) => ({
-      name: c.name,
-      hex: c.hex,
-      isAvailable: c.isAvailable !== false,
-    }));
+  const applyThreadColorConfig = (colors: any, notifyIfSwitched = true) => {
+    let list = colors;
+    if (typeof list === 'string') {
+      try {
+        list = JSON.parse(list);
+      } catch (e) {}
+    }
+    if (!Array.isArray(list) || list.length === 0) return;
+
+    const mapped: StudioThreadColor[] = list.map((c: any) => ({
+      name: typeof c === 'string' ? c : String(c.name || ''),
+      hex: typeof c === 'string' ? '#ffffff' : String(c.hex || '#ffffff'),
+      isAvailable: typeof c === 'object' && c !== null ? c.isAvailable !== false : true,
+    })).filter(c => c.name);
+
     setAvailableColors(mapped);
 
     // If currently selected color became unavailable, auto-switch to first available color
@@ -198,6 +206,7 @@ export default function ProductModal({
         .catch(() => {});
     };
 
+    // Immediate fetch on mount or whenever modal opens
     fetchLatestColors();
 
     const handleSettingsEvent = (e: any) => {
@@ -209,9 +218,7 @@ export default function ProductModal({
     };
 
     const handleDataChanged = (e: any) => {
-      if (e.detail?.entity === 'SETTINGS') {
-        fetchLatestColors();
-      }
+      fetchLatestColors();
     };
 
     const handleFocus = () => {
@@ -222,10 +229,10 @@ export default function ProductModal({
     window.addEventListener('dataChanged', handleDataChanged);
     window.addEventListener('focus', handleFocus);
 
-    // Actively poll every 2.5s while customization modal is open so changes by admin show immediately
+    // Actively poll every 1.5s while customization modal is open so changes by admin show immediately
     let interval: NodeJS.Timeout | null = null;
-    if (product) {
-      interval = setInterval(fetchLatestColors, 2500);
+    if (isOpen) {
+      interval = setInterval(fetchLatestColors, 1500);
     }
 
     return () => {
@@ -234,7 +241,7 @@ export default function ProductModal({
       window.removeEventListener('focus', handleFocus);
       if (interval) clearInterval(interval);
     };
-  }, [product]);
+  }, [isOpen, product]);
 
   // Sync state when product opens
   useEffect(() => {
@@ -1016,17 +1023,20 @@ export default function ProductModal({
                           title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
                           className={`relative w-7 h-7 rounded-full border flex items-center justify-center transition-all overflow-hidden ${
                             !isAvailable
-                              ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/20 scale-90 bg-neutral-900/60'
+                              ? 'cursor-not-allowed border-dashed border-white/20 scale-90'
                               : isSelected
                               ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110 border-white cursor-pointer'
                               : 'border-white/20 hover:scale-105 cursor-pointer'
                           }`}
-                          style={{ backgroundColor: tc.hex }}
+                          style={{
+                            backgroundColor: tc.hex,
+                            ...(isAvailable ? {} : { opacity: 0.35, filter: 'grayscale(90%)' })
+                          }}
                         >
                           {/* Strike-through diagonal slash when thread is crossed out */}
                           {!isAvailable && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 transform shadow-xs" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                              <div className="w-[150%] h-[2.5px] bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.9)] rotate-45 transform" />
                             </div>
                           )}
 

@@ -1172,8 +1172,14 @@ exports.updateSettings = async (req, res) => {
 
         const io = req.app.get('io');
         if (io) {
+            let emittedColors = settings.availableThreadColors;
+            if (typeof emittedColors === 'string') {
+                try {
+                    emittedColors = JSON.parse(emittedColors);
+                } catch (e) {}
+            }
             io.emit('settingsUpdated', {
-                availableThreadColors: settings.availableThreadColors
+                availableThreadColors: emittedColors
             });
             io.emit('dataChanged', {
                 entity: 'SETTINGS',

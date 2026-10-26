@@ -1013,6 +1013,15 @@ exports.getPublicSettings = async (req, res) => {
             { name: 'Rose Blush', hex: '#fb7185', isAvailable: true }
         ];
 
+        let threadColors = (settings && settings.availableThreadColors) ? settings.availableThreadColors : DEFAULT_THREAD_PALETTE;
+        if (typeof threadColors === 'string') {
+            try {
+                threadColors = JSON.parse(threadColors);
+            } catch (e) {
+                threadColors = DEFAULT_THREAD_PALETTE;
+            }
+        }
+
         res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
@@ -1022,7 +1031,7 @@ exports.getPublicSettings = async (req, res) => {
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null,
-            availableThreadColors: (settings && settings.availableThreadColors) ? settings.availableThreadColors : DEFAULT_THREAD_PALETTE,
+            availableThreadColors: threadColors,
             emergencyNotice: settings?.emergencyNoticeActive ? {
                 active: true,
                 policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',

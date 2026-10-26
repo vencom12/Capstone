@@ -180,6 +180,16 @@ export default function PanelSettings({
     showToast('Thread palette reset to defaults. Click Save.', 'info');
   };
 
+  const handleDeleteColor = (index: number) => {
+    if (threadColors.length <= 1) {
+      showToast('At least one thread color must remain in the palette', 'warning');
+      return;
+    }
+    const toRemove = threadColors[index];
+    setThreadColors(prev => prev.filter((_, idx) => idx !== index));
+    showToast(`Removed "${toRemove.name}". Click Save to publish.`, 'info');
+  };
+
   const handleAddCustomColor = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newColorName.trim()) {
@@ -1112,8 +1122,8 @@ export default function PanelSettings({
                           </div>
                         </div>
 
-                        {/* Toggle Switch */}
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Actions: Toggle & Delete */}
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleToggleThreadColor(idx)}
@@ -1127,6 +1137,18 @@ export default function PanelSettings({
                                 tc.isAvailable ? 'translate-x-5' : 'translate-x-1'
                               }`}
                             />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteColor(idx)}
+                            title={`Delete ${tc.name} from studio palette`}
+                            className="p-1 rounded-md bg-white/5 hover:bg-rose-500/20 text-text-dim hover:text-rose-400 transition-colors border-none cursor-pointer"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
                           </button>
                         </div>
                       </div>
