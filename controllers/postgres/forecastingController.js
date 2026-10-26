@@ -495,7 +495,7 @@ exports.executeSuggestionAction = async (req, res) => {
 
             entity = ENTITIES.PRODUCT;
             entityId = updated.id;
-            actionDetails = `Adjusted price for "${updated.name}" to $${price}`;
+            actionDetails = `Adjusted price for "${updated.name}" to ₱${price}`;
             logAiChange(username, 'Adjust Product Price', actionDetails);
 
             // Invalidate BI Cache so suggestions reflect pricing adjustments
@@ -524,7 +524,7 @@ exports.executeSuggestionAction = async (req, res) => {
 
             entity = ENTITIES.PRODUCT;
             entityId = updated.id;
-            actionDetails = `Started A/B price test for "${updated.name}" ($${variantAPrice} vs $${variantBPrice})`;
+            actionDetails = `Started A/B price test for "${updated.name}" (₱${variantAPrice} vs ₱${variantBPrice})`;
             logAiChange(username, 'Start A/B Test', actionDetails);
 
             biCache = null;

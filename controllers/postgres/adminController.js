@@ -7,7 +7,7 @@ const { handleOrderStateTransition } = require('../../utils/inventoryManager');
 exports.getDashboardState = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = 100;
+        const limit = parseInt(req.query.limit) || 1000;
         const skip = (page - 1) * limit;
 
         // Core operational tables
