@@ -102,7 +102,13 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className="w-[260px] h-full bg-bg-sidebar backdrop-blur-[12px] border-r border-border-glass flex flex-col transition-all duration-300 max-[1100px]:w-[80px] max-[650px]:w-[280px] shrink-0 group z-[2000] overflow-y-auto"
+        className={`
+        h-full bg-bg-sidebar border-r border-border-glass flex flex-col transition-all duration-300 shrink-0 z-[2000]
+        w-[260px] max-[1100px]:w-[80px] max-[650px]:w-[280px]
+        max-[650px]:fixed max-[650px]:left-0 max-[650px]:top-0
+        ${isSidebarOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
+        overflow-y-auto
+      `}
       >
         {/* Header / Logo */}
         <div className="p-4 pt-5 pb-3 border-b border-border-glass/40 flex items-center justify-between shrink-0">
@@ -138,7 +144,13 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
           {navItems.map((item) => (
             <li key={item.id}>
               <button
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth <= 650) {
+                    setSidebarOpen(false);
+                    if (onMobileToggle) onMobileToggle();
+                  }
+                }}
                 className={`
                 w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer
                 transition-all duration-300 border font-medium text-[0.95rem]

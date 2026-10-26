@@ -35,7 +35,7 @@ export default function EmployeePage() {
 
   const [activeTab, setActiveTab] = useState('orders');
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const tabTitles: Record<string, string> = {
     orders: 'Order Queue',
     counter: 'Walk-In Counter',
@@ -1312,20 +1312,7 @@ export default function EmployeePage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main relative">
       {/* Dynamic sliding drawer sidebar */}
-      <div className={`
-        max-[650px]:fixed max-[650px]:top-0 max-[650px]:left-0 max-[650px]:h-full max-[650px]:z-[2000] max-[650px]:transition-transform max-[650px]:duration-300
-        ${isMobilePanelOpen ? 'max-[650px]:translate-x-0' : 'max-[650px]:-translate-x-full'}
-      `}>
-        <EmployeeSidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsMobilePanelOpen(false); }} />
-      </div>
-
-      {/* Mobile Overlay */}
-      {isMobilePanelOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1900] hidden max-[650px]:block"
-          onClick={() => setIsMobilePanelOpen(false)}
-        />
-      )}
+      <EmployeeSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
@@ -1333,7 +1320,7 @@ export default function EmployeePage() {
         <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-2 sm:gap-4 max-w-full overflow-hidden">
           <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
             <button
-              onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)}
+              onClick={() => setSidebarOpen(!isSidebarOpen)}
               className="min-[651px]:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main hover:text-primary cursor-pointer hover:bg-white/10 transition-colors shrink-0"
               aria-label="Toggle navigation"
             >
