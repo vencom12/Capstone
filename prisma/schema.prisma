@@ -227,6 +227,7 @@ model SystemSettings {
   emergencyNoticeUpdatedBy  String?
   emergencyOrderingPolicy  String    @default("ALLOW_WITH_DELAY") // "ALLOW_WITH_DELAY" | "PAUSE_ORDERS"
   availableThreadColors    Json?
+  dailyRent                Float     @default(1500.00)
 }
 
 model GlobalAuditLog {

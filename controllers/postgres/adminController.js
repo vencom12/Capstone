@@ -1178,6 +1178,7 @@ exports.updateSettings = async (req, res) => {
         if (updateData.artisanDailyMinutes !== undefined) updateData.artisanDailyMinutes = parseFloat(updateData.artisanDailyMinutes) || 500.0;
         if (updateData.expressLanePercent !== undefined) updateData.expressLanePercent = parseFloat(updateData.expressLanePercent) || 35.0;
         if (updateData.efficiencyFactor !== undefined) updateData.efficiencyFactor = parseFloat(updateData.efficiencyFactor) || 0.85;
+        if (updateData.dailyRent !== undefined) updateData.dailyRent = parseFloat(updateData.dailyRent) || 0;
         if (updateData.availableThreadColors !== undefined && typeof updateData.availableThreadColors === 'string') {
             try {
                 updateData.availableThreadColors = JSON.parse(updateData.availableThreadColors);
@@ -1377,7 +1378,8 @@ exports.downloadDailyFinancialPdf = async (req, res) => {
             }
         });
 
-        const dailyRent = process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00; // Daily Shop Rent
+        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        const dailyRent = (settings && settings.dailyRent != null) ? settings.dailyRent : (process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00);
         const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
         const totalExpenses = dailyRent + materialsCost;
         const netProfit = paidRevenue - totalExpenses;
@@ -1392,7 +1394,6 @@ exports.downloadDailyFinancialPdf = async (req, res) => {
 
         doc.pipe(res);
 
-        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
 
         doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });

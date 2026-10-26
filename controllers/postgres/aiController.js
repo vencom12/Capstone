@@ -802,7 +802,8 @@ exports.chat = async (req, res) => {
                 }
             });
 
-            const dailyRent = process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00; // Daily Shop Rent
+            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            const dailyRent = (settings && settings.dailyRent != null) ? settings.dailyRent : (process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00);
             const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
             const totalExpenses = dailyRent + materialsCost;
             const netProfit = grossSales - totalExpenses;

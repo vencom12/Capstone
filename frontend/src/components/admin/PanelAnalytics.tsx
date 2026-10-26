@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
+import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
 
@@ -33,7 +34,7 @@ export default function PanelAnalytics({
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
   
-  // Daily Pacific Mall stall rent & electricity - persisted in localStorage
+  // Daily Pacific Mall stall rent & electricity - loaded from backend SystemSettings & localStorage
   const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -46,10 +47,27 @@ export default function PanelAnalytics({
         // fallback
       }
     }
-    return 500;
+    return 1500;
   });
 
-  const handleSaveRent = (val: number) => {
+  // Load server-persisted rent from SystemSettings on mount
+  useEffect(() => {
+    api.get<any>('/api/admin/settings')
+      .then((res) => {
+        if (res && res.dailyRent != null) {
+          const serverRent = Number(res.dailyRent);
+          setDailyStallOverhead(serverRent);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('stitch_daily_stall_rent', String(serverRent));
+            } catch {}
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveRent = async (val: number) => {
     const safeVal = Math.max(0, val);
     setDailyStallOverhead(safeVal);
     if (typeof window !== 'undefined') {
@@ -58,6 +76,11 @@ export default function PanelAnalytics({
       } catch {
         // fallback
       }
+    }
+    try {
+      await api.patch('/api/admin/settings', { dailyRent: safeVal });
+    } catch (err) {
+      console.error('Failed to sync dailyRent to backend settings', err);
     }
   };
 
