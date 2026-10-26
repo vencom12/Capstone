@@ -802,7 +802,7 @@ exports.chat = async (req, res) => {
                 }
             });
 
-            const dailyRent = 650.00; // Pacific Mall Kiosk Pro-rated Rent
+            const dailyRent = process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00; // Daily Shop Rent
             const materialsCost = Math.round((totalGarments * 95) + (Math.ceil(totalGarments / 5) * 45));
             const totalExpenses = dailyRent + materialsCost;
             const netProfit = grossSales - totalExpenses;
