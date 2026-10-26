@@ -19,7 +19,7 @@ export interface SavedAddress {
 export interface User {
   id: string;
   username: string;
-  email: string;
+  email?: string | null;
   role: 'admin' | 'employee' | 'customer';
   walletBalance?: number;
   phoneNumber?: string;

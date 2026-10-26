@@ -49,8 +49,12 @@ export default function AuthModal() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // Alternate views: normal login/register, forgot-password, or first-time Google password setup
-  const [view, setView] = useState<'main' | 'forgot' | 'googleSetup'>('main');
+  // Alternate views: normal login/register, forgot-password, first-time Google password setup, or OTP verification
+  const [view, setView] = useState<'main' | 'forgot' | 'googleSetup' | 'verifyOtp'>('main');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [googleSetup, setGoogleSetup] = useState<{ token: string; email: string; username: string } | null>(null);
@@ -70,7 +74,16 @@ export default function AuthModal() {
   const abortEmailCtrl = useRef<AbortController | null>(null);
   const availabilityCache = useRef<Map<string, { available: boolean; message?: string }>>(new Map());
 
-  const { login, register, loginWithGoogle, completeGoogleSignup, forgotPassword, isAuthenticated } = useAuthStore();
+  const { login, register, sendRegistrationOtp, loginWithGoogle, completeGoogleSignup, forgotPassword, isAuthenticated } = useAuthStore();
+
+  // OTP Resend cooldown timer
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
 
   // Clear errors when mode or view changes
   useEffect(() => {
@@ -78,6 +91,7 @@ export default function AuthModal() {
     setFormError(null);
     setForgotError(null);
     setSetupError(null);
+    setOtpError(null);
     setIsUsernameAvailable(null);
     setIsEmailAvailable(null);
     setCheckingUsername(false);
@@ -316,7 +330,9 @@ export default function AuthModal() {
     }
   };
 
-  // Handle Registration with Industry-Standard Field Validation
+  // Handle Registration:
+  // If email is provided -> request OTP and open 'verifyOtp' view
+  // If email is empty -> frictionless registration directly!
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -324,7 +340,6 @@ export default function AuthModal() {
     const errors: FieldErrors = {};
     const cleanUser = username.trim();
     const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!cleanUser) {
       errors.username = 'Please choose a username.';
@@ -332,9 +347,7 @@ export default function AuthModal() {
       errors.username = 'Must be at least 3 characters.';
     }
 
-    if (!cleanEmail) {
-      errors.email = 'Please enter your email address.';
-    } else {
+    if (cleanEmail) {
       const emailCheck = validateEmail(cleanEmail);
       if (!emailCheck.isValid) {
         errors.email = emailCheck.error || 'Please enter a valid email address.';
@@ -365,20 +378,49 @@ export default function AuthModal() {
       } else {
         showToast({
           title: 'Please Check Your Details',
-          message: 'Please fill in the highlighted fields before submitting.',
+          message: 'Please fill in the required fields before submitting.',
           type: 'error',
         });
       }
       return;
     }
 
+    // SCENARIO 1: Email is provided -> Trigger OTP verification step
+    if (cleanEmail) {
+      setIsFormSubmitting(true);
+      try {
+        const res = await sendRegistrationOtp(cleanEmail, cleanUser);
+        if (res.success) {
+          setOtpCode('');
+          setOtpError(null);
+          setOtpCooldown(60);
+          setView('verifyOtp');
+          showToast({
+            title: 'Verification Code Sent',
+            message: `A 6-digit verification code was sent to ${cleanEmail}.`,
+            type: 'info',
+          });
+        } else {
+          setFormError(res.message);
+          showToast({
+            title: 'Email Notice',
+            message: res.message,
+            type: 'error',
+          });
+        }
+      } catch (err: any) {
+        const msg = err.message || 'Failed to send verification code. Please check your email.';
+        setFormError(msg);
+      } finally {
+        setIsFormSubmitting(false);
+      }
+      return;
+    }
+
+    // SCENARIO 2: No Email -> Instant Frictionless Registration
     setIsFormSubmitting(true);
     try {
-      const res = await register(
-        cleanUser,
-        cleanEmail,
-        password
-      );
+      const res = await register(cleanUser, '', password);
 
       if (res.success) {
         setIsRegistrationSuccess(true);
@@ -412,6 +454,80 @@ export default function AuthModal() {
       });
     } finally {
       setIsFormSubmitting(false);
+    }
+  };
+
+  // Submit OTP Verification code and finalize registration
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError(null);
+
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setOtpError('Please enter the full 6-digit verification code.');
+      return;
+    }
+
+    setIsFormSubmitting(true);
+    try {
+      const res = await register(
+        username.trim(),
+        email.trim().toLowerCase(),
+        password,
+        undefined,
+        undefined,
+        cleanOtp
+      );
+
+      if (res.success) {
+        setIsRegistrationSuccess(true);
+        showToast({
+          title: 'Email Verified & Account Created!',
+          message: `Welcome, ${res.user?.username || 'Customer'}! Your account is verified.`,
+          type: 'success',
+        });
+        setTimeout(() => {
+          handleClose(true);
+          useUIStore.getState().startCustomerTour();
+          if (authParam) {
+            router.replace('/');
+          }
+        }, 700);
+      } else {
+        setOtpError(res.message || 'Invalid or expired verification code.');
+        showToast({
+          title: 'Verification Notice',
+          message: res.message || 'Invalid or expired verification code.',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      setOtpError(err.message || 'Verification failed. Please try again.');
+    } finally {
+      setIsFormSubmitting(false);
+    }
+  };
+
+  // Resend OTP code with cooldown
+  const handleResendOtp = async () => {
+    if (otpCooldown > 0 || isSendingOtp) return;
+    setIsSendingOtp(true);
+    try {
+      const res = await sendRegistrationOtp(email.trim().toLowerCase(), username.trim());
+      if (res.success) {
+        setOtpCooldown(60);
+        showToast({
+          title: 'New Code Sent',
+          message: `A fresh 6-digit code was sent to ${email.trim()}.`,
+          type: 'info',
+        });
+      } else {
+        setOtpError(res.message);
+      }
+    } catch (err: any) {
+      setOtpError(err.message || 'Failed to resend code.');
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -993,9 +1109,88 @@ export default function AuthModal() {
     );
   }
 
-  // 5-Step Customer Registration Progress (Username -> Email -> Password -> Policies -> Create My Account)
+  if (view === 'verifyOtp') {
+    return (
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[420px]" zIndex="z-[100005]" isDirty={false}>
+        <div className="flex flex-col gap-3 font-sans text-left pt-0 pb-1">
+          {/* Top Header */}
+          <div className="text-center pt-1 pb-1 px-4">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] border border-border-glass mx-auto flex items-center justify-center mb-2 text-text-main">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-text-main m-0 tracking-tight">
+              Verify Your Email
+            </h2>
+            <p className="text-xs text-text-dim mt-1.5 mb-0">
+              We sent a 6-digit verification code to <span className="font-semibold text-text-main">{email}</span>. Enter it below to complete registration.
+            </p>
+          </div>
+
+          <form noValidate autoComplete="off" onSubmit={handleOtpSubmit} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">
+                6-Digit Verification Code
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                autoFocus
+                placeholder="000000"
+                value={otpCode}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtpCode(val);
+                  if (otpError) setOtpError(null);
+                }}
+                className="w-full text-center text-2xl font-mono tracking-[0.3em] font-bold py-2.5 px-3 rounded-lg bg-bg-surface/80 border border-border-glass text-text-main placeholder:text-text-dim/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all"
+              />
+              {otpError && (
+                <div className="mt-1">
+                  <InlineError variant="field" message={otpError} />
+                </div>
+              )}
+            </div>
+
+            <GlassButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="md"
+              className="mt-1 font-bold text-sm tracking-wide shadow-sm py-2.5"
+              disabled={isFormSubmitting || otpCode.length < 6}
+            >
+              {isFormSubmitting ? 'Verifying...' : 'Verify & Create Account'}
+            </GlassButton>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass">
+              <button
+                type="button"
+                onClick={() => setView('main')}
+                className="bg-transparent border-none text-text-dim hover:text-text-main hover:underline cursor-pointer p-0 text-xs"
+              >
+                ← Back / Edit Email
+              </button>
+              <button
+                type="button"
+                disabled={otpCooldown > 0 || isSendingOtp}
+                onClick={handleResendOtp}
+                className="bg-transparent border-none text-primary hover:underline font-semibold cursor-pointer p-0 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {otpCooldown > 0 ? `Resend code in ${otpCooldown}s` : 'Resend Code'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </GlassModal>
+    );
+  }
+
+  // 5-Step Customer Registration Progress (Username -> Email (Optional) -> Password -> Policies -> Create My Account)
   const isStep1Done = Boolean(username.trim().length >= 3 && !fieldErrors.username);
-  const isStep2Done = Boolean(email.trim().length > 0 && !fieldErrors.email && email.includes('@'));
+  const isStep2Done = Boolean(email.trim().length === 0 || (!fieldErrors.email && email.includes('@')));
   const isStep3Done = Boolean(password.length >= 6 && !fieldErrors.password);
   const isStep4Done = Boolean(agreedToTerms);
   // Step 5 is ONLY done when the user clicks Create My Account and submission is in progress or completed!
@@ -1017,7 +1212,7 @@ export default function AuthModal() {
 
   const regSteps = [
     { id: 1, label: 'Username', shortLabel: 'User', done: isStep1Done },
-    { id: 2, label: 'Email Address', shortLabel: 'Email', done: isStep2Done },
+    { id: 2, label: 'Email (Optional)', shortLabel: 'Email', done: isStep2Done },
     { id: 3, label: 'Password', shortLabel: 'Pass', done: isStep3Done },
     { id: 4, label: 'Studio Policies', shortLabel: 'Terms', done: isStep4Done },
     { id: 5, label: 'Create My Account', shortLabel: 'Finish', done: isStep5Done },
@@ -1159,7 +1354,7 @@ export default function AuthModal() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
               <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">
-                {mode === 'login' ? 'Email or Username *' : 'Email Address *'}
+                {mode === 'login' ? 'Email or Username *' : 'Email Address (Optional)'}
               </label>
               <div className="flex items-center gap-1.5 shrink min-w-0 justify-end">
                 {fieldErrors.email ? (
@@ -1175,7 +1370,7 @@ export default function AuthModal() {
                       </button>
                     )}
                   </>
-                ) : mode === 'register' && !checkingEmail && isEmailAvailable ? (
+                ) : mode === 'register' && email.trim() && !checkingEmail && isEmailAvailable ? (
                   <span className="text-[0.7rem] text-emerald-400 font-semibold flex items-center gap-1 animate-fadeIn leading-none whitespace-nowrap">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12" />
@@ -1189,7 +1384,7 @@ export default function AuthModal() {
               <input 
                 type={mode === 'login' ? 'text' : 'email'} 
                 autoComplete={mode === 'register' ? 'off' : 'username'}
-                placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com'}
+                placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com (optional)'}
                 value={email}
                 onBlur={() => {
                   validateField('email');
@@ -1202,8 +1397,10 @@ export default function AuthModal() {
                   setEmail(val); 
                   if (fieldErrors.email) validateField('email', val);
                   if (formError) setFormError(null); 
-                  if (mode === 'register') {
+                  if (mode === 'register' && val.trim()) {
                     checkEmailAvailability(val);
+                  } else if (mode === 'register' && !val.trim()) {
+                    setIsEmailAvailable(null);
                   }
                 }}
                 className={`${getInputCls(Boolean(fieldErrors.email))} ${mode === 'register' ? 'pr-9' : ''}`}
@@ -1213,7 +1410,7 @@ export default function AuthModal() {
                   <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
-              {mode === 'register' && !checkingEmail && isEmailAvailable && !fieldErrors.email && (
+              {mode === 'register' && !checkingEmail && isEmailAvailable && !fieldErrors.email && email.trim() && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none animate-fadeIn">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />
@@ -1221,6 +1418,30 @@ export default function AuthModal() {
                 </div>
               )}
             </div>
+            {mode === 'register' && (
+              !email.trim() ? (
+                <div className="mt-1 p-2 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-start gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-text-dim">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span className="leading-relaxed">
+                    <strong className="text-text-main font-semibold">Frictionless mode:</strong> Registration without email is enabled. You can order and track via Order ID + GCash. You won't receive email receipts or automated password resets, but you can link an email anytime.
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-1 p-2 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-start gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-text-dim">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  <span className="leading-relaxed">
+                    A 6-digit verification code will be sent to confirm this email before creating your account.
+                  </span>
+                </div>
+              )
+            )}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -1342,8 +1563,8 @@ export default function AuthModal() {
             disabled={isSubmitting}
           >
             {isFormSubmitting 
-              ? (mode === 'login' ? 'Signing In...' : 'Creating My Account...') 
-              : (mode === 'login' ? 'Sign In' : 'Create My Account')}
+              ? (mode === 'login' ? 'Signing In...' : (email.trim() ? 'Sending Code...' : 'Creating Account...')) 
+              : (mode === 'login' ? 'Sign In' : (email.trim() ? 'Verify Email & Create Account' : 'Create My Account'))}
           </GlassButton>
           <InlineError variant="banner" message={formError} />
         </form>

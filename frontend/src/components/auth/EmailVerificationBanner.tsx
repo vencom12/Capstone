@@ -24,8 +24,8 @@ export default function EmailVerificationBanner() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // Don't show banner if not authenticated, not a customer, already verified, or dismissed
-  if (!isAuthenticated || !user || user.role !== 'customer' || user.isEmailVerified || dismissed) {
+  // Don't show banner if not authenticated, not a customer, no email registered, already verified, or dismissed
+  if (!isAuthenticated || !user || user.role !== 'customer' || !user.email || user.isEmailVerified || dismissed) {
     return null;
   }
 
@@ -46,38 +46,38 @@ export default function EmailVerificationBanner() {
   };
 
   return (
-    <div className="w-full bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-md">
+    <div className="w-full bg-white/[0.04] border-b border-border-glass backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm">
-          <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4 text-text-dim shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="text-amber-200/90 font-medium">
-            Your email <strong className="text-amber-100 font-bold">{user.email}</strong> is not verified yet.
+          <span className="text-text-main text-xs sm:text-sm font-medium">
+            Your email <strong className="text-white font-bold">{user.email}</strong> is not verified yet.
           </span>
-          <span className="text-amber-200/60 text-xs hidden sm:inline">
-            Verify to place orders.
+          <span className="text-text-dim text-xs hidden sm:inline">
+            Verify to receive order status updates.
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {cooldown > 0 ? (
-            <span className="text-amber-300/70 text-xs font-medium">
-              Resend in <span className="font-mono font-bold text-amber-200">{cooldown}s</span>
+            <span className="text-text-dim text-xs font-medium">
+              Resend in <span className="font-mono font-bold text-text-main">{cooldown}s</span>
             </span>
           ) : (
             <button
               onClick={handleResend}
               disabled={isResending}
-              className="px-3.5 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-200 text-xs font-bold 
-                cursor-pointer hover:bg-amber-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 rounded-lg bg-white/[0.08] border border-border-glass text-text-main text-xs font-semibold 
+                cursor-pointer hover:bg-white/[0.14] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isResending ? 'Sending...' : 'Resend Email'}
             </button>
           )}
           <button
             onClick={() => setDismissed(true)}
-            className="p-1 text-amber-300/50 hover:text-amber-200 bg-transparent border-none cursor-pointer transition-colors"
+            className="p-1 text-text-dim hover:text-text-main bg-transparent border-none cursor-pointer transition-colors"
             aria-label="Dismiss banner"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

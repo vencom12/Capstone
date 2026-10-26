@@ -58,6 +58,109 @@ export default function DashboardPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
+  // Email & Google Account Linking State
+  const [isLinkEmailModalOpen, setIsLinkEmailModalOpen] = useState(false);
+  const [linkEmailStep, setLinkEmailStep] = useState<'email' | 'otp'>('email');
+  const [linkEmailInput, setLinkEmailInput] = useState('');
+  const [linkOtpInput, setLinkOtpInput] = useState('');
+  const [linkEmailError, setLinkEmailError] = useState<string | null>(null);
+  const [isSendingLinkOtp, setIsSendingLinkOtp] = useState(false);
+  const [isVerifyingLinkOtp, setIsVerifyingLinkOtp] = useState(false);
+  const [linkOtpCooldown, setLinkOtpCooldown] = useState(0);
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+
+  useEffect(() => {
+    if (linkOtpCooldown <= 0) return;
+    const timer = setInterval(() => setLinkOtpCooldown((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [linkOtpCooldown]);
+
+  const handleLinkGoogle = async () => {
+    if (isLinkingGoogle) return;
+    setIsLinkingGoogle(true);
+    try {
+      const { signInWithPopup } = await import('firebase/auth');
+      const { auth, googleProvider } = await import('@/lib/firebase');
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleUser = result.user;
+      if (!googleUser.email) {
+        showToast('No email address provided by Google account.', 'error');
+        return;
+      }
+      const res = await useAuthStore.getState().linkGoogle({
+        email: googleUser.email,
+        displayName: googleUser.displayName || '',
+        uid: googleUser.uid,
+      });
+      if (res.success) {
+        showToast(`Google account (${googleUser.email}) successfully linked!`, 'success');
+      } else {
+        showToast(res.message || 'Failed to link Google account.', 'error');
+      }
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+      showToast(err?.message || 'Failed to connect Google account.', 'error');
+    } finally {
+      setIsLinkingGoogle(false);
+    }
+  };
+
+  const handleSendLinkEmailOtp = async (e?: React.FormEvent, overrideEmail?: string) => {
+    if (e) e.preventDefault();
+    setLinkEmailError(null);
+    const targetEmail = (overrideEmail || linkEmailInput).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setLinkEmailError('Please enter a valid email address.');
+      return;
+    }
+    setIsSendingLinkOtp(true);
+    try {
+      const res = await useAuthStore.getState().sendLinkOtp(targetEmail);
+      if (res.success) {
+        setLinkEmailInput(targetEmail);
+        setLinkEmailStep('otp');
+        setLinkOtpInput('');
+        setLinkOtpCooldown(60);
+        showToast(`Verification code sent to ${targetEmail}.`, 'info');
+      } else {
+        setLinkEmailError(res.message || 'Failed to send verification code.');
+      }
+    } catch (err: any) {
+      setLinkEmailError(err?.message || 'Error sending verification code.');
+    } finally {
+      setIsSendingLinkOtp(false);
+    }
+  };
+
+  const handleVerifyLinkEmailOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLinkEmailError(null);
+    const cleanOtp = linkOtpInput.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setLinkEmailError('Please enter the 6-digit verification code.');
+      return;
+    }
+    setIsVerifyingLinkOtp(true);
+    try {
+      const res = await useAuthStore.getState().linkEmail(linkEmailInput.trim().toLowerCase(), cleanOtp);
+      if (res.success) {
+        showToast('Email verified and linked to your account successfully!', 'success');
+        setIsLinkEmailModalOpen(false);
+        setLinkEmailInput('');
+        setLinkOtpInput('');
+        setLinkEmailStep('email');
+      } else {
+        setLinkEmailError(res.message || 'Invalid or expired verification code.');
+      }
+    } catch (err: any) {
+      setLinkEmailError(err?.message || 'Verification failed. Please try again.');
+    } finally {
+      setIsVerifyingLinkOtp(false);
+    }
+  };
+
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
@@ -495,7 +598,6 @@ export default function DashboardPage() {
       case 'settings': {
         const personalFields = [
           { key: 'username', label: 'Display Name', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>), type: 'text' as const },
-          { key: 'email', label: 'Email', icon: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>), type: 'email' as const },
         ] as Array<{ key: string; label: string; icon: React.ReactNode; type: 'text' | 'email' | 'textarea' }>;
 
         return (
@@ -522,7 +624,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-text-main m-0">{user?.username || 'Customer'}</h3>
-                      <p className="text-xs sm:text-sm text-text-dim m-0 mt-0.5">{user?.email || 'No email set'}</p>
+                      <p className="text-xs sm:text-sm text-text-dim m-0 mt-0.5">{user?.email || 'Frictionless Account (No email set)'}</p>
                     </div>
                   </div>
 
@@ -616,6 +718,93 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-2xl overflow-hidden shadow-xl flex flex-col divide-y divide-border-glass/40">
+                  {/* Email & 2FA OTP Verification */}
+                  <div className="p-6 flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-white/5 text-text-main flex items-center justify-center shrink-0 border border-border-glass">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                          <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Email Address</h4>
+                          {user?.email ? (
+                            user.isEmailVerified ? (
+                              <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/10 text-text-main border border-border-glass flex items-center gap-1">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Verified
+                              </span>
+                            ) : (
+                              <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/5 text-text-dim border border-border-glass">
+                                Unverified
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/5 text-text-dim border border-border-glass">
+                              Frictionless (No Email)
+                            </span>
+                          )}
+                        </div>
+                        <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">
+                          {user?.email 
+                            ? user.email 
+                            : 'Link an email with 6-digit verification code to receive receipts & notifications.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkEmailInput(user?.email || '');
+                        setLinkEmailStep(user?.email && !user.isEmailVerified ? 'otp' : 'email');
+                        setLinkEmailError(null);
+                        if (user?.email && !user.isEmailVerified) {
+                          handleSendLinkEmailOtp(undefined, user.email);
+                        }
+                        setIsLinkEmailModalOpen(true);
+                      }}
+                      className="bg-white/5 border border-border-glass px-4 py-2 rounded-xl text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95 shadow-sm"
+                    >
+                      {user?.email ? (user.isEmailVerified ? 'Change Email' : 'Verify with Code') : 'Link Verified Email'}
+                    </button>
+                  </div>
+
+                  {/* Google Account Linking */}
+                  <div className="p-6 flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-white/5 text-text-main flex items-center justify-center shrink-0 border border-border-glass">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="m-0 text-[0.95rem] font-bold text-text-main">Google Account</h4>
+                          {user?.email && user.isEmailVerified ? (
+                            <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-white/10 text-text-main border border-border-glass">
+                              Available
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="m-0 text-[0.8rem] text-text-dim mt-0.5">
+                          Connect your Google account for 1-click verified login
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isLinkingGoogle}
+                      onClick={handleLinkGoogle}
+                      className="bg-white/5 border border-border-glass px-4 py-2 rounded-xl text-[0.85rem] text-text-main font-bold hover:bg-white/10 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                    >
+                      {isLinkingGoogle ? 'Connecting...' : 'Link Google Account'}
+                    </button>
+                  </div>
+
                   {/* Password */}
                   <div className="p-6 flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3.5">
@@ -1077,6 +1266,122 @@ export default function DashboardPage() {
               {isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Account'}
             </button>
           </div>
+        </div>
+      </GlassModal>
+
+      {/* Link Verified Email Modal (with 6-Digit OTP) */}
+      <GlassModal
+        isOpen={isLinkEmailModalOpen}
+        onClose={() => setIsLinkEmailModalOpen(false)}
+        maxWidth="max-w-[420px]"
+        zIndex="z-[100005]"
+        isDirty={false}
+      >
+        <div className="flex flex-col gap-3 font-sans text-left pt-0 pb-1">
+          <div className="text-center pt-1 pb-1 px-4">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] border border-border-glass mx-auto flex items-center justify-center mb-2 text-text-main">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-text-main m-0 tracking-tight">
+              {linkEmailStep === 'email' ? 'Link Verified Email' : 'Enter 6-Digit Code'}
+            </h2>
+            <p className="text-xs text-text-dim mt-1.5 mb-0">
+              {linkEmailStep === 'email'
+                ? 'Enter your email address to receive an instant verification code.'
+                : `We sent a 6-digit verification code to ${linkEmailInput}. Enter it below.`}
+            </p>
+          </div>
+
+          {linkEmailStep === 'email' ? (
+            <form onSubmit={handleSendLinkEmailOtp} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.75rem] font-bold text-text-dim ml-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  placeholder="you@example.com"
+                  value={linkEmailInput}
+                  onChange={(e) => {
+                    setLinkEmailInput(e.target.value);
+                    if (linkEmailError) setLinkEmailError(null);
+                  }}
+                  className="w-full py-2.5 px-3 rounded-lg bg-bg-surface/80 border border-border-glass text-text-main placeholder:text-text-dim/40 focus:outline-none focus:border-primary transition-all text-sm"
+                />
+                {linkEmailError && (
+                  <p className="text-rose-400 text-xs mt-1 ml-1 font-semibold">{linkEmailError}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => setIsLinkEmailModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingLinkOtp || !linkEmailInput.trim()}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover cursor-pointer border-none disabled:opacity-50"
+                >
+                  {isSendingLinkOtp ? 'Sending Code...' : 'Send Verification Code'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyLinkEmailOtp} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.75rem] font-bold text-text-dim ml-1">6-Digit Verification Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  autoFocus
+                  placeholder="000000"
+                  value={linkOtpInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setLinkOtpInput(val);
+                    if (linkEmailError) setLinkEmailError(null);
+                  }}
+                  className="w-full text-center text-2xl font-mono tracking-[0.3em] font-bold py-2.5 px-3 rounded-lg bg-bg-surface/80 border border-border-glass text-text-main placeholder:text-text-dim/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all"
+                />
+                {linkEmailError && (
+                  <p className="text-rose-400 text-xs mt-1 ml-1 font-semibold text-center">{linkEmailError}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifyingLinkOtp || linkOtpInput.length < 6}
+                className="w-full py-2.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-hover cursor-pointer border-none disabled:opacity-50 transition-all shadow-sm"
+              >
+                {isVerifyingLinkOtp ? 'Verifying...' : 'Verify & Link Email'}
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => setLinkEmailStep('email')}
+                  className="bg-transparent border-none text-text-dim hover:text-text-main hover:underline cursor-pointer p-0 text-xs"
+                >
+                  ← Change Email
+                </button>
+                <button
+                  type="button"
+                  disabled={linkOtpCooldown > 0 || isSendingLinkOtp}
+                  onClick={() => handleSendLinkEmailOtp(undefined, linkEmailInput)}
+                  className="bg-transparent border-none text-primary hover:underline font-semibold cursor-pointer p-0 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {linkOtpCooldown > 0 ? `Resend in ${linkOtpCooldown}s` : 'Resend Code'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </GlassModal>
     </div>

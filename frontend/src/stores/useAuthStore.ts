@@ -20,7 +20,12 @@ interface AuthState {
   isLoggingOut: boolean;
 
   login: (email: string, password: string, rememberMe?: boolean, role?: 'customer' | 'employee' | 'admin') => Promise<AuthResponse>;
-  register: (username: string, email: string, password: string, phoneNumber?: string, address?: string) => Promise<AuthResponse>;
+  register: (username: string, email?: string, password?: string, phoneNumber?: string, address?: string, otpCode?: string) => Promise<AuthResponse>;
+  sendRegistrationOtp: (email: string, username?: string) => Promise<{ success: boolean; message: string }>;
+  verifyRegistrationOtp: (email: string, otpCode: string) => Promise<{ success: boolean; message: string }>;
+  linkGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<{ success: boolean; message: string; user?: User }>;
+  sendLinkOtp: (email: string) => Promise<{ success: boolean; message: string }>;
+  linkEmail: (email: string, otpCode: string) => Promise<{ success: boolean; message: string; user?: User }>;
   resendEmailVerification: () => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
   checkEmailStatus: () => Promise<{ isEmailVerified: boolean; email: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
@@ -81,22 +86,74 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (username, email, password, phoneNumber, address) => {
+      register: async (username, email, password, phoneNumber, address, otpCode) => {
         set({ isLoading: true });
         try {
-          const data = await api.post<{ user: User }>('/api/auth/register', {
+          const payload: any = {
             username,
-            email,
             password,
             role: 'customer',
             phoneNumber,
             address,
-          });
+          };
+          if (email && email.trim()) {
+            payload.email = email.trim();
+            if (otpCode) payload.otpCode = otpCode.trim();
+          }
+          const data = await api.post<{ user: User }>('/api/auth/register', payload);
           set({ user: data.user, isAuthenticated: true, isLoading: false });
           return { success: true, user: data.user };
         } catch (err) {
           set({ isLoading: false });
           return { success: false, message: err instanceof Error ? err.message : 'Registration failed' };
+        }
+      },
+
+      sendRegistrationOtp: async (email, username) => {
+        try {
+          return await api.post<{ success: boolean; message: string }>('/api/auth/send-otp', { email, username });
+        } catch (err: any) {
+          return { success: false, message: err?.message || 'Failed to send verification code.' };
+        }
+      },
+
+      verifyRegistrationOtp: async (email, otpCode) => {
+        try {
+          return await api.post<{ success: boolean; message: string }>('/api/auth/verify-otp', { email, otpCode });
+        } catch (err: any) {
+          return { success: false, message: err?.message || 'Invalid or expired verification code.' };
+        }
+      },
+
+      linkGoogle: async (googleData) => {
+        try {
+          const data = await api.post<{ success: boolean; message: string; user: User }>('/api/auth/google/link', googleData);
+          if (data.user) {
+            set({ user: data.user });
+          }
+          return { success: true, message: data.message, user: data.user };
+        } catch (err: any) {
+          return { success: false, message: err?.message || 'Failed to link Google account.' };
+        }
+      },
+
+      sendLinkOtp: async (email) => {
+        try {
+          return await api.post<{ success: boolean; message: string }>('/api/auth/email/send-link-otp', { email });
+        } catch (err: any) {
+          return { success: false, message: err?.message || 'Failed to send verification code.' };
+        }
+      },
+
+      linkEmail: async (email, otpCode) => {
+        try {
+          const data = await api.post<{ success: boolean; message: string; user: User }>('/api/auth/email/link', { email, otpCode });
+          if (data.user) {
+            set({ user: data.user });
+          }
+          return { success: true, message: data.message, user: data.user };
+        } catch (err: any) {
+          return { success: false, message: err?.message || 'Failed to link email.' };
         }
       },
 

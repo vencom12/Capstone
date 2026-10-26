@@ -354,6 +354,44 @@ async function sendVerificationEmail(recipientEmail, recipientName, verification
 }
 
 /**
+ * Sends a 6-digit numeric OTP verification code for frictionless registration and account linking.
+ */
+async function sendVerificationOtpEmail(recipientEmail, recipientName, otpCode) {
+  const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
+
+  const contentHtml = `
+    <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 14px;">
+      Hello <strong style="color: #ffffff;">${recipientName || 'there'}</strong>! Welcome to <strong>${businessName}</strong>.
+      Use the 6-digit verification code below to confirm and verify your email address:
+    </div>
+
+    <div style="margin: 20px 0; text-align: center;">
+      <div style="display: inline-block; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);
+                  color: #ffffff; padding: 12px 28px; border-radius: 8px; font-size: 28px; font-weight: 800; letter-spacing: 6px; font-family: monospace;">
+        ${otpCode}
+      </div>
+    </div>
+
+    <div style="color: #94a3b8; font-size: 11px; line-height: 1.4; text-align: center; margin-top: 10px;">
+      This code expires in 10 minutes. If you did not request this code, you can safely ignore this message.
+    </div>
+  `;
+
+  const htmlContent = renderEmailShell({
+    title: 'Verification Code',
+    subtitle: '6-digit email confirmation code',
+    contentHtml,
+  });
+
+  return dispatchEmail({
+    to: recipientEmail,
+    subject: `${otpCode} is your verification code — ${businessName}`,
+    html: htmlContent,
+    simulationInfo: { tag: 'VERIFICATION CODE', code: otpCode },
+  });
+}
+
+/**
  * Sends a password reset email with a one-hour link.
  */
 async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken) {
@@ -699,6 +737,7 @@ async function sendDelayNotificationEmail(recipientEmail, recipientName, order, 
 module.exports = {
   generateVerificationToken,
   sendVerificationEmail,
+  sendVerificationOtpEmail,
   sendPasswordResetEmail,
   sendPasswordChangedAlertEmail,
   sendOrderConfirmationEmail,

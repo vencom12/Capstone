@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangedAlertEmail } = require('../../utils/emailService');
+const { generateVerificationToken, sendVerificationEmail, sendVerificationOtpEmail, sendPasswordResetEmail, sendPasswordChangedAlertEmail } = require('../../utils/emailService');
 
 const logErr = (msg) => {
     const entry = `[${new Date().toISOString()}] ${msg}\n`;
@@ -12,22 +12,18 @@ const logErr = (msg) => {
     console.error(msg);
 };
 
-exports.register = async (req, res) => {
+// 1. Send OTP verification code before registration
+exports.sendRegistrationOtp = async (req, res) => {
     try {
-        const { password: _pw, ...safeBody } = req.body;
-        logErr('Postgres Register attempt: ' + JSON.stringify(safeBody));
-        const { username, email, password, phoneNumber, address } = req.body;
-        
-        // Optional phone and address fallback for frictionless signup
-        const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
-        const cleanAddress = address ? address.trim() : '';
-        const cleanEmail = (email || '').trim().toLowerCase();
-        const cleanUsername = (username || '').trim();
+        const { email, username } = req.body;
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Please provide an email address to verify.' });
+        }
 
-        // Validate email format and reject single-letter TLDs or common domain typos
+        const cleanEmail = email.trim().toLowerCase();
         const rfcEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!cleanEmail || !rfcEmailRegex.test(cleanEmail)) {
-            return res.status(400).json({ message: 'Please enter a valid email address with a valid domain extension (e.g. name@example.com).' });
+        if (!rfcEmailRegex.test(cleanEmail)) {
+            return res.status(400).json({ message: 'Please enter a valid email address with a valid domain extension.' });
         }
         const domain = cleanEmail.split('@')[1] || '';
         const invalidTypos = ['gmail.c', 'gmail.co', 'gmail.con', 'gmail.cm', 'gmai.com', 'gamil.com', 'yahoo.c', 'yahoo.co', 'yahoo.con', 'hotmail.c', 'hotmail.co', 'outlook.c'];
@@ -35,61 +31,171 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: `"${domain}" is not a valid email domain. Did you mean @${domain.replace(/\.[a-z0-9]+$/, '.com')}?` });
         }
 
-        // Check if user exists (case-insensitive)
-        const existingUser = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email: { equals: cleanEmail, mode: 'insensitive' } },
-                    { username: { equals: cleanUsername, mode: 'insensitive' } }
-                ]
+        // Check if email already registered
+        const existing = await prisma.user.findFirst({
+            where: { email: { equals: cleanEmail, mode: 'insensitive' } }
+        });
+        if (existing) {
+            return res.status(400).json({ message: 'An account with this email already exists. Please log in or use another email.' });
+        }
+
+        // Generate 6-digit numeric OTP code
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Invalidate previous OTPs for this email
+        await prisma.emailVerification.deleteMany({
+            where: { email: cleanEmail }
+        });
+
+        // Store new OTP
+        await prisma.emailVerification.create({
+            data: {
+                userId: 'pending_registration',
+                email: cleanEmail,
+                token: otpCode,
+                expiresAt
             }
         });
 
-        if (existingUser) {
-            const isEmailMatch = existingUser.email?.toLowerCase() === cleanEmail;
-            return res.status(400).json({ 
-                message: isEmailMatch 
-                    ? 'An account with this email already exists. Please log in or sign in with Google.' 
-                    : 'This username is already taken. Please choose another username.' 
+        // Send OTP email
+        await sendVerificationOtpEmail(cleanEmail, username || 'Customer', otpCode).catch(err => {
+            console.error('[Registration OTP Send Error]', err.message || err);
+        });
+
+        return res.json({
+            success: true,
+            message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
+            expiresInSeconds: 600
+        });
+    } catch (err) {
+        console.error('sendRegistrationOtp Error:', err);
+        return res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    }
+};
+
+// 2. Validate OTP code endpoint
+exports.verifyRegistrationOtp = async (req, res) => {
+    try {
+        const { email, otpCode } = req.body;
+        if (!email || !otpCode) {
+            return res.status(400).json({ message: 'Email and 6-digit verification code are required.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanOtp = otpCode.trim();
+
+        const match = await prisma.emailVerification.findFirst({
+            where: {
+                email: cleanEmail,
+                token: cleanOtp,
+                expiresAt: { gt: new Date() }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (!match) {
+            return res.status(400).json({ message: 'Invalid or expired verification code. Please check your inbox or request a new code.' });
+        }
+
+        return res.json({ success: true, message: 'Email code verified successfully.' });
+    } catch (err) {
+        console.error('verifyRegistrationOtp Error:', err);
+        return res.status(500).json({ message: 'Failed to verify code.' });
+    }
+};
+
+// 3. User Registration (Frictionless: email optional; if email provided, requires valid OTP)
+exports.register = async (req, res) => {
+    try {
+        const { password: _pw, ...safeBody } = req.body;
+        logErr('Postgres Register attempt: ' + JSON.stringify(safeBody));
+        const { username, email, password, phoneNumber, address, otpCode } = req.body;
+        
+        // Optional phone and address fallback for frictionless signup
+        const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
+        const cleanAddress = address ? address.trim() : '';
+        const rawEmail = (email || '').trim().toLowerCase();
+        const cleanEmail = rawEmail || null;
+        const cleanUsername = (username || '').trim();
+
+        if (!cleanUsername || cleanUsername.length < 3) {
+            return res.status(400).json({ message: 'Please choose a username of at least 3 characters.' });
+        }
+
+        if (!password || password.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        }
+
+        // If email was entered, enforce domain validation and 6-digit OTP verification
+        if (cleanEmail) {
+            const rfcEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!rfcEmailRegex.test(cleanEmail)) {
+                return res.status(400).json({ message: 'Please enter a valid email address with a valid domain extension (e.g. name@example.com).' });
+            }
+            const domain = cleanEmail.split('@')[1] || '';
+            const invalidTypos = ['gmail.c', 'gmail.co', 'gmail.con', 'gmail.cm', 'gmai.com', 'gamil.com', 'yahoo.c', 'yahoo.co', 'yahoo.con', 'hotmail.c', 'hotmail.co', 'outlook.c'];
+            if (invalidTypos.includes(domain)) {
+                return res.status(400).json({ message: `"${domain}" is not a valid email domain. Did you mean @${domain.replace(/\.[a-z0-9]+$/, '.com')}?` });
+            }
+
+            // Check if email already taken
+            const existingEmail = await prisma.user.findFirst({
+                where: { email: { equals: cleanEmail, mode: 'insensitive' } }
+            });
+            if (existingEmail) {
+                return res.status(400).json({ message: 'An account with this email already exists. Please log in or sign in with Google.' });
+            }
+
+            // Verify OTP code
+            if (!otpCode || !otpCode.trim()) {
+                return res.status(400).json({ message: 'Please enter the 6-digit verification code sent to your email.' });
+            }
+
+            const cleanOtp = otpCode.trim();
+            const verification = await prisma.emailVerification.findFirst({
+                where: {
+                    email: cleanEmail,
+                    token: cleanOtp,
+                    expiresAt: { gt: new Date() }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (!verification) {
+                return res.status(400).json({ message: 'Invalid or expired 6-digit verification code. Please check your inbox or click Resend Code.' });
+            }
+
+            // Cleanup used verification tokens for this email
+            await prisma.emailVerification.deleteMany({
+                where: { email: cleanEmail }
             });
         }
 
-        // Hash password (Prisma doesn't have pre-save hooks like Mongoose)
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Check if username taken
+        const existingUsername = await prisma.user.findFirst({
+            where: { username: { equals: cleanUsername, mode: 'insensitive' } }
+        });
+        if (existingUsername) {
+            return res.status(400).json({ message: 'This username is already taken. Please choose another username.' });
+        }
 
+        const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: {
                 username: cleanUsername,
                 email: cleanEmail,
                 password: hashedPassword,
                 role: 'customer',
-                phoneNumber: cleanPhone,
-                address: cleanAddress,
+                phoneNumber: cleanPhone || null,
+                address: cleanAddress || null,
+                isEmailVerified: Boolean(cleanEmail),
                 lastLoginAt: new Date(),
                 lastActiveAt: new Date()
             }
         });
 
         const token = jwt.sign({ id: user.id, role: 'customer', tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-        // Auto-send verification email via Gmail / free email gateway
-        try {
-            const emailToken = generateVerificationToken();
-            await prisma.emailVerification.create({
-                data: {
-                    userId: user.id,
-                    email: user.email,
-                    token: emailToken,
-                    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-                }
-            });
-            await sendVerificationEmail(user.email, user.username, emailToken).catch(err => {
-                console.error('[Registration Email Send Catch]', err);
-            });
-            console.log(`[Email Verification] Sent to ${user.email} for user ${user.id}`);
-        } catch (emailErr) {
-            console.error('[Email Verification Send Error]', emailErr);
-        }
 
         res.cookie('customer_token', token, {
             httpOnly: true,
@@ -98,12 +204,13 @@ exports.register = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000
         });
 
-        res.json({ 
+        return res.json({ 
             user: { 
                 id: user.id, 
                 username: user.username, 
                 role: 'customer',
                 email: user.email,
+                isEmailVerified: user.isEmailVerified,
                 walletBalance: 0,
                 address: user.address,
                 phoneNumber: user.phoneNumber
@@ -111,7 +218,173 @@ exports.register = async (req, res) => {
         });
     } catch (err) {
         console.error('Registration Error:', err);
-        res.status(500).json({ message: 'Server error during registration' });
+        return res.status(500).json({ message: 'Server error during registration' });
+    }
+};
+
+// 4. Link Google account to existing user (cryptographically verified by Google OAuth)
+exports.linkGoogleAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { email, displayName, uid } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: 'Google account email is required.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+
+        // Check if email already belongs to another account
+        const existing = await prisma.user.findFirst({
+            where: {
+                email: { equals: cleanEmail, mode: 'insensitive' },
+                id: { not: userId }
+            }
+        });
+        if (existing) {
+            return res.status(400).json({ message: 'This Google account is already linked to another user account.' });
+        }
+
+        // Link Google email to current user and mark verified
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                email: cleanEmail,
+                isEmailVerified: true
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: `Successfully linked Google account (${cleanEmail})!`,
+            user: {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                role: updatedUser.role,
+                email: updatedUser.email,
+                isEmailVerified: updatedUser.isEmailVerified,
+                walletBalance: updatedUser.walletBalance,
+                address: updatedUser.address,
+                phoneNumber: updatedUser.phoneNumber
+            }
+        });
+    } catch (err) {
+        console.error('linkGoogleAccount Error:', err);
+        return res.status(500).json({ message: 'Failed to link Google account.' });
+    }
+};
+
+// 5. Send OTP to link an email to an existing account
+exports.sendLinkOtp = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { email } = req.body;
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: 'Please provide an email address.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const rfcEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!rfcEmailRegex.test(cleanEmail)) {
+            return res.status(400).json({ message: 'Please enter a valid email address with a valid domain extension.' });
+        }
+
+        // Check if another account has this email
+        const existing = await prisma.user.findFirst({
+            where: {
+                email: { equals: cleanEmail, mode: 'insensitive' },
+                id: { not: userId }
+            }
+        });
+        if (existing) {
+            return res.status(400).json({ message: 'This email is already in use by another account.' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await prisma.emailVerification.deleteMany({
+            where: { email: cleanEmail }
+        });
+
+        await prisma.emailVerification.create({
+            data: {
+                userId,
+                email: cleanEmail,
+                token: otpCode,
+                expiresAt
+            }
+        });
+
+        await sendVerificationOtpEmail(cleanEmail, user?.username || 'Customer', otpCode).catch(err => {
+            console.error('[Link Email OTP Error]', err.message || err);
+        });
+
+        return res.json({
+            success: true,
+            message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
+            expiresInSeconds: 600
+        });
+    } catch (err) {
+        console.error('sendLinkOtp Error:', err);
+        return res.status(500).json({ message: 'Failed to send verification code.' });
+    }
+};
+
+// 6. Verify OTP and link email to existing account
+exports.linkEmailWithOtp = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { email, otpCode } = req.body;
+        if (!email || !otpCode) {
+            return res.status(400).json({ message: 'Email and 6-digit verification code are required.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanOtp = otpCode.trim();
+
+        const match = await prisma.emailVerification.findFirst({
+            where: {
+                email: cleanEmail,
+                token: cleanOtp,
+                expiresAt: { gt: new Date() }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (!match) {
+            return res.status(400).json({ message: 'Invalid or expired verification code. Please check your inbox or request a new code.' });
+        }
+
+        // Delete used token
+        await prisma.emailVerification.deleteMany({ where: { email: cleanEmail } });
+
+        // Link email and mark verified
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                email: cleanEmail,
+                isEmailVerified: true
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: `Email ${cleanEmail} verified and linked successfully!`,
+            user: {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                role: updatedUser.role,
+                email: updatedUser.email,
+                isEmailVerified: updatedUser.isEmailVerified,
+                walletBalance: updatedUser.walletBalance,
+                address: updatedUser.address,
+                phoneNumber: updatedUser.phoneNumber
+            }
+        });
+    } catch (err) {
+        console.error('linkEmailWithOtp Error:', err);
+        return res.status(500).json({ message: 'Failed to link email.' });
     }
 };
 

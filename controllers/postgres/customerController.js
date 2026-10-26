@@ -1354,7 +1354,8 @@ exports.updateSettings = async (req, res) => {
         let isEmailChanged = false;
         if (email && email.trim()) {
             const cleanEmail = email.trim().toLowerCase();
-            if (cleanEmail !== user.email.toLowerCase()) {
+            const currentEmail = user.email ? user.email.toLowerCase() : '';
+            if (cleanEmail !== currentEmail) {
                 const existingEmail = await prisma.user.findFirst({
                     where: {
                         email: { equals: cleanEmail, mode: 'insensitive' },

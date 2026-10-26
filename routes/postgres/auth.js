@@ -12,10 +12,11 @@ const validate = (req, res, next) => {
 
 const registerValidation = [
     body('username').trim().isLength({ min: 3 }).escape(),
-    body('email').isEmail().normalizeEmail(),
+    body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
     body('password').isLength({ min: 6 }),
-    body('phoneNumber').trim().escape(),
-    body('address').trim().escape(),
+    body('phoneNumber').optional().trim().escape(),
+    body('address').optional().trim().escape(),
+    body('otpCode').optional().trim(),
     validate
 ];
 
@@ -33,6 +34,11 @@ const profileValidation = [
 ];
 
 router.get('/check-availability', authController.checkAvailability);
+router.post('/send-otp', authController.sendRegistrationOtp);
+router.post('/verify-otp', authController.verifyRegistrationOtp);
+router.post('/google/link', auth(), authController.linkGoogleAccount);
+router.post('/email/send-link-otp', auth(), authController.sendLinkOtp);
+router.post('/email/link', auth(), authController.linkEmailWithOtp);
 router.post('/register', registerValidation, authController.register);
 router.post('/email/verify', authController.verifyEmail);
 router.post('/email/resend', auth(), authController.resendVerificationEmail);
