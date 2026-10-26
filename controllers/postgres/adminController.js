@@ -1295,7 +1295,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
 
         // Header
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'STITCH-OPT DESIGNS';
+        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
 
         doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
         doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });

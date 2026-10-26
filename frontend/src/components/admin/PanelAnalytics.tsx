@@ -34,7 +34,7 @@ export default function PanelAnalytics({
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
   
-  // Daily Pacific Mall stall rent & electricity - loaded from backend SystemSettings & localStorage
+  // Daily stall rent & electricity - loaded from backend SystemSettings & localStorage
   const [dailyStallOverhead, setDailyStallOverhead] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -50,17 +50,30 @@ export default function PanelAnalytics({
     return 1500;
   });
 
-  // Load server-persisted rent from SystemSettings on mount
+  const [businessInfo, setBusinessInfo] = useState<{ name: string; address: string }>({
+    name: 'EDS TOWELS & CAPS',
+    address: 'Pacific Mall Lucena',
+  });
+
+  // Load server-persisted rent and store metadata from SystemSettings on mount
   useEffect(() => {
     api.get<any>('/api/admin/settings')
       .then((res) => {
-        if (res && res.dailyRent != null) {
-          const serverRent = Number(res.dailyRent);
-          setDailyStallOverhead(serverRent);
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('stitch_daily_stall_rent', String(serverRent));
-            } catch {}
+        if (res) {
+          if (res.dailyRent != null) {
+            const serverRent = Number(res.dailyRent);
+            setDailyStallOverhead(serverRent);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('stitch_daily_stall_rent', String(serverRent));
+              } catch {}
+            }
+          }
+          if (res.businessName || res.businessAddress) {
+            setBusinessInfo({
+              name: res.businessName || 'EDS TOWELS & CAPS',
+              address: res.businessAddress || 'Pacific Mall Lucena',
+            });
           }
         }
       })
@@ -184,8 +197,16 @@ export default function PanelAnalytics({
     if (timeRange === 'today') return dailyStallOverhead;
     if (timeRange === 'week') return dailyStallOverhead * 7;
     if (timeRange === 'month') return dailyStallOverhead * 30;
-    return dailyStallOverhead * 30;
-  }, [timeRange, dailyStallOverhead]);
+    // For 'all' time: compute the real span of operating days from earliest recorded order to today
+    if (filteredOrders.length === 0) return 0;
+    const timestamps = filteredOrders
+      .map((o) => new Date(o.createdAt || o.date).getTime())
+      .filter((t) => !isNaN(t));
+    if (timestamps.length === 0) return dailyStallOverhead;
+    const earliestTime = Math.min(...timestamps);
+    const spanDays = Math.max(1, Math.ceil((Date.now() - earliestTime) / (1000 * 60 * 60 * 24)));
+    return dailyStallOverhead * spanDays;
+  }, [timeRange, dailyStallOverhead, filteredOrders]);
 
   const totalExpenses = useMemo(() => {
     return estimatedMaterialCosts + operatingOverhead;
@@ -204,7 +225,7 @@ export default function PanelAnalytics({
     return Math.round((netProfit / totalRevenue) * 100);
   }, [netProfit, totalRevenue]);
 
-  // Pacific Mall stall rent break-even progress
+  // Break-even progress against operating overhead
   const breakEvenProgress = useMemo(() => {
     if (operatingOverhead === 0) return 100;
     return Math.min(200, Math.round((grossProfit / operatingOverhead) * 100));
@@ -239,31 +260,41 @@ export default function PanelAnalytics({
     return { cashTotal, cashCount, gcashTotal, gcashCount };
   }, [filteredOrders]);
 
-  // Sales & profit per item category (What sold best)
+  // Sales & profit per item category (What sold best) - Dynamically grouped from real orders
   const categoryPerformance = useMemo(() => {
-    const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {
-      'Bath Towels': { category: 'Bath Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Hand Towels': { category: 'Hand Towels', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Caps & Hats': { category: 'Caps & Hats', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Chinese Fans': { category: 'Chinese Fans', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Customer Brought Items (BYOG)': { category: 'Customer Brought Items (BYOG)', units: 0, revenue: 0, cost: 0, profit: 0 },
-      'Shirts & Clothing': { category: 'Shirts & Clothing', units: 0, revenue: 0, cost: 0, profit: 0 },
-    };
+    const groups: Record<string, { category: string; units: number; revenue: number; cost: number; profit: number }> = {};
 
     filteredOrders.forEach((o) => {
       const items = Array.isArray(o.items) && o.items.length > 0 ? o.items : [o];
       items.forEach((item: any) => {
-        const name = (item.name || o.design || '').toLowerCase();
+        const rawName = (item.name || o.design || '').trim();
+        const lowerName = rawName.toLowerCase();
         const qty = Number(item.quantity) || 1;
         const total = Number(item.price ? item.price * qty : o.totalAmount || o.amount) || 0;
         const isByog = Boolean(item.isByog || o.isByog);
 
-        let key = 'Hand Towels';
-        if (isByog) key = 'Customer Brought Items (BYOG)';
-        else if (name.includes('bath towel')) key = 'Bath Towels';
-        else if (name.includes('fan')) key = 'Chinese Fans';
-        else if (name.includes('cap') || name.includes('hat')) key = 'Caps & Hats';
-        else if (name.includes('shirt') || name.includes('hoodie')) key = 'Shirts & Clothing';
+        let key = 'Other Products';
+        if (isByog) {
+          key = 'Customer Brought Items (BYOG)';
+        } else if (item.category && typeof item.category === 'string' && item.category.trim()) {
+          key = item.category.trim();
+        } else if (lowerName.includes('bath towel')) {
+          key = 'Bath Towels';
+        } else if (lowerName.includes('hand towel') || lowerName.includes('face towel') || lowerName.includes('towel')) {
+          key = 'Hand Towels';
+        } else if (lowerName.includes('fan')) {
+          key = 'Chinese Fans';
+        } else if (lowerName.includes('cap') || lowerName.includes('hat')) {
+          key = 'Caps & Hats';
+        } else if (lowerName.includes('shirt') || lowerName.includes('hoodie') || lowerName.includes('polo')) {
+          key = 'Shirts & Clothing';
+        } else if (rawName) {
+          key = rawName;
+        }
+
+        if (!groups[key]) {
+          groups[key] = { category: key, units: 0, revenue: 0, cost: 0, profit: 0 };
+        }
 
         const cost = getRealOrEstimatedCost(item.name || '', total / qty, isByog, qty);
         groups[key].units += qty;
@@ -323,7 +354,7 @@ export default function PanelAnalytics({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Daily Closing Summary - Eds Towels & Caps</title>
+        <title>Daily Closing Summary - ${businessInfo.name}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; padding: 16px; font-size: 13px; color: #000; line-height: 1.4; }
           .center { text-align: center; }
@@ -335,8 +366,8 @@ export default function PanelAnalytics({
         </style>
       </head>
       <body>
-        <div class="center big">EDS TOWELS & CAPS</div>
-        <div class="center">Pacific Mall Lucena</div>
+        <div class="center big">${businessInfo.name}</div>
+        <div class="center">${businessInfo.address}</div>
         <div class="center bold" style="margin-top: 4px;">DAILY CLOSING REPORT</div>
         <div class="center">${new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         
@@ -350,8 +381,8 @@ export default function PanelAnalytics({
         <div class="row bold big" style="margin-top: 6px;"><span>TOTAL SALES:</span><span>₱${totalRevenue.toFixed(2)}</span></div>
         
         <div class="divider"></div>
-        <div class="row"><span>Estimated Material Costs:</span><span>-₱${estimatedMaterialCosts.toFixed(2)}</span></div>
-        <div class="row"><span>Pacific Mall Daily Rent:</span><span>-₱${operatingOverhead.toFixed(2)}</span></div>
+        <div class="row"><span>Material Costs:</span><span>-₱${estimatedMaterialCosts.toFixed(2)}</span></div>
+        <div class="row"><span>Operating Rent Overhead:</span><span>-₱${operatingOverhead.toFixed(2)}</span></div>
         <div class="divider"></div>
         
         <div class="row bold big">

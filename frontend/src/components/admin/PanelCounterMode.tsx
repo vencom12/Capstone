@@ -46,18 +46,7 @@ export const THREAD_COLORS = [
   { name: 'Rose Blush', hex: '#fb7185' },
 ];
 
-// Fallback items if API is unreachable
-const FALLBACK_STORE_ITEMS = [
-  { id: 'royal_cannon_mid', name: 'Royal Cannon (Mid-Range)', category: 'Towels', price: 250, stock: 20 },
-  { id: 'royal_cannon_high', name: 'Royal Cannon (High-end)', category: 'Towels', price: 600, stock: 16 },
-  { id: 'royal_cannon_mini', name: 'Royal Cannon Mini Bath Towel', category: 'Towels', price: 150, stock: 20 },
-  { id: 'bath_essentials', name: 'Bath Essentials Bath Towel', category: 'Towels', price: 300, stock: 20 },
-  { id: 'chinese_fan_big', name: 'Chinese Fan (Big)', category: 'Fans', price: 100, stock: 50 },
-  { id: 'chinese_fan_small', name: 'Chinese Fan (Small)', category: 'Fans', price: 80, stock: 50 },
-  { id: 'regular_fan_big', name: 'Regular Fan (Big)', category: 'Fans', price: 80, stock: 49 },
-  { id: 'regular_fan_small', name: 'Regular Fan (Small)', category: 'Fans', price: 45, stock: 40 },
-  { id: 'byog', name: 'Client-Provided Garment (BYOG)', category: 'Custom', price: 0, stock: 999 },
-];
+
 
 export default function PanelCounterMode({ orders, refreshData, setOrders }: PanelCounterModeProps) {
   // Navigation Tabs
@@ -256,34 +245,39 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     return () => { isMounted = false; };
   }, []);
 
-  // Merged Catalog
+  // Merged Catalog (strictly live database products + BYOG option)
   const storeCatalog = useMemo(() => {
-    if (liveProducts.length > 0) {
-      const items = liveProducts.map(p => {
-        const tagLower = (p.tag || '').toLowerCase();
-        const cat = tagLower.includes('fan') ? 'Fans' : (tagLower.includes('towel') || p.name.toLowerCase().includes('towel')) ? 'Towels' : 'Towels';
-        return {
-          id: p.id,
-          name: p.name,
-          category: cat,
-          price: p.price,
-          stock: p.count ?? 20,
-          variants: p.variants || [],
-          isByog: false
-        };
-      });
-      items.push({
-        id: 'byog_client_item',
-        name: 'Client-Provided Garment (BYOG)',
-        category: 'Custom',
-        price: 0,
-        stock: 999,
-        variants: [],
-        isByog: true
-      });
-      return items;
-    }
-    return FALLBACK_STORE_ITEMS.map(i => ({ ...i, variants: [], isByog: i.id === 'byog' }));
+    const items = liveProducts.map(p => {
+      const tagLower = (p.tag || '').toLowerCase();
+      const nameLower = (p.name || '').toLowerCase();
+      let cat = 'Towels';
+      if (tagLower.includes('fan') || nameLower.includes('fan')) cat = 'Fans';
+      else if (tagLower.includes('towel') || nameLower.includes('towel')) cat = 'Towels';
+      else if (p.category) cat = p.category;
+      else cat = 'Custom';
+
+      return {
+        id: p.id,
+        name: p.name,
+        category: cat,
+        price: p.price,
+        stock: p.count ?? 0,
+        variants: p.variants || [],
+        isByog: false
+      };
+    });
+
+    items.push({
+      id: 'byog_client_item',
+      name: 'Client-Provided Garment (BYOG)',
+      category: 'Custom',
+      price: 0,
+      stock: 999,
+      variants: [],
+      isByog: true
+    });
+
+    return items;
   }, [liveProducts]);
 
   // Filtered by Category (Towels, Fans, Custom, All) so only 4 items show at a time without squishing!

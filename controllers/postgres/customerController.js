@@ -227,7 +227,8 @@ exports.submitOrder = async (req, res) => {
                 }
             }
 
-            serverTotal += itemUnitPrice * (item.quantity || 1);
+            const extraLettering = parseFloat(item.extraLetteringCost) || 0;
+            serverTotal += (itemUnitPrice + extraLettering) * (item.quantity || 1);
         }
         const globalSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
 
@@ -243,7 +244,7 @@ exports.submitOrder = async (req, res) => {
 
         // Add gift packaging if selected
         if (giftPackaging) {
-            serverTotal += globalSettings ? globalSettings.giftPackagingPrice : 5.00;
+            serverTotal += (globalSettings && globalSettings.giftPackagingPrice != null) ? globalSettings.giftPackagingPrice : 5.00;
         }
         const numTotal = Math.round(serverTotal * 100) / 100; // Round to 2 decimal places
 

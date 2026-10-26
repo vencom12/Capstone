@@ -191,6 +191,7 @@ async function getActiveSuggestionsInternal(force = false) {
             count: inv.count,
             unit: inv.unit,
             minThreshold: inv.minThreshold,
+            supplierUnitCost: Number(inv.supplierUnitCost) || 0,
             dailyVelocity,
             daysRemaining: daysRemaining === 9999 ? 'Stable' : parseFloat(daysRemaining.toFixed(1)),
             isAlarmed: inv.count <= inv.minThreshold,
@@ -212,12 +213,13 @@ async function getActiveSuggestionsInternal(force = false) {
                     where: { inventoryId: proj.id, status: 'Draft' }
                 });
                 if (!existingDraft) {
+                    const realUnitCost = Number(proj.supplierUnitCost) || 0;
                     await prisma.purchaseOrder.create({
                         data: {
                             inventoryId: proj.id,
                             quantity: suggestAmount,
                             status: 'Draft',
-                            estimatedCost: suggestAmount * 5.0 // Estimated cost mock
+                            estimatedCost: realUnitCost > 0 ? parseFloat((suggestAmount * realUnitCost).toFixed(2)) : 0.0
                         }
                     });
                 }
@@ -263,8 +265,8 @@ async function getActiveSuggestionsInternal(force = false) {
                 title: `A/B Price Testing: ${p.name}`,
                 category: 'Pricing',
                 severity: 'info',
-                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is $${originalPrice.toFixed(2)}. Suggest running an A/B test with a 10% price increase ($${suggestedPrice.toFixed(2)}) to model price elasticity and maximize margin.`,
-                actionText: `Start A/B Test ($${originalPrice.toFixed(2)} vs $${suggestedPrice.toFixed(2)})`,
+                description: `High sales velocity detected for design "${p.name}" (${dailyVelocity.toFixed(2)} orders/day). Current price is ₱${originalPrice.toFixed(2)}. Suggest running an A/B test with a 10% price increase (₱${suggestedPrice.toFixed(2)}) to model price elasticity and maximize margin.`,
+                actionText: `Start A/B Test (₱${originalPrice.toFixed(2)} vs ₱${suggestedPrice.toFixed(2)})`,
                 action: {
                     type: 'startAbTest',
                     payload: {
@@ -282,8 +284,8 @@ async function getActiveSuggestionsInternal(force = false) {
                 title: `Clearance Discount: ${p.name}`,
                 category: 'Pricing',
                 severity: 'info',
-                description: `Design "${p.name}" is slow-moving with 0 orders in the last 14 days. Current stockpile count is ${p.count}. Suggest temporary 15% markdown to $${suggestedPrice.toFixed(2)} to stimulate sales and free up inventory resources.`,
-                actionText: `Apply 15% Discount ($${suggestedPrice.toFixed(2)})`,
+                description: `Design "${p.name}" is slow-moving with 0 orders in the last 14 days. Current stockpile count is ${p.count}. Suggest temporary 15% markdown to ₱${suggestedPrice.toFixed(2)} to stimulate sales and free up inventory resources.`,
+                actionText: `Apply 15% Discount (₱${suggestedPrice.toFixed(2)})`,
                 action: {
                     type: 'updatePrice',
                     payload: {
@@ -344,7 +346,7 @@ You are analyzing historical traffic, sales orders, and raw inventory levels to 
 Here is the current business status:
 - Total traffic visits (last 365 days): ${totalVisits365D}
 - Total orders (last 365 days): ${totalOrders365D}
-- Total realized revenue (last 365 days): $${totalRevenue365D.toFixed(2)}
+- Total realized revenue (last 365 days): ₱${totalRevenue365D.toFixed(2)}
 - Safety spools status & depletion days: ${JSON.stringify(safetyStockProjections)}
 - Product price lists & sales velocities: ${JSON.stringify(products.map(p => ({ id: p.id, name: p.name, price: p.price, stock: p.count, velocity: (orderCounts[p.name.toLowerCase()] || 0) / 14 })))}
 

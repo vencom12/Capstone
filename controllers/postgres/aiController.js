@@ -713,14 +713,19 @@ exports.chat = async (req, res) => {
                 supplierLines.push(`• ${item.productName} (${item.variants.join(', ')}) — Qty: ${suggestedQty} Pcs`);
             });
 
+            const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+            const bizName = settings?.businessName || 'Eds Towels & Caps';
+            const bizAddress = settings?.businessAddress || 'Ground Floor, Pacific Mall Lucena City';
+            const bizContact = settings?.businessContact || '0928 810 3928';
+
             reply += `\n### Supplier Message (Viber / Messenger):\n`;
             reply += "```text\n";
-            reply += `SUPPLY ACQUISITION — Eds Towels & Caps\n`;
+            reply += `SUPPLY ACQUISITION — ${bizName}\n`;
             reply += `Ref: ${reqCode} | Date: ${todayFormatted}\n`;
             reply += `Please confirm pricing & availability:\n`;
             reply += supplierLines.join('\n') + '\n';
-            reply += `Delivery: Ground Floor, Pacific Mall Lucena City\n`;
-            reply += `Contact: 0928 810 3928\n`;
+            reply += `Delivery: ${bizAddress}\n`;
+            reply += `Contact: ${bizContact}\n`;
             reply += "```\n\n";
 
             reply += `[action:download-pdf|Download Requisition (PDF)]\n`;
@@ -846,11 +851,11 @@ exports.chat = async (req, res) => {
             reply += `| **Materials Used Cost** | -₱${materialsCost.toFixed(2)} |\n`;
             reply += `| **ESTIMATED NET PROFIT** | **₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}** |\n\n`;
 
-            reply += `**Details:** ${totalCount} orders (${totalGarments} garments made, ~${Math.ceil(totalGarments / 5)} thread spools used).\n\n`;
+            reply += `**Details:** ${totalCount} orders (${totalGarments} garments crafted).\n\n`;
 
             reply += `### Daily Summary Message:\n`;
             reply += "```text\n";
-            reply += `DAILY FINANCIAL RECAP — Eds Towels & Caps\n`;
+            reply += `DAILY FINANCIAL RECAP — ${settings?.businessName || 'Eds Towels & Caps'}\n`;
             reply += `Date: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}\n`;
             reply += `• Gross Sales: ₱${grossSales.toFixed(2)} (${totalCount} orders)\n`;
             reply += `• Daily Rent: ₱${dailyRent.toFixed(2)}\n`;
