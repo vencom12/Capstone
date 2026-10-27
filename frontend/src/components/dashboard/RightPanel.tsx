@@ -7,6 +7,7 @@ import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import GlassButton from '@/components/ui/GlassButton';
+import QuantityInput from '@/components/ui/QuantityInput';
 import { showToast } from '@/components/ui/Toast';
 
 interface RightPanelProps {
@@ -30,16 +31,22 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
   const basketCount = getCount();
   const basketTotal = getTotal();
 
-  const handleQuantityChange = (productId: string, newQty: number) => {
+  const handleQuantityChange = (productId: string, newQty: number, maxStock?: number) => {
     if (newQty < 1) return;
+    if (maxStock !== undefined && maxStock > 0 && maxStock < 999999 && newQty > maxStock) {
+      showToast(`Only ${maxStock} in stock`, 'error');
+      updateQuantity(productId, maxStock);
+      return;
+    }
     const product = products.find((p) => (p.id || p._id) === productId);
-    if (product) {
+    if (product && maxStock === undefined) {
       const availableStock =
         product.availableStock !== undefined
           ? product.availableStock
           : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-      if (newQty > availableStock) {
+      if (availableStock > 0 && newQty > availableStock) {
         showToast(`Only ${availableStock} in stock`, 'error');
+        updateQuantity(productId, availableStock);
         return;
       }
     }
@@ -126,90 +133,99 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
             </button>
           </div>
         ) : (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className="flex gap-3 bg-bg-surface/80 hover:bg-bg-surface p-3 rounded-2xl border border-border-glass transition-all duration-200 animate-[fadeIn_0.2s_ease-out]"
-            >
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-16 h-16 rounded-xl object-cover bg-black/20 shrink-0 border border-border-glass/40"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass/40 flex items-center justify-center text-[0.6rem] font-bold text-text-dim shrink-0">
-                  PREVIEW
-                </div>
-              )}
+          items.map((item) => {
+            const product = products.find((p) => (p.id || p._id) === item.productId);
+            let availableStock = 999999;
+            if (product) {
+              if (product.variants && Array.isArray(product.variants) && item.selectedVariant) {
+                const v = product.variants.find((variant: any) => variant.name === item.selectedVariant);
+                if (v) {
+                  availableStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 999999);
+                } else {
+                  availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+                }
+              } else {
+                availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+              }
+            }
 
-              <div className="flex flex-col flex-1 min-w-0 justify-between">
-                <div>
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="font-bold text-[0.88rem] text-text-main truncate leading-tight">
-                      {item.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.id)}
-                      className="text-text-dim hover:text-danger bg-transparent border-none cursor-pointer p-0.5 transition-colors shrink-0"
-                      title="Remove item"
-                      aria-label="Remove item"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
+            return (
+              <div
+                key={item.id}
+                className="flex gap-3 bg-bg-surface/80 hover:bg-bg-surface p-3 rounded-2xl border border-border-glass transition-all duration-200 animate-[fadeIn_0.2s_ease-out]"
+              >
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-16 h-16 rounded-xl object-cover bg-black/20 shrink-0 border border-border-glass/40"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass/40 flex items-center justify-center text-[0.6rem] font-bold text-text-dim shrink-0">
+                    PREVIEW
+                  </div>
+                )}
+
+                <div className="flex flex-col flex-1 min-w-0 justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="font-bold text-[0.88rem] text-text-main truncate leading-tight">
+                        {item.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className="text-text-dim hover:text-danger bg-transparent border-none cursor-pointer p-0.5 transition-colors shrink-0"
+                        title="Remove item"
+                        aria-label="Remove item"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {item.selectedVariant && (
+                      <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold mt-0.5">
+                        {item.selectedColor && (
+                          <span
+                            className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
+                            style={{ backgroundColor: item.selectedColor }}
+                          />
+                        )}
+                        <span className="truncate">{item.selectedVariant}</span>
+                        {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
+                      </span>
+                    )}
                   </div>
 
-                  {item.selectedVariant && (
-                    <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold mt-0.5">
-                      {item.selectedColor && (
-                        <span
-                          className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
-                          style={{ backgroundColor: item.selectedColor }}
-                        />
-                      )}
-                      <span className="truncate">{item.selectedVariant}</span>
-                      {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
+                  <div className="flex items-center justify-between mt-2 pt-1 border-t border-border-glass/30">
+                    <span className="text-text-main font-black text-[0.92rem]">
+                      ₱{(item.price * item.quantity).toFixed(2)}
                     </span>
-                  )}
-                </div>
 
-                <div className="flex items-center justify-between mt-2 pt-1 border-t border-border-glass/30">
-                  <span className="text-text-main font-black text-[0.92rem]">
-                    ₱{(item.price * item.quantity).toFixed(2)}
-                  </span>
-
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-1.5 bg-black/25 border border-border-glass/60 rounded-lg p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(item.id || item.productId, item.quantity - 1)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/10 bg-transparent border-none cursor-pointer transition-all active:scale-95"
-                      aria-label="Decrease quantity"
-                    >
-                      −
-                    </button>
-                    <span className="text-xs font-bold w-5 text-center text-text-main">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(item.id || item.productId, item.quantity + 1)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-text-dim hover:text-text-main hover:bg-white/10 bg-transparent border-none cursor-pointer transition-all active:scale-95"
-                      aria-label="Increase quantity"
-                    >
-                      +
-                    </button>
+                    {/* Quantity Stepper & Direct Typing */}
+                    <div className="flex items-center">
+                      <QuantityInput
+                        value={item.quantity}
+                        onChange={(newQty) => handleQuantityChange(item.id || item.productId, newQty, availableStock)}
+                        min={1}
+                        max={availableStock > 0 && availableStock < 999999 ? availableStock : undefined}
+                        size="sm"
+                        ariaLabel={`Quantity for ${item.name}`}
+                        onMaxExceeded={(max) => {
+                          showToast(`Only ${max} in stock`, 'error');
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

@@ -831,3 +831,14 @@
 {"timestamp":"2026-10-25T14:33:56.154Z","event":"dataChanged","sizeBytes":2568,"entity":"INVENTORY","action":"UPDATE"}
 {"timestamp":"2026-10-25T14:34:02.262Z","event":"dataChanged","sizeBytes":16446,"entity":"PRODUCT","action":"UPDATE"}
 {"timestamp":"2026-10-25T15:48:54.453Z","event":"dataChanged","sizeBytes":2556,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-26T15:54:19.518Z","event":"dataChanged","sizeBytes":177,"entity":"PRODUCT","action":"DELETE"}
+{"timestamp":"2026-10-26T17:40:53.551Z","event":"dataChanged","sizeBytes":1981,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:40:54.109Z","event":"dataChanged","sizeBytes":3173,"entity":"INVENTORY","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:41:00.262Z","event":"dataChanged","sizeBytes":16403,"entity":"PRODUCT","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:41:01.396Z","event":"dataChanged","sizeBytes":188296,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:43:49.126Z","event":"dataChanged","sizeBytes":1711,"entity":"ORDER","action":"CREATE"}
+{"timestamp":"2026-10-26T17:43:52.350Z","event":"dataChanged","sizeBytes":190704,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:44:16.092Z","event":"dataChanged","sizeBytes":1761,"entity":"ORDER","action":"CREATE"}
+{"timestamp":"2026-10-26T17:44:18.867Z","event":"dataChanged","sizeBytes":193166,"entity":"ORDER","action":"UPDATE"}
+{"timestamp":"2026-10-26T17:44:23.437Z","event":"dataChanged","sizeBytes":1766,"entity":"ORDER","action":"CREATE"}
+{"timestamp":"2026-10-26T17:44:26.210Z","event":"dataChanged","sizeBytes":195633,"entity":"ORDER","action":"UPDATE"}

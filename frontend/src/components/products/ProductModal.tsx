@@ -11,6 +11,7 @@ import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import OptimizedImage from '@/components/ui/OptimizedImage';
+import QuantityInput from '@/components/ui/QuantityInput';
 import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
 
 interface ProductModalProps {
@@ -1111,31 +1112,27 @@ export default function ProductModal({
             )}
           </div>
 
-          {/* Quantity Stepper */}
-          <div className="flex items-center justify-between border-t border-border-glass pt-3">
-            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
-            <div className={`flex items-center gap-2 bg-white/5 border border-border-glass p-1 rounded-lg ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
-              <button
-                type="button"
-                disabled={isOutOfStock || quantity <= 1}
-                suppressHydrationWarning
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 text-text-main flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                aria-label="Decrease quantity"
-              >
-                -
-              </button>
-              <span className="font-mono font-bold text-sm w-7 text-center text-text-main">{isOutOfStock ? 0 : quantity}</span>
-              <button
-                type="button"
-                disabled={isOutOfStock || quantity >= effectiveStock}
-                suppressHydrationWarning
-                onClick={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
-                className="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 text-text-main flex items-center justify-center font-bold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                aria-label="Increase quantity"
-              >
-                +
-              </button>
+          {/* Quantity Stepper & Direct Typing */}
+          <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
+                <span className="text-[10px] text-text-dim/70">Type directly or step for bulk orders</span>
+              </div>
+              <QuantityInput
+                value={isOutOfStock ? 0 : quantity}
+                onChange={(q) => setQuantity(q)}
+                min={1}
+                max={effectiveStock > 0 ? effectiveStock : 1}
+                disabled={isOutOfStock}
+                size="md"
+                showPresets={!isOutOfStock && effectiveStock >= 10}
+                presets={[10, 25, 50, 100]}
+                ariaLabel={`Quantity for ${product.name}`}
+                onMaxExceeded={(maxQty) => {
+                  showToast(`Only ${maxQty} units available in stock for this variant.`, 'error');
+                }}
+              />
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
+import QuantityInput from '@/components/ui/QuantityInput';
 import type { Product, ProductVariant } from '@/lib/types';
 import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
 import Pagination from '@/components/ui/Pagination';
@@ -466,6 +467,19 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   const handleRemoveTicketItem = (itemId: string) => {
     setTicketItems(prev => prev.filter(it => it.id !== itemId));
+  };
+
+  const handleUpdateTicketItemQuantity = (itemId: string, newQty: number) => {
+    const validQty = Math.max(1, newQty);
+    setTicketItems(prev => prev.map(it => {
+      if (it.id !== itemId) return it;
+      const unitPrice = (it.basePrice || 0) + (it.extraLetteringCost || 0);
+      return {
+        ...it,
+        quantity: validQty,
+        totalPrice: unitPrice * validQty
+      };
+    }));
   };
 
   const resetIntakeInputs = () => {
@@ -1163,22 +1177,44 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </div>
                 )}
 
-                {/* Staging / Add to Ticket Action Button */}
-                <div className="mt-3.5 pt-3 border-t border-border-glass flex items-center justify-between gap-2">
-                  <div className="text-[11px] text-text-dim">
-                    <span className="font-medium text-text-main">Multi-Item Order?</span>
-                    <span className="block text-[10px] text-text-dim/70">Stage multiple towels/fans into 1 receipt</span>
+                {/* Item Quantity & Staging Section */}
+                <div className="mt-3.5 pt-3 border-t border-border-glass flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-text-main block">Item Quantity</span>
+                      <span className="text-[10px] text-text-dim">Type or step for bulk quantity</span>
+                    </div>
+                    <QuantityInput
+                      value={quantity}
+                      onChange={(q) => setQuantity(q)}
+                      min={1}
+                      size="sm"
+                      showPresets={true}
+                      presets={[10, 25, 50, 100]}
+                      ariaLabel="Item Quantity"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddCurrentItemToTicket}
-                    className="py-2 px-3.5 rounded-lg bg-bg-surface hover:bg-white/10 active:scale-[0.98] border border-border-glass text-text-main text-xs font-extrabold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span>+ Add to Order Ticket</span>
-                  </button>
+
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-border-glass/40">
+                    <div className="text-[11px] text-text-dim">
+                      <span className="font-medium text-text-main">
+                        Item Subtotal ({quantity} pcs):{' '}
+                        <strong className="text-emerald-500 font-mono">
+                          ₱{(effectiveUnitPrice * Math.max(1, quantity)).toFixed(2)}
+                        </strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddCurrentItemToTicket}
+                      className="py-2 px-3.5 rounded-lg bg-bg-surface hover:bg-white/10 active:scale-[0.98] border border-border-glass text-text-main text-xs font-extrabold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>+ Add to Order Ticket ({quantity}x)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1236,7 +1272,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-mono font-bold text-emerald-500 text-xs">
+                        <QuantityInput
+                          value={item.quantity}
+                          onChange={(newQty) => handleUpdateTicketItemQuantity(item.id, newQty)}
+                          min={1}
+                          size="sm"
+                          ariaLabel={`Quantity for ${item.name}`}
+                        />
+                        <span className="font-mono font-bold text-emerald-500 text-xs min-w-[3.5rem] text-right">
                           ₱{item.totalPrice.toFixed(2)}
                         </span>
                         <button
@@ -1258,25 +1301,17 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               {/* Compact Quantity & Price Block */}
               <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
                 {ticketItems.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-dim font-medium">Qty:</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                        className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="font-mono font-bold text-sm px-2 text-text-main">{quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => setQuantity(q => q + 1)}
-                        className="w-7 h-7 rounded bg-bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-text-main border border-border-glass font-bold text-xs cursor-pointer flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-text-dim font-medium">Order Quantity:</span>
+                    <QuantityInput
+                      value={quantity}
+                      onChange={(q) => setQuantity(q)}
+                      min={1}
+                      size="sm"
+                      showPresets={true}
+                      presets={[10, 25, 50, 100]}
+                      ariaLabel="Order Quantity"
+                    />
                   </div>
                 ) : (
                   <div className="flex flex-col">
@@ -1606,25 +1641,19 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
               {/* Step 3: Quantity & Payment */}
               <div className="grid grid-cols-2 gap-3 mb-4 items-center">
-                <div className="flex items-center gap-2 bg-white/[0.03] border border-border-glass rounded-lg p-1.5">
-                  <span className="text-xs text-text-dim font-medium ml-1">Qty:</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuickQuantity(q => Math.max(1, q - 1))}
-                    className="w-7 h-7 rounded bg-white/5 text-text-main font-bold hover:bg-white/10 cursor-pointer text-xs"
-                  >
-                    -
-                  </button>
-                  <span className="flex-1 text-center font-mono font-bold text-sm text-text-main">
-                    {quickQuantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuickQuantity(q => q + 1)}
-                    className="w-7 h-7 rounded bg-white/5 text-text-main font-bold hover:bg-white/10 cursor-pointer text-xs"
-                  >
-                    +
-                  </button>
+                <div className="flex flex-col gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-dim font-medium">Qty:</span>
+                    <QuantityInput
+                      value={quickQuantity}
+                      onChange={(q) => setQuickQuantity(q)}
+                      min={1}
+                      size="sm"
+                      showPresets={true}
+                      presets={[10, 25, 50, 100]}
+                      ariaLabel="Quick sale quantity"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03]">

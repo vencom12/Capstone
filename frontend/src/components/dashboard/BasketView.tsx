@@ -6,6 +6,7 @@ import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
+import QuantityInput from '@/components/ui/QuantityInput';
 import type { BasketItem, ProductVariant } from '@/lib/types';
 
 interface BasketViewProps {
@@ -63,19 +64,28 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     }
   };
 
-  const handleQuantityChange = (id: string, productId: string, newQty: number) => {
+  const handleQuantityChange = (id: string, productId: string, newQty: number, maxStock?: number) => {
     if (newQty < 1) return;
+    if (maxStock !== undefined && maxStock > 0 && maxStock < 999999 && newQty > maxStock) {
+      showToast(
+        `Only ${maxStock} units currently available in stock.`,
+        'error'
+      );
+      updateQuantity(id, maxStock);
+      return;
+    }
     const product = products.find((p) => (p.id || (p as any)._id) === productId);
-    if (product) {
+    if (product && maxStock === undefined) {
       const availableStock =
         product.availableStock !== undefined
           ? product.availableStock
           : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-      if (newQty > availableStock) {
+      if (availableStock > 0 && newQty > availableStock) {
         showToast(
           `Only ${availableStock} units of "${product.name}" are currently available in stock.`,
           'error'
         );
+        updateQuantity(id, availableStock);
         return;
       }
     }
@@ -200,6 +210,20 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               const isSelected = selectedIds.includes(item.id);
               const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
               const isFav = favorites.some((f) => (f.id || (f as any)._id) === item.productId);
+
+              let availableStock = 999999;
+              if (product) {
+                if (product.variants && Array.isArray(product.variants) && item.selectedVariant) {
+                  const v = product.variants.find((variant: any) => variant.name === item.selectedVariant);
+                  if (v) {
+                    availableStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 999999);
+                  } else {
+                    availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+                  }
+                } else {
+                  availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+                }
+              }
 
               return (
                 <div
@@ -342,26 +366,19 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                       {/* Controls Row */}
                       <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/5">
-                        {/* Stepper */}
-                        <div className="flex items-center gap-1 bg-black/40 border border-border-glass rounded-xl p-0.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleQuantityChange(item.id, item.productId, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-text-main font-bold flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed border-none text-xs"
-                          >
-                            -
-                          </button>
-                          <span className="w-7 text-center text-xs font-mono font-bold text-text-main select-none">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleQuantityChange(item.id, item.productId, item.quantity + 1)}
-                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-text-main font-bold flex items-center justify-center transition-all cursor-pointer border-none text-xs"
-                          >
-                            +
-                          </button>
+                        {/* Stepper with Direct Typing */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <QuantityInput
+                            value={item.quantity}
+                            onChange={(newQty) => handleQuantityChange(item.id, item.productId, newQty, availableStock)}
+                            min={1}
+                            max={availableStock > 0 && availableStock < 999999 ? availableStock : undefined}
+                            size="sm"
+                            ariaLabel={`Quantity for ${item.name}`}
+                            onMaxExceeded={(max) => {
+                              showToast(`Only ${max} units available in stock.`, 'error');
+                            }}
+                          />
                         </div>
 
                         {/* Action buttons */}
