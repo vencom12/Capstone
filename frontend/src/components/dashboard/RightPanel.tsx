@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import GlassButton from '@/components/ui/GlassButton';
 import QuantityInput from '@/components/ui/QuantityInput';
 import { showToast } from '@/components/ui/Toast';
+import type { BasketItem } from '@/lib/types';
 
 interface RightPanelProps {
   onCheckout: () => void;
@@ -18,7 +19,7 @@ interface RightPanelProps {
 
 export default function RightPanel({ onCheckout, onCloseMobile, onClose }: RightPanelProps) {
   const router = useRouter();
-  const { items, getCount, getTotal, removeItem, updateQuantity } = useBasketStore();
+  const { items, getCount, getTotal, removeItem, updateBasketItem } = useBasketStore();
   const { products } = useProductStore();
   const { isAuthenticated } = useAuthStore();
   const [mounted, setMounted] = useState(false);
@@ -31,26 +32,37 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
   const basketCount = getCount();
   const basketTotal = getTotal();
 
-  const handleQuantityChange = (productId: string, newQty: number, maxStock?: number) => {
+  const handleQuantityChange = (item: BasketItem, newQty: number, availableStock: number) => {
     if (newQty < 1) return;
-    if (maxStock !== undefined && maxStock > 0 && maxStock < 999999 && newQty > maxStock) {
-      showToast(`Only ${maxStock} in stock`, 'error');
-      updateQuantity(productId, maxStock);
+    const isBulk = Boolean(
+      item.personalization?.isBulkList ||
+        (Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 1)
+    );
+    if (isBulk) {
+      showToast('Bulk Name List quantity is synced to lines. Edit names in your Basket.', 'info');
+      if (handleClose) handleClose();
+      router.push('/dashboard?tab=basket');
       return;
     }
-    const product = products.find((p) => (p.id || p._id) === productId);
-    if (product && maxStock === undefined) {
-      const availableStock =
-        product.availableStock !== undefined
-          ? product.availableStock
-          : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-      if (availableStock > 0 && newQty > availableStock) {
-        showToast(`Only ${availableStock} in stock`, 'error');
-        updateQuantity(productId, availableStock);
-        return;
-      }
+
+    if (availableStock < 999999 && newQty > availableStock) {
+      updateBasketItem(item.id, {
+        quantity: newQty,
+        isPreOrder: true,
+        preOrderShortage: Math.max(0, newQty - Math.max(0, availableStock)),
+      });
+      showToast(
+        `Quantity (${newQty}) exceeds current stock (${Math.max(0, availableStock)}). Marked as Pre-Order.`,
+        'warning'
+      );
+      return;
     }
-    updateQuantity(productId, newQty);
+
+    updateBasketItem(item.id, {
+      quantity: newQty,
+      isPreOrder: false,
+      preOrderShortage: 0,
+    });
   };
 
   const handleExploreShop = () => {
@@ -148,6 +160,12 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                 availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
               }
             }
+            const isBulk = Boolean(
+              item.personalization?.isBulkList ||
+                (Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 1)
+            );
+            const namesList = Array.isArray(item.personalization?.namesList) ? item.personalization!.namesList! : [];
+            const isPreOrder = Boolean(item.isPreOrder || (availableStock < 999999 && item.quantity > availableStock));
 
             return (
               <div
@@ -188,37 +206,61 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                       </button>
                     </div>
 
-                    {item.selectedVariant && (
-                      <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold mt-0.5">
-                        {item.selectedColor && (
-                          <span
-                            className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
-                            style={{ backgroundColor: item.selectedColor }}
-                          />
-                        )}
-                        <span className="truncate">{item.selectedVariant}</span>
-                        {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
-                      </span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                      {item.selectedVariant && (
+                        <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold">
+                          {item.selectedColor && (
+                            <span
+                              className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
+                              style={{ backgroundColor: item.selectedColor }}
+                            />
+                          )}
+                          <span className="truncate">{item.selectedVariant}</span>
+                          {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
+                        </span>
+                      )}
+                      {isPreOrder && (
+                        <span className="text-[0.6rem] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          Pre-Order
+                        </span>
+                      )}
+                    </div>
+
+                    {isBulk && namesList.length > 0 ? (
+                      <div className="mt-1 text-[0.68rem] text-emerald-300 font-semibold truncate">
+                        📋 {namesList.length} Names: {namesList.slice(0, 3).join(', ')}
+                        {namesList.length > 3 ? ` +${namesList.length - 3} more` : ''}
+                      </div>
+                    ) : item.personalization?.text ? (
+                      <div className="mt-1 text-[0.68rem] text-text-dim truncate">
+                        Embroidery: <strong className="text-text-main">&ldquo;{item.personalization.text}&rdquo;</strong>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="flex items-center justify-between mt-2 pt-1 border-t border-border-glass/30">
-                    <span className="text-text-main font-black text-[0.92rem]">
-                      ₱{(item.price * item.quantity).toFixed(2)}
-                    </span>
+                    <div>
+                      <span className="text-text-main font-black text-[0.92rem] block">
+                        ₱{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                      <Link
+                        href="/dashboard?tab=basket"
+                        onClick={() => handleClose && handleClose()}
+                        className="text-[0.65rem] text-primary hover:underline font-bold no-underline"
+                      >
+                        Edit Item / Names →
+                      </Link>
+                    </div>
 
                     {/* Quantity Stepper & Direct Typing */}
                     <div className="flex items-center">
                       <QuantityInput
                         value={item.quantity}
-                        onChange={(newQty) => handleQuantityChange(item.id || item.productId, newQty, availableStock)}
+                        onChange={(newQty) => handleQuantityChange(item, newQty, availableStock)}
                         min={1}
-                        max={availableStock > 0 && availableStock < 999999 ? availableStock : undefined}
+                        max={9999}
                         size="sm"
                         ariaLabel={`Quantity for ${item.name}`}
-                        onMaxExceeded={(max) => {
-                          showToast(`Only ${max} in stock`, 'error');
-                        }}
                       />
                     </div>
                   </div>
@@ -237,7 +279,7 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
           {/* Pickup Fulfillment Note */}
           <div className="flex items-center justify-between text-xs text-text-dim bg-white/[0.03] px-3 py-2 rounded-xl border border-border-glass/40">
             <span className="font-medium text-text-main">
-              Studio Pickup
+              Studio Pickup (100% Upfront)
             </span>
             <span className="text-emerald-400 font-bold text-[0.7rem] uppercase tracking-wider">Free</span>
           </div>
@@ -256,16 +298,25 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
             Checkout Now →
           </GlassButton>
 
-          {/* Quick Order Tracking Portal Link for convenience */}
-          {isAuthenticated && (
+          {/* Quick Basket Editor & Order Tracking Links */}
+          <div className="flex items-center justify-between text-[0.72rem] pt-0.5">
             <Link
-              href="/dashboard?tab=tracking"
+              href="/dashboard?tab=basket"
               onClick={() => handleClose && handleClose()}
-              className="text-[0.72rem] text-text-dim hover:text-text-main text-center transition-colors no-underline block pt-0.5"
+              className="text-primary font-bold hover:underline no-underline"
             >
-              Looking for existing orders? <span className="text-primary font-bold hover:underline">Track orders in Hub →</span>
+              Open Full Basket &amp; Edit Names
             </Link>
-          )}
+            {isAuthenticated && (
+              <Link
+                href="/dashboard?tab=tracking"
+                onClick={() => handleClose && handleClose()}
+                className="text-text-dim hover:text-text-main no-underline"
+              >
+                Track Orders →
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </aside>

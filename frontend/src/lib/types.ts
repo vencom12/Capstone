@@ -52,6 +52,7 @@ export interface Product {
   category?: string;
   tag: string;
   tags?: string[];
+  garmentSize?: 'small' | 'big';
   description?: string;
   imageUrl: string;
   recipe?: RecipeItem[];
@@ -108,13 +109,21 @@ export interface OrderItem {
   selectedSize?: string;
   backupVariant?: string; // 2nd choice color for assorted supply batches
   backupColor?: string;
+  isPreOrder?: boolean;
+  preOrderShortage?: number;
   personalization?: {
     text: string;
+    namesList?: string[];
+    isBulkList?: boolean;
     font?: string;
     threadColor?: string;
     threadHex?: string;
     extraLetteringCost?: number;
+    totalExtraLetteringCost?: number;
     extraLettersCount?: number;
+    garmentSize?: 'small' | 'big';
+    isPreOrder?: boolean;
+    preOrderShortage?: number;
   };
 }
 
@@ -189,6 +198,8 @@ export interface BasketItem {
   productId: string;
   name: string;
   price: number;
+  baseUnitPrice?: number;
+  garmentSize?: 'small' | 'big';
   imageUrl?: string;
   quantity: number;
   selectedVariant?: string;
@@ -196,13 +207,21 @@ export interface BasketItem {
   selectedSize?: string;
   backupVariant?: string; // 2nd choice color for assorted supply batches
   backupColor?: string;
+  isPreOrder?: boolean;
+  preOrderShortage?: number;
   personalization?: {
     text: string;
+    namesList?: string[];
+    isBulkList?: boolean;
     font?: string;
     threadColor?: string;
     threadHex?: string;
     extraLetteringCost?: number;
+    totalExtraLetteringCost?: number;
     extraLettersCount?: number;
+    garmentSize?: 'small' | 'big';
+    isPreOrder?: boolean;
+    preOrderShortage?: number;
   };
 }
 
@@ -231,4 +250,3 @@ export interface AuthResponse {
   message?: string;
   user?: User;
 }
-

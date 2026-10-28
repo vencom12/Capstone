@@ -55,8 +55,11 @@ export default function PanelSettings({
   const [expressLanePercent, setExpressLanePercent] = useState<number>(35.0);
   const [efficiencyFactor, setEfficiencyFactor] = useState<number>(85);
   const [maxBulkPiecesPerDay, setMaxBulkPiecesPerDay] = useState<number>(50);
-  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('day');
+  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('week');
   const [largeOrderQuoteThreshold, setLargeOrderQuoteThreshold] = useState<number>(100);
+  const [smallGarmentLetterRate, setSmallGarmentLetterRate] = useState<number>(7);
+  const [bigGarmentLetterRate, setBigGarmentLetterRate] = useState<number>(10);
+  const [preOrderPrepDays, setPreOrderPrepDays] = useState<number>(3);
   const [isSavingArtisan, setIsSavingArtisan] = useState(false);
 
   const [isFetchingSettings, setIsFetchingSettings] = useState(false);
@@ -106,6 +109,9 @@ export default function PanelSettings({
         if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerDay(res.maxBulkPiecesPerDay);
         if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
         if (res.largeOrderQuoteThreshold !== undefined) setLargeOrderQuoteThreshold(res.largeOrderQuoteThreshold);
+        if (res.smallGarmentLetterRate !== undefined) setSmallGarmentLetterRate(Number(res.smallGarmentLetterRate) || 7);
+        if (res.bigGarmentLetterRate !== undefined) setBigGarmentLetterRate(Number(res.bigGarmentLetterRate) || 10);
+        if (res.preOrderPrepDays !== undefined) setPreOrderPrepDays(Number(res.preOrderPrepDays) || 3);
       }
     } catch (e) {
       console.error('[Settings] Failed to fetch settings:', e);
@@ -182,8 +188,11 @@ export default function PanelSettings({
         maxBulkPiecesPerDay: Number(maxBulkPiecesPerDay),
         batchThrottlePeriod: batchThrottlePeriod,
         largeOrderQuoteThreshold: Number(largeOrderQuoteThreshold),
+        smallGarmentLetterRate: Number(smallGarmentLetterRate) || 7,
+        bigGarmentLetterRate: Number(bigGarmentLetterRate) || 10,
+        preOrderPrepDays: Number(preOrderPrepDays) || 3,
       });
-      showToast('Artisan workshop calibration updated!', 'success');
+      showToast('Artisan workshop calibration & lettering rates updated!', 'success');
     } catch (e: any) {
       console.error(e);
       showToast(e.message || 'Failed to save calibration', 'error');
@@ -200,8 +209,11 @@ export default function PanelSettings({
     setExpressLanePercent(35.0);
     setEfficiencyFactor(85);
     setMaxBulkPiecesPerDay(50);
-    setBatchThrottlePeriod('day');
+    setBatchThrottlePeriod('week');
     setLargeOrderQuoteThreshold(100);
+    setSmallGarmentLetterRate(7);
+    setBigGarmentLetterRate(10);
+    setPreOrderPrepDays(3);
     showToast('Calibration parameters reset to standard defaults. Click Save to persist.', 'info');
   };
 
@@ -738,11 +750,51 @@ export default function PanelSettings({
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-0.5">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim">
-                      1. Additional Name Lettering Pricing
+                      1. Additional Name Lettering Pricing (Admin-Configured Tiers)
                     </h4>
                     <p className="text-xs text-text-dim">
-                      The customer gets the <strong>first word / name free</strong> (included in base item price). Any extra name or word added after a space is charged at <strong>₱7.00/letter</strong> (small items) or <strong>₱10.00/letter</strong> (big items).
+                      The customer gets the <strong>first word / name free</strong> on each line (included in base item price). Any extra name or word added after a space is charged per letter based on the product&apos;s configured Garment Size Tier (<strong>Small Garment</strong> vs. <strong>Big Garment</strong>).
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Small Garment Extra Letter Rate</span>
+                        <span className="text-[10px] text-sky-400 font-mono">₱ / extra letter</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="100"
+                        value={smallGarmentLetterRate}
+                        onChange={(e) => setSmallGarmentLetterRate(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Applies to products configured as <strong>Small Garment</strong> (e.g. Fans, Caps, Face Towels). Default: <strong>₱7.00</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Big Garment Extra Letter Rate</span>
+                        <span className="text-[10px] text-indigo-400 font-mono">₱ / extra letter</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="100"
+                        value={bigGarmentLetterRate}
+                        onChange={(e) => setBigGarmentLetterRate(parseFloat(e.target.value) || 0)}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Applies to products configured as <strong>Big Garment</strong> (e.g. Bath Towels, Shirts, Jackets). Default: <strong>₱10.00</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -872,35 +924,64 @@ export default function PanelSettings({
                       </span>
                     </div>
 
-                    {/* Max Bulk Pieces */}
+                    {/* Max Bulk Pieces & Throttle Period */}
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                        <span>Max Bulk Pieces per Day</span>
-                        <span className="text-[10px] text-text-dim font-mono">pieces / day</span>
+                        <span>Bulk Production Rate</span>
+                        <select
+                          value={batchThrottlePeriod}
+                          onChange={(e) => setBatchThrottlePeriod(e.target.value)}
+                          className="bg-bg-surface border border-border-glass rounded px-1.5 py-0.5 text-[10px] text-primary font-mono outline-none cursor-pointer"
+                        >
+                          <option value="week">pieces / week</option>
+                          <option value="day">pieces / day</option>
+                        </select>
                       </label>
                       <input
                         type="number"
                         step="5"
                         min="10"
-                        max="500"
+                        max="1000"
                         value={maxBulkPiecesPerDay}
                         onChange={(e) => setMaxBulkPiecesPerDay(parseInt(e.target.value) || 0)}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
-                        Maximum large-order items staff should stitch each day to prevent fatigue. (Default: <strong>50 pcs</strong>)
+                        Bulk embroidery output capacity ({maxBulkPiecesPerDay} pcs per {batchThrottlePeriod === 'week' ? 'week' : 'day'}), factoring in queued bulk orders.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pre-Order Extended Preparation Lead Time */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                    <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                      <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                        <span>Pre-Order Preparation Lead Time</span>
+                        <span className="text-[10px] text-amber-400 font-mono">+days</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="30"
+                        value={preOrderPrepDays}
+                        onChange={(e) => setPreOrderPrepDays(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
+                      />
+                      <span className="text-[11px] text-text-dim">
+                        Additional workshop preparation days added when an order exceeds current on-hand stock. (Default: <strong>3 days</strong>)
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Friendly Summary Banner */}
-                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-text-main flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Friendly Summary Banner & Token Bucket Telemetry */}
+                <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-text-main flex flex-col gap-3">
                   <div>
                     <span className="font-bold text-text-main block mb-0.5">Summary of Current Settings:</span>
                     <span className="text-text-dim text-[11px]">
                       A typical 5-letter monogram takes about ~<strong>{(artisanHandlingMinutes + (5 * (artisanSecondsPerLetter / 60))).toFixed(1)} minutes</strong>. 
-                      Your workshop reserves ~<strong>{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} minutes</strong> for fast mall walk-ins, leaving ample capacity for up to <strong>{maxBulkPiecesPerDay} bulk items</strong> each day.
+                      Your workshop reserves ~<strong>{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} minutes</strong> for fast mall walk-ins, while your <strong>Token Bucket Limiter</strong> manages bulk orders at a burst capacity of <strong>{maxBulkPiecesPerDay} pieces/{batchThrottlePeriod === 'week' ? 'week' : 'day'}</strong> (refill rate: <strong>{(maxBulkPiecesPerDay / (batchThrottlePeriod === 'week' ? 7 : 1)).toFixed(1)} tokens/day</strong>).
                     </span>
                   </div>
                 </div>

@@ -544,6 +544,18 @@ async function enrichProductsWithStock(products, tx = prisma) {
 
         // Standard products with 0 variants: support direct inventory matching or product.count
         if (!Array.isArray(variantsList) || variantsList.length === 0) {
+            const productGarmentSize = (() => {
+                if (product.garmentSize === 'big' || product.garmentSize === 'small') return product.garmentSize;
+                if (Array.isArray(product.tags)) {
+                    if (product.tags.includes('garment:big')) return 'big';
+                    if (product.tags.includes('garment:small')) return 'small';
+                }
+                const t = `${product.tag || ''} ${product.name || ''}`.toLowerCase();
+                if (t.includes('bath') || t.includes('shirt') || t.includes('polo') || t.includes('jacket') || t.includes('hoodie') || t.includes('umbrella') || t.includes('robe') || t.includes('blanket')) {
+                    return 'big';
+                }
+                return 'small';
+            })();
             const matchingInv = inventory.find(i => i.item && i.item.trim().toLowerCase() === (product.name || '').trim().toLowerCase());
             const dynamicReserved = reservedGarments[product.id] || 0;
             if (matchingInv) {
@@ -552,6 +564,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
                 const available = Math.max(0, directCount - matReserved);
                 return {
                     ...product,
+                    garmentSize: productGarmentSize,
                     count: directCount,
                     dynamicReserved: matReserved,
                     availableStock: available,
@@ -564,6 +577,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
             const available = Math.max(0, directCount - dynamicReserved);
             return {
                 ...product,
+                garmentSize: productGarmentSize,
                 count: directCount,
                 dynamicReserved,
                 availableStock: available,
@@ -621,9 +635,22 @@ async function enrichProductsWithStock(products, tx = prisma) {
         const dynamicReserved = reservedGarments[product.id] || 0;
         const finalAvailable = Math.max(0, totalVariantAvailable);
         const ratingInfo = ratingMap[product.id] || { rating: null, reviewCount: 0 };
+        const productGarmentSize = (() => {
+            if (product.garmentSize === 'big' || product.garmentSize === 'small') return product.garmentSize;
+            if (Array.isArray(product.tags)) {
+                if (product.tags.includes('garment:big')) return 'big';
+                if (product.tags.includes('garment:small')) return 'small';
+            }
+            const t = `${product.tag || ''} ${product.name || ''}`.toLowerCase();
+            if (t.includes('bath') || t.includes('shirt') || t.includes('polo') || t.includes('jacket') || t.includes('hoodie') || t.includes('umbrella') || t.includes('robe') || t.includes('blanket')) {
+                return 'big';
+            }
+            return 'small';
+        })();
 
         return {
             ...product,
+            garmentSize: productGarmentSize,
             rating: ratingInfo.rating,
             reviewCount: ratingInfo.reviewCount,
             count: totalVariantPhysical,

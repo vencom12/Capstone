@@ -21,7 +21,7 @@ const STUDIO_BUSINESS_SAFEGUARDS = {
   freePickupStorageDays: 30,
   maxArchiveStorageDays: 60,
   errorGuaranteeDays: 7,
-  threadStandards: 'Madeira Polyneon & Isacord 40wt Industrial Thread',
+  threadStandards: '40wt High-Sheen Industrial Embroidery Thread',
   storeFulfillment: 'In-Store Counter Pickup (Pacific Mall Lucena)',
   governingLaws: {
     consumerAct: 'Republic Act No. 7394 (Consumer Act of the Philippines)',
@@ -174,7 +174,7 @@ export default function TermsAndPoliciesModal({
               Display RGB vs. Physical Thread Pigments
             </span>
             <p className="m-0 text-xs">
-              Our 3D previews and digital swatches are calibrated to match standard industrial thread palettes (Madeira Polyneon &amp; Isacord 40wt). However, because smartphone OLED displays and computer monitors have varying brightness, true-tone, and saturation settings, physical embroidery thread may show slight natural shade variations under ambient indoor or sunlight conditions.
+              Our 3D previews and digital swatches are calibrated to match standard 40wt industrial embroidery thread palettes. However, because smartphone OLED displays and computer monitors have varying brightness, true-tone, and saturation settings, physical embroidery thread may show slight natural shade variations under ambient indoor or sunlight conditions.
             </p>
           </div>
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">

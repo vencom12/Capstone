@@ -9,6 +9,7 @@ import { detectColorFromName } from '@/lib/colorUtils';
 import Pagination from '@/components/ui/Pagination';
 import { useAuthStore } from '@/stores/useAuthStore';
 import InlineError from '@/components/ui/InlineError';
+import { resolveProductGarmentSize } from '@/lib/letteringPricing';
 
 interface PanelManageDesignsProps {
   products: any[];
@@ -222,6 +223,7 @@ export default function PanelManageDesigns({
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [tag, setTag] = useState('Towel');
+  const [garmentSize, setGarmentSize] = useState<'small' | 'big'>('small');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -342,6 +344,7 @@ export default function PanelManageDesigns({
       const rawTag = design.tag ? design.tag.trim() : 'Towel';
       const formattedTag = rawTag.charAt(0).toUpperCase() + rawTag.slice(1);
       setTag(formattedTag);
+      setGarmentSize(resolveProductGarmentSize(design));
       setIsCustomCategory(false);
       setCustomCategory('');
       setDescription(design.description || '');
@@ -354,6 +357,7 @@ export default function PanelManageDesigns({
       setName('');
       setPrice('');
       setTag(availableCategories[0] || 'Towel');
+      setGarmentSize('small');
       setIsCustomCategory(false);
       setCustomCategory('');
       setDescription('');
@@ -596,6 +600,7 @@ export default function PanelManageDesigns({
     formData.append('name', capitalizedName);
     formData.append('price', price.trim());
     formData.append('tag', capitalizedTag);
+    formData.append('garmentSize', garmentSize);
     formData.append('description', description.trim());
     formData.append('recipe', JSON.stringify(recipe));
     formData.append('variants', JSON.stringify(formattedVariants));
@@ -615,6 +620,8 @@ export default function PanelManageDesigns({
       name: capitalizedName,
       price: numericPrice,
       tag: capitalizedTag,
+      garmentSize,
+      tags: [`garment:${garmentSize}`],
       description: description.trim(),
       recipe,
       variants: formattedVariants,
@@ -862,9 +869,20 @@ export default function PanelManageDesigns({
                     style={{ backgroundImage: `url(${p.imageUrl || '/icons/icon.ico'})` }}
                   />
                   <div className="flex flex-col gap-1 text-left flex-1">
-                    <span className="text-[0.7rem] uppercase tracking-wider text-primary font-extrabold">
-                      {p.tag}
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[0.7rem] uppercase tracking-wider text-primary font-extrabold">
+                        {p.tag}
+                      </span>
+                      <span
+                        className={`text-[0.62rem] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                          resolveProductGarmentSize(p) === 'big'
+                            ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                            : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                        }`}
+                      >
+                        {resolveProductGarmentSize(p) === 'big' ? 'Big Garment' : 'Small Garment'}
+                      </span>
+                    </div>
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-bold text-[1rem] m-0 text-text-main line-clamp-1">{p.name}</h4>
                       <span className="font-mono text-primary font-bold text-[0.95rem]">
@@ -1193,6 +1211,56 @@ export default function PanelManageDesigns({
                 onChange={(e) => setMinThreshold(e.target.value)}
                 className="bg-bg-surface border border-border-glass h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
+            </div>
+          </div>
+
+          {/* Row 2.5: Garment Size Tier (Admin-Configured Lettering Rate Tier) */}
+          <div className="flex flex-col gap-1.5 bg-white/[0.02] border border-border-glass p-2.5 rounded-xl">
+            <div className="flex items-center justify-between">
+              <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">
+                Garment Size Tier (Extra Lettering Rate Classification)
+              </label>
+              <span className="text-[0.65rem] text-primary font-semibold">
+                1st Word Free • Space + Letter Charges Tier Rate
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={!isAdmin}
+                onClick={() => setGarmentSize('small')}
+                className={`py-2 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  garmentSize === 'small'
+                    ? 'bg-sky-500/15 border-sky-500/50 text-sky-300 shadow-sm'
+                    : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
+              >
+                <div>
+                  <div className="text-xs font-bold">Small Garment</div>
+                  <div className="text-[0.65rem] opacity-80">Fans, Face/Hand Towels, Caps</div>
+                </div>
+                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20">
+                  Small Rate
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={!isAdmin}
+                onClick={() => setGarmentSize('big')}
+                className={`py-2 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  garmentSize === 'big'
+                    ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-300 shadow-sm'
+                    : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
+              >
+                <div>
+                  <div className="text-xs font-bold">Big Garment</div>
+                  <div className="text-[0.65rem] opacity-80">Bath Towels, Shirts, Jackets</div>
+                </div>
+                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20">
+                  Big Rate
+                </span>
+              </button>
             </div>
           </div>
 

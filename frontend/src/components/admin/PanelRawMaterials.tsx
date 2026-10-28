@@ -773,7 +773,7 @@ export default function PanelRawMaterials({
   }
   const [isBatchReceiveOpen, setIsBatchReceiveOpen] = useState(false);
   const [batchItems, setBatchItems] = useState<BatchReceiveItem[]>([]);
-  const [batchSupplier, setBatchSupplier] = useState('Madeira Thread Philippines');
+  const [batchSupplier, setBatchSupplier] = useState('Standard Thread Supply');
   const [batchDrNumber, setBatchDrNumber] = useState('');
   const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
 
@@ -797,7 +797,7 @@ export default function PanelRawMaterials({
     });
 
     setBatchItems(items);
-    setBatchSupplier('Madeira Thread Philippines');
+    setBatchSupplier('Standard Thread Supply');
     setBatchDrNumber('');
     setIsBatchReceiveOpen(true);
   };
@@ -2417,7 +2417,7 @@ export default function PanelRawMaterials({
                 type="text"
                 value={batchSupplier}
                 onChange={(e) => setBatchSupplier(e.target.value)}
-                placeholder="e.g. Madeira Thread"
+                placeholder="e.g. Standard Thread Supply"
                 className="bg-bg-surface border border-border-glass py-1.5 px-2.5 rounded-md text-text-main text-xs outline-none w-full"
               />
             </div>

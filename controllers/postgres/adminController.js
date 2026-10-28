@@ -509,8 +509,10 @@ const formatCategoryTag = (tag) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const { name, price, tag, description, count, minThreshold } = req.body;
+        const { name, price, tag, description, count, minThreshold, garmentSize } = req.body;
         const formattedTag = formatCategoryTag(tag);
+        const resolvedSize = garmentSize === 'big' ? 'big' : 'small';
+        const productTags = [`garment:${resolvedSize}`];
         let imageUrl = req.body.imageUrl || '/icons/icon.ico';
 
         if (req.file) {
@@ -550,6 +552,7 @@ exports.createProduct = async (req, res) => {
                 name,
                 price: parseFloat(price),
                 tag: formattedTag,
+                tags: productTags,
                 description,
                 imageUrl,
                 recipe,
@@ -576,13 +579,21 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const { name, price, tag, description, count, minThreshold } = req.body;
+        const { name, price, tag, description, count, minThreshold, garmentSize } = req.body;
         const updateData = {};
 
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = parseFloat(price);
         if (tag !== undefined) updateData.tag = formatCategoryTag(tag);
         if (description !== undefined) updateData.description = description;
+        if (garmentSize !== undefined) {
+            const existingProd = await prisma.product.findUnique({ where: { id: req.params.id }, select: { tags: true } });
+            const otherTags = Array.isArray(existingProd?.tags)
+                ? existingProd.tags.filter(t => typeof t === 'string' && !t.startsWith('garment:'))
+                : [];
+            const resolvedSize = garmentSize === 'big' ? 'big' : 'small';
+            updateData.tags = [...otherTags, `garment:${resolvedSize}`];
+        }
 
         if (req.file) {
             updateData.imageUrl = req.file.path;
@@ -1158,7 +1169,30 @@ exports.getSettings = async (req, res) => {
         if (!settings) {
             settings = await prisma.systemSettings.create({ data: { id: 'global' } });
         }
-        res.json(settings);
+        let rawColors = settings.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch (e) {}
+        }
+        let smallGarmentLetterRate = 7;
+        let bigGarmentLetterRate = 10;
+        let preOrderPrepDays = 3;
+        let cleanColors = rawColors;
+        if (Array.isArray(rawColors)) {
+            const metaEntry = rawColors.find(c => c && c.id === '__pricing_meta__');
+            if (metaEntry) {
+                if (metaEntry.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(metaEntry.smallGarmentLetterRate) || 7;
+                if (metaEntry.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(metaEntry.bigGarmentLetterRate) || 10;
+                if (metaEntry.preOrderPrepDays !== undefined) preOrderPrepDays = Number(metaEntry.preOrderPrepDays) || 3;
+            }
+            cleanColors = rawColors.filter(c => !c || c.id !== '__pricing_meta__');
+        }
+        res.json({
+            ...settings,
+            availableThreadColors: cleanColors,
+            smallGarmentLetterRate,
+            bigGarmentLetterRate,
+            preOrderPrepDays
+        });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching settings' });
     }
@@ -1169,6 +1203,13 @@ exports.updateSettings = async (req, res) => {
         const updateData = { ...req.body };
         // Mandatory compliance: Inventory audit trails cannot be disabled
         updateData.inventoryAuditLog = true;
+
+        const incomingSmallRate = updateData.smallGarmentLetterRate !== undefined ? (parseFloat(updateData.smallGarmentLetterRate) || 7) : undefined;
+        const incomingBigRate = updateData.bigGarmentLetterRate !== undefined ? (parseFloat(updateData.bigGarmentLetterRate) || 10) : undefined;
+        const incomingPrepDays = updateData.preOrderPrepDays !== undefined ? Math.max(0, parseInt(updateData.preOrderPrepDays) || 3) : undefined;
+        delete updateData.smallGarmentLetterRate;
+        delete updateData.bigGarmentLetterRate;
+        delete updateData.preOrderPrepDays;
 
         if (updateData.maxBulkPiecesPerDay !== undefined) updateData.maxBulkPiecesPerDay = parseInt(updateData.maxBulkPiecesPerDay) || 50;
         if (updateData.largeOrderQuoteThreshold !== undefined) updateData.largeOrderQuoteThreshold = parseInt(updateData.largeOrderQuoteThreshold) || 100;
@@ -1187,6 +1228,30 @@ exports.updateSettings = async (req, res) => {
             }
         }
 
+        // Persist smallGarmentLetterRate, bigGarmentLetterRate, preOrderPrepDays inside availableThreadColors JSON array
+        const existingSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let baseColors = updateData.availableThreadColors !== undefined
+            ? updateData.availableThreadColors
+            : (existingSettings?.availableThreadColors || []);
+        if (typeof baseColors === 'string') {
+            try { baseColors = JSON.parse(baseColors); } catch (e) { baseColors = []; }
+        }
+        if (!Array.isArray(baseColors)) baseColors = [];
+        const prevMeta = (Array.isArray(existingSettings?.availableThreadColors)
+            ? existingSettings.availableThreadColors.find(c => c && c.id === '__pricing_meta__')
+            : null) || {};
+        const mergedMeta = {
+            id: '__pricing_meta__',
+            name: '__pricing_meta__',
+            hex: '#000000',
+            isAvailable: false,
+            smallGarmentLetterRate: incomingSmallRate !== undefined ? incomingSmallRate : (prevMeta.smallGarmentLetterRate ?? 7),
+            bigGarmentLetterRate: incomingBigRate !== undefined ? incomingBigRate : (prevMeta.bigGarmentLetterRate ?? 10),
+            preOrderPrepDays: incomingPrepDays !== undefined ? incomingPrepDays : (prevMeta.preOrderPrepDays ?? 3)
+        };
+        const cleanPalette = baseColors.filter(c => !c || c.id !== '__pricing_meta__');
+        updateData.availableThreadColors = [...cleanPalette, mergedMeta];
+
         const settings = await prisma.systemSettings.upsert({
             where: { id: 'global' },
             update: updateData,
@@ -1195,14 +1260,13 @@ exports.updateSettings = async (req, res) => {
 
         const io = req.app.get('io');
         if (io) {
-            let emittedColors = settings.availableThreadColors;
-            if (typeof emittedColors === 'string') {
-                try {
-                    emittedColors = JSON.parse(emittedColors);
-                } catch (e) {}
-            }
             io.emit('settingsUpdated', {
-                availableThreadColors: emittedColors
+                availableThreadColors: cleanPalette,
+                smallGarmentLetterRate: mergedMeta.smallGarmentLetterRate,
+                bigGarmentLetterRate: mergedMeta.bigGarmentLetterRate,
+                preOrderPrepDays: mergedMeta.preOrderPrepDays,
+                maxBulkPiecesPerDay: settings.maxBulkPiecesPerDay,
+                batchThrottlePeriod: settings.batchThrottlePeriod
             });
             io.emit('dataChanged', {
                 entity: 'SETTINGS',
@@ -1210,7 +1274,13 @@ exports.updateSettings = async (req, res) => {
             });
         }
 
-        res.json(settings);
+        res.json({
+            ...settings,
+            availableThreadColors: cleanPalette,
+            smallGarmentLetterRate: mergedMeta.smallGarmentLetterRate,
+            bigGarmentLetterRate: mergedMeta.bigGarmentLetterRate,
+            preOrderPrepDays: mergedMeta.preOrderPrepDays
+        });
     } catch (err) {
         console.error('Update settings error:', err);
         res.status(500).json({ message: 'Error updating settings' });
@@ -1807,18 +1877,41 @@ exports.createWalkInOrder = async (req, res) => {
             initialProgress = 5;
         }
 
+        // Enforce strict 20-character per-line limit on walk-in items and preserve multi-line namesList
+        const sanitizedItems = Array.isArray(items) && items.length > 0
+            ? items.map((it) => {
+                const pers = it.personalization && typeof it.personalization === 'object' ? { ...it.personalization } : {};
+                if (Array.isArray(pers.namesList) && pers.namesList.length > 0) {
+                    pers.namesList = pers.namesList
+                        .map((line) => String(line || '').slice(0, 20).trim())
+                        .filter(Boolean);
+                    pers.text = pers.namesList.length === 1
+                        ? pers.namesList[0]
+                        : `${pers.namesList.length} Names (${pers.namesList.slice(0, 3).join(', ')}${pers.namesList.length > 3 ? '...' : ''})`;
+                } else if (typeof pers.text === 'string' && pers.text.trim()) {
+                    pers.text = pers.text.replace(/[\r\n]+/g, ' ').slice(0, 20).trim();
+                }
+                return {
+                    ...it,
+                    personalization: pers
+                };
+            })
+            : [{ name: design || 'Custom Embroidery', quantity: 1, price: numTotal }];
+
+        const hasPreOrderItems = sanitizedItems.some((it) => Boolean(it.isPreOrder));
+
         const orderData = {
             orderId,
             client: customerDisplayName,
             userId: walkInUserId,
             design: design || 'Walk-In Embroidery',
-            items: Array.isArray(items) && items.length > 0 ? items : [{ name: design || 'Custom Embroidery', quantity: 1, price: numTotal }],
+            items: sanitizedItems,
             totalAmount: numTotal,
             paymentMethod: paymentMethod || 'Cash',
             paymentStatus: isPaid ? 'paid' : 'unpaid',
             status: initialStatus,
             address: 'Physical Store (Eds Towels & Caps Pacific Mall Lucena)',
-            deliveryTime: isCompleted ? 'Completed On-Site (Direct Handover)' : (isHoldForPickup ? 'Ready for Pickup (Bagged on Counter)' : (isRush ? 'Rush Walk-In' : 'Standard Walk-In')),
+            deliveryTime: isCompleted ? 'Completed On-Site (Direct Handover)' : (isHoldForPickup ? 'Ready for Pickup (Bagged on Counter)' : (hasPreOrderItems ? 'Pre-Order Walk-In' : (isRush ? 'Rush Walk-In' : 'Standard Walk-In'))),
             notes: notes || (isCompleted ? 'Walk-in direct sale (handed over immediately)' : 'Walk-in counter order'),
             progress: initialProgress,
             isByog: Boolean(isByog),
@@ -1832,8 +1925,9 @@ exports.createWalkInOrder = async (req, res) => {
                 claimCode: `#${orderId.replace('WI-', 'A-')}`,
                 customerPhone: clientPhone || null,
                 customerEmail: clientEmail || null,
-                text: personalizationText || '',
+                text: String(personalizationText || '').slice(0, 120),
                 color: threadColor || '',
+                isPreOrder: hasPreOrderItems,
                 statusHistory: [
                     {
                         status: initialStatus,
@@ -1842,7 +1936,7 @@ exports.createWalkInOrder = async (req, res) => {
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
                         note: isCompleted
                             ? `Quick Slip Punch: Recorded completed on-site embroidery. Payment: ${paymentMethod || 'Cash'} (Paid).`
-                            : `Walk-in order registered at counter. Payment: ${paymentMethod || 'Cash'} (${isPaid ? 'Paid' : 'Unpaid'}).`
+                            : `Walk-in order registered at counter${hasPreOrderItems ? ' (Pre-Order / Extended Production)' : ''}. Payment: ${paymentMethod || 'Cash'} (${isPaid ? 'Paid' : 'Unpaid'}).`
                     }
                 ]
             },

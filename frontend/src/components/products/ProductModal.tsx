@@ -12,7 +12,14 @@ import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import OptimizedImage from '@/components/ui/OptimizedImage';
 import QuantityInput from '@/components/ui/QuantityInput';
-import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
+import {
+  MAX_CHARS_PER_LINE,
+  resolveProductGarmentSize,
+  sanitizeSingleLineText,
+  sanitizeBulkMultilineText,
+  calculateLetteringCost,
+  parseBulkLetteringLines,
+} from '@/lib/letteringPricing';
 
 interface ProductModalProps {
   product: Product | null;
@@ -37,7 +44,22 @@ export default function ProductModal({
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
-  const [capacityData, setCapacityData] = useState<{ activeOrders: number; estimatedMinutes: number } | null>(null);
+  const [capacityData, setCapacityData] = useState<{
+    activeOrders: number;
+    estimatedMinutes: number;
+    queuedBulkPieces?: number;
+    maxBulkPiecesPerPeriod?: number;
+    batchThrottlePeriod?: string;
+    preOrderPrepDays?: number;
+  } | null>(null);
+  const [letteringRates, setLetteringRates] = useState<{ smallRate: number; bigRate: number; preOrderPrepDays: number }>({
+    smallRate: 7,
+    bigRate: 10,
+    preOrderPrepDays: 3,
+  });
+  const [letteringMode, setLetteringMode] = useState<'single' | 'bulk'>('single');
+  const [bulkNamesText, setBulkNamesText] = useState<string>('');
+  const [preOrderAccepted, setPreOrderAccepted] = useState<boolean>(false);
 
   // Dynamic verified customer reviews state (Amazon/Shopee Standard)
   const [activeModalTab, setActiveModalTab] = useState<'configure' | 'reviews'>('configure');
@@ -233,6 +255,13 @@ export default function ProductModal({
           if (res?.availableThreadColors) {
             applyThreadColorConfig(res.availableThreadColors, shouldNotify);
           }
+          if (res) {
+            setLetteringRates((prev) => ({
+              smallRate: Number(res.smallGarmentLetterRate) || prev.smallRate || 7,
+              bigRate: Number(res.bigGarmentLetterRate) || prev.bigRate || 10,
+              preOrderPrepDays: res.preOrderPrepDays !== undefined ? Number(res.preOrderPrepDays) : prev.preOrderPrepDays,
+            }));
+          }
         })
         .catch(() => {});
     };
@@ -306,7 +335,10 @@ export default function ProductModal({
     if (product) {
       setQuantity(1);
       setIsPersonalized(false);
+      setLetteringMode('single');
       setCustomText('');
+      setBulkNamesText('');
+      setPreOrderAccepted(false);
       setActionError(null);
       setMonogramError(null);
       setCustomActiveImage(null);
@@ -315,12 +347,13 @@ export default function ProductModal({
       const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
       setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
       if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-        // Automatically select the first IN-STOCK variant; if all are out of stock, select none
+        // Select first in-stock variant, or fallback to first variant so customer can pre-order
         const firstInStock = product.variants.find((v) => (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0);
-        if (firstInStock) {
-          setSelectedVariant(firstInStock);
-          setSelectedColor(firstInStock.color || '');
-          setSelectedSize(firstInStock.size || '');
+        const chosen = firstInStock || product.variants[0];
+        if (chosen) {
+          setSelectedVariant(chosen);
+          setSelectedColor(chosen.color || '');
+          setSelectedSize(chosen.size || '');
         } else {
           setSelectedVariant(null);
           setSelectedColor('');
@@ -334,12 +367,16 @@ export default function ProductModal({
       
       // Fetch real live shop queue load from backend capacity API
       import('@/lib/api').then(({ api }) => {
-        api.get<{ activeOrders: number; activeMachines: number; estimatedMinutes: number }>('/api/customer/capacity')
+        api.get<any>('/api/customer/capacity')
           .then((res) => {
             if (res) {
               setCapacityData({
                 activeOrders: res.activeOrders ?? 0,
                 estimatedMinutes: res.estimatedMinutes ?? 15,
+                queuedBulkPieces: res.queuedBulkPieces ?? 0,
+                maxBulkPiecesPerPeriod: res.maxBulkPiecesPerPeriod ?? 50,
+                batchThrottlePeriod: res.batchThrottlePeriod || 'week',
+                preOrderPrepDays: res.preOrderPrepDays ?? 3,
               });
             }
           })
@@ -349,20 +386,70 @@ export default function ProductModal({
   }, [product, isOpen]);
 
   // Lettering extra pricing rule:
-  // First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
-  const isBig = isBigGarment(product?.category, product?.name);
+  // Uses Admin-configured Garment Size Tier ('small' | 'big') and Admin-configured Small/Big rates.
+  const garmentSize = resolveProductGarmentSize(product);
+  const isBig = garmentSize === 'big';
+
+  const bulkSummary = useMemo(() => {
+    return parseBulkLetteringLines(bulkNamesText, isBig, letteringRates);
+  }, [bulkNamesText, isBig, letteringRates]);
+
   const lettering = useMemo(() => {
     if (!product || !isPersonalized) {
-      return { extraCost: 0, extraLettersCount: 0, ratePerLetter: isBig ? 10 : 7, explanation: '' };
+      return {
+        extraCost: 0,
+        extraLettersCount: 0,
+        ratePerLetter: isBig ? letteringRates.bigRate : letteringRates.smallRate,
+        explanation: '',
+      };
     }
-    return calculateLetteringCost(customText, isBig);
-  }, [product, isPersonalized, customText, isBig]);
+    if (letteringMode === 'bulk') {
+      return {
+        extraCost: bulkSummary.averageExtraCostPerUnit,
+        extraLettersCount: bulkSummary.totalExtraLetters,
+        ratePerLetter: bulkSummary.ratePerLetter,
+        explanation:
+          bulkSummary.totalExtraCost > 0
+            ? `+₱${bulkSummary.totalExtraCost.toFixed(2)} across ${bulkSummary.lineCount} lines (${bulkSummary.totalExtraLetters} extra letters × ₱${bulkSummary.ratePerLetter})`
+            : 'All first words included in base price (₱0 extra).',
+      };
+    }
+    return calculateLetteringCost(customText, isBig, letteringRates);
+  }, [product, isPersonalized, letteringMode, customText, isBig, letteringRates, bulkSummary]);
+
+  // Estimated completion timeframe for Bulk / Pre-Order (must be above early return to satisfy Rules of Hooks)
+  const estimatedPreOrderScheduleLabel = useMemo(() => {
+    const bulkRate = capacityData?.maxBulkPiecesPerPeriod || 50;
+    const period = capacityData?.batchThrottlePeriod || 'week';
+    const queuedBulk = capacityData?.queuedBulkPieces || 0;
+    const prepDays = capacityData?.preOrderPrepDays ?? letteringRates.preOrderPrepDays ?? 3;
+    const totalPieces = queuedBulk + quantity;
+    const periodsNeeded = Math.max(1, Math.ceil(totalPieces / Math.max(1, bulkRate)));
+    if (period === 'week') {
+      if (periodsNeeded <= 1 && prepDays <= 4) {
+        return `Estimated ready in ~${Math.max(3, prepDays)}–7 days`;
+      }
+      return `Estimated ready in ~${periodsNeeded}–${periodsNeeded + 1} weeks (${bulkRate} pcs/week workshop schedule)`;
+    }
+    const totalDays = prepDays + periodsNeeded;
+    return `Estimated ready in ~${totalDays}–${totalDays + 2} days`;
+  }, [capacityData, quantity, letteringRates.preOrderPrepDays]);
 
   if (!product) return null;
 
   const productId = product.id || product._id || '';
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
-  const finalUnitPrice = effectivePrice + (isPersonalized ? lettering.extraCost : 0);
+  const totalExtraLetteringCost =
+    isPersonalized && letteringMode === 'bulk'
+      ? bulkSummary.totalExtraCost
+      : isPersonalized
+      ? lettering.extraCost * quantity
+      : 0;
+  const finalUnitPrice =
+    isPersonalized && letteringMode === 'bulk' && quantity > 0
+      ? effectivePrice + bulkSummary.totalExtraCost / quantity
+      : effectivePrice + (isPersonalized ? lettering.extraCost : 0);
+  const totalOrderPrice = effectivePrice * quantity + totalExtraLetteringCost;
 
   // Check if product actually has defined variants
   const hasVariants = Boolean(product.variants && Array.isArray(product.variants) && product.variants.length > 0);
@@ -372,28 +459,42 @@ export default function ProductModal({
   const hasSizes = availableSizes.length > 0;
 
   // Variant-driven stock:
-  // If product has 0 variants, it has strictly 0 stock and cannot be purchased.
-  // If product has variants, stock is determined by the selected variant's availableStock!
   const selectedVariantStock = selectedVariant
     ? (selectedVariant.availableStock !== undefined ? selectedVariant.availableStock : (selectedVariant.stock ?? 0))
     : 0;
   const effectiveStock = hasVariants ? selectedVariantStock : 0;
   const isOutOfStock = !hasVariants || effectiveStock <= 0;
 
+  // Existing quantity in basket for this product + variant
+  const existingVariantBasketQty = items
+    .filter((i) => i.productId === productId && i.selectedVariant === selectedVariant?.name)
+    .reduce((sum, i) => sum + i.quantity, 0);
+
+  const remainingOnHandForVariant = Math.max(0, effectiveStock - existingVariantBasketQty);
+  const requiresPreOrder = hasVariants && quantity > remainingOnHandForVariant;
+  const preOrderShortage = requiresPreOrder ? Math.max(1, quantity - remainingOnHandForVariant) : 0;
+
   const validateAndBuildBasketItem = (): BasketItem | null => {
     setActionError(null);
     setMonogramError(null);
 
-    if (isOutOfStock) {
-      const err = `${product.name} is currently out of stock. Please check back soon!`;
+    if (!hasVariants) {
+      const err = `${product.name} currently has no variants configured.`;
       setActionError(err);
       showToast(err, 'error');
       return null;
     }
 
-    const trimmedCustomText = customText.trim();
+    const trimmedCustomText = sanitizeSingleLineText(customText).trim();
     if (isPersonalized) {
-      if (!trimmedCustomText) {
+      if (letteringMode === 'bulk') {
+        if (bulkSummary.lineCount === 0) {
+          setMonogramError('Please paste or type at least 1 name on a line.');
+          setActionError('Please enter your embroidery names.');
+          showToast('Please paste or type at least 1 name.', 'error');
+          return null;
+        }
+      } else if (!trimmedCustomText) {
         setMonogramError('Please enter the name or text you would like embroidered.');
         setActionError('Please enter your embroidery text.');
         showToast('Please enter the name or text you would like embroidered.', 'error');
@@ -408,40 +509,66 @@ export default function ProductModal({
       }
     }
 
-    const existing = items.find(
-      (i) =>
-        i.productId === productId &&
-        i.selectedVariant === selectedVariant?.name &&
-        i.selectedSize === selectedSize &&
-        (i.personalization?.text || '') === (isPersonalized ? trimmedCustomText : '')
-    );
-    const existingQty = existing ? existing.quantity : 0;
-    if (existingQty + quantity > effectiveStock) {
-      const err = `Only ${effectiveStock} left in stock. Please reduce your quantity.`;
+    if (requiresPreOrder && !preOrderAccepted) {
+      const err = `Your quantity (${quantity} pcs) exceeds current on-hand stock (${remainingOnHandForVariant} available). Please accept the Pre-Order extended production schedule below to proceed.`;
       setActionError(err);
-      showToast(err, 'error');
+      showToast('Please accept the Pre-Order production wait time to proceed.', 'warning');
       return null;
     }
+
+    const isBulkPersonalization = isPersonalized && letteringMode === 'bulk' && bulkSummary.lineCount > 0;
+    const resolvedQuantity = isBulkPersonalization ? bulkSummary.lineCount : quantity;
+    const resolvedUnitPrice =
+      isBulkPersonalization && resolvedQuantity > 0
+        ? effectivePrice + bulkSummary.totalExtraCost / resolvedQuantity
+        : finalUnitPrice;
 
     return {
       id: `express-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       productId,
       name: product.name,
-      price: finalUnitPrice,
-      quantity,
+      price: resolvedUnitPrice,
+      baseUnitPrice: effectivePrice,
+      garmentSize,
+      quantity: resolvedQuantity,
       imageUrl: selectedVariant?.imageUrl || product.imageUrl,
       selectedVariant: selectedVariant?.name,
       selectedColor: selectedColor || selectedVariant?.color,
       selectedSize: selectedSize || undefined,
-      personalization: isPersonalized && trimmedCustomText
-        ? {
-            text: trimmedCustomText,
-            font: DEFAULT_FONT.name,
-            threadColor: threadColor.name,
-            threadHex: threadColor.hex,
-            extraLetteringCost: lettering.extraCost,
-            extraLettersCount: lettering.extraLettersCount,
-          }
+      isPreOrder: requiresPreOrder,
+      preOrderShortage: requiresPreOrder ? preOrderShortage : 0,
+      personalization: isPersonalized
+        ? isBulkPersonalization
+          ? {
+              text: bulkSummary.namesList.join('\n'),
+              namesList: bulkSummary.namesList,
+              isBulkList: true,
+              font: DEFAULT_FONT.name,
+              threadColor: threadColor.name,
+              threadHex: threadColor.hex,
+              extraLetteringCost: bulkSummary.averageExtraCostPerUnit,
+              totalExtraLetteringCost: bulkSummary.totalExtraCost,
+              extraLettersCount: bulkSummary.totalExtraLetters,
+              garmentSize,
+              isPreOrder: requiresPreOrder,
+              preOrderShortage: requiresPreOrder ? preOrderShortage : 0,
+            }
+          : trimmedCustomText
+          ? {
+              text: trimmedCustomText,
+              namesList: [trimmedCustomText],
+              isBulkList: false,
+              font: DEFAULT_FONT.name,
+              threadColor: threadColor.name,
+              threadHex: threadColor.hex,
+              extraLetteringCost: lettering.extraCost,
+              totalExtraLetteringCost: lettering.extraCost * resolvedQuantity,
+              extraLettersCount: lettering.extraLettersCount,
+              garmentSize,
+              isPreOrder: requiresPreOrder,
+              preOrderShortage: requiresPreOrder ? preOrderShortage : 0,
+            }
+          : undefined
         : undefined,
     };
   };
@@ -454,16 +581,25 @@ export default function ProductModal({
       productId: item.productId,
       name: item.name,
       price: item.price,
+      baseUnitPrice: item.baseUnitPrice,
+      garmentSize: item.garmentSize,
       quantity: item.quantity,
       imageUrl: item.imageUrl,
       selectedVariant: item.selectedVariant,
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
+      isPreOrder: item.isPreOrder,
+      preOrderShortage: item.preOrderShortage,
       personalization: item.personalization,
     });
 
     setIsOrderSubmitted(true);
-    showToast(`Added ${quantity}x ${product.name} to your basket!`, 'success');
+    showToast(
+      item.isPreOrder
+        ? `Added ${item.quantity}x ${product.name} (Pre-Order) to your basket!`
+        : `Added ${item.quantity}x ${product.name} to your basket!`,
+      'success'
+    );
     setTimeout(() => {
       onClose();
     }, 400);
@@ -490,9 +626,11 @@ export default function ProductModal({
   };
 
   // 4-Step Customer Product Ordering Progress (Style/Variant -> Lettering -> Quantity -> Order/Basket)
-  const isOrderStep1Done = !hasVariants || Boolean(selectedVariant && effectiveStock > 0);
-  const isOrderStep2Done = !isPersonalized || Boolean(customText.trim() && !monogramError);
-  const isOrderStep3Done = quantity >= 1 && !isOutOfStock;
+  const isOrderStep1Done = !hasVariants || Boolean(selectedVariant);
+  const isOrderStep2Done =
+    !isPersonalized ||
+    (letteringMode === 'bulk' ? bulkSummary.lineCount > 0 : Boolean(customText.trim())) && !monogramError;
+  const isOrderStep3Done = quantity >= 1 && (!requiresPreOrder || preOrderAccepted);
   // Step 4 is ONLY marked done when the customer clicks Add to Basket or Buy Now!
   const isOrderStep4Done = isOrderSubmitted;
 
@@ -784,26 +922,26 @@ export default function ProductModal({
 
               <div className="flex justify-between items-baseline">
             <div className="text-2xl font-bold text-text-main font-mono max-[700px]:text-xl tracking-tight">
-              ₱{(finalUnitPrice * (isOutOfStock ? 1 : quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              {quantity > 1 && !isOutOfStock && (
+              ₱{totalOrderPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {quantity > 1 && (
                 <span className="text-xs text-text-dim font-sans font-normal ml-2">
-                  (₱{finalUnitPrice.toFixed(2)} each)
+                  (₱{finalUnitPrice.toFixed(2)} avg/unit)
                 </span>
               )}
-              {isPersonalized && lettering.extraCost > 0 && (
+              {isPersonalized && totalExtraLetteringCost > 0 && (
                 <span className="block text-[11px] font-sans font-normal text-text-dim mt-0.5">
-                  Includes +₱{lettering.extraCost.toFixed(2)} for additional lettering
+                  Includes +₱{totalExtraLetteringCost.toFixed(2)} total for additional lettering after 1st word
                 </span>
               )}
             </div>
             {isOutOfStock ? (
-              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-text-dim font-semibold text-xs tracking-wider uppercase">
-                Out of Stock
+              <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold text-xs tracking-wider uppercase">
+                Pre-Order Available
               </span>
             ) : (
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-xs font-medium text-text-main">
                 <span className={`w-1.5 h-1.5 rounded-full ${effectiveStock <= 5 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                {effectiveStock <= 5 ? `Only ${effectiveStock} left` : `In Stock (${effectiveStock} available)`}
+                {effectiveStock <= 5 ? `Only ${effectiveStock} on hand` : `In Stock (${effectiveStock} on hand)`}
               </span>
             )}
           </div>
@@ -937,7 +1075,7 @@ export default function ProductModal({
             </div>
           )}
 
-          {/* Custom Embroidery Personalization (Lettering / Monogram) */}
+          {/* Custom Embroidery Personalization (Lettering / Monogram / Multi-Line Bulk Paste) */}
           <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-xl border border-white/5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-text-main flex items-center gap-2 cursor-pointer">
@@ -951,25 +1089,63 @@ export default function ProductModal({
               </label>
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={!hasVariants}
                 onClick={() => {
-                  if (isOutOfStock) return;
+                  if (!hasVariants) return;
                   setIsPersonalized(!isPersonalized);
                 }}
                 className={`text-[0.72rem] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
-                  isOutOfStock
+                  !hasVariants
                     ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
                     : isPersonalized
                       ? 'bg-white/10 border-white/30 text-text-main cursor-pointer'
                       : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 cursor-pointer'
                 }`}
               >
-                {isOutOfStock ? 'Unavailable' : isPersonalized ? 'Active' : '+ Add Name/Text'}
+                {!hasVariants ? 'Unavailable' : isPersonalized ? 'Active' : '+ Add Name / Bulk List'}
               </button>
             </div>
 
             {isPersonalized && (
               <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
+                {/* Mode Toggle: Single Name vs Bulk List (Copy & Paste) */}
+                <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-bg-surface border border-border-glass">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLetteringMode('single');
+                      if (bulkSummary.namesList.length > 0 && !customText.trim()) {
+                        setCustomText(bulkSummary.namesList[0]);
+                      }
+                    }}
+                    className={`py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      letteringMode === 'single'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-dim hover:text-text-main bg-transparent'
+                    }`}
+                  >
+                    Single Name
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLetteringMode('bulk');
+                      if (customText.trim() && !bulkNamesText.trim()) {
+                        const clamped = sanitizeSingleLineText(customText);
+                        setBulkNamesText(clamped);
+                        setQuantity(1);
+                      }
+                    }}
+                    className={`py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      letteringMode === 'bulk'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-text-dim hover:text-text-main bg-transparent'
+                    }`}
+                  >
+                    <span>Bulk List (Copy &amp; Paste)</span>
+                  </button>
+                </div>
+
                 {/* Estimated Stitching Time (Applies only when personalizing) */}
                 <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.04] border border-border-glass text-xs">
                   <div className="flex items-center gap-2">
@@ -980,64 +1156,150 @@ export default function ProductModal({
                   </div>
                   <strong className="text-text-main font-mono text-xs font-bold">
                     {(() => {
+                      if (letteringMode === 'bulk' && bulkSummary.lineCount > 0) {
+                        const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
+                        const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
+                        return `~${mins} mins (${bulkSummary.lineCount} pcs)`;
+                      }
                       const letters = customText.replace(/\s+/g, '').length || 5;
-                      const mins = Math.max(1, Math.ceil(1.0 + (letters * 0.20)));
+                      const mins = Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
                       return `~${mins} ${mins === 1 ? 'min' : 'mins'}`;
                     })()}
                   </strong>
                 </div>
 
-                {/* Text input */}
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
-                    <span>Name or Monogram Text</span>
-                    <span>{customText.length}/25</span>
+                {letteringMode === 'single' ? (
+                  /* Single-Line Text Input (Hard-capped at 20 characters including spaces) */
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
+                      <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars incl. spaces)</span>
+                      <span className={`font-mono ${customText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400 font-bold' : ''}`}>
+                        {customText.length}/{MAX_CHARS_PER_LINE}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={MAX_CHARS_PER_LINE}
+                      value={customText}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        if (pasted && /\r?\n/.test(pasted.trim())) {
+                          e.preventDefault();
+                          const sanitizedBulk = sanitizeBulkMultilineText(pasted);
+                          const parsed = parseBulkLetteringLines(sanitizedBulk, isBig, letteringRates);
+                          setLetteringMode('bulk');
+                          setBulkNamesText(sanitizedBulk);
+                          if (parsed.lineCount > 0) {
+                            setQuantity(parsed.lineCount);
+                          }
+                          showToast(`Switched to Bulk List (${parsed.lineCount} names pasted, max 20 chars/line)`, 'info');
+                        }
+                      }}
+                      onChange={(e) => {
+                        const clamped = sanitizeSingleLineText(e.target.value);
+                        setCustomText(clamped);
+                        if (monogramError) setMonogramError(null);
+                        if (actionError) setActionError(null);
+                      }}
+                      onBlur={() => {
+                        if (isPersonalized && letteringMode === 'single' && !customText.trim()) {
+                          setMonogramError('Please enter text to embroider or disable lettering');
+                        }
+                      }}
+                      placeholder="e.g. Juan (free) or Juan D (+fee after space)"
+                      className={`w-full bg-bg-surface border ${
+                        monogramError
+                          ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                          : 'border-border-glass focus:border-white/40'
+                      } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
+                    />
+                    <InlineError message={monogramError} className="mt-1" variant="field" />
                   </div>
-                  <input
-                    type="text"
-                    maxLength={25}
-                    value={customText}
-                    onChange={(e) => {
-                      setCustomText(e.target.value);
-                      if (monogramError) setMonogramError(null);
-                      if (actionError) setActionError(null);
-                    }}
-                    onBlur={() => {
-                      if (isPersonalized && !customText.trim()) {
-                        setMonogramError('Please enter text to embroider or disable lettering');
-                      }
-                    }}
-                    placeholder="e.g. Dr. Rafael Santos or R.S."
-                    className={`w-full bg-bg-surface border ${
-                      monogramError
-                        ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
-                        : 'border-border-glass focus:border-white/40'
-                    } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
-                  />
-                  <InlineError message={monogramError} className="mt-1" variant="field" />
-                </div>
+                ) : (
+                  /* Multi-Line Bulk Copy & Paste Input (1 line = 1 name/piece, max 20 chars per line) */
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
+                      <span>Paste 1 Name per Line (Max {MAX_CHARS_PER_LINE} chars/line incl. spaces)</span>
+                      <span className="font-mono font-bold text-primary">
+                        {bulkSummary.lineCount} {bulkSummary.lineCount === 1 ? 'line' : 'lines'} = {bulkSummary.lineCount} qty
+                      </span>
+                    </div>
+                    <textarea
+                      rows={5}
+                      value={bulkNamesText}
+                      onChange={(e) => {
+                        const clamped = sanitizeBulkMultilineText(e.target.value);
+                        setBulkNamesText(clamped);
+                        const parsed = parseBulkLetteringLines(clamped, isBig, letteringRates);
+                        if (parsed.lineCount > 0) {
+                          setQuantity(parsed.lineCount);
+                        }
+                        if (monogramError) setMonogramError(null);
+                        if (actionError) setActionError(null);
+                      }}
+                      placeholder={`Copy & paste multiple names (1 per line):\nJuan\nMaria C\nPedro Penduko\nAna`}
+                      className={`w-full bg-bg-surface border ${
+                        monogramError
+                          ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                          : 'border-border-glass focus:border-white/40'
+                      } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
+                    />
+                    <span className="text-[10px] text-text-dim/80">
+                      Each line is strictly capped at {MAX_CHARS_PER_LINE} characters (including spaces) and automatically adjusts quantity.
+                    </span>
+                    <InlineError message={monogramError} className="mt-0.5" variant="field" />
+
+                    {/* Per-Line Breakdown List */}
+                    {bulkSummary.lines.length > 0 && (
+                      <div className="mt-1 p-2.5 rounded-xl bg-black/30 border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-white/5">
+                          <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
+                          <span>Extra Fee</span>
+                        </div>
+                        {bulkSummary.lines.map((line) => (
+                          <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.03] last:border-b-0">
+                            <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                              <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
+                              <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
+                              <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
+                            </div>
+                            <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
+                              {line.extraCost > 0
+                                ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
+                                : 'Free (₱0)'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Real-time Lettering Cost Breakdown Notice */}
-                {isPersonalized && customText.trim() && (
+                {isPersonalized && ((letteringMode === 'single' && customText.trim()) || (letteringMode === 'bulk' && bulkSummary.lineCount > 0)) && (
                   <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass text-xs">
                     <div className="flex flex-col">
                       <span className="text-text-dim text-[11px]">
-                        {lettering.extraCost > 0
-                          ? `Additional name lettering (${lettering.extraLettersCount} letters after space × ₱${lettering.ratePerLetter}):`
-                          : 'First name / word:'}
+                        {totalExtraLetteringCost > 0
+                          ? letteringMode === 'bulk'
+                            ? `Bulk extra lettering (${bulkSummary.totalExtraLetters} extra letters after space × ₱${bulkSummary.ratePerLetter}):`
+                            : `Additional name lettering (${lettering.extraLettersCount} letters after space × ₱${lettering.ratePerLetter}):`
+                          : 'First name / word on each line:'}
                       </span>
                       <span className="text-[10px] text-text-dim/70">
-                        {isBig ? 'Big Garment rate (₱10/letter after 1st word)' : 'Small Garment rate (₱7/letter after 1st word)'}
+                        {isBig
+                          ? `Admin Big Garment Tier (₱${letteringRates.bigRate}/letter after 1st word)`
+                          : `Admin Small Garment Tier (₱${letteringRates.smallRate}/letter after 1st word)`}
                       </span>
                     </div>
-                    <span className={`font-mono font-bold text-xs ${lettering.extraCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
-                      {lettering.extraCost > 0 ? `+₱${lettering.extraCost.toFixed(2)}` : 'Included in price (₱0)'}
+                    <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
+                      {totalExtraLetteringCost > 0 ? `+₱${totalExtraLetteringCost.toFixed(2)}` : 'Included in price (₱0)'}
                     </span>
                   </div>
                 )}
 
                 {/* Live Stitch Typography Preview */}
-                {customText.trim() && (
+                {((letteringMode === 'single' && customText.trim()) || (letteringMode === 'bulk' && bulkSummary.lineCount > 0)) && (
                   <div className="p-3 rounded-xl bg-black/40 border border-border-glass flex flex-col items-center justify-center text-center">
                     <span className="text-[0.65rem] uppercase tracking-wider text-text-dim mb-1">
                       Stitch Preview ({threadColor.name} • Standard Artisan Script)
@@ -1050,8 +1312,13 @@ export default function ProductModal({
                         textShadow: '0 0 10px rgba(0,0,0,0.5)',
                       }}
                     >
-                      {customText}
+                      {letteringMode === 'bulk' ? bulkSummary.namesList[0] : customText}
                     </span>
+                    {letteringMode === 'bulk' && bulkSummary.lineCount > 1 && (
+                      <span className="text-[10px] text-primary font-semibold mt-0.5">
+                        + {bulkSummary.lineCount - 1} more personalized {bulkSummary.lineCount - 1 === 1 ? 'name' : 'names'} in list
+                      </span>
+                    )}
                     <span className="text-[0.65rem] text-text-dim/70 mt-1">
                       Standard font &amp; size • Hand-guided sewing machine embroidery
                     </span>
@@ -1091,7 +1358,6 @@ export default function ProductModal({
                             ...(isAvailable ? {} : { opacity: 0.35, filter: 'grayscale(90%)' })
                           }}
                         >
-                          {/* Strike-through diagonal slash when thread is crossed out */}
                           {!isAvailable && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                               <div className="w-[150%] h-[2px] bg-white/90 shadow-[0_0_3px_rgba(0,0,0,0.8)] rotate-45 transform" />
@@ -1114,38 +1380,80 @@ export default function ProductModal({
 
           {/* Quantity Stepper & Direct Typing */}
           <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col min-w-0">
                 <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
-                <span className="text-[10px] text-text-dim/70">Type directly or step for bulk orders</span>
+                <span className="text-[10px] text-text-dim/70 leading-snug">
+                  {isPersonalized && letteringMode === 'bulk'
+                    ? `Auto-synced to ${bulkSummary.lineCount} pasted ${bulkSummary.lineCount === 1 ? 'line' : 'lines'}`
+                    : 'Type directly or step for bulk & pre-orders'}
+                </span>
               </div>
               <QuantityInput
-                value={isOutOfStock ? 0 : quantity}
-                onChange={(q) => setQuantity(q)}
+                value={!hasVariants ? 0 : quantity}
+                onChange={(q) => {
+                  setQuantity(q);
+                  if (actionError) setActionError(null);
+                }}
                 min={1}
-                max={effectiveStock > 0 ? effectiveStock : 1}
-                disabled={isOutOfStock}
+                max={1000}
+                disabled={!hasVariants || (isPersonalized && letteringMode === 'bulk' && bulkSummary.lineCount > 0)}
                 size="md"
-                showPresets={!isOutOfStock && effectiveStock >= 10}
+                showPresets={hasVariants && !(isPersonalized && letteringMode === 'bulk')}
                 presets={[10, 25, 50, 100]}
                 ariaLabel={`Quantity for ${product.name}`}
-                onMaxExceeded={(maxQty) => {
-                  showToast(`Only ${maxQty} units available in stock for this variant.`, 'error');
-                }}
               />
             </div>
+
+            {/* Stock Exceeded / Pre-Order Warning & Acknowledgment Banner (Never mentions "supplier") */}
+            {requiresPreOrder && (
+              <div className="mt-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col gap-2 text-xs">
+                <div className="flex items-start gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="text-amber-400 shrink-0 mt-0.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold text-amber-300 text-xs">
+                      Quantity Exceeds Current On-Hand Stock ({remainingOnHandForVariant} available)
+                    </span>
+                    <span className="text-[11px] text-text-dim leading-relaxed">
+                      You are ordering <strong>{quantity} pcs</strong>, which is <strong>{preOrderShortage} pcs</strong> beyond our current ready-to-stitch stock. You may proceed with this order as a <strong>Pre-Order (100% upfront payment)</strong> with an extended workshop preparation &amp; production schedule.
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-amber-300 mt-0.5">
+                      ⏱ {estimatedPreOrderScheduleLabel}
+                    </span>
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 pt-1.5 border-t border-amber-500/20 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={preOrderAccepted}
+                    onChange={(e) => {
+                      setPreOrderAccepted(e.target.checked);
+                      if (e.target.checked && actionError) setActionError(null);
+                    }}
+                    className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-semibold text-text-main">
+                    I accept the extended workshop production &amp; preparation wait time for this Pre-Order.
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4">
-            {isOutOfStock ? (
+            {!hasVariants ? (
               <GlassButton
                 variant="secondary"
                 fullWidth
                 disabled
                 className="py-3 font-bold opacity-60 cursor-not-allowed text-xs uppercase tracking-wider"
               >
-                Out of Stock
+                Unavailable
               </GlassButton>
             ) : (
               <div className="flex gap-3 max-[700px]:gap-2">
@@ -1159,14 +1467,14 @@ export default function ProductModal({
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <path d="M16 10a4 4 0 0 1-8 0" />
                   </svg>
-                  Add to Basket
+                  {requiresPreOrder ? 'Pre-Order to Basket' : 'Add to Basket'}
                 </GlassButton>
                 <GlassButton
                   variant="primary"
                   onClick={handleBuyNow}
                   className="flex-1 py-3 text-xs font-bold shadow-md cursor-pointer"
                 >
-                  Buy Now →
+                  {requiresPreOrder ? 'Pre-Order Now →' : 'Buy Now →'}
                 </GlassButton>
               </div>
             )}

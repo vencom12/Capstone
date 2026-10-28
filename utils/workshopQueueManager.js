@@ -23,6 +23,7 @@ const {
     isStoreOpen,
     isLunchBreak
 } = require('./pickupScheduler');
+const { calculateProductionTokenBucket } = require('./tokenBucketLimiter');
 
 // Cache configuration
 const CACHE_TTL_MS = 30 * 1000; // 30 seconds fallback TTL
@@ -33,6 +34,16 @@ let cachedSnapshot = {
     totalQueueMinutes: 0,
     queueWaitMinutes: 0,
     estimatedMinutes: 5,
+    queuedBulkPieces: 0,
+    maxBulkPiecesPerPeriod: 50,
+    batchThrottlePeriod: 'week',
+    preOrderPrepDays: 3,
+    tokenBucket: calculateProductionTokenBucket({
+        maxBulkPiecesPerPeriod: 50,
+        batchThrottlePeriod: 'week',
+        queuedBulkPieces: 0,
+        preOrderPrepDays: 3
+    }),
     readyLabel: 'Today (Normal workshop hours)',
     estimatedReadyDate: null,
     nextAvailableSlot: null,
@@ -79,11 +90,17 @@ async function resyncQueueFromDatabase(prisma) {
 
         const machineCount = Math.max(1, activeMachinesCount);
 
-        // Sum actual stitch minutes across all queued orders
+        // Sum actual stitch minutes and bulk piece counts across all queued orders
         let totalBacklogMins = 0;
+        let queuedBulkPieces = 0;
         queuedOrders.forEach(ord => {
             const mins = ord.estimatedTime || estimateArtisanProductionTime(ord);
             totalBacklogMins += Math.max(2, mins);
+            const items = Array.isArray(ord.items) ? ord.items : [];
+            const orderQty = items.reduce((s, it) => s + (it.quantity || 1), 0) || 1;
+            if (orderQty >= 5) {
+                queuedBulkPieces += orderQty;
+            }
         });
 
         const now = new Date();
@@ -93,9 +110,28 @@ async function resyncQueueFromDatabase(prisma) {
                 emergencyNoticeActive: true,
                 emergencyNoticeResumeDate: true,
                 emergencyNoticeReason: true,
-                emergencyOrderingPolicy: true
+                emergencyOrderingPolicy: true,
+                maxBulkPiecesPerDay: true,
+                batchThrottlePeriod: true,
+                availableThreadColors: true
             }
         });
+
+        let preOrderPrepDays = 3;
+        if (settings?.availableThreadColors) {
+            let colors = settings.availableThreadColors;
+            if (typeof colors === 'string') {
+                try { colors = JSON.parse(colors); } catch (e) {}
+            }
+            if (Array.isArray(colors)) {
+                const meta = colors.find(c => c && c.id === '__pricing_meta__');
+                if (meta && meta.preOrderPrepDays !== undefined) {
+                    preOrderPrepDays = Math.max(0, Number(meta.preOrderPrepDays) || 3);
+                }
+            }
+        }
+        const maxBulkPiecesPerPeriod = settings?.maxBulkPiecesPerDay || 50;
+        const batchThrottlePeriod = settings?.batchThrottlePeriod || 'week';
 
         const isEmergencyOn = Boolean(
             settings?.emergencyNoticeActive &&
@@ -116,12 +152,25 @@ async function resyncQueueFromDatabase(prisma) {
         const existingQueueMinutesNeeded = Math.ceil(totalBacklogMins / machineCount);
         const nextAvailableSlot = addActiveProductionMinutes(effectiveStartTime, existingQueueMinutesNeeded);
 
+        // Compute Workshop Bulk Production Token Bucket state
+        const tokenBucket = calculateProductionTokenBucket({
+            maxBulkPiecesPerPeriod,
+            batchThrottlePeriod,
+            queuedBulkPieces,
+            preOrderPrepDays
+        });
+
         cachedSnapshot = {
             activeOrders: queuedOrders.length,
             activeMachines: machineCount,
             totalQueueMinutes: totalBacklogMins,
             queueWaitMinutes: Math.ceil(totalBacklogMins / machineCount),
             estimatedMinutes: schedule.estimatedWaitMinutes,
+            queuedBulkPieces,
+            maxBulkPiecesPerPeriod,
+            batchThrottlePeriod,
+            preOrderPrepDays,
+            tokenBucket,
             readyLabel: isEmergencyOn
                 ? `Reopening ${schedule.readyLabel}`
                 : schedule.readyLabel,

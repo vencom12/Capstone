@@ -378,7 +378,7 @@ export default function FullScreenStitchExperience() {
               </span>
             </h1>
             <p className={`mt-2.5 sm:mt-3 text-xs sm:text-base text-slate-200 max-w-lg mx-auto font-medium ${bodyShadow}`}>
-              Dense double-loop Turkish cotton terry engineered to anchor high-tensile Madeira rayon embroidery with heirloom durability.
+              Dense double-loop Turkish cotton terry engineered to anchor high-tensile rayon embroidery with heirloom durability.
             </p>
           </div>
 

@@ -2167,7 +2167,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(thanks|thank you|ty|salamat|arigato|ok|okay|k|noted|cge|sige|got it|all good|understood)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery with Madeira threads.",
+                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery.",
                 suggestedProducts: []
             });
         }
@@ -2224,7 +2224,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(hi|hello|hey|good (morning|afternoon|evening)|kamusta|hola|sup|yo)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Hello! Welcome to **Stitch-Opt**. I can help you check real-time product stock, customize embroidery with Madeira threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
+                reply: "Hello! Welcome to **Stitch-Opt**. I can help you check real-time product stock, customize embroidery with high-sheen threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
                 suggestedProducts: []
             });
         }
@@ -2380,7 +2380,7 @@ exports.storefrontChat = async (req, res) => {
                 });
 
                 if (hasAnyInStock) {
-                    reply += `\nAll in-stock variants can be personalized with Madeira rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                    reply += `\nAll in-stock variants can be personalized with rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                 } else if (inStockProducts.length > 0) {
                     const topInStock = inStockProducts[0];
                     const topVb = getProductVariantBreakdown(topInStock);
@@ -2439,7 +2439,7 @@ exports.storefrontChat = async (req, res) => {
                         reply += `\n*(Note: Other workshop items currently awaiting replenishment: ${oosTargets.map(p => p.name).join(', ')}).*\n`;
                     }
 
-                    reply += `\nAll in-stock items can be customized with high-sheen Madeira threads (names, initials, or monograms) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                    reply += `\nAll in-stock items can be customized with high-sheen embroidery threads (names, initials, or monograms) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
                     return res.json({
                         success: true,
                         reply,
@@ -2525,7 +2525,7 @@ exports.storefrontChat = async (req, res) => {
                 if (oosFans.length > 0) {
                     reply += `\n*(Note: Other fan designs currently awaiting replenishment: ${oosFans.map(f => f.name).join(', ')}).*\n`;
                 }
-                reply += `\nWould you like personalized names or monograms embroidered on your fan? We stitch with German Madeira Rayon and metallic threads in 15–45 minutes!`;
+                reply += `\nWould you like personalized names or monograms embroidered on your fan? We stitch with high-sheen rayon and metallic threads in 15–45 minutes!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2602,7 +2602,7 @@ exports.storefrontChat = async (req, res) => {
                     reply += `\n*(Note: Our ${catLabel} lines are currently awaiting workshop replenishment.)*\n`;
                 }
 
-                reply += `\nAll in-stock items can be customized with premium Madeira threads (names, monograms, or initials). Single pieces take under a minute of stitching (ready in 15–45 minutes depending on the live store queue)!`;
+                reply += `\nAll in-stock items can be customized with high-sheen embroidery threads (names, monograms, or initials). Single pieces take under a minute of stitching (ready in 15–45 minutes depending on the live store queue)!`;
                 return res.json({
                     success: true,
                     reply,
@@ -2630,7 +2630,7 @@ exports.storefrontChat = async (req, res) => {
                 if (topVb.outOfStock.length > 0) {
                     reply += `• *(Out of stock: ${topVb.outOfStockSummary})*\n`;
                 }
-                reply += `\nWe can stitch custom names, initials, or monograms in elegant Madeira metallic or rayon threads! Are you looking for a personal keepsake, a gift, or an event souvenir?`;
+                reply += `\nWe can stitch custom names, initials, or monograms in elegant metallic or rayon threads! Are you looking for a personal keepsake, a gift, or an event souvenir?`;
             } else {
                 reply += `We can personalize names, initials, and custom monograms on fans, towels, and caps at our Pacific Mall Lucena workshop. What occasion or design did you have in mind?`;
             }
@@ -2644,9 +2644,9 @@ exports.storefrontChat = async (req, res) => {
         // -------------------------------------------------------------
         // F. Custom Embroidery & Personalization Inquiries
         // -------------------------------------------------------------
-        if (/\b(custom|customize|customization|embroidery|burda|magpaburda|paburda|stitch|stitching|name embroidery|monogram|initials|madeira|thread)\b/i.test(cleanMsg)) {
+        if (/\b(custom|customize|customization|embroidery|burda|magpaburda|paburda|stitch|stitching|name embroidery|monogram|initials|thread)\b/i.test(cleanMsg)) {
             let reply = `Yes! We specialize in custom machine embroidery at our Pacific Mall Lucena workshop!\n\n` +
-                `• **Personalized Text & Monograms**: Stitched using premium German Madeira Rayon and metallic threads (Gold, Silver, Crimson, Navy, etc.).\n` +
+                `• **Personalized Text & Monograms**: Stitched using high-sheen rayon and metallic threads (Gold, Silver, Crimson, Navy, etc.).\n` +
                 `• **Turnaround**: Single items take under a minute of active stitching (typically ready in 15–45 minutes depending on the store queue). Bulk batch orders can take several days up to weeks depending on order size and queued workshop volume.\n`;
             if (inStockProducts.length > 0) {
                 const topP = inStockProducts[0];
@@ -2671,7 +2671,7 @@ exports.storefrontChat = async (req, res) => {
                 const status = vb.hasInStock ? `(In Stock: ${vb.inStock.map(v => v.name).join(', ')})` : `(Out of Stock)`;
                 reply += `• **${p.name}** (${p.tag}): ₱${p.price.toFixed(2)} ${status}\n`;
             });
-            reply += `\nCustom name and monogram stitching varies depending on letter count and thread type (Madeira Rayon vs Metallic Gold/Silver). Visit our Pacific Mall Lucena counter for live thread swatches!`;
+            reply += `\nCustom name and monogram stitching varies depending on letter count and thread type (Rayon vs Metallic Gold/Silver). Visit our Pacific Mall Lucena counter for live thread swatches!`;
             return res.json({
                 success: true,
                 reply,

@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { createTokenBucketLimiter, getRateLimiterDiagnostics } = require('./utils/tokenBucketLimiter');
 const compression = require('compression');
 const { Server } = require('socket.io');
 const cookieParser = require('cookie-parser');
@@ -176,56 +177,60 @@ app.use(require('./middleware/firebaseAuthProxy'));
 
 // Running strictly in PostgreSQL mode
 
-// Global Rate Limiter: Max 3000 requests per 15 minutes per IP
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 3000,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Too many requests from this IP, please try again after 15 minutes.' }
+// --- Token Bucket Rate Limiting Architecture ---
+// Global API Token Bucket: Capacity 300 tokens (burst), refills continuously at 3.33 tokens/sec (3000 tokens / 15 min)
+const globalLimiter = createTokenBucketLimiter({
+    name: 'global-api',
+    capacity: 300,
+    refillRate: 3000,
+    refillIntervalMs: 15 * 60 * 1000,
+    message: { message: 'Too many requests from this IP, please wait a moment for your token bucket to refill.' }
 });
 app.use('/api/', globalLimiter);
 
-// Strict Auth Rate Limiter: Max 20 login/register attempts per 15 minutes
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Too many authentication attempts. Please try again after 15 minutes.' }
+// Strict Auth Token Bucket: Capacity 10 burst attempts, refills 20 tokens per 15 minutes (~1 token per 45s)
+const authLimiter = createTokenBucketLimiter({
+    name: 'auth-strict',
+    capacity: 10,
+    refillRate: 20,
+    refillIntervalMs: 15 * 60 * 1000,
+    message: { message: 'Too many authentication attempts. Please wait for your security token bucket to refill.' }
 });
 
-// Dashboard Rate Limiter: Max 50 requests per 10 minutes (for heavy state fetches)
-const dashboardLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    max: 50,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Dashboard refresh limit reached. Please wait a few minutes.' }
+// Dashboard State Token Bucket: Capacity 20 burst fetches, refills 50 tokens per 10 minutes
+const dashboardLimiter = createTokenBucketLimiter({
+    name: 'dashboard-state',
+    capacity: 20,
+    refillRate: 50,
+    refillIntervalMs: 10 * 60 * 1000,
+    message: { message: 'Dashboard refresh limit reached. Please wait a few seconds before refreshing.' }
 });
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/customer/dashboard-state', dashboardLimiter);
 
-// Anti-enumeration Rate Limiter: Max 60 live availability checks per minute per IP
-const availabilityLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
+// Anti-enumeration Token Bucket: Capacity 20 burst checks, refills 1 token/sec (60/min)
+const availabilityLimiter = createTokenBucketLimiter({
+    name: 'auth-availability',
+    capacity: 20,
+    refillRate: 60,
+    refillIntervalMs: 60 * 1000,
     message: { message: 'Too many availability checks from this IP. Please slow down.' }
 });
 app.use('/api/auth/check-availability', availabilityLimiter);
 app.use('/api/v1/auth/check-availability', availabilityLimiter);
 
-// Strict Checkout Rate Limiter: Max 5 checkout requests per minute
-const checkoutLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Checkout rate limit reached. Please wait a minute.' }
+// Strict Checkout Token Bucket: Capacity 5 burst submissions, refills 5 tokens/minute (1 token per 12s)
+const checkoutLimiter = createTokenBucketLimiter({
+    name: 'order-checkout',
+    capacity: 5,
+    refillRate: 5,
+    refillIntervalMs: 60 * 1000,
+    message: { message: 'Checkout rate limit reached. Please wait a few seconds before submitting another order.' }
 });
+app.use('/api/customer/order/submit', checkoutLimiter);
+app.use('/api/v1/customer/order/submit', checkoutLimiter);
 app.use('/api/order/submit', checkoutLimiter);
 app.use('/api/v1/order/submit', checkoutLimiter);
 // v1 Rate Limiters
@@ -388,6 +393,7 @@ app.get('/api/health', async (req, res) => {
         database: dbStatus,
         dbType: 'supabase',
         schema,
+        rateLimiters: getRateLimiterDiagnostics(),
         ...(error ? { error } : {}),
         timestamp: new Date().toISOString()
     });

@@ -1,18 +1,44 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
 import QuantityInput from '@/components/ui/QuantityInput';
 import type { BasketItem, ProductVariant } from '@/lib/types';
+import {
+  MAX_CHARS_PER_LINE,
+  resolveProductGarmentSize,
+  sanitizeSingleLineText,
+  sanitizeBulkMultilineText,
+  calculateLetteringCost,
+  parseBulkLetteringLines,
+} from '@/lib/letteringPricing';
 
 interface BasketViewProps {
   onGoToShop: () => void;
   onOpenCheckout: (selectedItems?: BasketItem[]) => void;
 }
+
+interface StudioThreadColor {
+  name: string;
+  hex: string;
+  isAvailable?: boolean;
+}
+
+const DEFAULT_THREAD_COLORS: StudioThreadColor[] = [
+  { name: 'Metallic Gold', hex: '#d4af37', isAvailable: true },
+  { name: 'Pure White', hex: '#ffffff', isAvailable: true },
+  { name: 'Obsidian Black', hex: '#1c1917', isAvailable: true },
+  { name: 'Silver Platinum', hex: '#e2e8f0', isAvailable: true },
+  { name: 'Royal Navy', hex: '#1e3a8a', isAvailable: true },
+  { name: 'Crimson Red', hex: '#b91c1c', isAvailable: true },
+  { name: 'Emerald Green', hex: '#047857', isAvailable: true },
+  { name: 'Rose Blush', hex: '#fb7185', isAvailable: true },
+];
 
 export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewProps) {
   const { items, removeItem, updateQuantity, updateBasketItem, clearBasket } = useBasketStore();
@@ -21,20 +47,105 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   const [mounted, setMounted] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [editingItem, setEditingItem] = useState<BasketItem | null>(null);
+  const [expandedBulkIds, setExpandedBulkIds] = useState<Record<string, boolean>>({});
+
+  // Admin lettering rates & thread colors
+  const [letteringRates, setLetteringRates] = useState<{ smallRate: number; bigRate: number; preOrderPrepDays: number }>({
+    smallRate: 7,
+    bigRate: 10,
+    preOrderPrepDays: 3,
+  });
+  const [availableColors, setAvailableColors] = useState<StudioThreadColor[]>(DEFAULT_THREAD_COLORS);
+
+  // Edit Item Modal states
+  const [editVariantName, setEditVariantName] = useState<string>('');
+  const [editSelectedColor, setEditSelectedColor] = useState<string>('');
+  const [editSelectedSize, setEditSelectedSize] = useState<string>('');
+  const [editImageUrl, setEditImageUrl] = useState<string>('');
+  const [editIsPersonalized, setEditIsPersonalized] = useState<boolean>(false);
+  const [editLetteringMode, setEditLetteringMode] = useState<'single' | 'bulk'>('single');
+  const [editSingleText, setEditSingleText] = useState<string>('');
+  const [editBulkText, setEditBulkText] = useState<string>('');
+  const [editThreadColor, setEditThreadColor] = useState<{ name: string; hex: string }>({
+    name: 'Metallic Gold',
+    hex: '#d4af37',
+  });
+  const [editQuantity, setEditQuantity] = useState<number>(1);
+  const [editPreOrderAccepted, setEditPreOrderAccepted] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Selected item IDs for checkout
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
-    // Select all items by default on initial mount
     setSelectedIds(items.map((i) => i.id));
+  }, []);
+
+  // Fetch studio settings (lettering rates & thread colors)
+  useEffect(() => {
+    api
+      .get<any>('/api/customer/settings')
+      .then((res) => {
+        if (res) {
+          setLetteringRates((prev) => ({
+            smallRate: Number(res.smallGarmentLetterRate) || prev.smallRate || 7,
+            bigRate: Number(res.bigGarmentLetterRate) || prev.bigRate || 10,
+            preOrderPrepDays: res.preOrderPrepDays !== undefined ? Number(res.preOrderPrepDays) : prev.preOrderPrepDays,
+          }));
+          if (Array.isArray(res.availableThreadColors) && res.availableThreadColors.length > 0) {
+            const mapped: StudioThreadColor[] = res.availableThreadColors
+              .map((c: any) => ({
+                name: typeof c === 'string' ? c : String(c.name || ''),
+                hex: typeof c === 'string' ? '#ffffff' : String(c.hex || '#ffffff'),
+                isAvailable: typeof c === 'object' && c !== null ? c.isAvailable !== false : true,
+              }))
+              .filter((c: StudioThreadColor) => c.name);
+            if (mapped.length > 0) setAvailableColors(mapped);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Sync selected IDs if items list changes
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => items.some((i) => i.id === id)));
   }, [items]);
+
+  // Open Edit Modal and populate state from BasketItem
+  const openEditModal = (item: BasketItem) => {
+    const isBulk = Boolean(
+      item.personalization?.isBulkList ||
+        (Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 1)
+    );
+    const hasPers = Boolean(item.personalization?.text || (item.personalization?.namesList && item.personalization.namesList.length > 0));
+    const namesArr =
+      Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 0
+        ? item.personalization!.namesList!
+        : item.personalization?.text
+        ? [sanitizeSingleLineText(item.personalization.text)]
+        : [];
+
+    setEditVariantName(item.selectedVariant || '');
+    setEditSelectedColor(item.selectedColor || '');
+    setEditSelectedSize(item.selectedSize || '');
+    setEditImageUrl(item.imageUrl || '');
+    setEditIsPersonalized(hasPers);
+    setEditLetteringMode(isBulk ? 'bulk' : 'single');
+    setEditSingleText( sanitizeSingleLineText(namesArr[0] || item.personalization?.text || '') );
+    setEditBulkText( sanitizeBulkMultilineText(namesArr.join('\n')) );
+    const tcName =
+      typeof item.personalization?.threadColor === 'object'
+        ? (item.personalization.threadColor as any)?.name || 'Metallic Gold'
+        : item.personalization?.threadColor || 'Metallic Gold';
+    const tcHex = item.personalization?.threadHex || '#d4af37';
+    setEditThreadColor({ name: tcName, hex: tcHex });
+    setEditQuantity(item.quantity);
+    setEditPreOrderAccepted(Boolean(item.isPreOrder));
+    setEditError(null);
+    setEditingItem(item);
+  };
 
   if (!mounted) {
     return (
@@ -64,32 +175,53 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     }
   };
 
-  const handleQuantityChange = (id: string, productId: string, newQty: number, maxStock?: number) => {
-    if (newQty < 1) return;
-    if (maxStock !== undefined && maxStock > 0 && maxStock < 999999 && newQty > maxStock) {
-      showToast(
-        `Only ${maxStock} units currently available in stock.`,
-        'error'
-      );
-      updateQuantity(id, maxStock);
-      return;
-    }
-    const product = products.find((p) => (p.id || (p as any)._id) === productId);
-    if (product && maxStock === undefined) {
-      const availableStock =
-        product.availableStock !== undefined
-          ? product.availableStock
-          : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-      if (availableStock > 0 && newQty > availableStock) {
-        showToast(
-          `Only ${availableStock} units of "${product.name}" are currently available in stock.`,
-          'error'
-        );
-        updateQuantity(id, availableStock);
-        return;
+  const getAvailableStockForItem = (item: BasketItem) => {
+    const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
+    if (!product) return 999999;
+    if (product.variants && Array.isArray(product.variants) && item.selectedVariant) {
+      const v = product.variants.find((variant: any) => variant.name === item.selectedVariant);
+      if (v) {
+        return v.availableStock !== undefined ? v.availableStock : (v.stock ?? 999999);
       }
     }
-    updateQuantity(id, newQty);
+    return product.availableStock !== undefined
+      ? product.availableStock
+      : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+  };
+
+  const handleQuantityChange = (item: BasketItem, newQty: number, availableStock: number) => {
+    if (newQty < 1) return;
+
+    // If item is a bulk multi-line list, quantity is tied to the number of lines
+    const isBulk = Boolean(
+      item.personalization?.isBulkList ||
+        (Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 1)
+    );
+    if (isBulk) {
+      showToast('This item uses a Bulk Name List. Click "Edit Item / Names" to add or remove lines.', 'info');
+      openEditModal(item);
+      return;
+    }
+
+    if (availableStock < 999999 && newQty > availableStock) {
+      // Mark as Pre-Order when quantity exceeds current on-hand stock
+      updateBasketItem(item.id, {
+        quantity: newQty,
+        isPreOrder: true,
+        preOrderShortage: Math.max(0, newQty - Math.max(0, availableStock)),
+      });
+      showToast(
+        `Quantity (${newQty}) exceeds current on-hand stock (${Math.max(0, availableStock)}). Marked as Pre-Order with extended production schedule.`,
+        'warning'
+      );
+      return;
+    }
+
+    updateBasketItem(item.id, {
+      quantity: newQty,
+      isPreOrder: false,
+      preOrderShortage: 0,
+    });
   };
 
   const handleToggleFavoriteItem = (item: BasketItem) => {
@@ -105,7 +237,6 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
       showToast('Please select at least one item to proceed to checkout.', 'error');
       return;
     }
-    // Open checkout without forcing fulfillment upfront; let customer choose in CheckoutModal
     onOpenCheckout(selectedItems);
   };
 
@@ -183,7 +314,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
       {/* Main Grid: Clean & Well Proportioned */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pb-36 lg:pb-8 items-start">
-        {/* Left Column: Itemized List Container (7 of 12 cols on desktop) */}
+        {/* Left Column: Itemized List Container (8 of 12 cols on desktop) */}
         <div className="lg:col-span-8 flex flex-col gap-3">
           {/* Header Row / Select All Controls Bar */}
           <div className="bg-bg-surface/90 border border-border-glass rounded-xl px-4 py-3 flex items-center justify-between backdrop-blur-md">
@@ -210,20 +341,15 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               const isSelected = selectedIds.includes(item.id);
               const product = products.find((p) => (p.id || (p as any)._id) === item.productId);
               const isFav = favorites.some((f) => (f.id || (f as any)._id) === item.productId);
-
-              let availableStock = 999999;
-              if (product) {
-                if (product.variants && Array.isArray(product.variants) && item.selectedVariant) {
-                  const v = product.variants.find((variant: any) => variant.name === item.selectedVariant);
-                  if (v) {
-                    availableStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 999999);
-                  } else {
-                    availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-                  }
-                } else {
-                  availableStock = product.availableStock !== undefined ? product.availableStock : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
-                }
-              }
+              const availableStock = getAvailableStockForItem(item);
+              const isBulk = Boolean(
+                item.personalization?.isBulkList ||
+                  (Array.isArray(item.personalization?.namesList) && item.personalization!.namesList!.length > 1)
+              );
+              const namesList = Array.isArray(item.personalization?.namesList) ? item.personalization!.namesList! : [];
+              const isExpanded = Boolean(expandedBulkIds[item.id]);
+              const isItemPreOrder = Boolean(item.isPreOrder || (availableStock < 999999 && item.quantity > availableStock));
+              const garmentTier = item.garmentSize || resolveProductGarmentSize(product || { name: item.name });
 
               return (
                 <div
@@ -273,66 +399,62 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-sm sm:text-base font-bold text-text-main m-0 truncate">
-                            {item.name}
-                          </h3>
-                          {product?.tag && (
-                            <span className="inline-block text-[0.65rem] uppercase tracking-wider text-text-dim mt-0.5">
-                              {product.tag}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm sm:text-base font-bold text-text-main m-0 truncate">
+                              {item.name}
+                            </h3>
+                            <span
+                              className={`text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                garmentTier === 'big'
+                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                  : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                              }`}
+                            >
+                              {garmentTier === 'big' ? 'Big Garment' : 'Small Garment'}
                             </span>
-                          )}
+                            {isItemPreOrder && (
+                              <span className="text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                Pre-Order Schedule
+                              </span>
+                            )}
+                          </div>
 
                           {/* Variant & Personalization Badges */}
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            {/* Interactive Clickable Variant Badge to change options */}
-                            {product?.variants && product.variants.length > 0 ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingItem(item);
-                                }}
-                                className="group/variant flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 text-primary hover:text-primary-light text-[0.72rem] px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
-                                title="Click to change variant or color"
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(item);
+                              }}
+                              className="group/variant flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 text-primary hover:text-primary-light text-[0.72rem] px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                              title="Click to edit variant, thread color, or single/bulk names"
+                            >
+                              {item.selectedColor && (
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full border border-white/40 inline-block shadow-xs shrink-0"
+                                  style={{ backgroundColor: item.selectedColor }}
+                                />
+                              )}
+                              <span>{item.selectedVariant || 'Standard Option'}</span>
+                              {item.selectedSize && <span>• {item.selectedSize}</span>}
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="opacity-70 group-hover/variant:opacity-100 transition-opacity ml-0.5"
                               >
-                                {item.selectedColor && (
-                                  <span
-                                    className="w-2.5 h-2.5 rounded-full border border-white/40 inline-block shadow-xs shrink-0"
-                                    style={{ backgroundColor: item.selectedColor }}
-                                  />
-                                )}
-                                <span>{item.selectedVariant || 'Select Variant'}</span>
-                                {item.selectedSize && <span>• {item.selectedSize}</span>}
-                                <svg
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="opacity-70 group-hover/variant:opacity-100 transition-opacity ml-0.5"
-                                >
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
-                            ) : (
-                              <>
-                                {item.selectedVariant && (
-                                  <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
-                                    {item.selectedVariant}
-                                  </span>
-                                )}
-                                {item.selectedSize && (
-                                  <span className="bg-white/5 border border-white/10 text-text-main text-[0.7rem] px-2 py-0.5 rounded-md font-medium">
-                                    Size: {item.selectedSize}
-                                  </span>
-                                )}
-                              </>
-                            )}
-                            {item.personalization?.text && (
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+
+                            {item.personalization?.text && !isBulk && (
                               <span className="bg-primary/10 border border-primary/20 text-primary text-[0.7rem] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                                   <circle cx="6" cy="6" r="3" />
@@ -350,7 +472,87 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 </span>
                               </span>
                             )}
+
+                            {isBulk && namesList.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedBulkIds((prev) => ({
+                                    ...prev,
+                                    [item.id]: !prev[item.id],
+                                  }))
+                                }
+                                className="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[0.7rem] px-2.5 py-0.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                              >
+                                <span>📋 Bulk Name List ({namesList.length} lines)</span>
+                                {item.personalization?.threadHex && (
+                                  <span
+                                    className="w-2 h-2 rounded-full border border-white/40 inline-block shadow-xs"
+                                    style={{ backgroundColor: item.personalization.threadHex }}
+                                  />
+                                )}
+                                <span className="text-[0.65rem] underline ml-0.5">
+                                  {isExpanded ? 'Hide' : 'View'}
+                                </span>
+                              </button>
+                            )}
                           </div>
+
+                          {/* Bulk Names Preview / Expandable List */}
+                          {isBulk && namesList.length > 0 && (
+                            <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2.5 text-[0.72rem]">
+                              <div className="flex items-center justify-between text-text-dim mb-1">
+                                <span>
+                                  Personalized Names ({namesList.length} pcs • Thread:{' '}
+                                  <strong className="text-text-main">
+                                    {(typeof item.personalization?.threadColor === 'object'
+                                      ? (item.personalization.threadColor as any)?.name
+                                      : item.personalization?.threadColor) || 'Gold'}
+                                  </strong>
+                                  )
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(item)}
+                                  className="text-primary hover:underline font-bold bg-transparent border-none cursor-pointer p-0 text-[0.7rem]"
+                                >
+                                  Edit Names / Mode
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(isExpanded ? namesList : namesList.slice(0, 5)).map((lineName, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-text-main font-mono text-[0.68rem]"
+                                  >
+                                    <span className="text-text-dim mr-1">#{idx + 1}</span>
+                                    {lineName}
+                                  </span>
+                                ))}
+                                {!isExpanded && namesList.length > 5 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedBulkIds((prev) => ({ ...prev, [item.id]: true }))
+                                    }
+                                    className="px-2 py-0.5 rounded bg-primary/15 border border-primary/30 text-primary font-bold text-[0.68rem] cursor-pointer"
+                                  >
+                                    +{namesList.length - 5} more…
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Pre-Order Notice Banner if exceeding stock */}
+                          {isItemPreOrder && (
+                            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[0.7rem] text-amber-200 flex items-center gap-2">
+                              <span>⏳</span>
+                              <span>
+                                <strong>Pre-Order Item:</strong> Quantity ({item.quantity} pcs) exceeds current on-hand stock ({Math.max(0, availableStock)} pcs). Includes extended workshop preparation &amp; production time.
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Price Breakdown */}
@@ -358,31 +560,51 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           <span className="text-base sm:text-lg font-mono font-black text-text-main block leading-tight">
                             ₱{(item.price * item.quantity).toFixed(2)}
                           </span>
-                          <span className="text-[0.7rem] text-text-dim">
-                            ₱{item.price.toFixed(2)} each
+                          <span className="text-[0.7rem] text-text-dim block">
+                            ₱{item.price.toFixed(2)} avg/pc
                           </span>
+                          {(item.personalization?.totalExtraLetteringCost ?? 0) > 0 && (
+                            <span className="text-[0.65rem] text-amber-400 font-semibold block">
+                              incl. +₱{(item.personalization?.totalExtraLetteringCost ?? 0).toFixed(0)} extra letters
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* Controls Row */}
-                      <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/5">
+                      <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/5 flex-wrap">
                         {/* Stepper with Direct Typing */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                           <QuantityInput
                             value={item.quantity}
-                            onChange={(newQty) => handleQuantityChange(item.id, item.productId, newQty, availableStock)}
+                            onChange={(newQty) => handleQuantityChange(item, newQty, availableStock)}
                             min={1}
-                            max={availableStock > 0 && availableStock < 999999 ? availableStock : undefined}
+                            max={9999}
                             size="sm"
                             ariaLabel={`Quantity for ${item.name}`}
-                            onMaxExceeded={(max) => {
-                              showToast(`Only ${max} units available in stock.`, 'error');
-                            }}
                           />
+                          {isBulk && (
+                            <span className="text-[0.68rem] text-text-dim italic">
+                              Synced to {namesList.length} lines
+                            </span>
+                          )}
                         </div>
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="px-2.5 py-1.5 rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/35 text-primary font-bold transition-all flex items-center gap-1.5 cursor-pointer text-[0.72rem]"
+                            title="Edit item variant, names, or switch Single / Bulk mode"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            <span>Edit Item / Names</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleToggleFavoriteItem(item)}
@@ -391,7 +613,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 ? 'bg-primary/20 border-primary text-primary font-bold shadow-sm'
                                 : 'bg-white/5 border-border-glass text-text-dim hover:text-primary hover:bg-white/10'
                             }`}
-                            title={isFav ? "Saved in Favorites (Click to unfavorite)" : "Save to Favorites"}
+                            title={isFav ? 'Saved in Favorites (Click to unfavorite)' : 'Save to Favorites'}
                           >
                             <svg
                               width="13"
@@ -450,7 +672,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           </div>
         </div>
 
-        {/* Right Column: Clean, Focused Order Summary (5 of 12 cols on desktop) */}
+        {/* Right Column: Clean, Focused Order Summary (4 of 12 cols on desktop) */}
         <div className="lg:col-span-4 lg:sticky lg:top-4 flex flex-col gap-4">
           <div className="bg-bg-surface/90 border border-border-glass rounded-xl p-5 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col gap-4">
             <h2 className="text-base font-extrabold text-text-main m-0 pb-3 border-b border-white/10 flex items-center justify-between">
@@ -477,9 +699,9 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
               </div>
 
               <div className="flex justify-between items-center text-text-dim">
-                <span>Pick-up Service Fee:</span>
-                <span className="text-emerald-400 font-bold text-xs uppercase">
-                  Free
+                <span>Payment Terms:</span>
+                <span className="text-primary font-bold text-xs">
+                  100% Upfront Payment
                 </span>
               </div>
 
@@ -523,7 +745,6 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         maxWidth="max-w-[420px]"
       >
         <div className="flex flex-col items-center text-center p-2">
-          {/* Warning Icon Badge */}
           <div className="w-14 h-14 rounded-xl bg-danger/15 border border-danger/30 text-danger flex items-center justify-center mb-4">
             <svg
               width="28"
@@ -572,131 +793,492 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         </div>
       </GlassModal>
 
-      {/* Variant Selection Modal for in-window customization */}
+      {/* Full In-Basket Item & Personalization Editor Modal */}
       {editingItem && (() => {
         const product = products.find((p) => (p.id || (p as any)._id) === editingItem.productId);
         const variants = product?.variants || [];
+        const selectedVariantObj = variants.find((v: ProductVariant) => v.name === editVariantName);
+
+        // Determine base unit price (without extra lettering)
+        const baseUnitPrice =
+          selectedVariantObj?.priceOverride ??
+          editingItem.baseUnitPrice ??
+          product?.price ??
+          Math.max(0, editingItem.price - (editingItem.personalization?.extraLetteringCost || 0));
+
+        // Determine available stock for the selected variant
+        let variantStock = 999999;
+        if (product) {
+          if (selectedVariantObj) {
+            variantStock =
+              selectedVariantObj.availableStock !== undefined
+                ? selectedVariantObj.availableStock
+                : (selectedVariantObj.stock ?? 0);
+          } else {
+            variantStock =
+              product.availableStock !== undefined
+                ? product.availableStock
+                : Math.max(0, (product.count ?? 0) - (product.reservedCount ?? 0));
+          }
+        }
+
+        const garmentSize = resolveProductGarmentSize(
+          product || { name: editingItem.name, garmentSize: editingItem.garmentSize }
+        );
+        const isBig = garmentSize === 'big';
+
+        const singleBreakdown = calculateLetteringCost(editSingleText, isBig, letteringRates);
+        const bulkSummary = parseBulkLetteringLines(editBulkText, isBig, letteringRates);
+
+        const effectiveQuantity =
+          editIsPersonalized && editLetteringMode === 'bulk'
+            ? Math.max(1, bulkSummary.lineCount)
+            : Math.max(1, editQuantity);
+
+        const avgExtraPerUnit = !editIsPersonalized
+          ? 0
+          : editLetteringMode === 'bulk'
+          ? bulkSummary.averageExtraCostPerUnit
+          : singleBreakdown.extraCost;
+
+        const totalExtraCost = !editIsPersonalized
+          ? 0
+          : editLetteringMode === 'bulk'
+          ? bulkSummary.totalExtraCost
+          : singleBreakdown.extraCost * effectiveQuantity;
+
+        const finalUnitPrice = Number((baseUnitPrice + avgExtraPerUnit).toFixed(2));
+        const finalSubtotal = Number((baseUnitPrice * effectiveQuantity + totalExtraCost).toFixed(2));
+
+        const exceedsStock = variantStock < 999999 && effectiveQuantity > variantStock;
+        const shortageCount = exceedsStock ? Math.max(0, effectiveQuantity - Math.max(0, variantStock)) : 0;
+
+        const handleSaveEdit = () => {
+          setEditError(null);
+
+          if (editIsPersonalized) {
+            if (editLetteringMode === 'single' && !editSingleText.trim()) {
+              setEditError('Please enter a name for Single Name embroidery, or turn off Personalization.');
+              return;
+            }
+            if (editLetteringMode === 'bulk' && bulkSummary.lineCount === 0) {
+              setEditError('Please enter or paste at least 1 line of text in Bulk List mode.');
+              return;
+            }
+          }
+
+          if (exceedsStock && !editPreOrderAccepted) {
+            setEditError(
+              `Your quantity (${effectiveQuantity} pcs) exceeds the ${Math.max(0, variantStock)} pcs currently in stock. Please check the Pre-Order acknowledgment box below to proceed.`
+            );
+            return;
+          }
+
+          const updatedPersonalization = editIsPersonalized
+            ? {
+                text:
+                  editLetteringMode === 'bulk'
+                    ? bulkSummary.namesList.length === 1
+                      ? bulkSummary.namesList[0]
+                      : `${bulkSummary.namesList.length} Names (${bulkSummary.namesList.slice(0, 3).join(', ')}${
+                          bulkSummary.namesList.length > 3 ? '...' : ''
+                        })`
+                    : sanitizeSingleLineText(editSingleText).trim(),
+                namesList:
+                  editLetteringMode === 'bulk'
+                    ? bulkSummary.namesList
+                    : [sanitizeSingleLineText(editSingleText).trim()],
+                isBulkList: editLetteringMode === 'bulk' && bulkSummary.namesList.length > 1,
+                font: editingItem.personalization?.font || 'Classic Cursive Script',
+                threadColor: editThreadColor.name,
+                threadHex: editThreadColor.hex,
+                extraLetteringCost: Number(avgExtraPerUnit.toFixed(2)),
+                totalExtraLetteringCost: Number(totalExtraCost.toFixed(2)),
+              }
+            : undefined;
+
+          updateBasketItem(editingItem.id, {
+            selectedVariant: editVariantName || editingItem.selectedVariant,
+            selectedColor: editSelectedColor || editingItem.selectedColor,
+            selectedSize: editSelectedSize || editingItem.selectedSize,
+            imageUrl: editImageUrl || editingItem.imageUrl,
+            baseUnitPrice,
+            garmentSize,
+            price: finalUnitPrice,
+            quantity: effectiveQuantity,
+            isPreOrder: exceedsStock,
+            preOrderShortage: shortageCount,
+            personalization: updatedPersonalization,
+          });
+
+          showToast(`Updated "${editingItem.name}" in your basket`, 'success');
+          setEditingItem(null);
+        };
 
         return (
           <GlassModal
             isOpen={Boolean(editingItem)}
             onClose={() => setEditingItem(null)}
-            maxWidth="max-w-[460px]"
+            maxWidth="max-w-[560px]"
           >
-            <div className="flex flex-col gap-4 text-left p-1">
-              {/* Header with sufficient right padding to avoid the close (X) button */}
-              <div className="flex flex-col gap-2 border-b border-border-glass pb-3 pr-10">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-col gap-4 text-left p-1 max-h-[82vh] overflow-y-auto pr-1">
+              {/* Header */}
+              <div className="flex flex-col gap-1.5 border-b border-border-glass pb-3 pr-10">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[0.65rem] uppercase tracking-wider text-primary font-bold">
-                    Select Garment Option
+                    Edit Basket Item &amp; Personalization
                   </span>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-text-dim">Current:</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 font-bold text-text-main text-[0.72rem]">
-                      {editingItem.selectedVariant || 'Default'}
-                    </span>
-                  </div>
+                  <span
+                    className={`text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      isBig
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                    }`}
+                  >
+                    {isBig
+                      ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)`
+                      : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}
+                  </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-extrabold text-text-main m-0 leading-tight">
                   {editingItem.name}
                 </h3>
               </div>
 
-              {/* Variants List */}
-              <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
-                {variants.length > 0 ? (
-                  variants.map((v: ProductVariant, idx: number) => {
-                    const isSelected = editingItem.selectedVariant === v.name;
-                    const variantPrice = v.priceOverride ?? product?.price ?? editingItem.price;
-
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          updateBasketItem(editingItem.id, {
-                            selectedVariant: v.name,
-                            selectedColor: v.color || editingItem.selectedColor,
-                            selectedSize: v.size || editingItem.selectedSize,
-                            price: variantPrice,
-                            imageUrl: v.imageUrl || editingItem.imageUrl,
-                          });
-                          showToast(`Updated to "${v.name}"`, 'success');
-                          setEditingItem(null);
-                        }}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer text-left ${
-                          isSelected
-                            ? 'bg-primary/15 border-primary shadow-sm ring-1 ring-primary'
-                            : 'bg-bg-surface/80 hover:bg-white/[0.06] border-border-glass hover:border-white/20'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          {/* Color swatch or Variant Image preview */}
-                          {v.imageUrl ? (
-                            <img
-                              src={v.imageUrl}
-                              alt={v.name}
-                              className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
-                            />
-                          ) : v.color ? (
-                            <div
-                              className="w-8 h-8 rounded-lg border border-white/30 shrink-0 shadow-inner flex items-center justify-center"
-                              style={{ backgroundColor: v.color }}
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 shrink-0 flex items-center justify-center text-xs font-bold text-text-dim">
-                              {idx + 1}
-                            </div>
-                          )}
-
-                          <div className="min-w-0">
-                            <span className="text-sm font-bold text-text-main block leading-snug">
-                              {v.name}
-                            </span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {v.size && (
-                                <span className="text-[0.7rem] text-text-dim">
-                                  Size: <b className="text-text-main">{v.size}</b>
-                                </span>
-                              )}
-                              {v.color && (
-                                <span className="text-[0.7rem] text-text-dim flex items-center gap-1">
-                                  Color: <b className="text-text-main">{v.color}</b>
-                                </span>
-                              )}
+              {/* 1. Variant Selection */}
+              {variants.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-text-main uppercase tracking-wider">
+                    1. Garment Variant / Color
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                    {variants.map((v: ProductVariant, idx: number) => {
+                      const isVarSelected = editVariantName === v.name;
+                      const vPrice = v.priceOverride ?? product?.price ?? baseUnitPrice;
+                      const vStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setEditVariantName(v.name);
+                            if (v.color) setEditSelectedColor(v.color);
+                            if (v.size) setEditSelectedSize(v.size);
+                            if (v.imageUrl) setEditImageUrl(v.imageUrl);
+                          }}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left ${
+                            isVarSelected
+                              ? 'bg-primary/15 border-primary shadow-sm ring-1 ring-primary'
+                              : 'bg-bg-surface/80 hover:bg-white/[0.06] border-border-glass'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {v.color && (
+                              <span
+                                className="w-4 h-4 rounded-full border border-white/40 shrink-0"
+                                style={{ backgroundColor: v.color }}
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-text-main block truncate">
+                                {v.name}
+                              </span>
+                              <span className="text-[0.65rem] text-text-dim block">
+                                {vStock > 0 ? `${vStock} in stock` : 'Pre-Order available'}
+                              </span>
                             </div>
                           </div>
-                        </div>
-
-                        <div className="text-right shrink-0 pl-3">
-                          <span className="text-sm font-mono font-bold text-primary block">
-                            ₱{variantPrice.toFixed(2)}
+                          <span className="text-xs font-mono font-bold text-primary shrink-0 pl-2">
+                            ₱{vPrice.toFixed(0)}
                           </span>
-                          {isSelected && (
-                            <span className="text-[0.65rem] text-primary font-bold uppercase tracking-wider">
-                              Selected ✓
-                            </span>
-                          )}
-                        </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Personalization Toggle & Single vs Bulk Mode */}
+              <div className="flex flex-col gap-3 bg-white/[0.02] border border-border-glass rounded-xl p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-text-main block">
+                      2. Custom Embroidery Lettering
+                    </span>
+                    <span className="text-[0.68rem] text-text-dim">
+                      First word/name free • Max {MAX_CHARS_PER_LINE} chars per line (including spaces)
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editIsPersonalized}
+                      onChange={(e) => setEditIsPersonalized(e.target.checked)}
+                      className="w-4 h-4 rounded accent-primary cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-primary">
+                      {editIsPersonalized ? 'Personalized' : 'Plain (No Text)'}
+                    </span>
+                  </label>
+                </div>
+
+                {editIsPersonalized && (
+                  <>
+                    {/* Mode Switcher: Single Name <-> Bulk List */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-black/40 border border-white/10 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editLetteringMode === 'bulk') {
+                            const firstLine = bulkSummary.namesList[0] || '';
+                            if (firstLine) setEditSingleText(sanitizeSingleLineText(firstLine));
+                          }
+                          setEditLetteringMode('single');
+                        }}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                          editLetteringMode === 'single'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-transparent text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        Single Name
                       </button>
-                    );
-                  })
-                ) : (
-                  <div className="p-6 text-center text-text-dim text-xs">
-                    No alternative variants available for this item.
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editLetteringMode === 'single' && editSingleText.trim() && !editBulkText.trim()) {
+                            setEditBulkText(sanitizeSingleLineText(editSingleText));
+                          }
+                          setEditLetteringMode('bulk');
+                        }}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                          editLetteringMode === 'bulk'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-transparent text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        📋 Bulk List (Copy &amp; Paste)
+                      </button>
+                    </div>
+
+                    {/* Single Name Input */}
+                    {editLetteringMode === 'single' ? (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center text-[0.7rem]">
+                          <span className="text-text-dim font-medium">
+                            Embroidery Name (or paste multiple lines to switch to Bulk):
+                          </span>
+                          <span
+                            className={`font-mono font-bold ${
+                              editSingleText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400' : 'text-text-dim'
+                            }`}
+                          >
+                            {editSingleText.length}/{MAX_CHARS_PER_LINE} chars
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={editSingleText}
+                          maxLength={MAX_CHARS_PER_LINE}
+                          onPaste={(e) => {
+                            const pasted = e.clipboardData.getData('text');
+                            if (pasted && /\r?\n/.test(pasted.trim())) {
+                              e.preventDefault();
+                              const sanitizedMulti = sanitizeBulkMultilineText(pasted);
+                              setEditBulkText(sanitizedMulti);
+                              setEditLetteringMode('bulk');
+                            }
+                          }}
+                          onChange={(e) => setEditSingleText(sanitizeSingleLineText(e.target.value))}
+                          placeholder="e.g. Coach1 A (max 20 chars)"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-border-glass text-text-main text-sm font-medium focus:outline-none focus:border-primary"
+                        />
+                        {editSingleText.trim() && (
+                          <div className="text-[0.7rem] text-text-dim flex items-center justify-between bg-white/[0.03] px-2.5 py-1.5 rounded-lg border border-white/5">
+                            <span>{singleBreakdown.explanation}</span>
+                            <span className="font-mono font-bold text-primary">
+                              {singleBreakdown.extraCost > 0
+                                ? `+₱${singleBreakdown.extraCost.toFixed(2)}/pc`
+                                : 'Included'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Bulk Multi-Line Textarea */
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center text-[0.7rem]">
+                          <span className="text-text-dim font-medium">
+                            1 line = 1 piece (Max {MAX_CHARS_PER_LINE} chars per line incl. spaces):
+                          </span>
+                          <span className="font-mono font-bold text-primary">
+                            {bulkSummary.lineCount} {bulkSummary.lineCount === 1 ? 'line' : 'lines'} = {bulkSummary.lineCount} qty
+                          </span>
+                        </div>
+                        <textarea
+                          rows={5}
+                          value={editBulkText}
+                          onChange={(e) => setEditBulkText(sanitizeBulkMultilineText(e.target.value))}
+                          placeholder={`Paste or type names (1 per line, max 20 chars/line):\nCoach1\nCoach2\nCoach3 A\nPlayer 4`}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-border-glass text-text-main text-xs font-mono leading-relaxed focus:outline-none focus:border-primary resize-y"
+                        />
+
+                        {/* Per-line breakdown preview */}
+                        {bulkSummary.lines.length > 0 && (
+                          <div className="bg-black/30 border border-white/10 rounded-lg p-2.5 max-h-[140px] overflow-y-auto flex flex-col gap-1">
+                            {bulkSummary.lines.map((line) => (
+                              <div
+                                key={line.lineIndex}
+                                className="flex items-center justify-between text-[0.68rem] py-0.5 border-b border-white/5 last:border-none"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-text-dim font-mono">#{line.lineIndex}</span>
+                                  <span className="font-mono text-text-main truncate font-semibold">
+                                    &ldquo;{line.sanitizedLine}&rdquo;
+                                  </span>
+                                  <span className="text-[0.62rem] text-text-dim font-mono">
+                                    ({line.charCount}/{MAX_CHARS_PER_LINE})
+                                  </span>
+                                </div>
+                                <span
+                                  className={`font-mono font-bold shrink-0 ${
+                                    line.extraCost > 0 ? 'text-amber-400' : 'text-emerald-400'
+                                  }`}
+                                >
+                                  {line.extraCost > 0
+                                    ? `+₱${line.extraCost} (${line.extraLettersCount} extra)`
+                                    : 'Included'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Thread Color Swatches */}
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <span className="text-[0.7rem] text-text-dim font-semibold">
+                        Thread Color: <strong className="text-text-main">{editThreadColor.name}</strong>
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {availableColors
+                          .filter((c) => c.isAvailable !== false)
+                          .map((c) => {
+                            const active = editThreadColor.name === c.name;
+                            return (
+                              <button
+                                key={c.name}
+                                type="button"
+                                onClick={() => setEditThreadColor({ name: c.name, hex: c.hex })}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[0.7rem] font-semibold cursor-pointer transition-all ${
+                                  active
+                                    ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary'
+                                    : 'bg-black/30 border-white/10 text-text-dim hover:text-text-main'
+                                }`}
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/40 shrink-0"
+                                  style={{ backgroundColor: c.hex }}
+                                />
+                                <span>{c.name}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 3. Quantity & Stock / Pre-Order Check */}
+              <div className="flex flex-col gap-2.5 bg-white/[0.02] border border-border-glass rounded-xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-text-main block">3. Order Quantity</span>
+                    <span className="text-[0.68rem] text-text-dim">
+                      {variantStock < 999999
+                        ? `On-hand stock for this variant: ${Math.max(0, variantStock)} pcs`
+                        : 'Available for studio embroidery'}
+                    </span>
+                  </div>
+
+                  {editIsPersonalized && editLetteringMode === 'bulk' ? (
+                    <span className="px-3 py-1.5 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                      {effectiveQuantity} pcs (Auto-synced from {bulkSummary.lineCount} lines)
+                    </span>
+                  ) : (
+                    <QuantityInput
+                      value={editQuantity}
+                      onChange={(q) => setEditQuantity(Math.max(1, q))}
+                      min={1}
+                      max={9999}
+                      size="sm"
+                      ariaLabel="Edit item quantity"
+                    />
+                  )}
+                </div>
+
+                {/* Pre-Order Warning & Acceptance when exceeding on-hand stock */}
+                {exceedsStock && (
+                  <div className="mt-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/35 text-xs text-amber-200 flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none">⚠️</span>
+                      <div className="leading-relaxed">
+                        <strong className="text-amber-300 block mb-0.5">
+                          Quantity Exceeds Immediate On-Hand Stock ({Math.max(0, variantStock)} available)
+                        </strong>
+                        You are ordering <strong>{effectiveQuantity} pcs</strong> ({shortageCount} pcs beyond immediate on-hand stock). You can proceed with this order as a <strong>Pre-Order (100% upfront payment)</strong> with an extended workshop preparation &amp; production schedule (+{letteringRates.preOrderPrepDays} prep days plus batch embroidery turnaround).
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2.5 pt-1.5 border-t border-amber-500/20 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editPreOrderAccepted}
+                        onChange={(e) => setEditPreOrderAccepted(e.target.checked)}
+                        className="w-4 h-4 rounded accent-amber-400 cursor-pointer shrink-0"
+                      />
+                      <span className="text-[0.72rem] font-bold text-amber-100">
+                        I accept the extended Pre-Order production wait time and 100% upfront payment
+                      </span>
+                    </label>
                   </div>
                 )}
               </div>
 
-              {/* Close Button */}
-              <div className="pt-2 border-t border-border-glass">
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="w-full py-2.5 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-bold transition-all cursor-pointer"
-                >
-                  Close
-                </button>
+              {editError && (
+                <div className="p-2.5 rounded-lg bg-danger/15 border border-danger/30 text-danger text-xs font-semibold">
+                  {editError}
+                </div>
+              )}
+
+              {/* Summary & Action Buttons */}
+              <div className="pt-3 border-t border-border-glass flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[0.68rem] text-text-dim block">
+                    Updated Item Total ({effectiveQuantity} pcs)
+                  </span>
+                  <span className="text-lg font-mono font-black text-primary">
+                    ₱{finalSubtotal.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="px-4 py-2.5 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/5 text-text-main text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-extrabold transition-all cursor-pointer border-none shadow-md"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </GlassModal>

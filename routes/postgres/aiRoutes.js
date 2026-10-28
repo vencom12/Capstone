@@ -1,39 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const rateLimit = require('express-rate-limit');
+const { createTokenBucketLimiter } = require('../../utils/tokenBucketLimiter');
 const aiController = require('../../controllers/postgres/aiController');
 const auth = require('../../middleware/auth');
 
-// Strict rate limiter for AI Vision (expensive API calls)
-const verifyReceiptLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, message: 'Too many verification attempts. Please wait a minute before trying again.' }
+// Strict Token Bucket for AI Vision Receipt Verification (expensive API calls: capacity 5 burst, refills 5/min)
+const verifyReceiptLimiter = createTokenBucketLimiter({
+    name: 'ai-verify-receipt',
+    capacity: 5,
+    refillRate: 5,
+    refillIntervalMs: 60 * 1000,
+    message: { success: false, message: 'Too many verification attempts. Please wait a moment for your token bucket to refill.' }
 });
 
-// Anti-DDoS Rate Limiter for Staff Assistant Chat (Admin & Employee)
-const staffChatLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 30, // Max 30 prompts/min per IP
-    standardHeaders: true,
-    legacyHeaders: false,
+// Token Bucket Rate Limiter for Staff Assistant Chat (Admin & Employee: capacity 15 burst, refills 30/min = 0.5/sec)
+const staffChatLimiter = createTokenBucketLimiter({
+    name: 'ai-staff-chat',
+    capacity: 15,
+    refillRate: 30,
+    refillIntervalMs: 60 * 1000,
     message: { 
         success: false, 
-        reply: "⚠️ Slow down: You've sent too many messages in a short time. Please pause for a few seconds before trying again." 
+        reply: "⚠️ Slow down: You've sent too many messages in a short time. Please pause for a few seconds while your chat tokens refill." 
     }
 });
 
-// Anti-DDoS Rate Limiter for Public Storefront Chat (Anonymous Visitors & Bots)
-const storefrontChatLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 15, // Max 15 messages/min per IP
-    standardHeaders: true,
-    legacyHeaders: false,
+// Token Bucket Rate Limiter for Public Storefront Chat (Anonymous Visitors & Bots: capacity 8 burst, refills 15/min = 0.25/sec)
+const storefrontChatLimiter = createTokenBucketLimiter({
+    name: 'ai-storefront-chat',
+    capacity: 8,
+    refillRate: 15,
+    refillIntervalMs: 60 * 1000,
     message: { 
         success: false, 
-        reply: "You are chatting too fast! Please wait a moment before sending another message." 
+        reply: "You are chatting too fast! Please wait a few seconds for your chat token bucket to refill before sending another message." 
     }
 });
 

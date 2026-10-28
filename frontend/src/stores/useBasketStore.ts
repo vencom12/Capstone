@@ -10,7 +10,24 @@ interface BasketState {
   updateQuantity: (productId: string, quantity: number) => void;
   updateBasketItem: (
     basketItemId: string,
-    updates: Partial<Pick<BasketItem, 'selectedVariant' | 'selectedColor' | 'selectedSize' | 'backupVariant' | 'backupColor' | 'price' | 'imageUrl'>>
+    updates: Partial<
+      Pick<
+        BasketItem,
+        | 'selectedVariant'
+        | 'selectedColor'
+        | 'selectedSize'
+        | 'backupVariant'
+        | 'backupColor'
+        | 'price'
+        | 'baseUnitPrice'
+        | 'garmentSize'
+        | 'imageUrl'
+        | 'quantity'
+        | 'isPreOrder'
+        | 'preOrderShortage'
+        | 'personalization'
+      >
+    >
   ) => void;
   clearBasket: () => void;
   getTotal: () => number;
@@ -25,21 +42,31 @@ export const useBasketStore = create<BasketState>()(
       addItem: (item) => {
         set((state) => {
           const itemText = item.personalization?.text || '';
-          const existing = state.items.find(
-            (i) =>
-              i.productId === item.productId &&
-              i.selectedVariant === item.selectedVariant &&
-              i.selectedSize === item.selectedSize &&
-              i.backupVariant === item.backupVariant &&
-              (i.personalization?.text || '') === itemText &&
-              (i.personalization?.font || '') === (item.personalization?.font || '') &&
-              (i.personalization?.threadColor || '') === (item.personalization?.threadColor || '')
-          );
+          const isBulk = Boolean(item.personalization?.isBulkList || (item.personalization?.namesList && item.personalization.namesList.length > 1));
+          const existing = !isBulk
+            ? state.items.find(
+                (i) =>
+                  i.productId === item.productId &&
+                  i.selectedVariant === item.selectedVariant &&
+                  i.selectedSize === item.selectedSize &&
+                  i.backupVariant === item.backupVariant &&
+                  !i.personalization?.isBulkList &&
+                  (i.personalization?.text || '') === itemText &&
+                  (i.personalization?.font || '') === (item.personalization?.font || '') &&
+                  (i.personalization?.threadColor || '') === (item.personalization?.threadColor || '')
+              )
+            : undefined;
+
           if (existing) {
             return {
               items: state.items.map((i) =>
                 i.id === existing.id
-                  ? { ...i, quantity: i.quantity + (item.quantity || 1) }
+                  ? {
+                      ...i,
+                      quantity: i.quantity + (item.quantity || 1),
+                      isPreOrder: i.isPreOrder || item.isPreOrder,
+                      preOrderShortage: (i.preOrderShortage || 0) + (item.preOrderShortage || 0),
+                    }
                   : i
               ),
             };
@@ -52,6 +79,8 @@ export const useBasketStore = create<BasketState>()(
                 productId: item.productId,
                 name: item.name,
                 price: item.price,
+                baseUnitPrice: item.baseUnitPrice,
+                garmentSize: item.garmentSize,
                 imageUrl: item.imageUrl,
                 quantity: item.quantity || 1,
                 selectedVariant: item.selectedVariant,
@@ -59,6 +88,8 @@ export const useBasketStore = create<BasketState>()(
                 selectedSize: item.selectedSize,
                 backupVariant: item.backupVariant,
                 backupColor: item.backupColor,
+                isPreOrder: item.isPreOrder,
+                preOrderShortage: item.preOrderShortage,
                 personalization: item.personalization,
               },
             ],

@@ -9,7 +9,14 @@ import InlineError from '@/components/ui/InlineError';
 import OfficialClaimSlip from '@/components/dashboard/OfficialClaimSlip';
 import QuantityInput from '@/components/ui/QuantityInput';
 import type { Product, ProductVariant } from '@/lib/types';
-import { isBigGarment, calculateLetteringCost } from '@/lib/letteringPricing';
+import {
+  MAX_CHARS_PER_LINE,
+  resolveProductGarmentSize,
+  sanitizeSingleLineText,
+  sanitizeBulkMultilineText,
+  calculateLetteringCost,
+  parseBulkLetteringLines,
+} from '@/lib/letteringPricing';
 import Pagination from '@/components/ui/Pagination';
 
 interface PanelCounterModeProps {
@@ -28,10 +35,14 @@ export interface CounterTicketItem {
   byogType?: 'small' | 'big';
   variantName?: string;
   text: string;
+  namesList?: string[];
+  isBulkList?: boolean;
+  isPreOrder?: boolean;
   threadColor: string;
   quantity: number;
   basePrice: number;
   extraLetteringCost: number;
+  totalExtraLetteringCost?: number;
   ratePerLetter: number;
   extraLettersCount: number;
   totalPrice: number;
@@ -74,9 +85,17 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState<number>(250);
 
-  // Step 2: Monogram text
+  // Step 2: Monogram text & Bulk Multi-Line Paste
   const [monogramText, setMonogramText] = useState('');
+  const [intakeLetteringMode, setIntakeLetteringMode] = useState<'single' | 'bulk'>('single');
+  const [intakeBulkText, setIntakeBulkText] = useState('');
   const [isHoldForPickup, setIsHoldForPickup] = useState(false);
+
+  // Admin-configured Small/Big Garment Lettering Rates
+  const [letteringRates, setLetteringRates] = useState<{ smallRate: number; bigRate: number }>({
+    smallRate: 7,
+    bigRate: 10,
+  });
 
   // Step 3: Payment & Optional Google Link
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'GCash'>('Cash');
@@ -111,6 +130,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         .then((res) => {
           if (res?.availableThreadColors) {
             syncSettingsColors(res.availableThreadColors);
+          }
+          if (res) {
+            setLetteringRates((prev) => ({
+              smallRate: Number(res.smallGarmentLetterRate) || prev.smallRate || 7,
+              bigRate: Number(res.bigGarmentLetterRate) || prev.bigRate || 10,
+            }));
           }
         })
         .catch(() => { });
@@ -153,7 +178,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   // Quick Slip Punch Form fields (Solution 1: Nanay Slips)
   const [quickProductId, setQuickProductId] = useState<string>('');
   const [quickByogGarmentType, setQuickByogGarmentType] = useState<'small' | 'big'>('small');
+  const [quickLetteringMode, setQuickLetteringMode] = useState<'single' | 'bulk'>('single');
   const [quickText, setQuickText] = useState('');
+  const [quickBulkText, setQuickBulkText] = useState('');
   const [quickPrice, setQuickPrice] = useState<number>(250);
   const [quickQuantity, setQuickQuantity] = useState(1);
   const [quickPayment, setQuickPayment] = useState<'Cash' | 'GCash'>('Cash');
@@ -268,8 +295,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         name: p.name,
         category: cat,
         price: p.price,
-        stock: p.count ?? 0,
+        stock: p.availableStock !== undefined ? p.availableStock : (p.count ?? 0),
         variants: p.variants || [],
+        garmentSize: p.garmentSize,
+        tags: p.tags,
+        tag: p.tag,
         isByog: false
       };
     });
@@ -281,6 +311,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       price: 0,
       stock: 999,
       variants: [],
+      garmentSize: undefined,
+      tags: [],
+      tag: 'Custom',
       isByog: true
     });
 
@@ -357,48 +390,134 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   };
 
   // Lettering extra pricing rule:
-  // Store products: First word is included in base price. Subsequent words (after space) cost ₱7 (small) or ₱10 (big) per letter.
-  // BYOG: Customer brings garment. Every single letter has a fee (₱7 small, ₱10 big). No free first word.
+  // Store products: First word is included in base price. Subsequent words (after space) cost admin-configured Small or Big rate per letter.
+  // BYOG: Customer brings garment. Every single letter has a fee (admin-configured Small or Big rate). No free first word.
   const isSelectedBigGarment = useMemo(() => {
     if (activeSelectedItem?.isByog) {
       return byogGarmentType === 'big';
     }
-    return isBigGarment(activeSelectedItem?.category, activeSelectedItem?.name || customByogName);
+    return (
+      resolveProductGarmentSize({
+        garmentSize: (activeSelectedItem as any)?.garmentSize,
+        tags: (activeSelectedItem as any)?.tags,
+        tag: (activeSelectedItem as any)?.tag,
+        category: activeSelectedItem?.category,
+        name: activeSelectedItem?.name || customByogName,
+      }) === 'big'
+    );
   }, [activeSelectedItem, customByogName, byogGarmentType]);
 
   const counterLettering = useMemo(() => {
     return calculateLetteringCost(
       monogramText,
       isSelectedBigGarment,
-      {},
+      letteringRates,
       Boolean(activeSelectedItem?.isByog)
     );
-  }, [monogramText, isSelectedBigGarment, activeSelectedItem?.isByog]);
+  }, [monogramText, isSelectedBigGarment, letteringRates, activeSelectedItem?.isByog]);
 
-  const effectiveUnitPrice = (unitPrice || 0) + counterLettering.extraCost;
+  const intakeBulkSummary = useMemo(() => {
+    return parseBulkLetteringLines(
+      intakeBulkText,
+      isSelectedBigGarment,
+      letteringRates,
+      Boolean(activeSelectedItem?.isByog)
+    );
+  }, [intakeBulkText, isSelectedBigGarment, letteringRates, activeSelectedItem?.isByog]);
+
+  // Auto-sync quantity to bulk line count when in Bulk mode
+  useEffect(() => {
+    if (intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0) {
+      setQuantity(intakeBulkSummary.lineCount);
+    }
+  }, [intakeLetteringMode, intakeBulkSummary.lineCount]);
+
+  const effectiveIntakeQty =
+    intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0
+      ? intakeBulkSummary.lineCount
+      : Math.max(1, quantity);
+
+  const effectiveUnitPrice =
+    intakeLetteringMode === 'bulk'
+      ? (unitPrice || 0) + intakeBulkSummary.averageExtraCostPerUnit
+      : (unitPrice || 0) + counterLettering.extraCost;
 
   const grandTotal = useMemo(() => {
-    return effectiveUnitPrice * (quantity || 1);
-  }, [effectiveUnitPrice, quantity]);
+    if (intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0) {
+      return Number(((unitPrice || 0) * intakeBulkSummary.lineCount + intakeBulkSummary.totalExtraCost).toFixed(2));
+    }
+    return Number((effectiveUnitPrice * effectiveIntakeQty).toFixed(2));
+  }, [intakeLetteringMode, intakeBulkSummary, unitPrice, effectiveUnitPrice, effectiveIntakeQty]);
+
+  const selectedAvailableStock = useMemo(() => {
+    if (!activeSelectedItem || activeSelectedItem.isByog) return 999999;
+    if (selectedVariant) {
+      return (selectedVariant as any).availableStock !== undefined
+        ? (selectedVariant as any).availableStock
+        : (selectedVariant.stock ?? 0);
+    }
+    return activeSelectedItem.stock ?? 0;
+  }, [activeSelectedItem, selectedVariant]);
+
+  const intakeExceedsStock =
+    !activeSelectedItem?.isByog && selectedAvailableStock < 999999 && effectiveIntakeQty > selectedAvailableStock;
 
   // Quick Slip Punch lettering
   const isQuickBigGarment = useMemo(() => {
     if (activeQuickItem?.isByog) {
       return quickByogGarmentType === 'big';
     }
-    return isBigGarment(activeQuickItem?.category, activeQuickItem?.name);
+    return (
+      resolveProductGarmentSize({
+        garmentSize: (activeQuickItem as any)?.garmentSize,
+        tags: (activeQuickItem as any)?.tags,
+        tag: (activeQuickItem as any)?.tag,
+        category: activeQuickItem?.category,
+        name: activeQuickItem?.name,
+      }) === 'big'
+    );
   }, [activeQuickItem, quickByogGarmentType]);
 
   const quickLettering = useMemo(() => {
     return calculateLetteringCost(
       quickText,
       isQuickBigGarment,
-      {},
+      letteringRates,
       Boolean(activeQuickItem?.isByog)
     );
-  }, [quickText, isQuickBigGarment, activeQuickItem?.isByog]);
+  }, [quickText, isQuickBigGarment, letteringRates, activeQuickItem?.isByog]);
 
-  const effectiveQuickPrice = (quickPrice || 0) + quickLettering.extraCost;
+  const quickBulkSummary = useMemo(() => {
+    return parseBulkLetteringLines(
+      quickBulkText,
+      isQuickBigGarment,
+      letteringRates,
+      Boolean(activeQuickItem?.isByog)
+    );
+  }, [quickBulkText, isQuickBigGarment, letteringRates, activeQuickItem?.isByog]);
+
+  useEffect(() => {
+    if (quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0) {
+      setQuickQuantity(quickBulkSummary.lineCount);
+    }
+  }, [quickLetteringMode, quickBulkSummary.lineCount]);
+
+  const effectiveQuickQty =
+    quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0
+      ? quickBulkSummary.lineCount
+      : Math.max(1, quickQuantity);
+
+  const effectiveQuickPrice =
+    quickLetteringMode === 'bulk'
+      ? (quickPrice || 0) + quickBulkSummary.averageExtraCostPerUnit
+      : (quickPrice || 0) + quickLettering.extraCost;
+
+  const quickGrandTotal = useMemo(() => {
+    if (quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0) {
+      return Number(((quickPrice || 0) * quickBulkSummary.lineCount + quickBulkSummary.totalExtraCost).toFixed(2));
+    }
+    return Number((effectiveQuickPrice * effectiveQuickQty).toFixed(2));
+  }, [quickLetteringMode, quickBulkSummary, quickPrice, effectiveQuickPrice, effectiveQuickQty]);
 
   const estimatedReadyTime = useMemo(() => {
     const readyDate = new Date(Date.now() + 20 * 60000);
@@ -416,15 +535,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     if (ticketItems.length > 0) {
       return ticketItems.reduce((sum, it) => sum + it.quantity, 0);
     }
-    return quantity;
-  }, [ticketItems, quantity]);
+    return effectiveIntakeQty;
+  }, [ticketItems, effectiveIntakeQty]);
 
   const hasAnyEmbroidery = useMemo(() => {
     if (ticketItems.length > 0) {
-      return ticketItems.some(it => (it.text || '').trim().length > 0);
+      return ticketItems.some(it => (it.text || '').trim().length > 0 || (it.namesList && it.namesList.length > 0));
+    }
+    if (intakeLetteringMode === 'bulk') {
+      return intakeBulkSummary.lineCount > 0;
     }
     return monogramText.trim().length > 0;
-  }, [ticketItems, monogramText]);
+  }, [ticketItems, intakeLetteringMode, intakeBulkSummary.lineCount, monogramText]);
 
   const handleAddCurrentItemToTicket = () => {
     const isByog = Boolean(activeSelectedItem.isByog);
@@ -435,7 +557,24 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         ? `${activeSelectedItem.name} - ${selectedVariant.name}`
         : activeSelectedItem.name;
 
-    const cleanText = monogramText.trim().toUpperCase();
+    const isBulk = intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0;
+    const namesArr = isBulk
+      ? intakeBulkSummary.namesList.map((n) => n.toUpperCase())
+      : monogramText.trim()
+      ? [sanitizeSingleLineText(monogramText).trim().toUpperCase()]
+      : [];
+
+    const cleanText = isBulk
+      ? namesArr.length === 1
+        ? namesArr[0]
+        : `${namesArr.length} Names (${namesArr.slice(0, 3).join(', ')}${namesArr.length > 3 ? '...' : ''})`
+      : sanitizeSingleLineText(monogramText).trim().toUpperCase();
+
+    const finalQty = isBulk ? intakeBulkSummary.lineCount : Math.max(1, quantity);
+    const avgExtra = isBulk ? intakeBulkSummary.averageExtraCostPerUnit : counterLettering.extraCost;
+    const totalExtra = isBulk ? intakeBulkSummary.totalExtraCost : counterLettering.extraCost * finalQty;
+    const totalLetters = isBulk ? intakeBulkSummary.totalExtraLetters : counterLettering.extraLettersCount;
+    const itemSubtotal = Number(((unitPrice || 0) * finalQty + totalExtra).toFixed(2));
 
     const newItem: CounterTicketItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -446,13 +585,17 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       byogType: byogGarmentType,
       variantName: selectedVariant?.name,
       text: cleanText,
+      namesList: namesArr,
+      isBulkList: isBulk && namesArr.length > 1,
+      isPreOrder: intakeExceedsStock,
       threadColor: cleanText ? threadColor : 'None (Plain)',
-      quantity: Math.max(1, quantity),
+      quantity: finalQty,
       basePrice: unitPrice,
-      extraLetteringCost: counterLettering.extraCost,
-      ratePerLetter: counterLettering.ratePerLetter,
-      extraLettersCount: counterLettering.extraLettersCount,
-      totalPrice: effectiveUnitPrice * Math.max(1, quantity)
+      extraLetteringCost: Number(avgExtra.toFixed(2)),
+      totalExtraLetteringCost: Number(totalExtra.toFixed(2)),
+      ratePerLetter: isBulk ? intakeBulkSummary.ratePerLetter : counterLettering.ratePerLetter,
+      extraLettersCount: totalLetters,
+      totalPrice: itemSubtotal
     };
 
     setTicketItems(prev => [...prev, newItem]);
@@ -460,6 +603,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
     // Reset input fields for next garment
     setMonogramText('');
+    setIntakeBulkText('');
+    setIntakeLetteringMode('single');
     setCustomByogName('');
     setQuantity(1);
     setSelectedVariant(null);
@@ -473,6 +618,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     const validQty = Math.max(1, newQty);
     setTicketItems(prev => prev.map(it => {
       if (it.id !== itemId) return it;
+      if (it.isBulkList && it.namesList && it.namesList.length > 1) {
+        showToast('Bulk Name List quantity is synced to its pasted lines.', 'info');
+        return it;
+      }
       const unitPrice = (it.basePrice || 0) + (it.extraLetteringCost || 0);
       return {
         ...it,
@@ -484,6 +633,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   const resetIntakeInputs = () => {
     setMonogramText('');
+    setIntakeBulkText('');
+    setIntakeLetteringMode('single');
     setCustomerName('');
     setCustomerContact('');
     setGcashRef('');
@@ -519,14 +670,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           quantity: item.quantity,
           price: item.totalPrice / item.quantity,
           isByog: item.isByog,
+          isPreOrder: item.isPreOrder,
           selectedVariant: item.variantName || null,
           personalization: {
             text: item.text,
+            namesList: item.namesList || (item.text ? [item.text] : []),
+            isBulkList: Boolean(item.isBulkList),
             threadColor: { name: item.threadColor },
             color: item.threadColor,
             placement: item.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
             variant: item.variantName || null,
             extraLetteringCost: item.extraLetteringCost,
+            totalExtraLetteringCost: item.totalExtraLetteringCost,
             extraLettersCount: item.extraLettersCount,
           }
         }));
@@ -542,30 +697,45 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             ? `${activeSelectedItem.name} - ${selectedVariant.name}`
             : activeSelectedItem.name;
 
-        const cleanText = monogramText.trim().toUpperCase();
+        const isBulk = intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0;
+        const namesArr = isBulk
+          ? intakeBulkSummary.namesList.map((n) => n.toUpperCase())
+          : monogramText.trim()
+          ? [sanitizeSingleLineText(monogramText).trim().toUpperCase()]
+          : [];
+
+        const cleanText = isBulk
+          ? namesArr.length === 1
+            ? namesArr[0]
+            : `${namesArr.length} Names (${namesArr.slice(0, 3).join(', ')}${namesArr.length > 3 ? '...' : ''})`
+          : sanitizeSingleLineText(monogramText).trim().toUpperCase();
 
         finalItems = [
           {
             productId: activeSelectedItem.isByog ? undefined : activeSelectedItem.id,
             name: itemName,
-            quantity,
+            quantity: effectiveIntakeQty,
             price: effectiveUnitPrice,
             isByog,
+            isPreOrder: intakeExceedsStock,
             selectedVariant: selectedVariant?.name || null,
             personalization: {
               text: cleanText,
+              namesList: namesArr,
+              isBulkList: isBulk && namesArr.length > 1,
               threadColor: cleanText ? { name: threadColor } : null,
               color: cleanText ? threadColor : 'None (Plain)',
               placement: activeSelectedItem.category === 'Fans' ? 'Fan Blade' : 'Towel Bottom Hem',
               variant: selectedVariant?.name || null,
-              extraLetteringCost: counterLettering.extraCost,
-              extraLettersCount: counterLettering.extraLettersCount,
+              extraLetteringCost: isBulk ? intakeBulkSummary.averageExtraCostPerUnit : counterLettering.extraCost,
+              totalExtraLetteringCost: isBulk ? intakeBulkSummary.totalExtraCost : counterLettering.extraCost * effectiveIntakeQty,
+              extraLettersCount: isBulk ? intakeBulkSummary.totalExtraLetters : counterLettering.extraLettersCount,
             }
           }
         ];
         totalAmountToSubmit = grandTotal;
         primaryDesign = cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`;
-        defaultClientName = cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer';
+        defaultClientName = cleanText ? `Walk-In (${namesArr[0] || cleanText})` : 'Walk-In Customer';
       }
 
       const isEmail = customerContact.includes('@');
@@ -643,8 +813,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     const isByog = Boolean(activeQuickItem.isByog);
     const byogTag = quickByogGarmentType === 'big' ? 'Big Item' : 'Small Item';
     const itemName = isByog ? `BYOG [${byogTag}]` : activeQuickItem.name;
-    const totalAmount = (effectiveQuickPrice || 0) * (quickQuantity || 1);
-    const cleanText = quickText.trim().toUpperCase();
+    const isBulk = quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0;
+    const namesArr = isBulk
+      ? quickBulkSummary.namesList.map((n) => n.toUpperCase())
+      : quickText.trim()
+      ? [sanitizeSingleLineText(quickText).trim().toUpperCase()]
+      : [];
+    const cleanText = isBulk
+      ? namesArr.length === 1
+        ? namesArr[0]
+        : `${namesArr.length} Names (${namesArr.slice(0, 3).join(', ')}${namesArr.length > 3 ? '...' : ''})`
+      : sanitizeSingleLineText(quickText).trim().toUpperCase();
+    const totalAmount = quickGrandTotal;
     const tempSlipId = `temp-${Date.now()}`;
     const tempOrderId = `WI-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -661,6 +841,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     // 1. Optimistic instant addition to Nanay's cash tin & recent slips (0ms)
     setPunchedSlipsToday(prev => [newSlip, ...prev]);
     setQuickText('');
+    setQuickBulkText('');
+    setQuickLetteringMode('single');
     setQuickQuantity(1);
     showToast(`Recorded ₱${totalAmount.toFixed(2)} ${itemName}!`, 'success');
 
@@ -668,19 +850,22 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     try {
       const hasEmbroidery = cleanText.length > 0;
       const payload = {
-        clientName: cleanText ? `Walk-In (${cleanText})` : 'Walk-In Customer',
+        clientName: cleanText ? `Walk-In (${namesArr[0] || cleanText})` : 'Walk-In Customer',
         design: cleanText ? `${itemName} — "${cleanText}"` : `${itemName} (Plain)`,
         items: [
           {
             productId: activeQuickItem.isByog ? undefined : activeQuickItem.id,
             name: itemName,
-            quantity: quickQuantity,
+            quantity: effectiveQuickQty,
             price: effectiveQuickPrice,
             isByog: activeQuickItem.isByog,
             personalization: {
               text: cleanText,
-              extraLetteringCost: quickLettering.extraCost,
-              extraLettersCount: quickLettering.extraLettersCount,
+              namesList: namesArr,
+              isBulkList: isBulk && namesArr.length > 1,
+              extraLetteringCost: isBulk ? quickBulkSummary.averageExtraCostPerUnit : quickLettering.extraCost,
+              totalExtraLetteringCost: isBulk ? quickBulkSummary.totalExtraCost : quickLettering.extraCost * effectiveQuickQty,
+              extraLettersCount: isBulk ? quickBulkSummary.totalExtraLetters : quickLettering.extraLettersCount,
             }
           }
         ],
@@ -1070,58 +1255,154 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </>
               )}
 
-              {/* STEP 2: EMBROIDERY TEXT */}
+              {/* STEP 2: EMBROIDERY TEXT (SINGLE OR BULK MULTI-LINE PASTE) */}
               <div className="mt-3.5 pt-3 border-t border-border-glass">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                    2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional)</span>
-                  </span>
-                  {monogramText.trim() && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold">
-                      "{monogramText.trim()}" ({monogramText.length}/25) ✓
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <div>
+                    <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider block">
+                      2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars/line)</span>
                     </span>
-                  )}
+                    <span className="text-[10px] text-text-dim">
+                      Tier: <strong className="text-primary">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
+                    </span>
+                  </div>
+
+                  {/* Single vs Bulk List Toggle */}
+                  <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (intakeLetteringMode === 'bulk' && intakeBulkSummary.namesList[0]) {
+                          setMonogramText(sanitizeSingleLineText(intakeBulkSummary.namesList[0]).toUpperCase());
+                        }
+                        setIntakeLetteringMode('single');
+                      }}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                        intakeLetteringMode === 'single'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      Single Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (intakeLetteringMode === 'single' && monogramText.trim() && !intakeBulkText.trim()) {
+                          setIntakeBulkText(sanitizeSingleLineText(monogramText).toUpperCase());
+                        }
+                        setIntakeLetteringMode('bulk');
+                      }}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                        intakeLetteringMode === 'bulk'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      📋 Bulk List (Paste)
+                    </button>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  maxLength={25}
-                  placeholder="OPTIONAL: e.g. SOPHIA (Max 25 chars; blank for plain item)"
-                  value={monogramText}
-                  onChange={(e) => {
-                    setMonogramText(e.target.value.toUpperCase());
-                    if (intakeError) setIntakeError(null);
-                  }}
-                  className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition"
-                />
-                {monogramText.trim() && (
-                  <div className="mt-2 text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
-                    <span className="text-text-dim text-[11px]">
-                      {activeSelectedItem.isByog ? (
-                        counterLettering.extraCost > 0 ? (
-                          <>
-                            BYOG Lettering: <strong className="text-amber-400">{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'} • every letter charged)
-                          </>
-                        ) : (
-                          <span>BYOG: ₱{counterLettering.ratePerLetter}/letter ({isSelectedBigGarment ? 'big garment' : 'small garment'} • all letters charged)</span>
-                        )
-                      ) : counterLettering.extraCost > 0 ? (
-                        <>
-                          First word included. Additional letters: <strong className="text-amber-400">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
-                        </>
-                      ) : (
-                        <span>First word included in base price (₱0 extra)</span>
-                      )}
-                    </span>
-                    {counterLettering.extraCost > 0 && (
-                      <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-2">
-                        +₱{counterLettering.extraCost.toFixed(2)}
+
+                {intakeLetteringMode === 'single' ? (
+                  <>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        maxLength={MAX_CHARS_PER_LINE}
+                        placeholder={`OPTIONAL: e.g. SOPHIA (Max ${MAX_CHARS_PER_LINE} chars incl. spaces; paste multiple lines for Bulk)`}
+                        value={monogramText}
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData.getData('text');
+                          if (pasted && /\r?\n/.test(pasted.trim())) {
+                            e.preventDefault();
+                            setIntakeBulkText(sanitizeBulkMultilineText(pasted.toUpperCase()));
+                            setIntakeLetteringMode('bulk');
+                          }
+                        }}
+                        onChange={(e) => {
+                          setMonogramText(sanitizeSingleLineText(e.target.value.toUpperCase()));
+                          if (intakeError) setIntakeError(null);
+                        }}
+                        className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition pr-16"
+                      />
+                      <span
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono font-bold ${
+                          monogramText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400' : 'text-text-dim'
+                        }`}
+                      >
+                        {monogramText.length}/{MAX_CHARS_PER_LINE}
                       </span>
+                    </div>
+                    {monogramText.trim() && (
+                      <div className="mt-2 text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
+                        <span className="text-text-dim text-[11px]">
+                          {activeSelectedItem.isByog ? (
+                            counterLettering.extraCost > 0 ? (
+                              <>
+                                BYOG Lettering: <strong className="text-amber-400">{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                              </>
+                            ) : (
+                              <span>BYOG: ₱{counterLettering.ratePerLetter}/letter ({isSelectedBigGarment ? 'big garment' : 'small garment'} • all letters charged)</span>
+                            )
+                          ) : counterLettering.extraCost > 0 ? (
+                            <>
+                              First word included. Additional letters: <strong className="text-amber-400">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
+                            </>
+                          ) : (
+                            <span>First word included in base price (₱0 extra)</span>
+                          )}
+                        </span>
+                        {counterLettering.extraCost > 0 && (
+                          <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-2">
+                            +₱{counterLettering.extraCost.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-[11px] text-text-dim">
+                      <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line incl. spaces):</span>
+                      <span className="font-mono font-bold text-primary">
+                        {intakeBulkSummary.lineCount} {intakeBulkSummary.lineCount === 1 ? 'line' : 'lines'} = {intakeBulkSummary.lineCount} pcs
+                      </span>
+                    </div>
+                    <textarea
+                      rows={4}
+                      value={intakeBulkText}
+                      onChange={(e) => {
+                        setIntakeBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()));
+                        if (intakeError) setIntakeError(null);
+                      }}
+                      placeholder={`COACH 1\nCOACH 2\nPLAYER 3 A\n(Max ${MAX_CHARS_PER_LINE} chars per line)`}
+                      className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 transition resize-y"
+                    />
+                    {intakeBulkSummary.lines.length > 0 && (
+                      <div className="bg-black/25 border border-border-glass rounded-lg p-2 max-h-32 overflow-y-auto flex flex-col gap-1">
+                        {intakeBulkSummary.lines.map((line) => (
+                          <div
+                            key={line.lineIndex}
+                            className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/5 last:border-none"
+                          >
+                            <span className="font-mono text-text-main truncate">
+                              <strong className="text-text-dim mr-1.5">#{line.lineIndex}</strong>
+                              &ldquo;{line.sanitizedLine}&rdquo;{' '}
+                              <span className="text-[10px] text-text-dim">({line.charCount}/{MAX_CHARS_PER_LINE})</span>
+                            </span>
+                            <span className={`font-mono font-bold shrink-0 ${line.extraCost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              {line.extraCost > 0 ? `+₱${line.extraCost} (${line.extraLettersCount} extra)` : 'Included'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
 
                 {/* Thread Color Selector - Only shown when text is entered */}
-                {monogramText.trim() ? (
+                {(intakeLetteringMode === 'bulk' ? intakeBulkSummary.lineCount > 0 : Boolean(monogramText.trim())) ? (
                   <div className="mt-3 pt-3 border-t border-border-glass animate-in fade-in duration-200">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
@@ -1182,25 +1463,45 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-text-main block">Item Quantity</span>
-                      <span className="text-[10px] text-text-dim">Type or step for bulk quantity</span>
+                      <span className="text-[10px] text-text-dim">
+                        {intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0
+                          ? `Auto-synced to ${intakeBulkSummary.lineCount} pasted lines`
+                          : 'Type or step for bulk quantity'}
+                      </span>
                     </div>
-                    <QuantityInput
-                      value={quantity}
-                      onChange={(q) => setQuantity(q)}
-                      min={1}
-                      size="sm"
-                      showPresets={true}
-                      presets={[10, 25, 50, 100]}
-                      ariaLabel="Item Quantity"
-                    />
+                    {intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0 ? (
+                      <span className="px-3 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                        {effectiveIntakeQty} pcs
+                      </span>
+                    ) : (
+                      <QuantityInput
+                        value={quantity}
+                        onChange={(q) => setQuantity(q)}
+                        min={1}
+                        size="sm"
+                        showPresets={true}
+                        presets={[10, 25, 50, 100]}
+                        ariaLabel="Item Quantity"
+                      />
+                    )}
                   </div>
+
+                  {/* Stock Warning if Quantity Exceeds On-Hand Stock */}
+                  {intakeExceedsStock && (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-center gap-2">
+                      <span>⚠️</span>
+                      <span>
+                        <strong>Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong>Pre-Order</strong> with extended workshop preparation &amp; production schedule.
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-border-glass/40">
                     <div className="text-[11px] text-text-dim">
                       <span className="font-medium text-text-main">
-                        Item Subtotal ({quantity} pcs):{' '}
+                        Item Subtotal ({effectiveIntakeQty} pcs):{' '}
                         <strong className="text-emerald-500 font-mono">
-                          ₱{(effectiveUnitPrice * Math.max(1, quantity)).toFixed(2)}
+                          ₱{grandTotal.toFixed(2)}
                         </strong>
                       </span>
                     </div>
@@ -1212,7 +1513,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      <span>+ Add to Order Ticket ({quantity}x)</span>
+                      <span>+ Add to Order Ticket ({effectiveIntakeQty}x)</span>
                     </button>
                   </div>
                 </div>
@@ -1604,36 +1905,112 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </>
               )}
               <div className="mb-3.5">
-                <input
-                  type="text"
-                  placeholder="NAME / MONOGRAM FROM SLIP (e.g. SOPHIA)"
-                  value={quickText}
-                  onChange={(e) => setQuickText(e.target.value.toUpperCase())}
-                  className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50"
-                />
-                {quickText.trim() && (
-                  <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
-                    <span className="text-text-dim text-[11px]">
-                      {activeQuickItem?.isByog ? (
-                        quickLettering.extraCost > 0 ? (
-                          <>
-                            BYOG: <strong className="text-amber-400">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
-                          </>
-                        ) : (
-                          <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
-                        )
-                      ) : quickLettering.extraCost > 0 ? (
-                        <>
-                          First word included. Extra: <strong className="text-amber-400">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
-                        </>
-                      ) : (
-                        <span>First word included in base price (₱0 extra)</span>
-                      )}
-                    </span>
-                    {quickLettering.extraCost > 0 && (
-                      <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-1">
-                        +₱{quickLettering.extraCost.toFixed(2)}
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                  <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                    2. Name(s) from Slip <span className="normal-case font-normal">(Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                  </span>
+                  <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (quickLetteringMode === 'bulk' && quickBulkSummary.namesList[0]) {
+                          setQuickText(sanitizeSingleLineText(quickBulkSummary.namesList[0]).toUpperCase());
+                        }
+                        setQuickLetteringMode('single');
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        quickLetteringMode === 'single'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      Single Name
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (quickLetteringMode === 'single' && quickText.trim() && !quickBulkText.trim()) {
+                          setQuickBulkText(sanitizeSingleLineText(quickText).toUpperCase());
+                        }
+                        setQuickLetteringMode('bulk');
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        quickLetteringMode === 'bulk'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      📋 Bulk List
+                    </button>
+                  </div>
+                </div>
+
+                {quickLetteringMode === 'single' ? (
+                  <>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        maxLength={MAX_CHARS_PER_LINE}
+                        placeholder={`NAME / MONOGRAM FROM SLIP (Max ${MAX_CHARS_PER_LINE} chars)`}
+                        value={quickText}
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData.getData('text');
+                          if (pasted && /\r?\n/.test(pasted.trim())) {
+                            e.preventDefault();
+                            setQuickBulkText(sanitizeBulkMultilineText(pasted.toUpperCase()));
+                            setQuickLetteringMode('bulk');
+                          }
+                        }}
+                        onChange={(e) => setQuickText(sanitizeSingleLineText(e.target.value.toUpperCase()))}
+                        className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 pr-14"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-dim">
+                        {quickText.length}/{MAX_CHARS_PER_LINE}
                       </span>
+                    </div>
+                    {quickText.trim() && (
+                      <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
+                        <span className="text-text-dim text-[11px]">
+                          {activeQuickItem?.isByog ? (
+                            quickLettering.extraCost > 0 ? (
+                              <>
+                                BYOG: <strong className="text-amber-400">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                              </>
+                            ) : (
+                              <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
+                            )
+                          ) : quickLettering.extraCost > 0 ? (
+                            <>
+                              First word included. Extra: <strong className="text-amber-400">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
+                            </>
+                          ) : (
+                            <span>First word included in base price (₱0 extra)</span>
+                          )}
+                        </span>
+                        {quickLettering.extraCost > 0 && (
+                          <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-1">
+                            +₱{quickLettering.extraCost.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <textarea
+                      rows={3}
+                      value={quickBulkText}
+                      onChange={(e) => setQuickBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()))}
+                      placeholder={`Paste 1 name per line (Max ${MAX_CHARS_PER_LINE} chars/line)`}
+                      className="w-full bg-bg-surface border border-border-glass px-3.5 py-2 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 resize-y"
+                    />
+                    {quickBulkSummary.lineCount > 0 && (
+                      <div className="text-[11px] text-text-dim flex justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
+                        <span>{quickBulkSummary.lineCount} lines = {quickBulkSummary.lineCount} pcs</span>
+                        <span className="font-mono font-bold text-amber-400">
+                          {quickBulkSummary.totalExtraCost > 0 ? `+₱${quickBulkSummary.totalExtraCost.toFixed(2)} extra letters` : '₱0 extra letters'}
+                        </span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1644,15 +2021,21 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <div className="flex flex-col gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-dim font-medium">Qty:</span>
-                    <QuantityInput
-                      value={quickQuantity}
-                      onChange={(q) => setQuickQuantity(q)}
-                      min={1}
-                      size="sm"
-                      showPresets={true}
-                      presets={[10, 25, 50, 100]}
-                      ariaLabel="Quick sale quantity"
-                    />
+                    {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
+                      <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                        {effectiveQuickQty} pcs (Bulk)
+                      </span>
+                    ) : (
+                      <QuantityInput
+                        value={quickQuantity}
+                        onChange={(q) => setQuickQuantity(q)}
+                        min={1}
+                        size="sm"
+                        showPresets={true}
+                        presets={[10, 25, 50, 100]}
+                        ariaLabel="Quick sale quantity"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -1689,7 +2072,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <span>
                   {isPunchSubmitting
                     ? 'Recording...'
-                    : `Log Finished Sale — ₱${((effectiveQuickPrice || 0) * (quickQuantity || 1)).toFixed(2)} (${quickPayment})`}
+                    : `Log Finished Sale — ₱${quickGrandTotal.toFixed(2)} (${quickPayment})`}
                 </span>
               </button>
               <InlineError error={quickPunchError} />

@@ -197,7 +197,59 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Fix A: Server-side total recalculation (never trust client-sent total)
-        // Correctly factors in variant price overrides (e.g. promotional/test variants)
+        // Correctly factors in variant price overrides and admin-configured Small/Big Garment lettering rates
+        const globalSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let smallRate = 7;
+        let bigRate = 10;
+        let preOrderPrepDays = 3;
+        if (globalSettings?.availableThreadColors) {
+            let colors = globalSettings.availableThreadColors;
+            if (typeof colors === 'string') {
+                try { colors = JSON.parse(colors); } catch (e) {}
+            }
+            if (Array.isArray(colors)) {
+                const meta = colors.find(c => c && c.id === '__pricing_meta__');
+                if (meta) {
+                    if (meta.smallGarmentLetterRate !== undefined) smallRate = Number(meta.smallGarmentLetterRate) || 7;
+                    if (meta.bigGarmentLetterRate !== undefined) bigRate = Number(meta.bigGarmentLetterRate) || 10;
+                    if (meta.preOrderPrepDays !== undefined) preOrderPrepDays = Math.max(0, Number(meta.preOrderPrepDays) || 3);
+                }
+            }
+        }
+
+        const resolveIsBigGarment = (prod, itemHint) => {
+            if (itemHint === 'big') return true;
+            if (itemHint === 'small') return false;
+            if (Array.isArray(prod?.tags)) {
+                if (prod.tags.includes('garment:big')) return true;
+                if (prod.tags.includes('garment:small')) return false;
+            }
+            const t = `${prod?.tag || ''} ${prod?.name || ''}`.toLowerCase();
+            return (
+                t.includes('bath') ||
+                t.includes('shirt') ||
+                t.includes('polo') ||
+                t.includes('jacket') ||
+                t.includes('hoodie') ||
+                t.includes('umbrella') ||
+                t.includes('robe') ||
+                t.includes('blanket')
+            );
+        };
+
+        const computeSingleLineExtraFee = (lineStr, isBig, byog) => {
+            const clamped = String(lineStr || '').replace(/[\r\n]+/g, ' ').slice(0, 20).trim();
+            if (!clamped) return 0;
+            const rate = isBig ? bigRate : smallRate;
+            if (byog) {
+                return clamped.replace(/\s+/g, '').length * rate;
+            }
+            const firstSpace = clamped.indexOf(' ');
+            if (firstSpace === -1) return 0;
+            const extraChars = clamped.substring(firstSpace + 1).replace(/\s+/g, '').length;
+            return extraChars * rate;
+        };
+
         let serverTotal = 0;
         for (const item of items) {
             if (item.isByog || isByog) {
@@ -227,10 +279,32 @@ exports.submitOrder = async (req, res) => {
                 }
             }
 
-            const extraLettering = parseFloat(item.extraLetteringCost) || 0;
-            serverTotal += (itemUnitPrice + extraLettering) * (item.quantity || 1);
+            const isBig = resolveIsBigGarment(product, item.garmentSize || item.personalization?.garmentSize);
+            const namesList = item.personalization?.namesList || item.namesList;
+            const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+
+            if (Array.isArray(namesList) && namesList.length > 0) {
+                let bulkExtraSum = 0;
+                namesList.forEach(line => {
+                    bulkExtraSum += computeSingleLineExtraFee(line, isBig, false);
+                });
+                serverTotal += (itemUnitPrice * qty) + bulkExtraSum;
+            } else if (item.personalization?.text && String(item.personalization.text).includes('\n')) {
+                const lines = String(item.personalization.text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                let bulkExtraSum = 0;
+                lines.forEach(line => {
+                    bulkExtraSum += computeSingleLineExtraFee(line, isBig, false);
+                });
+                serverTotal += (itemUnitPrice * qty) + bulkExtraSum;
+            } else {
+                const extraLettering = item.extraLetteringCost !== undefined
+                    ? (parseFloat(item.extraLetteringCost) || 0)
+                    : (item.personalization?.extraLetteringCost !== undefined
+                        ? (parseFloat(item.personalization.extraLetteringCost) || 0)
+                        : computeSingleLineExtraFee(item.personalization?.text || '', isBig, false));
+                serverTotal += (itemUnitPrice + extraLettering) * qty;
+            }
         }
-        const globalSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
 
         // Emergency delay notice / leave policy guard:
         if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS' && !isBypassActive) {
@@ -276,6 +350,10 @@ exports.submitOrder = async (req, res) => {
 
         // Prisma Transaction for Atomic operation
         const result = await prisma.$transaction(async (tx) => {
+            let hasPreOrderItems = false;
+            let totalPreOrderShortage = 0;
+            const reservationLocks = [];
+
             // 1. Check stock availability for all items in the cart (with row locking)
             for (const item of items) {
                 if (item.isByog || isByog) continue; // BYOG items provided by customer
@@ -291,28 +369,41 @@ exports.submitOrder = async (req, res) => {
                 }
 
                 // ATP calculation
-                const atp = product.count - product.reservedCount;
+                const atp = Math.max(0, (product.count || 0) - (product.reservedCount || 0));
                 const needed = item.quantity || 1;
+                const allowsPreOrder = Boolean(
+                    item.isPreOrder ||
+                    item.personalization?.isPreOrder ||
+                    personalization?.isPreOrder ||
+                    req.body?.isPreOrder
+                );
 
-                if (atp < needed) {
+                if (atp < needed && !allowsPreOrder) {
                     throw new Error(`OutOfStock:${product.name}`);
                 }
 
-                // Note: Variants share the product's unified stock pool since inventory is acquired in assorted colors.
+                if (atp < needed) {
+                    hasPreOrderItems = true;
+                    const shortage = needed - atp;
+                    totalPreOrderShortage += shortage;
+                    item.isPreOrder = true;
+                    item.preOrderShortage = shortage;
+                }
+
+                const toLock = Math.max(0, Math.min(atp, needed));
+                reservationLocks.push({ productId, toLock });
             }
 
             // 2. Reserve garments in database (lock counts)
-            for (const item of items) {
-                if (item.isByog || isByog) continue; // Customer provided garment
-
-                const productId = item.productId || item.id;
-                const needed = item.quantity || 1;
-                await tx.product.update({
-                    where: { id: productId },
-                    data: {
-                        reservedCount: { increment: needed }
-                    }
-                });
+            for (const lockInfo of reservationLocks) {
+                if (lockInfo.toLock > 0) {
+                    await tx.product.update({
+                        where: { id: lockInfo.productId },
+                        data: {
+                            reservedCount: { increment: lockInfo.toLock }
+                        }
+                    });
+                }
             }
 
             // 3. Deduct balance if using wallet
@@ -352,7 +443,16 @@ exports.submitOrder = async (req, res) => {
             };
 
             if (orderPersonalization.text && typeof orderPersonalization.text === 'string') {
-                orderPersonalization.text = orderPersonalization.text.trim().slice(0, 25);
+                orderPersonalization.text = orderPersonalization.text
+                    .split(/\r?\n/)
+                    .map(l => l.slice(0, 20).trim())
+                    .filter(Boolean)
+                    .join('\n');
+            }
+            if (hasPreOrderItems) {
+                orderPersonalization.isPreOrder = true;
+                orderPersonalization.preOrderShortage = totalPreOrderShortage;
+                orderPersonalization.preOrderAcknowledgedAt = new Date().toISOString();
             }
 
             if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'ALLOW_WITH_DELAY') {
@@ -367,14 +467,28 @@ exports.submitOrder = async (req, res) => {
                 };
             }
 
-            // Sanitize items and enforce 25-character embroidery hoop limit
+            // Sanitize items and enforce strict 20-character per-line embroidery limit (including spaces)
             const sanitizedItems = Array.isArray(items) ? items.map(item => {
-                if (item && item.personalization && typeof item.personalization.text === 'string') {
+                if (item && item.personalization) {
+                    const rawNamesList = Array.isArray(item.personalization.namesList)
+                        ? item.personalization.namesList.map(n => String(n || '').replace(/[\r\n]+/g, ' ').slice(0, 20).trim()).filter(Boolean)
+                        : null;
+                    const sanitizedText = typeof item.personalization.text === 'string'
+                        ? (rawNamesList && rawNamesList.length > 0
+                            ? rawNamesList.join('\n')
+                            : item.personalization.text
+                                .split(/\r?\n/)
+                                .map(l => l.slice(0, 20).trim())
+                                .filter(Boolean)
+                                .join('\n'))
+                        : '';
                     return {
                         ...item,
                         personalization: {
                             ...item.personalization,
-                            text: item.personalization.text.trim().slice(0, 25)
+                            text: sanitizedText,
+                            namesList: rawNamesList && rawNamesList.length > 0 ? rawNamesList : undefined,
+                            isBulkList: Boolean(rawNamesList && rawNamesList.length > 1)
                         }
                     };
                 }
@@ -384,15 +498,23 @@ exports.submitOrder = async (req, res) => {
             // Check if any item in the order has custom embroidery text
             const requiresEmbroidery = sanitizedItems.some(item => {
                 const text = item.personalization?.text;
-                return Boolean(text && String(text).trim().length > 0);
+                const names = item.personalization?.namesList;
+                return Boolean((text && String(text).trim().length > 0) || (Array.isArray(names) && names.length > 0));
             });
 
             // 4. Create Order with descriptive design summary & empirical turnaround estimation
             const designSummary = sanitizedItems.length > 0
                 ? sanitizedItems.map(i => {
                     const variantInfo = i.selectedVariant ? ` [${i.selectedVariant}]` : '';
-                    const textInfo = i.personalization?.text ? ` — "${i.personalization.text}"` : '';
-                    return `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}${variantInfo}${textInfo}`;
+                    const names = i.personalization?.namesList;
+                    let textInfo = '';
+                    if (Array.isArray(names) && names.length > 1) {
+                        textInfo = ` — [Bulk ${names.length} Names: ${names.slice(0, 3).join(', ')}${names.length > 3 ? '...' : ''}]`;
+                    } else if (i.personalization?.text) {
+                        textInfo = ` — "${i.personalization.text.replace(/\n/g, ', ')}"`;
+                    }
+                    const preTag = (i.isPreOrder || hasPreOrderItems) ? ' (Pre-Order)' : '';
+                    return `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}${variantInfo}${textInfo}${preTag}`;
                 }).join('; ')
                 : "Cart Order";
 
@@ -1060,6 +1182,19 @@ exports.getPublicSettings = async (req, res) => {
             }
         }
 
+        let smallGarmentLetterRate = 7;
+        let bigGarmentLetterRate = 10;
+        let preOrderPrepDays = 3;
+        if (Array.isArray(threadColors)) {
+            const metaEntry = threadColors.find(c => c && c.id === '__pricing_meta__');
+            if (metaEntry) {
+                if (metaEntry.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(metaEntry.smallGarmentLetterRate) || 7;
+                if (metaEntry.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(metaEntry.bigGarmentLetterRate) || 10;
+                if (metaEntry.preOrderPrepDays !== undefined) preOrderPrepDays = Number(metaEntry.preOrderPrepDays) || 3;
+            }
+            threadColors = threadColors.filter(c => !c || c.id !== '__pricing_meta__');
+        }
+
         res.json({
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
@@ -1070,6 +1205,11 @@ exports.getPublicSettings = async (req, res) => {
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null,
             availableThreadColors: threadColors,
+            smallGarmentLetterRate,
+            bigGarmentLetterRate,
+            preOrderPrepDays,
+            maxBulkPiecesPerDay: settings?.maxBulkPiecesPerDay ?? 50,
+            batchThrottlePeriod: settings?.batchThrottlePeriod || 'week',
             emergencyNotice: settings?.emergencyNoticeActive ? {
                 active: true,
                 policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',

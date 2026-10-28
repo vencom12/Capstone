@@ -54,6 +54,10 @@ export default function CheckoutModal({
   const [readyLabel, setReadyLabel] = useState<string | null>(null);
   const [estimatedReadyDate, setEstimatedReadyDate] = useState<string | null>(null);
   const [activeQueueOrdersCount, setActiveQueueOrdersCount] = useState<number>(0);
+  const [queuedBulkPieces, setQueuedBulkPieces] = useState<number>(0);
+  const [maxBulkPiecesPerPeriod, setMaxBulkPiecesPerPeriod] = useState<number>(50);
+  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('week');
+  const [preOrderPrepDays, setPreOrderPrepDays] = useState<number>(3);
 
   // PSA/Retail Style Appointment Window Selection (Option 1: Modern Retail Model)
   // Claim Date Selection (Customer chooses target day; pick up anytime during store hours)
@@ -76,10 +80,13 @@ export default function CheckoutModal({
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{ gcashQrCodeUrl: string; emergencyNotice?: any }>('/api/customer/settings')
+      api.get<{ gcashQrCodeUrl: string; emergencyNotice?: any; preOrderPrepDays?: number; maxBulkPiecesPerDay?: number; batchThrottlePeriod?: string }>('/api/customer/settings')
         .then(res => {
           if (res) {
             setGcashQrCodeUrl(res.gcashQrCodeUrl);
+            if (res.preOrderPrepDays !== undefined) setPreOrderPrepDays(Number(res.preOrderPrepDays));
+            if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerPeriod(Number(res.maxBulkPiecesPerDay));
+            if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
             if (res.emergencyNotice && res.emergencyNotice.active) {
               setEmergencyNotice(res.emergencyNotice);
             } else {
@@ -88,7 +95,16 @@ export default function CheckoutModal({
           }
         })
         .catch(console.error);
-      api.get<{ estimatedMinutes: number; readyLabel?: string; estimatedReadyDate?: string; activeOrders?: number }>('/api/customer/capacity')
+      api.get<{
+        estimatedMinutes: number;
+        readyLabel?: string;
+        estimatedReadyDate?: string;
+        activeOrders?: number;
+        queuedBulkPieces?: number;
+        maxBulkPiecesPerPeriod?: number;
+        batchThrottlePeriod?: string;
+        preOrderPrepDays?: number;
+      }>('/api/customer/capacity')
         .then(res => {
           if (res) {
             setEstimatedMinutes(res.estimatedMinutes);
@@ -99,11 +115,47 @@ export default function CheckoutModal({
             if (typeof res.activeOrders === 'number') {
               setActiveQueueOrdersCount(res.activeOrders);
             }
+            if (typeof res.queuedBulkPieces === 'number') {
+              setQueuedBulkPieces(res.queuedBulkPieces);
+            }
+            if (typeof res.maxBulkPiecesPerPeriod === 'number' && res.maxBulkPiecesPerPeriod > 0) {
+              setMaxBulkPiecesPerPeriod(res.maxBulkPiecesPerPeriod);
+            }
+            if (res.batchThrottlePeriod) {
+              setBatchThrottlePeriod(res.batchThrottlePeriod);
+            }
+            if (typeof res.preOrderPrepDays === 'number') {
+              setPreOrderPrepDays(res.preOrderPrepDays);
+            }
           }
         })
         .catch(console.error);
     }
   }, [isOpen]);
+
+  // Calculate total pieces, pre-order status, and extended lead time days
+  const totalCheckoutPieces = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  }, [items]);
+
+  const hasPreOrderItems = useMemo(() => {
+    return items.some((item) => Boolean(item.isPreOrder || (item.preOrderShortage && item.preOrderShortage > 0)));
+  }, [items]);
+
+  const isBulkOrPreOrder = hasPreOrderItems || totalCheckoutPieces >= 10;
+
+  const extraScheduleDays = useMemo(() => {
+    if (!isBulkOrPreOrder) return 0;
+    const prepDays = hasPreOrderItems ? Math.max(0, preOrderPrepDays) : 0;
+    const rate = Math.max(1, maxBulkPiecesPerPeriod || 50);
+    const periodDays = batchThrottlePeriod === 'day' ? 1 : 7;
+    const combinedPieces = (queuedBulkPieces || 0) + totalCheckoutPieces;
+    const productionDays =
+      totalCheckoutPieces >= 10 || hasPreOrderItems
+        ? Math.ceil((combinedPieces / rate) * periodDays)
+        : 0;
+    return prepDays + productionDays;
+  }, [isBulkOrPreOrder, hasPreOrderItems, preOrderPrepDays, maxBulkPiecesPerPeriod, batchThrottlePeriod, queuedBulkPieces, totalCheckoutPieces]);
 
   const availableDates = useMemo(() => {
     const list: Array<{
@@ -115,10 +167,15 @@ export default function CheckoutModal({
 
     const start = estimatedReadyDate ? new Date(estimatedReadyDate) : new Date();
     const base = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    if (extraScheduleDays > 0) {
+      base.setDate(base.getDate() + extraScheduleDays);
+    }
     const today = new Date();
     const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    for (let i = 0; i < 30; i++) {
+    const calendarSpanDays = Math.max(30, extraScheduleDays + 30);
+
+    for (let i = 0; i < calendarSpanDays; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
 
@@ -143,7 +200,7 @@ export default function CheckoutModal({
     }
 
     return list;
-  }, [estimatedReadyDate]);
+  }, [estimatedReadyDate, extraScheduleDays]);
 
   const { chosenDueDate, chosenDeliveryTimeLabel } = useMemo(() => {
     const dateObj = availableDates.find(d => d.dateStr === selectedDateStr);
@@ -241,6 +298,7 @@ export default function CheckoutModal({
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
         dueDate: chosenDueDate,
+        isPreOrder: hasPreOrderItems,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         receiptUrl: uploadData.url,
@@ -248,10 +306,13 @@ export default function CheckoutModal({
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
           claimSchedule: chosenDeliveryTimeLabel,
+          isPreOrder: hasPreOrderItems,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
           pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
+          namesList: firstPersonalizedItem?.personalization?.namesList,
+          isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
         }
@@ -350,6 +411,7 @@ export default function CheckoutModal({
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
         dueDate: chosenDueDate,
+        isPreOrder: hasPreOrderItems,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         existingOrderId: pendingOrderId || undefined,
@@ -359,11 +421,14 @@ export default function CheckoutModal({
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
           claimSchedule: chosenDeliveryTimeLabel,
+          isPreOrder: hasPreOrderItems,
           referenceNumber: cleanRef,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
           pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
+          namesList: firstPersonalizedItem?.personalization?.namesList,
+          isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
         }
@@ -433,6 +498,7 @@ export default function CheckoutModal({
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
         dueDate: chosenDueDate,
+        isPreOrder: hasPreOrderItems,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
         isTestBypass: true,
@@ -443,11 +509,14 @@ export default function CheckoutModal({
           fulfillmentType: 'pickup',
           courier: 'Store Pick-up',
           claimSchedule: chosenDeliveryTimeLabel,
+          isPreOrder: hasPreOrderItems,
           referenceNumber: testRef,
           claimantName: user?.username || 'Customer',
           claimantPhone: user?.phoneNumber || undefined,
           pickupNote: pickupNote.trim() || undefined,
           text: firstPersonalizedItem?.personalization?.text,
+          namesList: firstPersonalizedItem?.personalization?.namesList,
+          isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
           color: firstPersonalizedItem?.personalization?.threadColor,
           font: firstPersonalizedItem?.personalization?.font,
         }
@@ -683,8 +752,24 @@ export default function CheckoutModal({
                   <label htmlFor="pickup-date-select" className="text-[0.68rem] font-bold text-text-main uppercase tracking-wider">
                     Pick-up Date <span className="text-amber-400">*</span>
                   </label>
-                  <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free</span>
+                  <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free • 100% Upfront</span>
                 </div>
+
+                {isBulkOrPreOrder && (
+                  <div className="px-2.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[0.68rem] text-amber-200 leading-relaxed flex items-start gap-2">
+                    <span className="shrink-0">⏳</span>
+                    <div>
+                      <strong className="text-amber-300 block">
+                        {hasPreOrderItems ? 'Pre-Order & Extended Workshop Schedule' : 'Bulk Production Schedule'}
+                      </strong>
+                      <span>
+                        Your order of <strong>{totalCheckoutPieces} pcs</strong> is scheduled based on our workshop capacity ({maxBulkPiecesPerPeriod} pcs/{batchThrottlePeriod}
+                        {queuedBulkPieces > 0 ? ` • ${queuedBulkPieces} pcs currently queued` : ''}
+                        {hasPreOrderItems ? ` • +${preOrderPrepDays} prep days` : ''}). Selectable pick-up dates below reflect your earliest ready date.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="relative">
                   <select

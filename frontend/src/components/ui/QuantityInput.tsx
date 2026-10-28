@@ -165,9 +165,9 @@ export default function QuantityInput({
   const visiblePresets = presets.filter((p) => max === undefined || max <= 0 || p <= max);
 
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
+    <div className={`flex flex-col items-end gap-1.5 shrink-0 ${className}`}>
       <div
-        className={`inline-flex items-center bg-bg-surface/80 border border-border-glass backdrop-blur-sm transition-all focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/30 ${
+        className={`inline-flex items-center justify-between w-fit bg-bg-surface/80 border border-border-glass backdrop-blur-sm transition-all focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/30 ${
           disabled ? 'opacity-40 pointer-events-none' : ''
         } ${sizeStyles.wrap}`}
       >
@@ -218,8 +218,8 @@ export default function QuantityInput({
 
       {/* Quick Bulk Presets */}
       {showPresets && !disabled && visiblePresets.length > 0 && (
-        <div className="flex items-center flex-wrap gap-1 mt-0.5">
-          <span className="text-[10px] text-text-dim uppercase tracking-wider font-semibold mr-0.5">
+        <div className="flex items-center justify-end flex-nowrap gap-1 mt-0.5">
+          <span className="text-[10px] text-text-dim uppercase tracking-wider font-semibold mr-0.5 shrink-0">
             Bulk:
           </span>
           {visiblePresets.map((preset) => (
@@ -227,7 +227,7 @@ export default function QuantityInput({
               key={preset}
               type="button"
               onClick={() => handlePresetAdd(preset)}
-              className={`font-mono font-bold rounded bg-white/5 hover:bg-white/15 border border-border-glass text-text-main transition active:scale-95 cursor-pointer ${sizeStyles.preset}`}
+              className={`font-mono font-bold rounded bg-white/5 hover:bg-white/15 border border-border-glass text-text-main transition active:scale-95 cursor-pointer shrink-0 ${sizeStyles.preset}`}
               title={`Add +${preset} to quantity`}
             >
               +{preset}
