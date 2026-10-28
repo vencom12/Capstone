@@ -178,12 +178,12 @@ app.use(require('./middleware/firebaseAuthProxy'));
 // Running strictly in PostgreSQL mode
 
 // --- Token Bucket Rate Limiting Architecture ---
-// Global API Token Bucket: Capacity 300 tokens (burst), refills continuously at 3.33 tokens/sec (3000 tokens / 15 min)
+// Global API Token Bucket: Capacity 60 tokens (burst), refills continuously at 1 token/sec (60 tokens / min)
 const globalLimiter = createTokenBucketLimiter({
     name: 'global-api',
-    capacity: 300,
-    refillRate: 3000,
-    refillIntervalMs: 15 * 60 * 1000,
+    capacity: 60,
+    refillRate: 1,
+    refillIntervalMs: 1000,
     message: { message: 'Too many requests from this IP, please wait a moment for your token bucket to refill.' }
 });
 app.use('/api/', globalLimiter);
@@ -197,6 +197,16 @@ const authLimiter = createTokenBucketLimiter({
     message: { message: 'Too many authentication attempts. Please wait for your security token bucket to refill.' }
 });
 
+// Strict Email & OTP Token Bucket: Protects Brevo (300/day), Resend (100/day), & Gmail SMTP quotas
+// Capacity 3 burst emails per IP, refills 1 token every 2 minutes (5 tokens per 10 minutes)
+const emailOtpLimiter = createTokenBucketLimiter({
+    name: 'email-otp',
+    capacity: 3,
+    refillRate: 5,
+    refillIntervalMs: 10 * 60 * 1000,
+    message: { message: 'Too many email/OTP requests. Please wait a couple of minutes before requesting another code.' }
+});
+
 // Dashboard State Token Bucket: Capacity 20 burst fetches, refills 50 tokens per 10 minutes
 const dashboardLimiter = createTokenBucketLimiter({
     name: 'dashboard-state',
@@ -208,6 +218,10 @@ const dashboardLimiter = createTokenBucketLimiter({
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/send-otp', emailOtpLimiter);
+app.use('/api/auth/email/send-link-otp', emailOtpLimiter);
+app.use('/api/auth/email/resend', emailOtpLimiter);
+app.use('/api/auth/password/forgot', emailOtpLimiter);
 app.use('/api/customer/dashboard-state', dashboardLimiter);
 
 // Anti-enumeration Token Bucket: Capacity 20 burst checks, refills 1 token/sec (60/min)
@@ -236,6 +250,10 @@ app.use('/api/v1/order/submit', checkoutLimiter);
 // v1 Rate Limiters
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/v1/auth/send-otp', emailOtpLimiter);
+app.use('/api/v1/auth/email/send-link-otp', emailOtpLimiter);
+app.use('/api/v1/auth/email/resend', emailOtpLimiter);
+app.use('/api/v1/auth/password/forgot', emailOtpLimiter);
 
 // Core Middleware
 app.use(express.json({ limit: '5mb' }));
