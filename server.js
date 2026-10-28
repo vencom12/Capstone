@@ -425,15 +425,6 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/machines', require('./routes/postgres/machine'));
 app.patch('/api/orders/:id/location', require('./controllers/postgres/customerController').updateOrderLocation);
 
-// --- Development Tools (Only in Dev) ---
-if (process.env.NODE_ENV === 'development') {
-    try {
-        app.use('/api/dev', require('./development/dev_routes'));
-    } catch (err) {
-        console.warn('[DEV] Development routes enabled but files missing. Skipping...');
-    }
-}
-
 // Versioned API v1
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/customer', customerRoutes);
