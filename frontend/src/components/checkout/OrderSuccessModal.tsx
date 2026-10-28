@@ -148,15 +148,15 @@ export default function OrderSuccessModal({
         <div className="pt-0.5 pb-2 border-b border-border-glass/40 -mt-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="text-[11px] font-bold text-text-main">
                 Step 3 of 3:
               </span>
-              <span className="text-[11px] text-emerald-400 font-bold">
+              <span className="text-[11px] text-primary font-bold">
                 Order Validated &amp; Placed in Queue!
               </span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
               <span className="font-mono font-bold text-[11px]">
                 100%
               </span>
@@ -168,7 +168,7 @@ export default function OrderSuccessModal({
             {/* Connected Track: 100% Filled glowing line */}
             <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
               <div 
-                className="h-full bg-gradient-to-r from-primary via-emerald-500 to-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] w-full"
+                className="h-full bg-gradient-to-r bg-primary rounded-full transition-all duration-500 w-full"
               />
             </div>
 
@@ -180,14 +180,14 @@ export default function OrderSuccessModal({
             ].map((s) => (
               <div key={s.id} className="relative z-10 flex flex-col items-center">
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)] scale-105"
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary text-white scale-105"
                   title={`Step ${s.id}: ${s.label} (Completed)`}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <span className="text-[9px] mt-1 font-bold tracking-tight uppercase whitespace-nowrap text-emerald-400">
+                <span className="text-[9px] mt-1 font-bold tracking-tight uppercase whitespace-nowrap text-text-main">
                   {s.shortLabel}
                 </span>
               </div>
@@ -206,7 +206,7 @@ export default function OrderSuccessModal({
               <span className="font-mono text-2xl sm:text-3xl font-black text-text-main tracking-wider mt-0.5">
                 {claimCode}
               </span>
-              <span className="text-[0.68rem] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+              <span className="text-[0.68rem] text-text-dim font-semibold mt-0.5 flex items-center gap-1">
                 <span>✓</span> Present this code at the Pacific Mall counter to pick up
               </span>
             </div>
@@ -217,7 +217,7 @@ export default function OrderSuccessModal({
             >
               {copiedCode ? (
                 <>
-                  <span className="text-emerald-400">✓</span>
+                  <span className="text-primary">✓</span>
                   <span>Copied</span>
                 </>
               ) : (

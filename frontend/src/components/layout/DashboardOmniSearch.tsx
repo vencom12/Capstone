@@ -206,15 +206,15 @@ export default function DashboardOmniSearch({
   const getStatusBadge = (status?: string) => {
     const s = (status || 'In Queue').toLowerCase();
     if (s.includes('delivered') || s.includes('complete') || s.includes('ready')) {
-      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+      return 'bg-white/10 text-text-main border-border-glass';
     }
     if (s.includes('process') || s.includes('sewing') || s.includes('embroidery')) {
-      return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+      return 'bg-primary/15 text-primary border-primary/30';
     }
     if (s.includes('rush') || s.includes('urgent') || s.includes('cancel')) {
-      return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+      return 'bg-danger/15 text-danger border-danger/30';
     }
-    return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    return 'bg-white/5 text-text-dim border-border-glass';
   };
 
   return (

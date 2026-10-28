@@ -410,7 +410,7 @@ export default function FullScreenStitchExperience() {
             <button
               suppressHydrationWarning
               onClick={scrollToProducts}
-              className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm tracking-wide shadow-[0_0_35px_rgba(220,38,38,0.6)] hover:shadow-[0_0_50px_rgba(220,38,38,0.8)] active:scale-95 transition-[transform,box-shadow] duration-200 cursor-pointer flex items-center gap-2 mx-auto"
+              className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-xs sm:text-sm tracking-wide shadow-[0_0_35px_rgba(220,38,38,0.6)] hover:shadow-[0_0_50px_rgba(220,38,38,0.8)] active:scale-95 transition-[transform,box-shadow] duration-200 cursor-pointer flex items-center gap-2 mx-auto"
             >
               <span>Explore Products Below</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="animate-bounce"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>

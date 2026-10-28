@@ -473,7 +473,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
         </div>
 
         {packSize > 1 && inputValue && !isNaN(parseFloat(inputValue)) && (
-          <span className="text-[10px] text-emerald-400 font-mono whitespace-nowrap">
+          <span className="text-[10px] text-primary font-mono whitespace-nowrap">
             ₱{(parseFloat(inputValue) * packSize).toFixed(2)}/pack ÷ {packSize} = ₱{parseFloat(inputValue).toFixed(2)}/PC
           </span>
         )}
@@ -490,7 +490,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
     >
       {unitCost != null ? (
         <>
-          <span className="text-emerald-400 font-bold font-mono">
+          <span className="text-primary font-bold font-mono">
             ₱{unitCost.toFixed(2)}
             <span className="text-[10px] text-text-dim font-normal ml-0.5">/{material.unit || 'PC'}</span>
           </span>
@@ -1545,7 +1545,7 @@ export default function PanelRawMaterials({
               onClick={handleOpenShoppingListImage}
               disabled={isGeneratingImage}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${lowStockItems.length > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  ? 'bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main'
                   : 'bg-white/5 border border-border-glass text-text-dim hover:text-text-main hover:bg-white/10'
                 }`}
               title="Generate restock order slip to send to supplier via Messenger or Viber"
@@ -1621,7 +1621,7 @@ export default function PanelRawMaterials({
                     const id = i.id || i._id;
                     const isLow = i.count <= (i.minThreshold || 10);
                     return (
-                      <tr key={id} className={`glass-tr hover:bg-white/5 transition-all ${isLow ? 'bg-amber-500/[0.04]' : ''}`}>
+                      <tr key={id} className={`glass-tr hover:bg-white/5 transition-all ${isLow ? 'bg-primary/[0.04]' : ''}`}>
                         <td className="glass-td font-bold text-sm text-text-main text-left">
                           <div>{i.item}</div>
                           {i.packSize && i.packSize > 1 ? (
@@ -1757,7 +1757,7 @@ export default function PanelRawMaterials({
 
                     <div className="flex justify-between items-center text-[0.72rem] text-text-dim pt-1 border-t border-white/5">
                       <span>Threshold: <b className="text-text-main font-mono">{i.minThreshold || 10} {i.unit || 'PCs'}</b></span>
-                      <span>Cost: <b className="text-emerald-400 font-mono">{i.supplierUnitCost != null ? `₱${Number(i.supplierUnitCost).toFixed(2)}` : '—'}</b></span>
+                      <span>Cost: <b className="text-primary font-mono">{i.supplierUnitCost != null ? `₱${Number(i.supplierUnitCost).toFixed(2)}` : '—'}</b></span>
                     </div>
                   </div>
 
@@ -1960,7 +1960,7 @@ export default function PanelRawMaterials({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Min. Threshold</label>
-                <span className="text-[0.62rem] text-amber-400 font-medium">Low-stock alert</span>
+                <span className="text-[0.62rem] text-text-dim font-medium">Low-stock alert</span>
               </div>
               <input
                 type="number"
@@ -1998,7 +1998,7 @@ export default function PanelRawMaterials({
                     {parseInt(itemPackSize)} {itemUnit}/pack
                   </span>
                 </span>
-                <span className="text-[0.62rem] text-emerald-400 font-medium">Live auto-calculation</span>
+                <span className="text-[0.62rem] text-primary font-medium">Live auto-calculation</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2024,7 +2024,7 @@ export default function PanelRawMaterials({
                 <div className="flex flex-col gap-1">
                   <label className="text-[0.65rem] font-bold uppercase text-text-dim">Cost per Unit ({itemUnit})</label>
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs select-none">₱</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary font-bold text-xs select-none">₱</span>
                     <input
                       type="number"
                       min="0"
@@ -2032,10 +2032,10 @@ export default function PanelRawMaterials({
                       placeholder="e.g. 10.00"
                       value={itemSupplierCost}
                       onChange={(e) => handleAddUnitCostChange(e.target.value)}
-                      className="bg-bg-surface border border-emerald-500/30 py-1.5 pl-6 pr-2 rounded-lg text-emerald-400 text-xs outline-none w-full font-mono font-bold focus:border-emerald-500 transition"
+                      className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-primary text-xs outline-none w-full font-mono font-bold focus:border-primary transition"
                     />
                   </div>
-                  <span className="text-[0.6rem] text-emerald-400/80">Powers recipe & profit</span>
+                  <span className="text-[0.6rem] text-primary/80">Powers recipe & profit</span>
                 </div>
               </div>
 
@@ -2044,7 +2044,7 @@ export default function PanelRawMaterials({
                   <span className="text-text-dim">
                     🧮 ₱{parseFloat(itemPackCost || '0').toFixed(2)} ÷ {itemPackSize} {itemUnit}
                   </span>
-                  <span className="font-bold text-emerald-400">
+                  <span className="font-bold text-primary">
                     = ₱{parseFloat(itemSupplierCost || '0').toFixed(2)} / {itemUnit}
                   </span>
                 </div>
@@ -2054,7 +2054,7 @@ export default function PanelRawMaterials({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Supplier Cost per Unit</label>
-                <span className="text-[0.62rem] text-emerald-400 font-medium">Powers profit analytics</span>
+                <span className="text-[0.62rem] text-primary font-medium">Powers profit analytics</span>
               </div>
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
@@ -2138,7 +2138,7 @@ export default function PanelRawMaterials({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Min. Threshold</label>
-                <span className="text-[0.62rem] text-amber-400 font-medium">Low-stock alert</span>
+                <span className="text-[0.62rem] text-text-dim font-medium">Low-stock alert</span>
               </div>
               <input
                 type="number"
@@ -2176,7 +2176,7 @@ export default function PanelRawMaterials({
                     {parseInt(editItemPackSize)} {editItemUnit}/pack
                   </span>
                 </span>
-                <span className="text-[0.62rem] text-emerald-400 font-medium">Live auto-calculation</span>
+                <span className="text-[0.62rem] text-primary font-medium">Live auto-calculation</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2202,7 +2202,7 @@ export default function PanelRawMaterials({
                 <div className="flex flex-col gap-1">
                   <label className="text-[0.65rem] font-bold uppercase text-text-dim">Cost per Unit ({editItemUnit})</label>
                   <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs select-none">₱</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary font-bold text-xs select-none">₱</span>
                     <input
                       type="number"
                       min="0"
@@ -2210,10 +2210,10 @@ export default function PanelRawMaterials({
                       placeholder="e.g. 10.00"
                       value={editItemSupplierCost}
                       onChange={(e) => handleEditUnitCostChange(e.target.value)}
-                      className="bg-bg-surface border border-emerald-500/30 py-1.5 pl-6 pr-2 rounded-lg text-emerald-400 text-xs outline-none w-full font-mono font-bold focus:border-emerald-500 transition"
+                      className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-primary text-xs outline-none w-full font-mono font-bold focus:border-primary transition"
                     />
                   </div>
-                  <span className="text-[0.6rem] text-emerald-400/80">Powers recipe & profit</span>
+                  <span className="text-[0.6rem] text-primary/80">Powers recipe & profit</span>
                 </div>
               </div>
 
@@ -2222,7 +2222,7 @@ export default function PanelRawMaterials({
                   <span className="text-text-dim">
                     🧮 ₱{parseFloat(editItemPackCost || '0').toFixed(2)} ÷ {editItemPackSize} {editItemUnit}
                   </span>
-                  <span className="font-bold text-emerald-400">
+                  <span className="font-bold text-primary">
                     = ₱{parseFloat(editItemSupplierCost || '0').toFixed(2)} / {editItemUnit}
                   </span>
                 </div>
@@ -2232,7 +2232,7 @@ export default function PanelRawMaterials({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Supplier Cost per Unit</label>
-                <span className="text-[0.62rem] text-emerald-400 font-medium">Powers profit analytics</span>
+                <span className="text-[0.62rem] text-primary font-medium">Powers profit analytics</span>
               </div>
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-dim font-bold text-xs select-none">₱</span>
@@ -2512,7 +2512,7 @@ export default function PanelRawMaterials({
                       </div>
 
                       <div className="w-24 text-right flex flex-col justify-center">
-                        <span className="font-mono font-bold text-emerald-400 text-xs">
+                        <span className="font-mono font-bold text-primary text-xs">
                           +{totalUnitsToAdd} {item.unit}
                         </span>
                         <span className="text-[0.62rem] text-text-dim font-mono">
@@ -2589,7 +2589,7 @@ export default function PanelRawMaterials({
               <div className="pt-2 border-t border-white/10 flex justify-between items-center gap-3">
                 <div className="text-xs text-text-dim">
                   Checking in <b className="text-text-main font-mono">{active.length}</b> items (
-                  <b className="text-emerald-400 font-mono">+{totalUnits}</b> units total)
+                  <b className="text-primary font-mono">+{totalUnits}</b> units total)
                 </div>
 
                 <div className="flex gap-2">
@@ -2603,7 +2603,7 @@ export default function PanelRawMaterials({
                   <button
                     type="submit"
                     disabled={isSubmittingBatch || active.length === 0}
-                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer shadow-sm flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer shadow-sm flex items-center gap-1.5"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
@@ -2633,7 +2633,7 @@ export default function PanelRawMaterials({
                 <button
                   type="button"
                   onClick={handleCopyShoppingListImage}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
                   title="Copy image to clipboard so you can press Ctrl+V in Messenger"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

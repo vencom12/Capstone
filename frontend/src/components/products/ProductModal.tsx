@@ -688,7 +688,7 @@ export default function ProductModal({
                 Out of Stock
               </span>
             ) : effectiveStock <= 5 ? (
-              <span className="bg-amber-500/90 text-white text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
+              <span className="bg-bg-surface/95 text-text-main border border-border-glass text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
                 Only {effectiveStock} Left
               </span>
             ) : (
@@ -935,12 +935,12 @@ export default function ProductModal({
               )}
             </div>
             {isOutOfStock ? (
-              <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold text-xs tracking-wider uppercase">
+              <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-semibold text-xs tracking-wider uppercase">
                 Pre-Order Available
               </span>
             ) : (
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-xs font-medium text-text-main">
-                <span className={`w-1.5 h-1.5 rounded-full ${effectiveStock <= 5 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${effectiveStock <= 5 ? 'bg-primary' : 'bg-text-main'}`} />
                 {effectiveStock <= 5 ? `Only ${effectiveStock} on hand` : `In Stock (${effectiveStock} on hand)`}
               </span>
             )}
@@ -1173,7 +1173,7 @@ export default function ProductModal({
                   <div className="flex flex-col gap-1">
                     <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
                       <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars incl. spaces)</span>
-                      <span className={`font-mono ${customText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400 font-bold' : ''}`}>
+                      <span className={`font-mono ${customText.length >= MAX_CHARS_PER_LINE ? 'text-primary font-bold' : ''}`}>
                         {customText.length}/{MAX_CHARS_PER_LINE}
                       </span>
                     </div>
@@ -1209,7 +1209,7 @@ export default function ProductModal({
                       placeholder="e.g. Juan (free) or Juan D (+fee after space)"
                       className={`w-full bg-bg-surface border ${
                         monogramError
-                          ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                          ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                           : 'border-border-glass focus:border-white/40'
                       } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
                     />
@@ -1240,7 +1240,7 @@ export default function ProductModal({
                       placeholder={`Copy & paste multiple names (1 per line):\nJuan\nMaria C\nPedro Penduko\nAna`}
                       className={`w-full bg-bg-surface border ${
                         monogramError
-                          ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                          ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                           : 'border-border-glass focus:border-white/40'
                       } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
                     />
@@ -1263,7 +1263,7 @@ export default function ProductModal({
                               <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
                               <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
                             </div>
-                            <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
+                            <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
                               {line.extraCost > 0
                                 ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
                                 : 'Free (₱0)'}
@@ -1292,7 +1292,7 @@ export default function ProductModal({
                           : `Admin Small Garment Tier (₱${letteringRates.smallRate}/letter after 1st word)`}
                       </span>
                     </div>
-                    <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-emerald-400'}`}>
+                    <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
                       {totalExtraLetteringCost > 0 ? `+₱${totalExtraLetteringCost.toFixed(2)}` : 'Included in price (₱0)'}
                     </span>
                   </div>
@@ -1407,26 +1407,26 @@ export default function ProductModal({
 
             {/* Stock Exceeded / Pre-Order Warning & Acknowledgment Banner (Never mentions "supplier") */}
             {requiresPreOrder && (
-              <div className="mt-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col gap-2 text-xs">
+              <div className="mt-1 p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-2 text-xs">
                 <div className="flex items-start gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="text-amber-400 shrink-0 mt-0.5">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="text-primary shrink-0 mt-0.5">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                     <line x1="12" y1="9" x2="12" y2="13"/>
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-amber-300 text-xs">
+                    <span className="font-bold text-text-main text-xs">
                       Quantity Exceeds Current On-Hand Stock ({remainingOnHandForVariant} available)
                     </span>
                     <span className="text-[11px] text-text-dim leading-relaxed">
                       You are ordering <strong>{quantity} pcs</strong>, which is <strong>{preOrderShortage} pcs</strong> beyond our current ready-to-stitch stock. You may proceed with this order as a <strong>Pre-Order (100% upfront payment)</strong> with an extended workshop preparation &amp; production schedule.
                     </span>
-                    <span className="text-[11px] font-mono font-bold text-amber-300 mt-0.5">
+                    <span className="text-[11px] font-mono font-bold text-primary mt-0.5">
                       ⏱ {estimatedPreOrderScheduleLabel}
                     </span>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 pt-1.5 border-t border-amber-500/20 cursor-pointer select-none">
+                <label className="flex items-center gap-2 pt-1.5 border-t border-border-glass cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={preOrderAccepted}
@@ -1434,7 +1434,7 @@ export default function ProductModal({
                       setPreOrderAccepted(e.target.checked);
                       if (e.target.checked && actionError) setActionError(null);
                     }}
-                    className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+                    className="w-4 h-4 rounded accent-primary cursor-pointer"
                   />
                   <span className="text-[11px] font-semibold text-text-main">
                     I accept the extended workshop production &amp; preparation wait time for this Pre-Order.
@@ -1666,14 +1666,14 @@ export default function ProductModal({
                                 <span className="text-xs font-bold text-text-main truncate">
                                   {review.customerName || 'Verified Customer'}
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-bold leading-none shrink-0">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/5 border border-border-glass text-text-dim text-[9px] font-bold leading-none shrink-0">
                                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                                     <polyline points="20 6 9 17 4 12" />
                                   </svg>
                                   <span>Verified</span>
                                 </span>
                                 {review.isFeatured && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-bold leading-none shrink-0">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[9px] font-bold leading-none shrink-0">
                                     <span>★</span>
                                     <span>Featured</span>
                                   </span>
@@ -1729,7 +1729,7 @@ export default function ProductModal({
                                 key={i}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim hover:text-text-main text-[0.65rem] font-medium transition-colors"
                               >
-                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-emerald-400 shrink-0">
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-primary shrink-0">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                                 <span>{h}</span>

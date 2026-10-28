@@ -26,7 +26,7 @@ export function computeStockLevel(count: number = 0, minThreshold: number = 10):
     return {
       tier: 'critical',
       label: 'Critical (Depleted)',
-      badgeClass: 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse',
+      badgeClass: 'bg-danger/15 text-danger border border-danger/30',
       dotColor: '#f43f5e',
       description: 'Zero stock! Material or product is depleted.',
       percentageOfThreshold: 0
@@ -38,7 +38,7 @@ export function computeStockLevel(count: number = 0, minThreshold: number = 10):
     return {
       tier: 'critical',
       label: 'Critical Stock',
-      badgeClass: 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse',
+      badgeClass: 'bg-danger/15 text-danger border border-danger/30',
       dotColor: '#f43f5e',
       description: 'Critically low (<= 50% of safety threshold). Restock immediately.',
       percentageOfThreshold: Math.round(ratio)
@@ -49,7 +49,7 @@ export function computeStockLevel(count: number = 0, minThreshold: number = 10):
     return {
       tier: 'low',
       label: 'Low Stock',
-      badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+      badgeClass: 'bg-primary/15 text-primary border border-primary/30',
       dotColor: '#f59e0b',
       description: 'Below safety threshold. Reordering advised.',
       percentageOfThreshold: Math.round(ratio)
@@ -60,7 +60,7 @@ export function computeStockLevel(count: number = 0, minThreshold: number = 10):
     return {
       tier: 'moderate',
       label: 'Moderate',
-      badgeClass: 'bg-sky-500/20 text-sky-400 border border-sky-500/30',
+      badgeClass: 'bg-white/5 text-text-dim border border-border-glass',
       dotColor: '#38bdf8',
       description: 'Healthy inventory within normal operational margins.',
       percentageOfThreshold: Math.round(ratio)
@@ -70,7 +70,7 @@ export function computeStockLevel(count: number = 0, minThreshold: number = 10):
   return {
     tier: 'high',
     label: 'High Stock',
-    badgeClass: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    badgeClass: 'bg-white/10 text-text-main border border-border-glass',
     dotColor: '#34d399',
     description: 'Abundant stock available.',
     percentageOfThreshold: Math.round(ratio)

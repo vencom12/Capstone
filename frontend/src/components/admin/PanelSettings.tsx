@@ -596,7 +596,7 @@ export default function PanelSettings({
                           <button 
                             type="button"
                             onClick={() => setBusinessLogoUrl('')}
-                            className="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
+                            className="absolute -top-1.5 -right-1.5 bg-danger hover:bg-danger/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
                             title="Remove Logo"
                           >
                             ×
@@ -647,7 +647,7 @@ export default function PanelSettings({
                           <button 
                             type="button"
                             onClick={() => setGcashQrCodeUrl('')}
-                            className="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
+                            className="absolute -top-1.5 -right-1.5 bg-danger hover:bg-danger/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
                             title="Remove QR Code"
                           >
                             ×
@@ -679,7 +679,7 @@ export default function PanelSettings({
                         />
                       </label>
                       {isUploadingQr && (
-                        <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin shrink-0"></div>
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"></div>
                       )}
                     </div>
                   </div>
@@ -761,7 +761,7 @@ export default function PanelSettings({
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
                         <span>Small Garment Extra Letter Rate</span>
-                        <span className="text-[10px] text-sky-400 font-mono">₱ / extra letter</span>
+                        <span className="text-[10px] text-text-dim font-mono">₱ / extra letter</span>
                       </label>
                       <input
                         type="number"
@@ -780,7 +780,7 @@ export default function PanelSettings({
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
                         <span>Big Garment Extra Letter Rate</span>
-                        <span className="text-[10px] text-indigo-400 font-mono">₱ / extra letter</span>
+                        <span className="text-[10px] text-text-dim font-mono">₱ / extra letter</span>
                       </label>
                       <input
                         type="number"
@@ -957,7 +957,7 @@ export default function PanelSettings({
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
                         <span>Pre-Order Preparation Lead Time</span>
-                        <span className="text-[10px] text-amber-400 font-mono">+days</span>
+                        <span className="text-[10px] text-text-dim font-mono">+days</span>
                       </label>
                       <input
                         type="number"
@@ -1192,7 +1192,7 @@ export default function PanelSettings({
                     </span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
-                        <span className="font-bold text-amber-400 flex items-center gap-1">
+                        <span className="font-bold text-primary flex items-center gap-1">
                           5★ &amp; 4★ High-Praise Tier
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
@@ -1200,7 +1200,7 @@ export default function PanelSettings({
                         </p>
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
-                        <span className="font-bold text-sky-400 flex items-center gap-1">
+                        <span className="font-bold text-text-main flex items-center gap-1">
                           3★ Constructive Tier
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
@@ -1208,7 +1208,7 @@ export default function PanelSettings({
                         </p>
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
-                        <span className="font-bold text-rose-400 flex items-center gap-1">
+                        <span className="font-bold text-danger flex items-center gap-1">
                           1★ &amp; 2★ Service Recovery Tier
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
@@ -1248,11 +1248,11 @@ export default function PanelSettings({
                   {pingResult && (
                     <div className={`p-3 rounded-lg border text-xs font-mono flex flex-col gap-1.5 animate-[fadeIn_0.2s_ease-out] ${
                       pingResult.success 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                        : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                        : 'bg-danger/10 border-danger/20 text-danger'
                     }`}>
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${pingResult.success ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                        <span className={`w-2 h-2 rounded-full ${pingResult.success ? 'bg-primary animate-pulse' : 'bg-danger'}`}></span>
                         <span className="font-bold uppercase tracking-wider text-[11px]">
                           {pingResult.success ? 'Operational' : 'Connection Error'}
                         </span>
@@ -1308,7 +1308,7 @@ export default function PanelSettings({
           {activeTab === 'appearance' && (
             <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
               <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="5"/>
                     <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -1336,7 +1336,7 @@ export default function PanelSettings({
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/10 flex items-center justify-center text-amber-300">
+                    <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/10 flex items-center justify-center text-text-main">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                       </svg>
@@ -1369,7 +1369,7 @@ export default function PanelSettings({
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-amber-500">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-text-main">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="5"/>
                         <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -1473,13 +1473,13 @@ export default function PanelSettings({
                   </label>
 
                   {passError && (
-                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                    <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
                       {passError}
                     </div>
                   )}
 
                   {passSuccess && (
-                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                       {passSuccess}
                     </div>
                   )}

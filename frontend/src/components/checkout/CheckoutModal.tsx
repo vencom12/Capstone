@@ -750,16 +750,16 @@ export default function CheckoutModal({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor="pickup-date-select" className="text-[0.68rem] font-bold text-text-main uppercase tracking-wider">
-                    Pick-up Date <span className="text-amber-400">*</span>
+                    Pick-up Date <span className="text-primary">*</span>
                   </label>
                   <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free • 100% Upfront</span>
                 </div>
 
                 {isBulkOrPreOrder && (
-                  <div className="px-2.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[0.68rem] text-amber-200 leading-relaxed flex items-start gap-2">
+                  <div className="px-2.5 py-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] text-text-dim leading-relaxed flex items-start gap-2">
                     <span className="shrink-0">⏳</span>
                     <div>
-                      <strong className="text-amber-300 block">
+                      <strong className="text-text-main block">
                         {hasPreOrderItems ? 'Pre-Order & Extended Workshop Schedule' : 'Bulk Production Schedule'}
                       </strong>
                       <span>
@@ -779,7 +779,7 @@ export default function CheckoutModal({
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
                     className={`w-full bg-bg-surface border text-text-main text-xs rounded-xl px-3 py-2.5 outline-none cursor-pointer font-medium transition-all ${
                       !selectedDateStr
-                        ? 'border-amber-400/60 bg-amber-400/[0.03]'
+                        ? 'border-primary/50 bg-primary/[0.03]'
                         : 'border-border-glass focus:border-white/40'
                     }`}
                   >
@@ -801,7 +801,7 @@ export default function CheckoutModal({
 
                 {/* Prompt user if not selected yet */}
                 {!selectedDateStr && (
-                  <div className="px-2.5 py-1.5 rounded-lg bg-amber-400/10 border border-amber-400/20 text-[0.68rem] text-amber-300 font-medium flex items-center gap-1.5">
+                  <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.68rem] text-text-dim font-medium flex items-center gap-1.5">
                     <span>Please choose your pick-up date from the dropdown above.</span>
                   </div>
                 )}

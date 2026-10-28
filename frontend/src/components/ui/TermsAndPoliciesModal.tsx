@@ -65,8 +65,8 @@ export default function TermsAndPoliciesModal({
             </p>
           </div>
 
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col gap-1.5 text-emerald-200">
-            <span className="font-bold text-emerald-400 text-xs uppercase tracking-wide flex items-center gap-1.5">
+          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5 text-text-dim">
+            <span className="font-bold text-primary text-xs uppercase tracking-wide flex items-center gap-1.5">
               <span>✓</span> 100% Workshop Error Guarantee
             </span>
             <p className="m-0 text-xs">
@@ -113,8 +113,8 @@ export default function TermsAndPoliciesModal({
             </div>
           </div>
 
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-1.5 text-amber-200">
-            <span className="font-bold text-amber-400 text-xs uppercase tracking-wide">
+          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5 text-text-dim">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
               30-Day Free Storage Policy
             </span>
             <p className="m-0 text-xs">

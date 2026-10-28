@@ -406,14 +406,14 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             <span
                               className={`text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                                 garmentTier === 'big'
-                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                                  : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                                  ? 'bg-white/5 text-text-dim border-border-glass'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
                               }`}
                             >
                               {garmentTier === 'big' ? 'Big Garment' : 'Small Garment'}
                             </span>
                             {isItemPreOrder && (
-                              <span className="text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <span className="text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/30">
                                 Pre-Order Schedule
                               </span>
                             )}
@@ -482,7 +482,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                     [item.id]: !prev[item.id],
                                   }))
                                 }
-                                className="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[0.7rem] px-2.5 py-0.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                                className="bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[0.7rem] px-2.5 py-0.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-all"
                               >
                                 <span>📋 Bulk Name List ({namesList.length} lines)</span>
                                 {item.personalization?.threadHex && (
@@ -546,7 +546,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                           {/* Pre-Order Notice Banner if exceeding stock */}
                           {isItemPreOrder && (
-                            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[0.7rem] text-amber-200 flex items-center gap-2">
+                            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-center gap-2">
                               <span>⏳</span>
                               <span>
                                 <strong>Pre-Order Item:</strong> Quantity ({item.quantity} pcs) exceeds current on-hand stock ({Math.max(0, availableStock)} pcs). Includes extended workshop preparation &amp; production time.
@@ -564,7 +564,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             ₱{item.price.toFixed(2)} avg/pc
                           </span>
                           {(item.personalization?.totalExtraLetteringCost ?? 0) > 0 && (
-                            <span className="text-[0.65rem] text-amber-400 font-semibold block">
+                            <span className="text-[0.65rem] text-primary font-semibold block">
                               incl. +₱{(item.personalization?.totalExtraLetteringCost ?? 0).toFixed(0)} extra letters
                             </span>
                           )}
@@ -931,8 +931,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                   <span
                     className={`text-[0.62rem] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                       isBig
-                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                        : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                        ? 'bg-white/5 text-text-dim border-border-glass'
+                        : 'bg-white/5 text-text-dim border-border-glass'
                     }`}
                   >
                     {isBig
@@ -1070,7 +1070,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           </span>
                           <span
                             className={`font-mono font-bold ${
-                              editSingleText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400' : 'text-text-dim'
+                              editSingleText.length >= MAX_CHARS_PER_LINE ? 'text-primary' : 'text-text-dim'
                             }`}
                           >
                             {editSingleText.length}/{MAX_CHARS_PER_LINE} chars
@@ -1142,7 +1142,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 </div>
                                 <span
                                   className={`font-mono font-bold shrink-0 ${
-                                    line.extraCost > 0 ? 'text-amber-400' : 'text-emerald-400'
+                                    line.extraCost > 0 ? 'text-primary' : 'text-text-dim'
                                   }`}
                                 >
                                   {line.extraCost > 0
@@ -1221,24 +1221,24 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                 {/* Pre-Order Warning & Acceptance when exceeding on-hand stock */}
                 {exceedsStock && (
-                  <div className="mt-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/35 text-xs text-amber-200 flex flex-col gap-2">
+                  <div className="mt-1 p-3 rounded-xl bg-bg-surface border border-border-glass text-xs text-text-dim flex flex-col gap-2">
                     <div className="flex items-start gap-2">
                       <span className="text-base leading-none">⚠️</span>
                       <div className="leading-relaxed">
-                        <strong className="text-amber-300 block mb-0.5">
+                        <strong className="text-text-main block mb-0.5">
                           Quantity Exceeds Immediate On-Hand Stock ({Math.max(0, variantStock)} available)
                         </strong>
                         You are ordering <strong>{effectiveQuantity} pcs</strong> ({shortageCount} pcs beyond immediate on-hand stock). You can proceed with this order as a <strong>Pre-Order (100% upfront payment)</strong> with an extended workshop preparation &amp; production schedule (+{letteringRates.preOrderPrepDays} prep days plus batch embroidery turnaround).
                       </div>
                     </div>
-                    <label className="flex items-center gap-2.5 pt-1.5 border-t border-amber-500/20 cursor-pointer select-none">
+                    <label className="flex items-center gap-2.5 pt-1.5 border-t border-border-glass cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={editPreOrderAccepted}
                         onChange={(e) => setEditPreOrderAccepted(e.target.checked)}
-                        className="w-4 h-4 rounded accent-amber-400 cursor-pointer shrink-0"
+                        className="w-4 h-4 rounded accent-primary cursor-pointer shrink-0"
                       />
-                      <span className="text-[0.72rem] font-bold text-amber-100">
+                      <span className="text-[0.72rem] font-bold text-text-main">
                         I accept the extended Pre-Order production wait time and 100% upfront payment
                       </span>
                     </label>

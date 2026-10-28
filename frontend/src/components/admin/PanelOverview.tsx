@@ -639,15 +639,15 @@ export default function PanelOverview({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span>{o.orderId}</span>
                             {o.isRush && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
                                 RUSH
                               </span>
                             )}
                             {o.isByog && (
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold border ${
                                 o.garmentsReceivedAt
-                                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                  : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                  ? 'bg-primary/10 text-primary border-primary/25'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
                               }`}>
                                 {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop-off'}
                               </span>
@@ -720,17 +720,17 @@ export default function PanelOverview({
                             return (
                               <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                 <div
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 w-fit"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
                                   title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
                                 >
-                                  <span className="text-[9px] font-sans font-bold uppercase text-amber-300">Ref:</span>
+                                  <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
                                   <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
-                                  <span className="text-xs font-mono font-black text-amber-300 tracking-wider bg-amber-500/20 px-1 rounded">
+                                  <span className="text-xs font-mono font-black text-primary tracking-wider bg-primary/15 px-1 rounded">
                                     {last4}
                                   </span>
                                 </div>
                                 {smsVerified ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-emerald-400">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-primary">
                                     ✓ Phone SMS Matched
                                   </span>
                                 ) : (
@@ -738,7 +738,7 @@ export default function PanelOverview({
                                     type="button"
                                     onClick={(e) => handleVerifySmsMatch(o, e)}
                                     disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
                                     title="Tap after glancing at your phone's GCash SMS to confirm the last 4 digits match"
                                   >
                                     <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
@@ -768,7 +768,7 @@ export default function PanelOverview({
                           <div className="flex gap-2 justify-end">
                             <button
                               onClick={() => setClaimStubOrder(o)}
-                              className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
                               title="Print thermal claim slip / bag stub"
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -855,15 +855,15 @@ export default function PanelOverview({
                             {o.orderId}
                           </span>
                           {o.isRush && (
-                            <span className="px-1 py-0.2 rounded text-[9px] font-sans font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                            <span className="px-1 py-0.2 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
                               RUSH
                             </span>
                           )}
                           {o.isByog && (
                             <span className={`px-1 py-0.2 rounded text-[9px] font-sans font-semibold border ${
                               o.garmentsReceivedAt
-                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                ? 'bg-primary/10 text-primary border-primary/25'
+                                : 'bg-white/5 text-text-dim border-border-glass'
                             }`}>
                               {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop'}
                             </span>
@@ -935,16 +935,16 @@ export default function PanelOverview({
                           const last4 = ref.slice(-4);
                           return (
                             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] font-mono bg-amber-500/15 border border-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded font-black">
+                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-black">
                                 Ref: ...{last4}
                               </span>
                               {smsVerified ? (
-                                <span className="text-[10px] font-sans font-bold text-emerald-400">✓ SMS</span>
+                                <span className="text-[10px] font-sans font-bold text-primary">✓ SMS</span>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={(e) => handleVerifySmsMatch(o, e)}
-                                  className="text-[10px] font-sans font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded cursor-pointer"
+                                  className="text-[10px] font-sans font-bold bg-white/5 hover:bg-white/10 border border-border-glass text-text-main px-1.5 py-0.5 rounded cursor-pointer"
                                 >
                                   ✓ Match
                                 </button>
@@ -961,7 +961,7 @@ export default function PanelOverview({
                     <button
                       type="button"
                       onClick={() => setClaimStubOrder(o)}
-                      className="flex-1 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 py-2 rounded-lg text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      className="flex-1 bg-white/5 border border-border-glass text-text-main py-2 rounded-lg text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />

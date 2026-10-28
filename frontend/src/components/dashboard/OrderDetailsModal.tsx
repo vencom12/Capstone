@@ -127,7 +127,7 @@ export default function OrderDetailsModal({
   const statusBadgeStyle = isCanceled
     ? 'bg-red-500/15 text-red-400 border border-red-500/30'
     : isCompletedOrDelivered
-      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+      ? 'bg-white/10 text-text-main border border-border-glass'
       : stage.tone === 'shipping'
         ? 'bg-secondary/15 text-secondary border border-secondary/30'
         : 'bg-primary/15 text-primary border border-primary/30';
@@ -135,10 +135,10 @@ export default function OrderDetailsModal({
   const statusCardStyle = isCanceled
     ? 'bg-red-500/10 border-red-500/25'
     : isCompletedOrDelivered
-      ? 'bg-emerald-500/10 border-emerald-500/25'
+      ? 'bg-bg-surface border-border-glass'
       : stage.tone === 'shipping'
         ? 'bg-secondary/10 border-secondary/25'
-        : 'bg-amber-500/10 border-amber-500/25';
+        : 'bg-bg-surface border-border-glass';
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} title="Order Tracking & Details" maxWidth="max-w-[560px]">
@@ -176,7 +176,7 @@ export default function OrderDetailsModal({
                   <line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
               ) : isCompletedOrDelivered ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               ) : (
@@ -358,7 +358,7 @@ export default function OrderDetailsModal({
               type="button"
               onClick={handleCancelOrder}
               disabled={isCancelling}
-              className="flex-1 h-9 rounded-xl font-bold text-xs bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 transition-all cursor-pointer flex items-center justify-center active:scale-[0.98]"
+              className="flex-1 h-9 rounded-xl font-bold text-xs bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger transition-all cursor-pointer flex items-center justify-center active:scale-[0.98]"
             >
               {isCancelling ? 'Cancelling...' : 'Cancel Order'}
             </button>
@@ -368,7 +368,7 @@ export default function OrderDetailsModal({
             <button
               type="button"
               onClick={() => setIsReviewModalOpen(true)}
-              className="flex-1 h-9 rounded-xl font-bold text-xs bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
+              className="flex-1 h-9 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 border border-primary text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
               <span>★</span>
               <span>{order.myReview ? 'Edit Review' : 'Rate Order'}</span>

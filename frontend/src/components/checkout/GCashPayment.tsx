@@ -324,7 +324,7 @@ export default function GCashPayment({
                   Can't read clearly? You can also type your GCash Reference Number below:
                 </span>
                 {refTouched && !refError && manualRef.trim() && (
-                  <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Ready</span>
+                  <span className="text-primary text-[0.68rem] font-bold">✓ Ready</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -339,7 +339,7 @@ export default function GCashPayment({
                   onBlur={handleManualRefBlur}
                   className={`flex-1 bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.85rem] outline-none transition-all ${
                     refTouched && refError
-                      ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                      ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                       : 'border-border-glass focus:border-primary'
                   }`}
                 />

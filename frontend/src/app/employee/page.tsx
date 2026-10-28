@@ -797,17 +797,17 @@ export default function EmployeePage() {
                                 return (
                                   <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                     <div
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 w-fit"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
                                       title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
                                     >
-                                      <span className="text-[9px] font-sans font-bold uppercase text-amber-300">Ref:</span>
+                                      <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
                                       <span className="text-[10px] font-mono text-text-dim">{ref.length > 4 ? '...' : ''}</span>
-                                      <span className="text-xs font-mono font-black text-amber-300 tracking-wider bg-amber-500/20 px-1 rounded">
+                                      <span className="text-xs font-mono font-black text-primary tracking-wider bg-primary/15 px-1 rounded">
                                         {last4}
                                       </span>
                                     </div>
                                     {smsVerified ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-emerald-400">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-primary">
                                         ✓ Phone SMS Matched
                                       </span>
                                     ) : (
@@ -815,7 +815,7 @@ export default function EmployeePage() {
                                         type="button"
                                         onClick={(e) => handleVerifySmsMatch(o, e)}
                                         disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
                                       >
                                         <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
                                       </button>

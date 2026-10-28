@@ -1023,7 +1023,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </svg>
             <span>Claim &amp; Handover</span>
             {readyForClaimOrders.length > 0 && (
-              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+              <span className="bg-white/15 text-current border border-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
                 {readyForClaimOrders.length} Ready
               </span>
             )}
@@ -1067,7 +1067,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {/* Clean BYOG Status & Base Price Header */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                       <div>
                         <span className="font-bold text-xs text-text-main block">Client-Provided Garment (BYOG)</span>
                         <span className="text-[11px] text-text-dim">Customer brings their own item (Cap, Shirt, Towel, Uniform)</span>
@@ -1192,7 +1192,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 />
                               )}
                               <span>{v.name}</span>
-                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-rose-400 font-bold' : 'opacity-75'}`}>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-danger font-bold' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
                               </span>
                             </button>
@@ -1210,7 +1210,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                             Garment Size &amp; Lettering Rate
                           </label>
-                          <span className="text-[10px] text-amber-400 font-semibold">No free 1st word • All letters charged</span>
+                          <span className="text-[10px] text-primary font-semibold">No free 1st word • All letters charged</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -1328,7 +1328,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       />
                       <span
                         className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono font-bold ${
-                          monogramText.length >= MAX_CHARS_PER_LINE ? 'text-amber-400' : 'text-text-dim'
+                          monogramText.length >= MAX_CHARS_PER_LINE ? 'text-primary' : 'text-text-dim'
                         }`}
                       >
                         {monogramText.length}/{MAX_CHARS_PER_LINE}
@@ -1340,21 +1340,21 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           {activeSelectedItem.isByog ? (
                             counterLettering.extraCost > 0 ? (
                               <>
-                                BYOG Lettering: <strong className="text-amber-400">{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                                BYOG Lettering: <strong className="text-primary">{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'} • every letter charged)
                               </>
                             ) : (
                               <span>BYOG: ₱{counterLettering.ratePerLetter}/letter ({isSelectedBigGarment ? 'big garment' : 'small garment'} • all letters charged)</span>
                             )
                           ) : counterLettering.extraCost > 0 ? (
                             <>
-                              First word included. Additional letters: <strong className="text-amber-400">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
+                              First word included. Additional letters: <strong className="text-primary">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
                             </>
                           ) : (
                             <span>First word included in base price (₱0 extra)</span>
                           )}
                         </span>
                         {counterLettering.extraCost > 0 && (
-                          <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-2">
+                          <span className="font-mono font-bold text-primary text-xs shrink-0 ml-2">
                             +₱{counterLettering.extraCost.toFixed(2)}
                           </span>
                         )}
@@ -1391,7 +1391,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               &ldquo;{line.sanitizedLine}&rdquo;{' '}
                               <span className="text-[10px] text-text-dim">({line.charCount}/{MAX_CHARS_PER_LINE})</span>
                             </span>
-                            <span className={`font-mono font-bold shrink-0 ${line.extraCost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            <span className={`font-mono font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
                               {line.extraCost > 0 ? `+₱${line.extraCost} (${line.extraLettersCount} extra)` : 'Included'}
                             </span>
                           </div>
@@ -1434,7 +1434,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           >
                             {!isAvailable && (
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-[130%] h-[1.5px] bg-rose-500/80 rotate-45 transform" />
+                                <div className="w-[130%] h-[1.5px] bg-danger/80 rotate-45 transform" />
                               </div>
                             )}
                             <span
@@ -1488,7 +1488,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Stock Warning if Quantity Exceeds On-Hand Stock */}
                   {intakeExceedsStock && (
-                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-center gap-2">
+                    <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass text-[11px] text-text-dim flex items-center gap-2">
                       <span>⚠️</span>
                       <span>
                         <strong>Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong>Pre-Order</strong> with extended workshop preparation &amp; production schedule.
@@ -1500,7 +1500,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     <div className="text-[11px] text-text-dim">
                       <span className="font-medium text-text-main">
                         Item Subtotal ({effectiveIntakeQty} pcs):{' '}
-                        <strong className="text-emerald-500 font-mono">
+                        <strong className="text-primary font-mono">
                           ₱{grandTotal.toFixed(2)}
                         </strong>
                       </span>
@@ -1580,7 +1580,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           size="sm"
                           ariaLabel={`Quantity for ${item.name}`}
                         />
-                        <span className="font-mono font-bold text-emerald-500 text-xs min-w-[3.5rem] text-right">
+                        <span className="font-mono font-bold text-primary text-xs min-w-[3.5rem] text-right">
                           ₱{item.totalPrice.toFixed(2)}
                         </span>
                         <button
@@ -1625,7 +1625,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                 <div className="text-right">
                   <span className="text-[11px] text-text-dim block">Total Due:</span>
-                  <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  <span className="text-2xl font-black font-mono text-primary">
                     ₱{ticketGrandTotal.toFixed(2)}
                   </span>
                 </div>
@@ -1791,7 +1791,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <div className="mb-3 space-y-2">
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                       <span className="font-bold text-xs text-text-main">Client-Provided Garment (BYOG)</span>
                     </div>
                     <span className="font-mono font-bold text-xs text-primary">Base: ₱{activeQuickItem?.price || 100}</span>
@@ -1868,7 +1868,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                           Slip Garment Rate
                         </span>
-                        <span className="text-[10px] text-amber-400 font-semibold">No free 1st word • All letters charged</span>
+                        <span className="text-[10px] text-primary font-semibold">No free 1st word • All letters charged</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <button
@@ -1974,21 +1974,21 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           {activeQuickItem?.isByog ? (
                             quickLettering.extraCost > 0 ? (
                               <>
-                                BYOG: <strong className="text-amber-400">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
+                                BYOG: <strong className="text-primary">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
                               </>
                             ) : (
                               <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
                             )
                           ) : quickLettering.extraCost > 0 ? (
                             <>
-                              First word included. Extra: <strong className="text-amber-400">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
+                              First word included. Extra: <strong className="text-primary">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
                             </>
                           ) : (
                             <span>First word included in base price (₱0 extra)</span>
                           )}
                         </span>
                         {quickLettering.extraCost > 0 && (
-                          <span className="font-mono font-bold text-amber-400 text-xs shrink-0 ml-1">
+                          <span className="font-mono font-bold text-primary text-xs shrink-0 ml-1">
                             +₱{quickLettering.extraCost.toFixed(2)}
                           </span>
                         )}
@@ -2007,7 +2007,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     {quickBulkSummary.lineCount > 0 && (
                       <div className="text-[11px] text-text-dim flex justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
                         <span>{quickBulkSummary.lineCount} lines = {quickBulkSummary.lineCount} pcs</span>
-                        <span className="font-mono font-bold text-amber-400">
+                        <span className="font-mono font-bold text-primary">
                           {quickBulkSummary.totalExtraCost > 0 ? `+₱${quickBulkSummary.totalExtraCost.toFixed(2)} extra letters` : '₱0 extra letters'}
                         </span>
                       </div>
@@ -2113,7 +2113,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         #{slip.orderId} • {slip.time} • {slip.method}
                       </span>
                     </div>
-                    <span className="font-mono font-bold text-emerald-400 text-xs">
+                    <span className="font-mono font-bold text-primary text-xs">
                       +₱{slip.amount.toFixed(2)}
                     </span>
                   </div>
@@ -2154,8 +2154,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-mono text-xs font-bold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <span>{readyForClaimOrders.length} Packaged Bag(s) Waiting on Side</span>
               </div>
             </div>
@@ -2164,7 +2164,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {/* Orders Cards Grid */}
           {filteredClaimOrders.length === 0 ? (
             <div className="bg-bg-surface border border-border-glass rounded-xl p-12 text-center text-xs text-text-dim flex flex-col items-center gap-2">
-              <svg className="w-10 h-10 text-emerald-400/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg className="w-10 h-10 text-text-dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="font-bold text-text-main text-sm">
@@ -2190,10 +2190,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div
                     key={order.id}
                     className={`bg-bg-card rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3 border transition ${isReady
-                        ? 'border-emerald-500/50 bg-emerald-500/[0.02]'
+                        ? 'border-primary/40 bg-primary/[0.02]'
                         : isCompleted
                           ? 'border-border-glass opacity-70'
-                          : 'border-amber-500/30'
+                          : 'border-border-glass'
                       }`}
                   >
                     <div>
@@ -2202,7 +2202,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <div>
                           <div className="flex items-center gap-2">
                             {/* Big visual claim code to match the bag tag */}
-                            <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 font-mono text-sm font-extrabold border border-emerald-500/40">
+                            <span className="px-2.5 py-1 rounded-md bg-primary/15 text-primary font-mono text-sm font-extrabold border border-primary/30">
                               {claimCode}
                             </span>
                             <span className="text-xs font-mono font-bold text-text-dim">
@@ -2217,8 +2217,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         {/* Status Indicator */}
                         <div>
                           {isReady ? (
-                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-primary/30 bg-primary/10 text-primary flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                               <span>Bagged • Ready for Handover</span>
                             </span>
                           ) : isCompleted ? (
@@ -2230,7 +2230,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               In Workshop Stitching
                             </span>
                           ) : (
-                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-amber-500/30 bg-amber-500/10 text-amber-300">
+                            <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-border-glass bg-bg-surface text-text-dim">
                               In Workshop Queue
                             </span>
                           )}
@@ -2253,7 +2253,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         )}
                         <div className="flex justify-between pt-1 border-t border-border-glass">
                           <span className="text-text-dim">Payment Status:</span>
-                          <span className="font-mono text-emerald-400 font-bold">
+                          <span className="font-mono text-primary font-bold">
                             ₱{order.totalAmount?.toFixed(2)} ({order.paymentStatus === 'paid' ? 'PAID' : 'COLLECT AT COUNTER'})
                           </span>
                         </div>
@@ -2267,7 +2267,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           type="button"
                           disabled={isBusy}
                           onClick={() => setVerifyingOrderForRelease(order)}
-                          className="w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                          className="w-full py-2.5 px-3 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -2279,7 +2279,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           Order was previously handed over and completed.
                         </div>
                       ) : (
-                        <div className="text-center text-[11px] text-amber-400/90 py-1 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                        <div className="text-center text-[11px] text-text-dim py-1 bg-bg-surface border border-border-glass rounded-md">
                           ⏳ Currently being stitched in workshop. Not yet bagged.
                         </div>
                       )}
@@ -2311,7 +2311,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           {/* ───────────────────────────────────────────────────────────── */}
           {verifyingOrderForRelease && isClient && createPortal(
             <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-              <div className="bg-bg-surface border-2 border-emerald-500/50 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
+              <div className="bg-bg-surface border border-border-glass rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 text-left my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <div className="flex items-center justify-end -mb-1">
                   <button
                     type="button"
@@ -2323,11 +2323,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </button>
                 </div>
 
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300 block mb-1">
+                <div className="bg-bg-card border border-border-glass rounded-xl p-4 text-center">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-primary block mb-1">
                     Match Claim Slip Code on Bag
                   </span>
-                  <div className="text-4xl font-black font-mono tracking-widest text-emerald-300 my-1">
+                  <div className="text-4xl font-black font-mono tracking-widest text-primary my-1">
                     {getVerificationCode(verifyingOrderForRelease.orderId)}
                   </div>
                   <span className="text-xs text-text-dim">
@@ -2356,7 +2356,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   )}
                   <div className="flex justify-between pt-1 border-t border-border-glass">
                     <span className="text-text-dim">Payment:</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold text-primary">
                       ₱{verifyingOrderForRelease.totalAmount?.toFixed(2)} (PAID IN FULL)
                     </span>
                   </div>
@@ -2377,7 +2377,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       setVerifyingOrderForRelease(null);
                       await handleTurnOverToCustomer(ord);
                     }}
-                    className="flex-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-2 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />

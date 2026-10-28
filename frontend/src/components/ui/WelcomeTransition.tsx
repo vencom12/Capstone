@@ -179,13 +179,13 @@ export default function WelcomeTransition() {
     },
     employee: {
       label: 'Staff Specialist',
-      badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-      dotClass: 'bg-emerald-500',
+      badgeClass: 'bg-primary/15 text-primary border-primary/30',
+      dotClass: 'bg-primary',
     },
     customer: {
       label: 'Verified Member',
-      badgeClass: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
-      dotClass: 'bg-sky-400',
+      badgeClass: 'bg-white/10 text-text-main border-border-glass',
+      dotClass: 'bg-text-main',
     },
   }[role as 'admin' | 'employee' | 'customer'] || {
     label: 'Customer',

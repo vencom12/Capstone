@@ -126,7 +126,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
               ? 'bg-secondary/10 border-secondary/30 text-secondary'
               : isInTransit
                 ? 'bg-primary/10 border-primary/30 text-primary'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                : 'bg-bg-surface border-border-glass text-text-main'
       }`}>
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm ${
@@ -261,7 +261,7 @@ export default function DeliveryTracker({ order }: DeliveryTrackerProps) {
             </>
           ) : (
             <>
-              <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
+              <div className="flex items-center gap-1.5 bg-primary text-white px-2.5 py-1 rounded-lg text-xs font-black tracking-wide shadow-sm">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 </svg>

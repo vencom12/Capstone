@@ -539,13 +539,13 @@ export default function PersistentAssistant() {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Low Stock</span>;
     }
     if (upper === 'HEALTHY' || upper === 'STABLE' || upper === 'HEALTHY_MARGIN' || upper === 'HEALTHY (>40%)') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Healthy</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Healthy</span>;
     }
     if (upper === 'TIGHT_MARGIN' || upper === 'TIGHT (25-40%)' || upper === 'TIGHT') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">Tight Margin</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-primary/10 text-primary border border-primary/30">Tight Margin</span>;
     }
     if (upper === 'CRITICAL' || upper === 'CRITICAL_OUT' || upper === 'OUT OF STOCK' || upper === 'CRITICAL_SQUEEZE' || upper === 'SQUEEZE (<25%)') {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">Critical Squeeze</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-danger/10 text-danger border border-danger/30">Critical Squeeze</span>;
     }
     if (['ORDER DELIVERED', 'DELIVERED', 'COMPLETED'].includes(upper)) {
       return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.7rem] font-medium bg-white/10 text-text-main border border-border-glass">Delivered</span>;

@@ -253,8 +253,8 @@ export default function OfficialClaimSlip({
           <div className="flex items-center gap-2.5">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               isDirectSale
-                ? 'bg-blue-500/10 border border-blue-500/25 text-blue-400'
-                : 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-400'
+                ? 'bg-white/5 border border-border-glass text-text-main'
+                : 'bg-primary/10 border border-primary/25 text-primary'
             }`}>
               {isDirectSale ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -277,9 +277,9 @@ export default function OfficialClaimSlip({
               </p>
               <p className="text-[0.7rem] text-text-dim m-0">
                 {isDirectSale ? (
-                  <>Receipt Ref: <strong className="text-blue-400 font-mono">#{orderId}</strong> • Direct Sale Handover</>
+                  <>Receipt Ref: <strong className="text-text-main font-mono">#{orderId}</strong> • Direct Sale Handover</>
                 ) : (
-                  <>Claim code: <strong className="text-emerald-400 font-mono">{claimCode}</strong> • Order #{orderId}</>
+                  <>Claim code: <strong className="text-primary font-mono">{claimCode}</strong> • Order #{orderId}</>
                 )}
               </p>
             </div>
@@ -294,8 +294,8 @@ export default function OfficialClaimSlip({
               onClick={handlePrint}
               className={`px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 ${
                 isDirectSale
-                  ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border-blue-500/30'
-                  : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30'
+                  ? 'bg-white/5 hover:bg-white/10 text-text-main border-border-glass'
+                  : 'bg-primary hover:bg-primary/90 text-white border-primary'
               }`}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

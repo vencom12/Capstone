@@ -384,12 +384,12 @@ function OrderTrackerContent() {
       <div
         className={`rounded-xl p-6 border transition-all flex flex-col gap-4 ${
           isReady
-            ? 'bg-bg-card border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+            ? 'bg-bg-card border-primary/50 shadow-sm'
             : isStitching
-            ? 'bg-bg-card border-blue-500/60 shadow-lg shadow-blue-500/10'
+            ? 'bg-bg-card border-border-glass shadow-sm'
             : isCompleted
             ? 'bg-bg-card border-border-glass'
-            : 'bg-bg-card border-amber-500/60 shadow-lg shadow-amber-500/10'
+            : 'bg-bg-card border-border-glass shadow-sm'
         }`}
       >
         {/* Header Row */}

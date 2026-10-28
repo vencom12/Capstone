@@ -450,8 +450,8 @@ export default function PanelStaffing({
             onClick={() => setStatusFilter('active')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
               statusFilter === 'active'
-                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
-                : 'text-text-dim hover:text-emerald-500 bg-transparent'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main bg-transparent'
             }`}
           >
             Active ({activeTab === 'staff' ? activeStaffCount : activeCustomerCount})
@@ -461,8 +461,8 @@ export default function PanelStaffing({
             onClick={() => setStatusFilter('disabled')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer border-none flex items-center ${
               statusFilter === 'disabled'
-                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-sm'
-                : 'text-text-dim hover:text-rose-500 bg-transparent'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-text-dim hover:text-text-main bg-transparent'
             }`}
           >
             Disabled {activeTab === 'customers' && deletedUsers.length > 0 ? `& Archived (${disabledCustomerCount + deletedUsers.length})` : `(${disabledStaffCount})`}
@@ -576,14 +576,14 @@ export default function PanelStaffing({
                           <div
                             className={`text-[0.68rem] font-bold tracking-wide ${
                               u.role === 'admin'
-                                ? 'text-rose-500 dark:text-rose-400'
-                                : 'text-amber-600 dark:text-amber-400'
+                                ? 'text-primary'
+                                : 'text-text-dim'
                             }`}
                           >
                             {u.role === 'admin' ? 'Administrator' : 'Artisan / Employee'}
                           </div>
                         ) : isDeleted ? (
-                          <span className="text-[0.65rem] text-rose-400 font-semibold inline-block">
+                          <span className="text-[0.65rem] text-danger font-semibold inline-block">
                             Account Closed &bull; Data Scrubbed
                           </span>
                         ) : (
@@ -741,8 +741,8 @@ export default function PanelStaffing({
                     <span
                       className={`text-xs font-bold uppercase tracking-wider ${
                         u.role === 'admin'
-                          ? 'text-rose-500 dark:text-rose-400'
-                          : 'text-amber-600 dark:text-amber-400'
+                          ? 'text-primary'
+                          : 'text-text-dim'
                       }`}
                     >
                       {u.role === 'admin' ? 'Administrator' : 'Artisan'}
@@ -871,7 +871,7 @@ export default function PanelStaffing({
             <label className="modal-label flex items-center justify-between">
               <span>Username</span>
               {touched.username && !fieldErrors.username && username.trim() && (
-                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid</span>
+                <span className="text-primary text-[0.68rem] font-bold">✓ Valid</span>
               )}
             </label>
             <input
@@ -885,7 +885,7 @@ export default function PanelStaffing({
               onBlur={() => handleBlur('username')}
               className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans transition-all ${
                 touched.username && fieldErrors.username
-                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                   : 'border-border-glass focus:border-white/40'
               }`}
             />
@@ -898,7 +898,7 @@ export default function PanelStaffing({
             <label className="modal-label flex items-center justify-between">
               <span>Email Address</span>
               {touched.email && !fieldErrors.email && email.trim() && (
-                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid syntax</span>
+                <span className="text-primary text-[0.68rem] font-bold">✓ Valid syntax</span>
               )}
             </label>
             <input
@@ -912,7 +912,7 @@ export default function PanelStaffing({
               onBlur={() => handleBlur('email')}
               className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-sans transition-all ${
                 touched.email && fieldErrors.email
-                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                   : 'border-border-glass focus:border-white/40'
               }`}
             />
@@ -926,7 +926,7 @@ export default function PanelStaffing({
               <label className="modal-label flex items-center justify-between" id="staff-password-label">
                 <span>{editingStaff ? 'Reset Password (Optional)' : 'Password'}</span>
                 {touched.password && !fieldErrors.password && password.trim() && (
-                  <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Good</span>
+                  <span className="text-primary text-[0.68rem] font-bold">✓ Good</span>
                 )}
               </label>
               <input
@@ -940,7 +940,7 @@ export default function PanelStaffing({
                 onBlur={() => handleBlur('password')}
                 className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full transition-all ${
                   touched.password && fieldErrors.password
-                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                     : 'border-border-glass focus:border-white/40'
                 }`}
               />
@@ -981,7 +981,7 @@ export default function PanelStaffing({
             <label className="modal-label flex items-center justify-between">
               <span>Phone Number (Optional)</span>
               {touched.phone && !fieldErrors.phone && phone.trim() && (
-                <span className="text-emerald-400 text-[0.68rem] font-bold">✓ Valid</span>
+                <span className="text-primary text-[0.68rem] font-bold">✓ Valid</span>
               )}
             </label>
             <input
@@ -995,7 +995,7 @@ export default function PanelStaffing({
               onBlur={() => handleBlur('phone')}
               className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono transition-all ${
                 touched.phone && fieldErrors.phone
-                  ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                  ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                   : 'border-border-glass focus:border-white/40'
               }`}
             />

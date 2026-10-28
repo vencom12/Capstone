@@ -98,7 +98,7 @@ export default function ProductCard({ product, onQuickView, index = 0 }: Product
 
         {/* Low Stock badge */}
         {!isOutOfStock && availableStock > 0 && availableStock <= 5 && (
-          <span className="absolute top-3 left-3 bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm backdrop-blur-[2px]">
+          <span className="absolute top-3 left-3 bg-bg-surface/95 text-text-main border border-border-glass text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm backdrop-blur-[2px]">
             Only {availableStock} left
           </span>
         )}

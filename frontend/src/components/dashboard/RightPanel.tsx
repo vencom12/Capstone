@@ -220,14 +220,14 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                         </span>
                       )}
                       {isPreOrder && (
-                        <span className="text-[0.6rem] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span className="text-[0.6rem] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/30">
                           Pre-Order
                         </span>
                       )}
                     </div>
 
                     {isBulk && namesList.length > 0 ? (
-                      <div className="mt-1 text-[0.68rem] text-emerald-300 font-semibold truncate">
+                      <div className="mt-1 text-[0.68rem] text-primary font-semibold truncate">
                         📋 {namesList.length} Names: {namesList.slice(0, 3).join(', ')}
                         {namesList.length > 3 ? ` +${namesList.length - 3} more` : ''}
                       </div>
@@ -281,7 +281,7 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
             <span className="font-medium text-text-main">
               Studio Pickup (100% Upfront)
             </span>
-            <span className="text-emerald-400 font-bold text-[0.7rem] uppercase tracking-wider">Free</span>
+            <span className="text-text-main font-bold text-[0.7rem] uppercase tracking-wider">Free</span>
           </div>
 
           <div className="flex justify-between items-baseline px-0.5">

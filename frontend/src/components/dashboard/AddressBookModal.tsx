@@ -32,7 +32,7 @@ export default function AddressBookModal({
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-text-main m-0">Eds Towels &amp; Caps Studio</h3>
-              <span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+              <span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/25">
                 Counter Pick-Up
               </span>
             </div>
@@ -53,14 +53,14 @@ export default function AddressBookModal({
           </div>
 
           <div className="flex items-start gap-2.5 text-xs text-text-dim leading-relaxed">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400 shrink-0 mt-0.5">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary shrink-0 mt-0.5">
               <polyline points="20 6 9 17 4 12" />
             </svg>
             <span>All personalized items and embroidery orders are crafted directly at our Pacific Mall workshop. Home delivery is not required.</span>
           </div>
 
           <div className="flex items-start gap-2.5 text-xs text-text-dim leading-relaxed">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400 shrink-0 mt-0.5">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary shrink-0 mt-0.5">
               <polyline points="20 6 9 17 4 12" />
             </svg>
             <span>To claim your order, simply present your digital claim slip or Order ID from your dashboard at our ground floor counter.</span>

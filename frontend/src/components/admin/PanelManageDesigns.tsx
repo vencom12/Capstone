@@ -848,15 +848,15 @@ export default function PanelManageDesigns({
 
               const stockBadge = isOut ? {
                 label: 'Out of Stock',
-                className: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+                className: 'bg-danger/15 text-danger border border-danger/30',
                 color: '#f43f5e'
               } : isLow ? {
                 label: 'Low Stock',
-                className: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+                className: 'bg-primary/15 text-primary border border-primary/30',
                 color: '#f59e0b'
               } : {
                 label: 'Normal Stock',
-                className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+                className: 'bg-bg-surface text-text-main border border-border-glass',
                 color: '#10b981'
               };
               return (
@@ -876,8 +876,8 @@ export default function PanelManageDesigns({
                       <span
                         className={`text-[0.62rem] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
                           resolveProductGarmentSize(p) === 'big'
-                            ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
-                            : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                            ? 'bg-white/5 text-text-dim border-border-glass'
+                            : 'bg-white/5 text-text-dim border-border-glass'
                         }`}
                       >
                         {resolveProductGarmentSize(p) === 'big' ? 'Big Garment' : 'Small Garment'}
@@ -930,7 +930,7 @@ export default function PanelManageDesigns({
                       <span className="text-text-dim">
                         Stock: <b className="text-text-main">{p.count || 0}</b>
                         {dynamicReserved > 0 && (
-                          <span className="text-amber-500 font-bold ml-1" title="Reserved count locked for queue orders">
+                          <span className="text-primary font-bold ml-1" title="Reserved count locked for queue orders">
                             ({dynamicReserved} locked)
                           </span>
                         )}
@@ -1041,7 +1041,7 @@ export default function PanelManageDesigns({
               <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
                 <span>Product Name</span>
                 {touched.name && !fieldErrors.name && name.trim() && (
-                  <span className="text-emerald-400 text-[0.65rem] font-bold">✓ Valid</span>
+                  <span className="text-primary text-[0.65rem] font-bold">✓ Valid</span>
                 )}
               </label>
               <input
@@ -1056,7 +1056,7 @@ export default function PanelManageDesigns({
                 onBlur={() => handleProductBlur('name')}
                 className={`bg-bg-surface border h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-sans disabled:opacity-75 disabled:cursor-not-allowed transition-all ${
                   touched.name && fieldErrors.name
-                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                     : 'border-border-glass focus:border-white/40'
                 }`}
               />
@@ -1143,7 +1143,7 @@ export default function PanelManageDesigns({
               <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim flex items-center justify-between">
                 <span>Price (₱)</span>
                 {touched.price && !fieldErrors.price && price.trim() && (
-                  <span className="text-emerald-400 text-[0.65rem] font-bold">✓ Valid</span>
+                  <span className="text-primary text-[0.65rem] font-bold">✓ Valid</span>
                 )}
               </label>
               <input
@@ -1159,7 +1159,7 @@ export default function PanelManageDesigns({
                 onBlur={() => handleProductBlur('price')}
                 className={`bg-bg-surface border h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold disabled:opacity-75 disabled:cursor-not-allowed transition-all ${
                   touched.price && fieldErrors.price
-                    ? 'border-rose-500/70 bg-rose-500/[0.04] ring-1 ring-rose-500/30'
+                    ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                     : 'border-border-glass focus:border-white/40'
                 }`}
               />
@@ -1231,7 +1231,7 @@ export default function PanelManageDesigns({
                 onClick={() => setGarmentSize('small')}
                 className={`py-2 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   garmentSize === 'small'
-                    ? 'bg-sky-500/15 border-sky-500/50 text-sky-300 shadow-sm'
+                    ? 'bg-primary/15 border-primary/50 text-primary shadow-sm'
                     : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -1239,7 +1239,7 @@ export default function PanelManageDesigns({
                   <div className="text-xs font-bold">Small Garment</div>
                   <div className="text-[0.65rem] opacity-80">Fans, Face/Hand Towels, Caps</div>
                 </div>
-                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20">
+                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-primary/20">
                   Small Rate
                 </span>
               </button>
@@ -1249,7 +1249,7 @@ export default function PanelManageDesigns({
                 onClick={() => setGarmentSize('big')}
                 className={`py-2 px-3 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   garmentSize === 'big'
-                    ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-300 shadow-sm'
+                    ? 'bg-primary/15 border-primary/50 text-primary shadow-sm'
                     : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
@@ -1257,7 +1257,7 @@ export default function PanelManageDesigns({
                   <div className="text-xs font-bold">Big Garment</div>
                   <div className="text-[0.65rem] opacity-80">Bath Towels, Shirts, Jackets</div>
                 </div>
-                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20">
+                <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-primary/20">
                   Big Rate
                 </span>
               </button>
@@ -1349,7 +1349,7 @@ export default function PanelManageDesigns({
                         <span className="text-[0.62rem] text-primary font-bold whitespace-nowrap">Supplies Stock</span>
                       </div>
                       {inventory.length === 0 ? (
-                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[0.72rem]">
+                        <div className="p-2 rounded-lg bg-bg-surface border border-border-glass text-text-dim text-[0.72rem]">
                           No materials in Materials tab. Add raw blanks there first.
                         </div>
                       ) : (
@@ -1389,8 +1389,8 @@ export default function PanelManageDesigns({
                       const mat = inventory.find((i) => (i.id || i._id) === variantMaterialId);
                       const matCount = mat ? (mat.count || 0) : 0;
                       return (
-                        <span className={matCount > 0 ? "text-emerald-400 font-semibold flex items-center gap-1.5" : "text-amber-400 font-semibold flex items-center gap-1.5"}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${matCount > 0 ? "bg-emerald-400" : "bg-amber-400"}`} />
+                        <span className={matCount > 0 ? "text-text-main font-semibold flex items-center gap-1.5" : "text-text-dim font-semibold flex items-center gap-1.5"}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${matCount > 0 ? "bg-primary" : "bg-text-dim"}`} />
                           <span>Linked to <b>{mat?.item || 'Material'}</b>: <b>{matCount} pcs</b> in stock</span>
                         </span>
                       );
@@ -1479,7 +1479,7 @@ export default function PanelManageDesigns({
                           const count = mat ? (mat.count || 0) : 0;
                           return (
                             <span className={`font-mono text-[0.65rem] px-1 py-0.5 rounded font-bold ${
-                              count > 0 ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              count > 0 ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-danger/10 text-danger border border-danger/20'
                             }`}>
                               {v.materialId ? (
                                 `${count} pcs (${v.materialName || mat?.item || 'Material'})`

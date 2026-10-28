@@ -702,7 +702,7 @@ export default function PanelAnalytics({
             Net Operating Profit
           </span>
           <div className={`text-xl font-bold font-mono my-1 ${
-            netProfit > 0 ? 'text-emerald-400' : 'text-text-main'
+            netProfit > 0 ? 'text-primary' : 'text-text-main'
           }`}>
             {netProfit >= 0
               ? `₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -779,7 +779,7 @@ export default function PanelAnalytics({
 
           <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
             <span className="text-[11px] text-text-dim block mb-0.5">7-Day ML Revenue Forecast</span>
-            <span className="text-sm font-bold font-mono text-emerald-400">
+            <span className="text-sm font-bold font-mono text-primary">
               +₱{totalForecastRevenue.toFixed(2)}
             </span>
             <span className="text-[10px] text-text-dim block mt-0.5">Linear projection from velocity</span>
@@ -854,7 +854,7 @@ export default function PanelAnalytics({
             })
           ) : (
             <div className="p-3.5 rounded-lg bg-white/5 border border-border-glass flex items-center gap-2.5 text-xs text-text-dim">
-              <span className="text-emerald-400 font-bold">✓</span>
+              <span className="text-primary font-bold">✓</span>
               <span>
                 <strong>System Optimal:</strong> All raw material buffers, supplier cost margins, and machine queue throughput are operating at peak efficiency.
               </span>
@@ -915,7 +915,7 @@ export default function PanelAnalytics({
                           </span>
                         )}
                       </td>
-                      <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-text-dim' : 'text-emerald-400'}`}>
+                      <td className={`py-3 text-right font-mono font-bold text-sm ${row.profit < 0 ? 'text-text-dim' : 'text-primary'}`}>
                         {row.profit < 0 ? `-₱${Math.abs(row.profit).toFixed(2)}` : `+₱${row.profit.toFixed(2)}`}
                       </td>
                     </tr>
@@ -949,7 +949,7 @@ export default function PanelAnalytics({
               Earnings curve across selected period ({timeRange === '1year' || timeRange === 'all' ? 'Monthly' : timeRange === '6months' ? 'Weekly' : 'Daily'}).
             </p>
           </div>
-          <span className="text-xs font-mono font-bold text-emerald-400">
+          <span className="text-xs font-mono font-bold text-primary">
             Revenue &amp; Profit (₱)
           </span>
         </div>
@@ -979,7 +979,7 @@ export default function PanelAnalytics({
                       return (
                         <div className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-xs font-mono shadow-md">
                           <div className="text-text-dim font-sans mb-1">{label}</div>
-                          <div className={`font-bold text-sm ${val < 0 ? 'text-text-main' : 'text-emerald-400'}`}>
+                          <div className={`font-bold text-sm ${val < 0 ? 'text-text-main' : 'text-primary'}`}>
                             {val < 0 ? `Gross Profit: -₱${Math.abs(val).toFixed(2)}` : `Gross Profit: +₱${val.toFixed(2)}`}
                           </div>
                         </div>

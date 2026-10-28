@@ -63,7 +63,7 @@ export function getOrderTitle(order: Order): string {
 }
 
 export const TONE_CLASSES: Record<OrderTone, string> = {
-  pending: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  pending: 'bg-white/5 text-text-dim border-border-glass',
   progress: 'bg-primary/15 text-primary border-primary/30',
   shipping: 'bg-secondary/15 text-secondary border-secondary/30',
   done: 'bg-success/15 text-success border-success/30',
