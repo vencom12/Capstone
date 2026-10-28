@@ -422,12 +422,29 @@ export default function InvoiceModal({
                     <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
                     <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px' }}>{paymentMethod}</td>
                   </tr>
-                  {(transaction?.transactionID || targetTxId) && (
-                    <tr>
-                      <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
-                      <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>{transaction?.transactionID || targetTxId}</td>
-                    </tr>
-                  )}
+                  {(() => {
+                    const resolvedRef = String(
+                      (order as any)?.receipt?.referenceId ||
+                      (order?.personalization as any)?.referenceNumber ||
+                      transaction?.transactionID ||
+                      targetTxId ||
+                      ''
+                    ).trim();
+                    if (!resolvedRef) return null;
+                    const prefix = resolvedRef.length > 4 ? resolvedRef.slice(0, -4) : '';
+                    const last4 = resolvedRef.slice(-4);
+                    return (
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>
+                          {prefix}
+                          <span style={{ fontWeight: '900', fontSize: '11px', textDecoration: 'underline', paddingLeft: '1px' }}>
+                            {last4}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                   <tr>
                     <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT STATUS:</td>
                     <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontSize: '9px' }}>PAID &amp; VERIFIED ✓</td>

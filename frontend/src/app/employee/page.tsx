@@ -133,7 +133,60 @@ export default function EmployeePage() {
 
   // In-flight status update locks to prevent double-clicks & state reverting
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Record<string, boolean>>({});
+  const [verifyingSmsIds, setVerifyingSmsIds] = useState<Record<string, boolean>>({});
   const fetchSeqRef = useRef(0);
+
+  const getOrderGcashRef = (o: any): string => {
+    if (!o) return '';
+    const rawRef =
+      o.receipt?.referenceId ||
+      (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
+      o.transaction?.transactionID ||
+      '';
+    return String(rawRef || '').trim();
+  };
+
+  const isOrderSmsVerified = (o: any): boolean => {
+    if (!o) return false;
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    return Boolean(pers.smsVerified);
+  };
+
+  const handleVerifySmsMatch = async (o: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetId = o.id || o._id || o.orderId;
+    if (!targetId || verifyingSmsIds[targetId]) return;
+
+    const ref = getOrderGcashRef(o);
+    setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: true }));
+
+    setOrders((prev) =>
+      prev.map((item) => {
+        if ((item.id || item._id || item.orderId) !== targetId) return item;
+        const pers = item.personalization && typeof item.personalization === 'object' ? { ...item.personalization } : {};
+        pers.smsVerified = true;
+        return {
+          ...item,
+          paymentStatus: 'paid',
+          personalization: pers,
+          receipt: item.receipt ? { ...item.receipt, status: 'Verified', aiVerificationStatus: 'verified' } : item.receipt,
+        };
+      })
+    );
+
+    try {
+      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
+        referenceNumber: ref || undefined,
+      });
+      showToast(res?.message || `Confirmed GCash Ref ...${ref.slice(-4)} on phone!`, 'success');
+      fetchEmployeeData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to confirm payment reference', 'error');
+      fetchEmployeeData();
+    } finally {
+      setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
 
   // Receipt Modal State
   const [viewingReceiptOrder, setViewingReceiptOrder] = useState<any>(null);
@@ -735,7 +788,41 @@ export default function EmployeePage() {
                               )}
                             </td>
                             <td className="glass-td text-primary font-mono font-bold text-sm text-left">
-                              ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                              <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
+                              {(() => {
+                                const ref = getOrderGcashRef(o);
+                                const smsVerified = isOrderSmsVerified(o);
+                                if (!ref) return null;
+                                const last4 = ref.slice(-4);
+                                return (
+                                  <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <div
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 w-fit"
+                                      title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
+                                    >
+                                      <span className="text-[9px] font-sans font-bold uppercase text-amber-300">Ref:</span>
+                                      <span className="text-[10px] font-mono text-text-dim">{ref.length > 4 ? '...' : ''}</span>
+                                      <span className="text-xs font-mono font-black text-amber-300 tracking-wider bg-amber-500/20 px-1 rounded">
+                                        {last4}
+                                      </span>
+                                    </div>
+                                    {smsVerified ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-emerald-400">
+                                        ✓ Phone SMS Matched
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleVerifySmsMatch(o, e)}
+                                        disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                      >
+                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="glass-td text-right">
                               <div className="flex gap-2 justify-end">

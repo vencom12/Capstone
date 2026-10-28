@@ -2293,3 +2293,109 @@ exports.liftDelayNotice = async (req, res) => {
 
 
 
+
+/**
+ * 1-Tap GCash SMS Reference Match & Payment Verification:
+ * Allows Admin or Staff to confirm that the AI-extracted (or customer-provided)
+ * GCash Reference Number (specifically its last 4 digits and amount) matches
+ * the official GCash SMS notification on the store owner's phone.
+ */
+exports.verifyOrderPayment = async (req, res) => {
+    try {
+        const targetId = req.params.id;
+        const verifiedBy = req.user?.username || 'Admin';
+        const now = new Date();
+
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [
+                    { id: targetId },
+                    { orderId: targetId }
+                ]
+            },
+            include: { receipt: true, transaction: true }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const currentPers = (order.personalization && typeof order.personalization === 'object')
+            ? { ...order.personalization }
+            : {};
+
+        const resolvedRef = String(
+            req.body?.referenceNumber ||
+            order.receipt?.referenceId ||
+            currentPers.referenceNumber ||
+            order.transaction?.transactionID ||
+            ''
+        ).trim();
+
+        currentPers.smsVerified = true;
+        currentPers.smsVerifiedBy = verifiedBy;
+        currentPers.smsVerifiedAt = now.toISOString();
+        if (resolvedRef) {
+            currentPers.referenceNumber = resolvedRef;
+        }
+
+        const itemsList = Array.isArray(order.items) ? order.items : [];
+        const needsStitching = itemsList.some(item =>
+            Boolean(
+                (item.personalization?.text && String(item.personalization.text).trim().length > 0) ||
+                (Array.isArray(item.personalization?.namesList) && item.personalization.namesList.length > 0) ||
+                (Array.isArray(item.namesList) && item.namesList.length > 0)
+            )
+        );
+
+        const nextStatus = (order.status === 'Awaiting Payment' || order.paymentStatus !== 'paid')
+            ? (needsStitching ? 'In Queue' : 'Ready For Pick Up')
+            : order.status;
+        const nextProgress = nextStatus === 'Ready For Pick Up' ? 90 : Math.max(order.progress || 5, 5);
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+                paymentStatus: 'paid',
+                status: nextStatus,
+                progress: nextProgress,
+                personalization: currentPers
+            },
+            include: { receipt: true, transaction: true }
+        });
+
+        if (order.receipt) {
+            await prisma.receipt.update({
+                where: { id: order.receipt.id },
+                data: {
+                    status: 'Verified',
+                    aiVerificationStatus: 'verified',
+                    flaggedReason: null,
+                    ...(resolvedRef ? { referenceId: resolvedRef } : {})
+                }
+            });
+        }
+
+        if (order.transaction) {
+            await prisma.transaction.update({
+                where: { id: order.transaction.id },
+                data: { status: 'completed' }
+            });
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        return res.json({
+            success: true,
+            message: `GCash Reference ${resolvedRef ? '(...' + resolvedRef.slice(-4) + ')' : ''} confirmed! Order #${updatedOrder.orderId} is verified.`,
+            order: updatedOrder
+        });
+    } catch (err) {
+        console.error('verifyOrderPayment error:', err);
+        return res.status(500).json({ message: 'Failed to verify payment', error: err.message });
+    }
+};

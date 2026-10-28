@@ -7,7 +7,7 @@ exports.getDashboardState = async (req, res) => {
     try {
         const [orders, inventory, products, machines] = await Promise.all([
             prisma.order.findMany({ 
-                include: { transaction: true },
+                include: { transaction: true, receipt: true },
                 orderBy: [
                     { priorityScore: 'desc' },
                     { createdAt: 'asc' }
@@ -304,7 +304,7 @@ exports.scanClaimHandover = async (req, res) => {
                         { personalization: { path: ['claimCode'], equals: upperCode } }
                     ]
                 },
-                include: { transaction: true },
+                include: { transaction: true, receipt: true },
                 orderBy: { createdAt: 'desc' }
             });
         }

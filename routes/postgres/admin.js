@@ -85,6 +85,7 @@ router.post('/feedback/trigger-auto-reply', adminAuth(), auditLogger('Feedback',
 
 // Walk-In Counter Mode Order Creation (Staff permitted)
 router.post('/orders/walk-in', staffAuth(), auditLogger('Order', 'CREATE_WALKIN_ORDER'), adminController.createWalkInOrder);
+router.post('/orders/:id/verify-payment', staffAuth(), auditLogger('Order', 'VERIFY_GCASH_PAYMENT'), adminController.verifyOrderPayment);
 
 // Workshop Delay & Emergency Notice Protocol
 router.get('/delay-notice', staffAuth(), adminController.getDelayNoticeStatus);

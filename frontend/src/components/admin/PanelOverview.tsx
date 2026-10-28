@@ -70,7 +70,63 @@ export default function PanelOverview({
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
   const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
+  const [verifyingSmsIds, setVerifyingSmsIds] = useState<Record<string, boolean>>({});
   const isOrderPickup = (_o?: any) => true;
+
+  const getOrderGcashRef = (o: any): string => {
+    if (!o) return '';
+    const rawRef =
+      o.receipt?.referenceId ||
+      (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
+      o.transaction?.transactionID ||
+      '';
+    return String(rawRef || '').trim();
+  };
+
+  const isOrderSmsVerified = (o: any): boolean => {
+    if (!o) return false;
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    return Boolean(pers.smsVerified);
+  };
+
+  const handleVerifySmsMatch = async (o: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetId = o.id || o._id || o.orderId;
+    if (!targetId || verifyingSmsIds[targetId]) return;
+
+    const ref = getOrderGcashRef(o);
+    setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: true }));
+
+    // Optimistic update
+    if (setOrders) {
+      setOrders((prev) =>
+        prev.map((item) => {
+          if ((item.id || item._id || item.orderId) !== targetId) return item;
+          const pers = item.personalization && typeof item.personalization === 'object' ? { ...item.personalization } : {};
+          pers.smsVerified = true;
+          return {
+            ...item,
+            paymentStatus: 'paid',
+            personalization: pers,
+            receipt: item.receipt ? { ...item.receipt, status: 'Verified', aiVerificationStatus: 'verified' } : item.receipt,
+          };
+        })
+      );
+    }
+
+    try {
+      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
+        referenceNumber: ref || undefined,
+      });
+      showToast(res?.message || `Confirmed GCash Ref ...${ref.slice(-4)} on phone!`, 'success');
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to confirm payment reference', 'error');
+      refreshData().catch(() => {});
+    } finally {
+      setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
 
   const getOrderClaimCode = (o: any) => {
     if (!o) return '#A-000';
@@ -646,7 +702,51 @@ export default function PanelOverview({
                           )}
                         </td>
                         <td className="glass-td text-left font-mono font-bold text-sm text-primary">
-                          ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                          <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
+                          {(() => {
+                            const ref = getOrderGcashRef(o);
+                            const smsVerified = isOrderSmsVerified(o);
+                            const isCashOrCounter = String(o.orderId || '').startsWith('WI-') || o.paymentMethod === 'cash';
+                            if (isCashOrCounter && !ref) {
+                              return (
+                                <span className="inline-block mt-1 text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-white/10">
+                                  Counter / Cash
+                                </span>
+                              );
+                            }
+                            if (!ref) return null;
+                            const prefix = ref.length > 4 ? ref.slice(0, -4) : '';
+                            const last4 = ref.slice(-4);
+                            return (
+                              <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                <div
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 w-fit"
+                                  title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
+                                >
+                                  <span className="text-[9px] font-sans font-bold uppercase text-amber-300">Ref:</span>
+                                  <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
+                                  <span className="text-xs font-mono font-black text-amber-300 tracking-wider bg-amber-500/20 px-1 rounded">
+                                    {last4}
+                                  </span>
+                                </div>
+                                {smsVerified ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-emerald-400">
+                                    ✓ Phone SMS Matched
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleVerifySmsMatch(o, e)}
+                                    disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                    title="Tap after glancing at your phone's GCash SMS to confirm the last 4 digits match"
+                                  >
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="glass-td text-left">
                           <span
@@ -826,8 +926,32 @@ export default function PanelOverview({
                           <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
                         )}
                       </div>
-                      <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left">
-                        ₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}
+                      <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left flex items-center justify-between gap-2 flex-wrap">
+                        <span>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</span>
+                        {(() => {
+                          const ref = getOrderGcashRef(o);
+                          const smsVerified = isOrderSmsVerified(o);
+                          if (!ref) return null;
+                          const last4 = ref.slice(-4);
+                          return (
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] font-mono bg-amber-500/15 border border-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded font-black">
+                                Ref: ...{last4}
+                              </span>
+                              {smsVerified ? (
+                                <span className="text-[10px] font-sans font-bold text-emerald-400">✓ SMS</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleVerifySmsMatch(o, e)}
+                                  className="text-[10px] font-sans font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded cursor-pointer"
+                                >
+                                  ✓ Match
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
