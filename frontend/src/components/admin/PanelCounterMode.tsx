@@ -1602,17 +1602,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               {/* Compact Quantity & Price Block */}
               <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
                 {ticketItems.length === 0 ? (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[11px] text-text-dim font-medium">Order Quantity:</span>
-                    <QuantityInput
-                      value={quantity}
-                      onChange={(q) => setQuantity(q)}
-                      min={1}
-                      size="sm"
-                      showPresets={true}
-                      presets={[10, 25, 50, 100]}
-                      ariaLabel="Order Quantity"
-                    />
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-text-dim">Current Item:</span>
+                    <span className="text-xs font-bold text-text-main">
+                      {activeSelectedItem?.name || 'Custom Garment'} ({effectiveIntakeQty} {effectiveIntakeQty === 1 ? 'pc' : 'pcs'})
+                    </span>
                   </div>
                 ) : (
                   <div className="flex flex-col">
