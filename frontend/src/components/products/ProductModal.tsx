@@ -1298,33 +1298,6 @@ export default function ProductModal({
                   </div>
                 )}
 
-                {/* Live Stitch Typography Preview */}
-                {((letteringMode === 'single' && customText.trim()) || (letteringMode === 'bulk' && bulkSummary.lineCount > 0)) && (
-                  <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col items-center justify-center text-center">
-                    <span className="text-[0.65rem] uppercase tracking-wider text-text-dim mb-1">
-                      Stitch Preview ({threadColor.name} • Standard Artisan Script)
-                    </span>
-                    <span
-                      className="text-lg font-bold tracking-wide transition-all"
-                      style={{
-                        color: threadColor.hex,
-                        fontFamily: DEFAULT_FONT.fontCss,
-                        textShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                      }}
-                    >
-                      {letteringMode === 'bulk' ? bulkSummary.namesList[0] : customText}
-                    </span>
-                    {letteringMode === 'bulk' && bulkSummary.lineCount > 1 && (
-                      <span className="text-[10px] text-primary font-semibold mt-0.5">
-                        + {bulkSummary.lineCount - 1} more personalized {bulkSummary.lineCount - 1 === 1 ? 'name' : 'names'} in list
-                      </span>
-                    )}
-                    <span className="text-[0.65rem] text-text-dim/70 mt-1">
-                      Standard font &amp; size • Hand-guided sewing machine embroidery
-                    </span>
-                  </div>
-                )}
-
                 {/* Thread Color Selector */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
