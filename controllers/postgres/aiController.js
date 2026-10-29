@@ -556,14 +556,13 @@ exports.chat = async (req, res) => {
         if (isGreetingOnly) {
             const roleTitle = dbUser.role === 'admin' ? 'Administrator' : 'Operator';
             const firstName = (dbUser.name || dbUser.username || 'Team Member').split(' ')[0];
-            const reply = `Hello, **${firstName}**. I am **StitchMaster AI**, your workshop intelligence assistant.\n\n` +
-                `I have live database access. As an **${roleTitle}**, here is what I can do for you:\n` +
-                `• **Live Operations:** Check rush orders, queue status, and counter production.\n` +
-                `• **Materials & Inventory:** Audit low thread spools and draft material acquisition forms.\n` +
+            const reply = `Hello **${firstName}** (${roleTitle}). StitchMaster AI active with live DB access.\n\n` +
+                `• **Operations:** Check rush queue, machine fleet & order status\n` +
+                `• **Materials:** Audit thread spools & generate restock forms\n` +
                 (dbUser.role === 'admin' 
-                    ? `• **Analytics & Management:** Inspect daily revenue, conversion rates, and manage product catalog stock.\n` 
-                    : `• **Workstation:** Review active orders, update production status, and track counter handover.\n`) +
-                `\nWhat would you like to work on today? Ask a question or select a command above.`;
+                    ? `• **Business:** Daily revenue/profit, product pricing & catalog stock\n` 
+                    : `• **Workbench:** Review assigned machines & update task status\n`) +
+                `\nAsk a question or select a quick command.`;
 
             return res.json({
                 success: true,
@@ -666,8 +665,7 @@ exports.chat = async (req, res) => {
                 reply += `| **${p.name}** | 0 Pcs (${p.oosVariants.slice(0, 2).join(', ')}) | 5 Pcs |\n`;
             });
 
-            reply += `\n**Recommendation:** Several items are depleted. Generate an Acquisition Form to order restocks from your suppliers.\n\n`;
-            reply += `[action:create-acquisition|Create Acquisition Form Now]`;
+            reply += `\n[action:create-acquisition|Create Acquisition Form Now]`;
 
             return res.json({
                 success: true,
@@ -871,21 +869,9 @@ exports.chat = async (req, res) => {
             reply += `| :--- | :---: |\n`;
             reply += `| **Sales Income** | ₱${grossSales.toLocaleString('en-US', { minimumFractionDigits: 2 })} |\n`;
             reply += `| **Shop Rent (Daily)** | -₱${dailyRent.toFixed(2)} |\n`;
-            reply += `| **Materials Used Cost** | -₱${materialsCost.toFixed(2)} |\n`;
+            reply += `| **Materials Used** | -₱${materialsCost.toFixed(2)} |\n`;
             reply += `| **ESTIMATED NET PROFIT** | **₱${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}** |\n\n`;
-
-            reply += `**Details:** ${totalCount} orders (${totalGarments} garments crafted).\n\n`;
-
-            reply += `### Daily Summary Message:\n`;
-            reply += "```text\n";
-            reply += `DAILY FINANCIAL RECAP — ${settings?.businessName || 'Eds Towels & Caps'}\n`;
-            reply += `Date: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}\n`;
-            reply += `• Gross Sales: ₱${grossSales.toFixed(2)} (${totalCount} orders)\n`;
-            reply += `• Daily Rent: ₱${dailyRent.toFixed(2)}\n`;
-            reply += `• Materials Used: ₱${materialsCost.toFixed(2)} (${totalGarments} pcs)\n`;
-            reply += `• Estimated Net Profit: ₱${netProfit.toFixed(2)}\n`;
-            reply += "```\n\n";
-
+            reply += `*Volume: ${totalCount} orders (${totalGarments} garments crafted).*\n\n`;
             reply += `[action:download-revenue-pdf|Download Daily Financial Report (PDF)]`;
 
             return res.json({
@@ -1228,10 +1214,16 @@ exports.chat = async (req, res) => {
         - When asked about product stock, colors, or variants, report exact real-time variant stock from "In-stock" vs "OOS" (Out of Stock).
         - Never assume all variants are available if only certain colors have stock! (e.g. Regular Fan Small has 86 in Blue, but Red, Yellow, Orange, Emerald Green, Fuchsia Pink, Pink are 0 in stock. Bath Towels are all 0 in stock across all variants).
         
+        CONCISENESS & EFFICIENCY DIRECTIVE:
+        - Be direct, concise, and structured. Answer immediately without pleasantries, preambles, or conversational filler (e.g. avoid "Certainly!", "I can help with that", "Based on my analysis").
+        - Use compact Markdown tables or tight bullet points (max 3-4 bullets).
+        - Keep responses under 150 words unless the user explicitly requests an in-depth breakdown.
+        - NEVER omit critical specifics: exact Order IDs, quantities, prices (₱), thread colors, and status codes must remain precise.
+
         POWERS & RESPONSIBILITIES:
         - You have dynamic database access via tools based on the user's role.
         - Confirm actions only after executing tools successfully.
-        - Format overviews and lists in beautiful Markdown Tables.
+        - Format overviews and lists in compact Markdown Tables.
         - Always use uppercase status identifiers in tables/lists so the UI highlights them as premium colored pills (e.g., 'LOW_STOCK', 'HEALTHY', 'CRITICAL', 'WARNING', 'DELIVERED', 'PREPARING', 'IN QUEUE', 'PENDING PAYMENT', 'CANCELED').
         - Provide strategic advice, analysis, strategies, and tactics for the business based on inventory counts and order trends.
         - STORE PRICING & DISCOUNT POLICY: The business strictly DOES NOT give discounts, coupons, sales, or promotional markdowns under any circumstances. Prices are fixed and are ONLY raised if supplier raw material acquisition prices increase and threaten gross margin.
@@ -1509,7 +1501,11 @@ exports.chat = async (req, res) => {
         const allowedToolNames = ALLOWED_TOOLS_BY_ROLE[dbUser.role] || [];
         const roleTools = tools.filter(t => allowedToolNames.includes(t.function.name));
 
-        const groqOptions = { messages };
+        const groqOptions = { 
+            messages,
+            temperature: 0.2,
+            max_tokens: 450
+        };
         if (roleTools.length > 0) {
             groqOptions.tools = roleTools;
             groqOptions.tool_choice = "auto";
@@ -1529,7 +1525,15 @@ exports.chat = async (req, res) => {
                 messages.push({ role: "tool", tool_call_id: toolCall.id, name: functionName, content: actionResult });
             }
 
-            data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages });
+            messages.push({ 
+                role: "system", 
+                content: "Confirm action concisely in 1-2 direct sentences. State exactly what was updated." 
+            });
+            data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { 
+                messages, 
+                temperature: 0.2, 
+                max_tokens: 250 
+            });
         }
         // Mode B: Fallback XML-like function parsing (when Llama generates pseudo-XML in plain text)
         else if (data.choices && data.choices[0] && data.choices[0].message.content) {
@@ -1571,10 +1575,14 @@ exports.chat = async (req, res) => {
                 messages.push({ role: 'assistant', content: rawContent });
                 messages.push({ 
                     role: 'user', 
-                    content: `[SYSTEM] Function execution results:\n${results.join('\n')}\n\nPlease confirm these updates to the user in a natural, friendly conversational reply.` 
+                    content: `[SYSTEM] Function execution results:\n${results.join('\n')}\n\nPlease confirm these updates concisely in 1-2 direct sentences.` 
                 });
 
-                data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { messages });
+                data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { 
+                    messages, 
+                    temperature: 0.2, 
+                    max_tokens: 250 
+                });
             }
         }
 
@@ -2149,7 +2157,7 @@ exports.storefrontChat = async (req, res) => {
         if (alphaOnly.length < 2) {
             return res.json({
                 success: true,
-                reply: "Hello! Welcome to **Stitch-Opt** at Pacific Mall Lucena. I can help you check in-stock products, custom embroidery options, pricing, and turnaround time. What are you looking for today?",
+                reply: "Hello! Welcome to **Stitch-Opt** (Pacific Mall Lucena). Ask me about in-stock products, custom embroidery pricing, or turnaround times!",
                 suggestedProducts: []
             });
         }
@@ -2158,7 +2166,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^([a-z0-9])\1{4,}$/i.test(alphaOnly)) {
             return res.json({
                 success: true,
-                reply: "I couldn't quite understand that. Feel free to ask about our in-stock fans, custom embroidery, or store location!",
+                reply: "I couldn't understand that. Feel free to ask about our in-stock fans, towels, caps, or store hours!",
                 suggestedProducts: []
             });
         }
@@ -2167,7 +2175,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(thanks|thank you|ty|salamat|arigato|ok|okay|k|noted|cge|sige|got it|all good|understood)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "You're very welcome! Let me know if you need help checking in-stock items or customizing your embroidery.",
+                reply: "You're welcome! Let me know if you need anything else.",
                 suggestedProducts: []
             });
         }
@@ -2176,7 +2184,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(help|info|menu|what can you do|features)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "I'm your Stitch-Opt virtual shopping assistant! Here's what I can help you with:\n• Checking real-time in-stock products (fans, towels, caps)\n• Custom embroidery pricing & turnaround times\n• Store hours & location (Pacific Mall Lucena)\n• Payment methods (GCash / Maya / Cash)\n\nWhat would you like to know?",
+                reply: "I'm your Stitch-Opt assistant! I can help you with:\n• **Stock**: In-stock fans, towels & caps\n• **Customization**: Pricing, colors & lead times\n• **Store Info**: Pacific Mall hours & location\n• **Payments**: GCash, Maya & Cash\n\nWhat can I help you find?",
                 suggestedProducts: []
             });
         }
@@ -2185,7 +2193,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(where|location|address|branch|find you|stall|place)\b/i.test(cleanMsg) && /\b(store|shop|located|you|booth|stall|mall)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Our workshop is located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St., Brgy. 3, Lucena City, Quezon). Drop by our counter anytime between **10:00 AM and 8:00 PM** to see our physical embroidery samples!",
+                reply: "We are located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St.). Open daily **10:00 AM – 8:00 PM**.",
                 suggestedProducts: []
             });
         }
@@ -2194,7 +2202,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(hours|open|time|schedule|close|closing|opening)\b/i.test(cleanMsg) && /\b(store|shop|mall|today|now|what time|operate)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Our counter follows Pacific Mall hours: **Open daily from 10:00 AM to 8:00 PM**. Same-day personalized stitching is available every day!",
+                reply: "Open daily from **10:00 AM to 8:00 PM** at Pacific Mall Lucena. Same-day personalized stitching available daily!",
                 suggestedProducts: []
             });
         }
@@ -2203,7 +2211,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(payment|pay|gcash|maya|credit|cash)\b/i.test(cleanMsg) && /\b(accept|method|how to|qr|online|card|options)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "We accept **GCash**, **Maya QR**, and **Cash** at our counter. During checkout, scan the verified QR code and upload your transaction reference!",
+                reply: "We accept **GCash**, **Maya QR**, and **Cash** at our counter. Scan our QR code during checkout and upload your receipt screenshot.",
                 suggestedProducts: []
             });
         }
@@ -2212,10 +2220,7 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(how long|turnaround|lead time|how many (minutes|hours|days|weeks)|when (will it be|ready)|kailan|gaano katagal)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Here is how our production turnaround works:\n\n" +
-                    "• **Single-Piece Orders**: For a single towel, cap, or garment with a name or monogram, actual machine stitching takes **under a minute** up to just a couple of minutes! Depending on how many orders are ahead in our live store queue, small orders are typically ready for pickup in **15 to 45 minutes**.\n\n" +
-                    "• **Bulk Batch Orders (Schools, Events, Organizations)**: Large volume orders require extensive preparation and machine run-time. Depending on total quantity, existing bulk orders in the queue, and incoming daily small orders, bulk production can take anywhere from **several days to a few weeks**.\n\n" +
-                    "You can track your live machine queue position in your dashboard, or consult our counter team at Pacific Mall Lucena for bulk schedule planning!",
+                reply: "• **Single items (1-3 pcs)**: Stitching takes ~1-2 mins. Usually ready in **15 to 45 minutes** for same-day pickup.\n• **Bulk orders (schools/events)**: Staged over **several days to weeks** depending on quantity.\n\nYou can track live queue status anytime in your customer dashboard!",
                 suggestedProducts: []
             });
         }
@@ -2224,7 +2229,7 @@ exports.storefrontChat = async (req, res) => {
         if (/^(hi|hello|hey|good (morning|afternoon|evening)|kamusta|hola|sup|yo)[\s!.]*$/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "Hello! Welcome to **Stitch-Opt**. I can help you check real-time product stock, customize embroidery with high-sheen threads, or answer questions about our store at Pacific Mall Lucena. What are you looking for today?",
+                reply: "Hello! Welcome to **Stitch-Opt** (Pacific Mall Lucena). Ask me about in-stock products, custom name embroidery, or turnaround times!",
                 suggestedProducts: []
             });
         }
@@ -2366,13 +2371,13 @@ exports.storefrontChat = async (req, res) => {
             }
 
             if (matchedProductsWithVariants.length > 0) {
-                let reply = `Here is the real-time stock for the variant(s) you asked about:\n\n`;
+                let reply = `**Real-time Variant Stock:**\n\n`;
                 let hasAnyInStock = false;
                 matchedProductsWithVariants.forEach(({ product, inStock, outOfStock }) => {
                     reply += `• **${product.name}**:\n`;
                     if (inStock.length > 0) {
                         hasAnyInStock = true;
-                        reply += `  - **IN STOCK**: ${inStock.map(v => `**${v.name}** (**${v.availableStock} available** at ₱${product.price.toFixed(2)})`).join(', ')}\n`;
+                        reply += `  - **IN STOCK**: ${inStock.map(v => `**${v.name}** (${v.availableStock} pcs at ₱${product.price.toFixed(2)})`).join(', ')}\n`;
                     }
                     if (outOfStock.length > 0) {
                         reply += `  - *OUT OF STOCK*: ${outOfStock.map(v => v.name).join(', ')}\n`;
@@ -2380,11 +2385,11 @@ exports.storefrontChat = async (req, res) => {
                 });
 
                 if (hasAnyInStock) {
-                    reply += `\nAll in-stock variants can be personalized with rayon or metallic threads in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                    reply += `\n*Ready for same-day embroidery in 15–45 minutes at Pacific Mall Lucena.*`;
                 } else if (inStockProducts.length > 0) {
                     const topInStock = inStockProducts[0];
                     const topVb = getProductVariantBreakdown(topInStock);
-                    reply += `\nIn the meantime, our **${topInStock.name}** is available in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for custom embroidery!`;
+                    reply += `\n*Alternative: **${topInStock.name}** is in stock in ${topVb.inStockSummary} (₱${topInStock.price.toFixed(2)}).*`;
                 }
 
                 return res.json({
@@ -2398,19 +2403,19 @@ exports.storefrontChat = async (req, res) => {
                 if (targets.length === 1) {
                     const p = targets[0];
                     const vb = getProductVariantBreakdown(p);
-                    let reply = `Here are the variant details for **${p.name}** (₱${p.price.toFixed(2)}):\n\n`;
+                    let reply = `**${p.name}** (₱${p.price.toFixed(2)}):\n\n`;
                     if (vb.hasInStock) {
-                        reply += `• **In Stock**: ${vb.inStock.map(v => `**${v.name}** (**${v.availableStock} in stock**)`).join(', ')}\n`;
+                        reply += `• **In Stock**: ${vb.inStock.map(v => `**${v.name}** (${v.availableStock} pcs)`).join(', ')}\n`;
                         if (vb.outOfStock.length > 0) {
                             reply += `• *Awaiting Restock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
                         }
-                        reply += `\nReady for same-day custom embroidery in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                        reply += `\n*Ready for same-day embroidery (15–45 mins at Pacific Mall Lucena).*`;
                     } else {
-                        reply += `All variants for **${p.name}** are currently awaiting replenishment at our workshop.\n`;
+                        reply += `Currently awaiting restock at our workshop.\n`;
                         if (inStockProducts.length > 0) {
                             const topInStock = inStockProducts[0];
                             const topVb = getProductVariantBreakdown(topInStock);
-                            reply += `\nIn the meantime, our **${topInStock.name}** is available in **${topVb.inStockSummary}** (₱${topInStock.price.toFixed(2)}) and ready for immediate custom stitching!`;
+                            reply += `\n*Alternative in stock: **${topInStock.name}** in ${topVb.inStockSummary} (₱${topInStock.price.toFixed(2)}).*`;
                         }
                     }
                     return res.json({
@@ -2425,21 +2430,17 @@ exports.storefrontChat = async (req, res) => {
                 const oosTargets = targets.filter(p => !getProductVariantBreakdown(p).hasInStock);
 
                 if (inStockTargets.length > 0) {
-                    let reply = `Here is what we currently have in stock and ready for same-day custom embroidery:\n\n`;
+                    let reply = `**In-Stock Items (Ready for Same-Day Embroidery):**\n\n`;
                     inStockTargets.forEach(p => {
                         const vb = getProductVariantBreakdown(p);
-                        reply += `• **${p.name}** (${p.tag || 'Item'}) — ₱${p.price.toFixed(2)}:\n`;
-                        reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (**${v.availableStock} in stock**)`).join(', ')}\n`;
-                        if (vb.outOfStock.length > 0) {
-                            reply += `  - *Awaiting Restock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
-                        }
+                        reply += `• **${p.name}** (₱${p.price.toFixed(2)}): ${vb.inStock.map(v => `${v.name} (${v.availableStock})`).join(', ')}\n`;
                     });
 
                     if (oosTargets.length > 0) {
-                        reply += `\n*(Note: Other workshop items currently awaiting replenishment: ${oosTargets.map(p => p.name).join(', ')}).*\n`;
+                        reply += `\n*(Awaiting restock: ${oosTargets.map(p => p.name).join(', ')})*\n`;
                     }
 
-                    reply += `\nAll in-stock items can be customized with high-sheen embroidery threads (names, initials, or monograms) in 15–45 minutes at our Pacific Mall Lucena workshop!`;
+                    reply += `\n*Customized in 15–45 minutes at Pacific Mall Lucena.*`;
                     return res.json({
                         success: true,
                         reply,
@@ -2448,7 +2449,7 @@ exports.storefrontChat = async (req, res) => {
                 } else {
                     return res.json({
                         success: true,
-                        reply: "Our current catalog items are momentarily awaiting fabric replenishment as our workshop prepares new production batches.\n\nDrop by our **Pacific Mall Lucena Ground Floor** counter or bring your own garments (BYOG) for direct custom stitching!",
+                        reply: "Our catalog items are currently awaiting fabric replenishment.\n\nDrop by our **Pacific Mall Lucena** counter or bring your own garments (BYOG) for direct custom stitching!",
                         suggestedProducts: []
                     });
                 }
@@ -2466,20 +2467,16 @@ exports.storefrontChat = async (req, res) => {
             const inStockTowels = towelItems.filter(p => !p.isOutOfStock && (p.availableStock ?? 0) > 0);
 
             if (inStockTowels.length > 0) {
-                let reply = `Here are the **Bath Towels** currently in stock by variant:\n\n`;
+                let reply = `**Bath Towels in Stock:**\n\n`;
                 inStockTowels.forEach(t => {
                     const vb = getProductVariantBreakdown(t);
-                    reply += `• **${t.name}** (₱${t.price.toFixed(2)}):\n`;
-                    reply += `  - **In Stock**: ${vb.inStock.map(v => `**${v.name}** (${v.availableStock} in stock)`).join(', ')}\n`;
-                    if (vb.outOfStock.length > 0) {
-                        reply += `  - *Awaiting Restock*: ${vb.outOfStock.map(v => v.name).join(', ')}\n`;
-                    }
+                    reply += `• **${t.name}** (₱${t.price.toFixed(2)}): ${vb.inStock.map(v => `${v.name} (${v.availableStock})`).join(', ')}\n`;
                 });
                 const oosTowels = towelItems.filter(t => t.isOutOfStock || (t.availableStock ?? 0) <= 0);
                 if (oosTowels.length > 0) {
-                    reply += `\n*(Note: Other towel lines currently awaiting fabric replenishment: ${oosTowels.map(t => t.name).join(', ')}).*\n`;
+                    reply += `\n*(Awaiting restock: ${oosTowels.map(t => t.name).join(', ')})*\n`;
                 }
-                reply += `\nWe provide personalized crest and monogram embroidery on all towels!`;
+                reply += `\n*Personalized monograms & crests available (15–45 mins).*`;
                 return res.json({
                     success: true,
                     reply,
@@ -2770,7 +2767,12 @@ CRITICAL RULES:
 8. TURNAROUND TIMES & QUEUE SCHEDULE:
 - For single items (1 cap, 1 towel, simple text/monogram): actual machine stitching takes under a minute up to 1-2 minutes. When retail orders are ahead in the live counter queue, small orders typically take 15 to 45 minutes for same-day pickup.
 - For bulk batch orders (schools, corporate events, teams): production takes anywhere from several days up to a few weeks depending on piece count, active bulk queue, and incoming small order volume. NEVER quote a flat 24-48 hours for bulk orders. Encourage customers to check live dashboard queue tracking or consult our workshop staff for custom bulk scheduling.
-9. NO DISCOUNTS POLICY: The business strictly does NOT offer discounts, promotional codes, or custom price cuts. All product prices and lettering fees are fixed.`;
+9. NO DISCOUNTS POLICY: The business strictly does NOT offer discounts, promotional codes, or custom price cuts. All product prices and lettering fees are fixed.
+10. CONCISE & DIRECT RESPONSE DIRECTIVE:
+- Aim for 2 to 3 concise, clear sentences maximum.
+- Eliminate pleasantry filler (e.g. avoid "Thank you for asking!", "I'd be glad to help with that!", "Here at Stitch-Opt...").
+- Answer the customer's question directly in the very first sentence.
+- Always retain all critical facts: exact product name, variant/color, stock status (In Stock vs Out of Stock), price (₱), and turnaround time (15–45 mins).`;
 
         // Efficient history window: last 4 messages, trimmed text length
         const messages = [
@@ -2784,8 +2786,8 @@ CRITICAL RULES:
 
         const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
             messages,
-            temperature: 0.5,
-            max_tokens: 350
+            temperature: 0.3,
+            max_tokens: 250
         });
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {

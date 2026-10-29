@@ -387,7 +387,7 @@ Each object in the array must contain:
 - title: String (compelling, short strategic title)
 - category: "Inventory" | "Pricing" | "Operations" | "Demand"
 - severity: "info" | "warning" | "critical"
-- description: String (clear strategic reasoning referencing specific numbers, e.g. visits, spools count, depletion rate, or pending hours)
+- description: String (concise strategic reasoning in 1-2 sentences referencing specific numbers, e.g. visits, spools count, depletion rate, or pending hours)
 - actionText: String (label for the implementation action button)
 - action: Object (the execution details: restock, updatePrice, prioritizeOrder)
 
@@ -395,7 +395,8 @@ Return ONLY the valid JSON array of objects.`;
 
             const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
                 messages: [{ role: 'user', content: systemPrompt }],
-                temperature: 0.1
+                temperature: 0.1,
+                max_tokens: 600
             });
 
             if (data) {
