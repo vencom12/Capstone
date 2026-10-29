@@ -975,13 +975,13 @@ export default function PanelSettings({
                   </div>
                 </div>
 
-                {/* Friendly Summary Banner & Token Bucket Telemetry */}
+                {/* Friendly Summary Banner & Workshop Capacity Telemetry */}
                 <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-text-main flex flex-col gap-3">
                   <div>
                     <span className="font-bold text-text-main block mb-0.5">Summary of Current Settings:</span>
                     <span className="text-text-dim text-[11px]">
                       A typical 5-letter monogram takes about ~<strong>{(artisanHandlingMinutes + (5 * (artisanSecondsPerLetter / 60))).toFixed(1)} minutes</strong>. 
-                      Your workshop reserves ~<strong>{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} minutes</strong> for fast mall walk-ins, while your <strong>Token Bucket Limiter</strong> manages bulk orders at a burst capacity of <strong>{maxBulkPiecesPerDay} pieces/{batchThrottlePeriod === 'week' ? 'week' : 'day'}</strong> (refill rate: <strong>{(maxBulkPiecesPerDay / (batchThrottlePeriod === 'week' ? 7 : 1)).toFixed(1)} tokens/day</strong>).
+                      Your workshop reserves ~<strong>{Math.round(artisanDailyMinutes * (expressLanePercent / 100))} minutes</strong> for fast mall walk-ins, while your <strong>Bulk Order Capacity Scheduler</strong> limits bulk orders to <strong>{maxBulkPiecesPerDay} pieces/{batchThrottlePeriod === 'week' ? 'week' : 'day'}</strong> (daily production output: <strong>{(maxBulkPiecesPerDay / (batchThrottlePeriod === 'week' ? 7 : 1)).toFixed(1)} pieces/day</strong>).
                     </span>
                   </div>
                 </div>
