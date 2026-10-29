@@ -178,7 +178,7 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                     alt={item.name}
                     loading="lazy"
                     decoding="async"
-                    className="w-16 h-16 rounded-xl object-cover bg-black/20 shrink-0 border border-border-glass/40"
+                    className="w-16 h-16 rounded-xl object-cover bg-bg-surface shrink-0 border border-border-glass/40"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass/40 flex items-center justify-center text-[0.6rem] font-bold text-text-dim shrink-0">

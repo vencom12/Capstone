@@ -658,7 +658,7 @@ export default function ProductModal({
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
       <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1">
         {/* Full-Bleed Image & Preview Section */}
-        <div className="relative w-full h-full min-h-[440px] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-black/40 flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
+        <div className="relative w-full h-full min-h-[440px] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
           {activeImage ? (
             <div
               onClick={() => setIsZoomed(!isZoomed)}
@@ -1251,13 +1251,13 @@ export default function ProductModal({
 
                     {/* Per-Line Breakdown List */}
                     {bulkSummary.lines.length > 0 && (
-                      <div className="mt-1 p-2.5 rounded-xl bg-black/30 border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
-                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-white/5">
+                      <div className="mt-1 p-2.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
                           <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
                           <span>Extra Fee</span>
                         </div>
                         {bulkSummary.lines.map((line) => (
-                          <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.03] last:border-b-0">
+                          <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-b-0">
                             <div className="flex items-center gap-1.5 min-w-0 pr-2">
                               <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
                               <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
@@ -1300,7 +1300,7 @@ export default function ProductModal({
 
                 {/* Live Stitch Typography Preview */}
                 {((letteringMode === 'single' && customText.trim()) || (letteringMode === 'bulk' && bulkSummary.lineCount > 0)) && (
-                  <div className="p-3 rounded-xl bg-black/40 border border-border-glass flex flex-col items-center justify-center text-center">
+                  <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col items-center justify-center text-center">
                     <span className="text-[0.65rem] uppercase tracking-wider text-text-dim mb-1">
                       Stitch Preview ({threadColor.name} • Standard Artisan Script)
                     </span>
@@ -1309,7 +1309,7 @@ export default function ProductModal({
                       style={{
                         color: threadColor.hex,
                         fontFamily: DEFAULT_FONT.fontCss,
-                        textShadow: '0 0 10px rgba(0,0,0,0.5)',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.25)',
                       }}
                     >
                       {letteringMode === 'bulk' ? bulkSummary.namesList[0] : customText}

@@ -585,7 +585,7 @@ export default function DashboardPage() {
 
                 <div className="bg-bg-card backdrop-blur-[20px] border border-border-glass rounded-2xl overflow-hidden shadow-xl flex flex-col">
                   {/* Avatar Banner */}
-                  <div className="px-6 py-5 border-b border-border-glass/50 bg-black/10 flex items-center gap-4">
+                  <div className="px-6 py-5 border-b border-border-glass bg-bg-surface/50 flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 text-primary border border-primary/30 flex items-center justify-center text-xl font-black shrink-0 shadow-md">
                       {user?.username?.charAt(0).toUpperCase() || 'U'}
                     </div>

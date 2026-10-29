@@ -372,7 +372,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                     </div>
 
                     {/* Thumbnail */}
-                    <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
+                    <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center relative">
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
@@ -500,7 +500,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                           {/* Bulk Names Preview / Expandable List */}
                           {isBulk && namesList.length > 0 && (
-                            <div className="mt-2 bg-black/30 border border-white/10 rounded-lg p-2.5 text-[0.72rem]">
+                            <div className="mt-2 bg-bg-surface border border-border-glass rounded-lg p-2.5 text-[0.72rem]">
                               <div className="flex items-center justify-between text-text-dim mb-1">
                                 <span>
                                   Personalized Names ({namesList.length} pcs • Thread:{' '}
@@ -1025,7 +1025,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                 {editIsPersonalized && (
                   <>
                     {/* Mode Switcher: Single Name <-> Bulk List */}
-                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-black/40 border border-white/10 rounded-xl">
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-surface border border-border-glass rounded-xl">
                       <button
                         type="button"
                         onClick={() => {
@@ -1091,7 +1091,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           }}
                           onChange={(e) => setEditSingleText(sanitizeSingleLineText(e.target.value))}
                           placeholder="e.g. Coach1 A (max 20 chars)"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-border-glass text-text-main text-sm font-medium focus:outline-none focus:border-primary"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-text-main text-sm font-medium focus:outline-none focus:border-primary"
                         />
                         {editSingleText.trim() && (
                           <div className="text-[0.7rem] text-text-dim flex items-center justify-between bg-white/[0.03] px-2.5 py-1.5 rounded-lg border border-white/5">
@@ -1120,12 +1120,12 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                           value={editBulkText}
                           onChange={(e) => setEditBulkText(sanitizeBulkMultilineText(e.target.value))}
                           placeholder={`Paste or type names (1 per line, max 20 chars/line):\nCoach1\nCoach2\nCoach3 A\nPlayer 4`}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-border-glass text-text-main text-xs font-mono leading-relaxed focus:outline-none focus:border-primary resize-y"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-text-main text-xs font-mono leading-relaxed focus:outline-none focus:border-primary resize-y"
                         />
 
                         {/* Per-line breakdown preview */}
                         {bulkSummary.lines.length > 0 && (
-                          <div className="bg-black/30 border border-white/10 rounded-lg p-2.5 max-h-[140px] overflow-y-auto flex flex-col gap-1">
+                          <div className="bg-bg-surface border border-border-glass rounded-lg p-2.5 max-h-[140px] overflow-y-auto flex flex-col gap-1">
                             {bulkSummary.lines.map((line) => (
                               <div
                                 key={line.lineIndex}
@@ -1174,7 +1174,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[0.7rem] font-semibold cursor-pointer transition-all ${
                                   active
                                     ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary'
-                                    : 'bg-black/30 border-white/10 text-text-dim hover:text-text-main'
+                                    : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
                                 }`}
                               >
                                 <span

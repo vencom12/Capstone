@@ -1380,11 +1380,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 transition resize-y"
                     />
                     {intakeBulkSummary.lines.length > 0 && (
-                      <div className="bg-black/25 border border-border-glass rounded-lg p-2 max-h-32 overflow-y-auto flex flex-col gap-1">
+                      <div className="bg-bg-surface border border-border-glass rounded-lg p-2 max-h-32 overflow-y-auto flex flex-col gap-1">
                         {intakeBulkSummary.lines.map((line) => (
                           <div
                             key={line.lineIndex}
-                            className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/5 last:border-none"
+                            className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-none"
                           >
                             <span className="font-mono text-text-main truncate">
                               <strong className="text-text-dim mr-1.5">#{line.lineIndex}</strong>
@@ -1426,7 +1426,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             }}
                             title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
                             className={`relative flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition overflow-hidden ${!isAvailable
-                                ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-white/10 bg-black/20'
+                                ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-border-glass bg-bg-surface/50'
                                 : isSelected
                                   ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary cursor-pointer'
                                   : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20 cursor-pointer'

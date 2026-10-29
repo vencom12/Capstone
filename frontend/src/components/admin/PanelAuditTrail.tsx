@@ -448,7 +448,7 @@ export default function PanelAuditTrail() {
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Recorded Changes Payload (JSON)</span>
-              <pre className="bg-black/60 border border-border-glass rounded-xl p-4 text-xs font-mono text-success overflow-x-auto max-h-64 scrollbar-thin">
+              <pre className="bg-bg-surface border border-border-glass rounded-xl p-4 text-xs font-mono text-success overflow-x-auto max-h-64 scrollbar-thin">
                 {JSON.stringify(selectedLogForDetails.diff, null, 2)}
               </pre>
             </div>

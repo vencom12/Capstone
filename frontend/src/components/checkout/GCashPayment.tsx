@@ -239,7 +239,7 @@ export default function GCashPayment({
           {receiptFile ? (
             <div className="flex items-center gap-3 p-1">
               {previewUrl && (
-                <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-black/40 shrink-0">
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
                   <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
                 </div>
               )}

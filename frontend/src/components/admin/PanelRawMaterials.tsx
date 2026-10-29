@@ -421,7 +421,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
 
   if (isEditing) {
     return (
-      <div className="flex flex-col gap-1.5 animate-fade bg-black/40 border border-primary/40 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col gap-1.5 animate-fade bg-bg-card shadow-lg border border-primary/40 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
         {packSize > 1 && (
           <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded text-[9px] font-bold self-start">
             <button
@@ -1557,7 +1557,7 @@ export default function PanelRawMaterials({
               </svg>
               <span>{isGeneratingImage ? 'Generating...' : 'Order Restock Slip'}</span>
               {lowStockItems.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white font-mono">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-danger/15 text-danger font-mono font-bold">
                   {lowStockItems.length}
                 </span>
               )}
@@ -2040,7 +2040,7 @@ export default function PanelRawMaterials({
               </div>
 
               {itemPackCost && itemSupplierCost && (
-                <div className="flex items-center justify-between text-[0.68rem] bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 font-mono">
+                <div className="flex items-center justify-between text-[0.68rem] bg-bg-surface px-2.5 py-1 rounded-lg border border-border-glass font-mono">
                   <span className="text-text-dim">
                     🧮 ₱{parseFloat(itemPackCost || '0').toFixed(2)} ÷ {itemPackSize} {itemUnit}
                   </span>
@@ -2218,7 +2218,7 @@ export default function PanelRawMaterials({
               </div>
 
               {editItemPackCost && editItemSupplierCost && (
-                <div className="flex items-center justify-between text-[0.68rem] bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 font-mono">
+                <div className="flex items-center justify-between text-[0.68rem] bg-bg-surface px-2.5 py-1 rounded-lg border border-border-glass font-mono">
                   <span className="text-text-dim">
                     🧮 ₱{parseFloat(editItemPackCost || '0').toFixed(2)} ÷ {editItemPackSize} {editItemUnit}
                   </span>

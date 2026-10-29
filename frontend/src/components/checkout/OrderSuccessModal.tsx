@@ -251,7 +251,7 @@ export default function OrderSuccessModal({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {item.imageUrl && (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-glass/50 bg-black/30 shrink-0">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-glass/50 bg-bg-surface shrink-0">
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                         </div>
                       )}

@@ -1636,7 +1636,7 @@ export default function EmployeePage() {
                 max="100"
                 value={orderProgressInput}
                 onChange={(e) => setOrderProgressInput(e.target.value)}
-                className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-1.5 bg-border-glass rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
             <div className="flex gap-3 mt-4">

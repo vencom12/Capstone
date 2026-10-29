@@ -240,7 +240,7 @@ export default function OrderDetailsModal({
               <span className="text-text-dim font-medium">{stage.hint}</span>
               <span className="font-bold text-text-main">Step {stage.step} of {TOTAL_STEPS}</span>
             </div>
-            <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-border-glass rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function OrderDetailsModal({
                         <img 
                           src={item.imageUrl} 
                           alt={item.name} 
-                          className="w-8 h-8 rounded-lg object-cover bg-black/40 border border-white/10 shrink-0" 
+                          className="w-8 h-8 rounded-lg object-cover bg-bg-surface border border-border-glass shrink-0" 
                         />
                       )}
                       <div className="flex flex-col min-w-0">

@@ -621,7 +621,7 @@ export default function PersistentAssistant() {
       const snippetId = `code_${key}`;
       const isCopied = copiedCodeId === snippetId;
       elements.push(
-        <div key={`code-${key}`} className="my-2.5 rounded-xl border border-white/10 bg-black/40 overflow-hidden text-left shadow-lg">
+        <div key={`code-${key}`} className="my-2.5 rounded-xl border border-border-glass bg-bg-surface overflow-hidden text-left shadow-lg">
           <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/10 text-[0.7rem] text-text-dim">
             <span className="font-mono uppercase tracking-wider text-text-dim/80 text-[0.66rem] font-semibold">
               {currentCode.lang || 'Message Template'}

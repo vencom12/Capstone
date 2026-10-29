@@ -62,7 +62,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
 
       {stage.isActive && (
         <div className="flex flex-col gap-1.5">
-          <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-border-glass rounded-full overflow-hidden">
             <div
               className="h-full bg-primary rounded-full transition-all duration-700"
               style={{ width: `${percent}%` }}
