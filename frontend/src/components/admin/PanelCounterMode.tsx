@@ -758,7 +758,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       const isPhone = customerContact.replace(/\D/g, '').length >= 7;
 
       const isPlainOrder = !hasAnyEmbroidery;
-      const isDirectComplete = isPlainOrder && !isHoldForPickup;
+      const isDirectComplete = isPlainOrder;
 
       const payload = {
         clientName: customerName.trim() || defaultClientName,
@@ -773,11 +773,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         isImmediate: true,
         executionMode: 'immediate',
         isAlreadyCompleted: isDirectComplete,
-        isHoldForPickup: isPlainOrder && isHoldForPickup,
+        isHoldForPickup: false,
         personalizationText: finalItems[0]?.personalization?.text || '',
         threadColor: hasAnyEmbroidery ? (finalItems[0]?.personalization?.threadColor?.name || finalItems[0]?.personalization?.threadColor || threadColor) : 'None (Plain)',
         notes: [
-          isPlainOrder ? (isHoldForPickup ? 'Plain Walk-In (Packaged & held on side for pickup)' : 'Plain Walk-In (Direct off-the-shelf sale)') : '',
+          isPlainOrder ? 'Plain Walk-In (Direct off-the-shelf sale)' : '',
           finalItems.length > 1 ? `Multi-item batch (${finalItems.length} items)` : '',
           customerContact ? `Contact: ${customerContact}` : '',
           gcashRef.trim() ? `GCash Ref: ${gcashRef.trim()}` : '',
@@ -1737,38 +1737,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 />
               </div>
 
-              {/* Plain Item Direct Sale Indicator */}
-              {!hasAnyEmbroidery && (
-                <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-text-main">
-                        {isHoldForPickup ? 'Hold on Side for Pickup Later' : 'Direct Off-the-Shelf Sale'}
-                      </span>
-                      <span className="text-[11px] text-text-dim">
-                        {isHoldForPickup
-                          ? 'Bag order now with claim slip and place on the side.'
-                          : 'Plain item (no embroidery) — hand over directly at counter.'}
-                      </span>
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer pt-1.5 border-t border-border-glass text-xs font-medium text-text-dim hover:text-text-main select-none">
-                    <input
-                      type="checkbox"
-                      checked={isHoldForPickup}
-                      onChange={(e) => setIsHoldForPickup(e.target.checked)}
-                      className="rounded border-border-glass accent-primary"
-                    />
-                    <span>Customer will pick up later (Hold on side with claim slip)</span>
-                  </label>
-                </div>
-              )}
-
               {/* Big Action Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 px-4 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg bg-text-main hover:bg-text-main/90 active:scale-[0.99] text-bg-surface font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1777,7 +1750,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {isSubmitting
                     ? 'Processing...'
                     : !hasAnyEmbroidery
-                      ? (isHoldForPickup ? 'Bag Order & Print Claim Slip' : 'Direct Sale & Hand Over (Complete)')
+                      ? 'Direct Sale & Hand Over (Complete)'
                       : (ticketItems.length > 0
                         ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Queue for Stitching`
                         : 'Punch Order & Queue for Stitching')}
