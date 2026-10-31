@@ -228,7 +228,7 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
 
                     {isBulk && namesList.length > 0 ? (
                       <div className="mt-1 text-[0.68rem] text-primary font-semibold truncate">
-                        📋 {namesList.length} Names: {namesList.slice(0, 3).join(', ')}
+                        {namesList.length} Names: {namesList.slice(0, 3).join(', ')}
                         {namesList.length > 3 ? ` +${namesList.length - 3} more` : ''}
                       </div>
                     ) : item.personalization?.text ? (

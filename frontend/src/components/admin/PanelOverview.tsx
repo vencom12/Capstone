@@ -75,12 +75,15 @@ export default function PanelOverview({
 
   const getOrderGcashRef = (o: any): string => {
     if (!o) return '';
+    const paymentMethod = String(o.paymentMethod || '').toLowerCase();
+    if (paymentMethod && paymentMethod !== 'gcash') return '';
+
     const rawRef =
       o.receipt?.referenceId ||
       (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
-      o.transaction?.transactionID ||
       '';
-    return String(rawRef || '').trim();
+    if (!rawRef || rawRef.startsWith('TX-')) return '';
+    return String(rawRef).trim();
   };
 
   const isOrderSmsVerified = (o: any): boolean => {
@@ -725,23 +728,29 @@ export default function PanelOverview({
                                 >
                                   <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
                                   <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
-                                  <span className="text-xs font-mono font-black text-primary tracking-wider bg-primary/15 px-1 rounded">
+                                  <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
                                     {last4}
                                   </span>
                                 </div>
                                 {smsVerified ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-primary">
-                                    ✓ Phone SMS Matched
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    SMS Verified
                                   </span>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={(e) => handleVerifySmsMatch(o, e)}
                                     disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
                                     title="Tap after glancing at your phone's GCash SMS to confirm the last 4 digits match"
                                   >
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Confirm SMS (...${last4})`}</span>
                                   </button>
                                 )}
                               </div>
@@ -939,14 +948,14 @@ export default function PanelOverview({
                                 Ref: ...{last4}
                               </span>
                               {smsVerified ? (
-                                <span className="text-[10px] font-sans font-bold text-primary">✓ SMS</span>
+                                <span className="text-[10px] font-sans font-medium text-text-dim">Verified</span>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={(e) => handleVerifySmsMatch(o, e)}
-                                  className="text-[10px] font-sans font-bold bg-white/5 hover:bg-white/10 border border-border-glass text-text-main px-1.5 py-0.5 rounded cursor-pointer"
+                                  className="text-[10px] font-sans font-medium bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main px-1.5 py-0.5 rounded cursor-pointer"
                                 >
-                                  ✓ Match
+                                  Confirm SMS
                                 </button>
                               )}
                             </div>

@@ -144,12 +144,16 @@ export default function EmployeePage() {
 
   const getOrderGcashRef = (o: any): string => {
     if (!o) return '';
+    const paymentMethod = String(o.paymentMethod || '').toLowerCase();
+    if (paymentMethod && paymentMethod !== 'gcash') return '';
+
     const rawRef =
       o.receipt?.referenceId ||
       (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
-      o.transaction?.transactionID ||
       '';
-    return String(rawRef || '').trim();
+    // Reject internal server transaction IDs (e.g. TX-...) - only match actual GCash numbers
+    if (!rawRef || rawRef.startsWith('TX-')) return '';
+    return String(rawRef).trim();
   };
 
   const isOrderSmsVerified = (o: any): boolean => {
@@ -796,18 +800,19 @@ export default function EmployeePage() {
                                                 });
                                                 setIsRosterModalOpen(true);
                                               }}
-                                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[0.7rem] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-bg-surface hover:bg-white/10 text-text-main border border-border-glass text-[0.7rem] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
                                               title="Open interactive bulk name roster checklist"
                                             >
-                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                                                 <rect x="9" y="3" width="6" height="4" rx="1" />
-                                                <path d="M9 14l2 2 4-4" />
+                                                <line x1="9" y1="12" x2="15" y2="12" />
+                                                <line x1="9" y1="16" x2="13" y2="16" />
                                               </svg>
-                                              <span>📋 View Roster ({namesList.length} Names)</span>
+                                              <span>View Roster ({namesList.length} Names)</span>
                                             </button>
                                             {threadColor && (
-                                              <span className="text-text-dim/70 text-[0.65rem] font-sans">
+                                              <span className="text-text-dim text-[0.65rem] font-sans">
                                                 ({threadColor})
                                               </span>
                                             )}
@@ -852,22 +857,28 @@ export default function EmployeePage() {
                                     >
                                       <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
                                       <span className="text-[10px] font-mono text-text-dim">{ref.length > 4 ? '...' : ''}</span>
-                                      <span className="text-xs font-mono font-black text-primary tracking-wider bg-primary/15 px-1 rounded">
+                                      <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
                                         {last4}
                                       </span>
                                     </div>
                                     {smsVerified ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-primary">
-                                        ✓ Phone SMS Matched
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                          <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                        SMS Verified
                                       </span>
                                     ) : (
                                       <button
                                         type="button"
                                         onClick={(e) => handleVerifySmsMatch(o, e)}
                                         disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
                                       >
-                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `✓ Match SMS (...${last4})`}</span>
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                          <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Confirm SMS (...${last4})`}</span>
                                       </button>
                                     )}
                                   </div>
@@ -1065,18 +1076,19 @@ export default function EmployeePage() {
                                             });
                                             setIsRosterModalOpen(true);
                                           }}
-                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[0.65rem] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-bg-surface hover:bg-white/10 text-text-main border border-border-glass text-[0.65rem] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
                                           title="Open interactive bulk name roster checklist"
                                         >
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                                             <rect x="9" y="3" width="6" height="4" rx="1" />
-                                            <path d="M9 14l2 2 4-4" />
+                                            <line x1="9" y1="12" x2="15" y2="12" />
+                                            <line x1="9" y1="16" x2="13" y2="16" />
                                           </svg>
-                                          <span>📋 Roster ({namesList.length} Names)</span>
+                                          <span>Roster ({namesList.length} Names)</span>
                                         </button>
                                         {threadColor && (
-                                          <span className="text-text-dim/70 text-[0.62rem] font-sans">
+                                          <span className="text-text-dim text-[0.62rem] font-sans">
                                             ({threadColor})
                                           </span>
                                         )}

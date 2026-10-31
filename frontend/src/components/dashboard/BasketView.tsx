@@ -484,7 +484,13 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                                 }
                                 className="bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[0.7rem] px-2.5 py-0.5 rounded-md font-bold flex items-center gap-1.5 cursor-pointer transition-all"
                               >
-                                <span>📋 Bulk Name List ({namesList.length} lines)</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+    <span>Bulk Name List ({namesList.length} lines)</span>
                                 {item.personalization?.threadHex && (
                                   <span
                                     className="w-2 h-2 rounded-full border border-white/40 inline-block shadow-xs"
@@ -1057,7 +1063,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             : 'bg-transparent text-text-dim hover:text-text-main'
                         }`}
                       >
-                        📋 Bulk List (Copy &amp; Paste)
+                        Bulk List (Copy &amp; Paste)
                       </button>
                     </div>
 
@@ -1223,7 +1229,11 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                 {exceedsStock && (
                   <div className="mt-1 p-3 rounded-xl bg-bg-surface border border-border-glass text-xs text-text-dim flex flex-col gap-2">
                     <div className="flex items-start gap-2">
-                      <span className="text-base leading-none">⚠️</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-text-main">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
                       <div className="leading-relaxed">
                         <strong className="text-text-main block mb-0.5">
                           Quantity Exceeds Immediate On-Hand Stock ({Math.max(0, variantStock)} available)

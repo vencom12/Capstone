@@ -318,14 +318,14 @@ export default function OrderDetailsModal({
                         <button
                           type="button"
                           onClick={() => setExpandedRosterIdx(isExpanded ? null : idx)}
-                          className="inline-flex items-center gap-1 text-[0.68rem] text-primary hover:text-primary/80 font-bold cursor-pointer transition-all self-start"
+                          className="inline-flex items-center gap-1 text-[0.68rem] text-text-main hover:text-text-dim font-medium cursor-pointer transition-all self-start"
                         >
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                             <rect x="9" y="3" width="6" height="4" rx="1" />
                             <path d="M9 14l2 2 4-4" />
                           </svg>
-                          <span>{isExpanded ? 'Hide' : 'View'} full personalized name roster ({namesList.length} names)</span>
+                          <span>{isExpanded ? 'Hide' : 'View'} name roster ({namesList.length} names)</span>
                           <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
                         </button>
 

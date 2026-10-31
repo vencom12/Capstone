@@ -1299,7 +1299,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
-                      📋 Bulk List (Paste)
+                      Bulk List (Paste)
                     </button>
                   </div>
                 </div>
@@ -1489,7 +1489,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {/* Stock Warning if Quantity Exceeds On-Hand Stock */}
                   {intakeExceedsStock && (
                     <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass text-[11px] text-text-dim flex items-center gap-2">
-                      <span>⚠️</span>
+                      
                       <span>
                         <strong>Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong>Pre-Order</strong> with extended workshop preparation &amp; production schedule.
                       </span>
@@ -1934,7 +1934,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
-                      📋 Bulk List
+                      Bulk List
                     </button>
                   </div>
                 </div>
@@ -2128,7 +2128,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             <div className="w-full sm:w-96 relative">
               <input
                 type="text"
-                placeholder="🔍 Search Claim Code (#A-XXXX), Ticket #, or Customer..."
+                placeholder="Search Claim Code (#A-XXXX), Ticket #, or Customer..."
                 value={turnOverSearch}
                 onChange={(e) => {
                   setTurnOverSearch(e.target.value);

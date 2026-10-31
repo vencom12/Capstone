@@ -92,7 +92,7 @@ export default function BulkNameRosterModal({
         <div className="flex items-start justify-between border-b border-border-glass pb-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-extrabold tracking-wider px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
+              <span className="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/5 text-text-main border border-border-glass">
                 Bulk Embroidery Roster
               </span>
               <span className="font-mono text-xs font-bold text-text-dim">
@@ -112,7 +112,7 @@ export default function BulkNameRosterModal({
             <span className="text-[11px] text-text-dim uppercase tracking-wider font-semibold">
               Thread Color
             </span>
-            <span className="text-sm font-bold text-primary">
+            <span className="text-sm font-bold text-text-main">
               {data.threadColor}
             </span>
           </div>
@@ -122,8 +122,8 @@ export default function BulkNameRosterModal({
         <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-2">
           <div className="flex justify-between items-center text-xs">
             <span className="font-bold text-text-main flex items-center gap-1.5">
-              <span>🪡 Stitching Progress:</span>
-              <span className="font-mono text-primary font-bold">
+              <span>Stitching Progress:</span>
+              <span className="font-mono text-text-main font-bold">
                 {completedCount} of {totalCount} completed
               </span>
             </span>
@@ -133,7 +133,7 @@ export default function BulkNameRosterModal({
           </div>
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-300 rounded-full"
+              className="h-full bg-text-main/80 transition-all duration-300 rounded-full"
               style={{ width: `${percentComplete}%` }}
             />
           </div>
@@ -180,8 +180,8 @@ export default function BulkNameRosterModal({
                   onClick={() => toggleIndex(idx)}
                   className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer select-none ${
                     isChecked
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                      : 'bg-bg-surface border-border-glass hover:border-primary/40 text-text-main'
+                      ? 'bg-white/5 border-border-glass text-text-dim'
+                      : 'bg-bg-surface border-border-glass hover:border-white/20 text-text-main'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -208,13 +208,13 @@ export default function BulkNameRosterModal({
                       {name.length}/20 chars
                     </span>
                     <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${
                         isChecked
-                          ? 'bg-emerald-500/20 text-emerald-400'
+                          ? 'bg-white/10 text-text-main'
                           : 'bg-white/5 text-text-dim'
                       }`}
                     >
-                      {isChecked ? '✓ Stitched' : 'Pending'}
+                      {isChecked ? 'Stitched' : 'Pending'}
                     </span>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export default function BulkNameRosterModal({
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <polyline points="6 9 6 2 18 2 18 9" />

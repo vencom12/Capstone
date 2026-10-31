@@ -342,7 +342,7 @@ export default function OfficialClaimSlip({
                 TRANSACTION TYPE
               </span>
               <div className="text-xs font-black text-emerald-700 uppercase tracking-wide">
-                ✓ DIRECT SALE • PAID IN FULL
+                DIRECT SALE • PAID IN FULL
               </div>
               <div className="text-[10px] text-zinc-600">
                 Off-the-shelf garment handed over at counter
@@ -488,7 +488,7 @@ export default function OfficialClaimSlip({
               </div>
               <div className="flex justify-between items-baseline bg-zinc-100/80 p-1.5 rounded border border-zinc-300 mt-0.5">
                 <span className="font-bold text-zinc-900 flex items-center gap-1">
-                  <span>⏱</span> Estimated Ready:
+                  Estimated Ready:
                 </span>
                 <span className="font-bold text-black text-right font-mono">
                   {estimatedReadyFormatted}
