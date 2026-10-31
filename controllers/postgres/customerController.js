@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const socketUtil = require('../../utils/socketUtil');
 const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { calculatePickupSchedule } = require('../../utils/pickupScheduler');
+const cacheManager = require('../../utils/cacheManager');
 
 // Idempotency cache (5-minute TTL) to prevent duplicate order submissions from double-taps / retries
 const orderIdempotencyStore = new Map();
@@ -18,6 +19,15 @@ setInterval(() => {
 exports.getDashboardState = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
+
+        // FAST PATH: If guest visitor, serve cached dashboard state directly
+        if (!userId) {
+            const cachedGuestState = cacheManager.get('guest:dashboard_state');
+            if (cachedGuestState) {
+                res.set('X-Cache', 'HIT');
+                return res.json(cachedGuestState);
+            }
+        }
 
         let orders = [], currentUser = null, transactions = [], receipts = [];
 
@@ -41,12 +51,19 @@ exports.getDashboardState = async (req, res) => {
             orders = orders.map(ord => ({ ...ord, myReview: reviewByOrder.get(ord.orderId) || null }));
         }
 
-        const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+        // Cache-layer for enrichedProducts (the heaviest operation on storefront)
+        let enrichedProducts = cacheManager.get('catalog:enriched_products');
+        if (!enrichedProducts) {
+            const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
+            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
+            enrichedProducts = await enrichProductsWithStock(products);
+            cacheManager.set('catalog:enriched_products', enrichedProducts, 180);
+        }
+
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-        const enrichedProducts = await enrichProductsWithStock(products);
         const enrichedFavorites = currentUser ? await enrichProductsWithStock(currentUser.favorites) : [];
 
-        res.json({
+        const dashboardPayload = {
             orders,
             products: enrichedProducts,
             favorites: enrichedFavorites,
@@ -58,7 +75,14 @@ exports.getDashboardState = async (req, res) => {
             preferredDeliveryTime: currentUser ? currentUser.preferredDeliveryTime : '',
             transactions,
             receipts
-        });
+        };
+
+        if (!userId) {
+            cacheManager.set('guest:dashboard_state', dashboardPayload, 180);
+        }
+
+        res.set('X-Cache', userId ? 'PARTIAL-MISS' : 'MISS');
+        res.json(dashboardPayload);
     } catch (err) {
         console.error('getDashboardState error:', err);
         res.status(500).json({ message: 'Error fetching dashboard state' });
@@ -661,6 +685,9 @@ exports.submitOrder = async (req, res) => {
             });
         }
 
+        cacheManager.delPattern('catalog:');
+        cacheManager.delPattern('guest:');
+        cacheManager.delPattern('workshop:');
         const successPayload = { message: 'Order placed successfully.', order: result, receiptID: secureReceiptId };
         if (idempotencyKey) {
             orderIdempotencyStore.set(idempotencyKey, { response: successPayload, timestamp: Date.now() });
@@ -832,8 +859,16 @@ exports.getReceipt = async (req, res) => {
 
 exports.getCapacity = async (req, res) => {
     try {
+        const cached = cacheManager.get('workshop:capacity');
+        if (cached) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cached);
+        }
+
         const { getWorkshopCapacity } = require('../../utils/workshopQueueManager');
         const capacity = await getWorkshopCapacity(prisma);
+        cacheManager.set('workshop:capacity', capacity, 30);
+        res.set('X-Cache', 'MISS');
         res.json(capacity);
     } catch (err) {
         console.error('Capacity error:', err);
@@ -1016,6 +1051,12 @@ exports.trackOrder = async (req, res) => {
 
 exports.getLiveQueue = async (req, res) => {
     try {
+        const cached = cacheManager.get('workshop:live_queue');
+        if (cached) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cached);
+        }
+
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
@@ -1136,7 +1177,7 @@ exports.getLiveQueue = async (req, res) => {
             upNext.reduce((acc, o) => acc + o.estimatedMinutes, 0);
         const averageWaitMinutes = Math.ceil(totalRemainingMinutes / machineCount);
 
-        res.json({
+        const liveQueuePayload = {
             success: true,
             nowStitching,
             readyForPickup,
@@ -1147,7 +1188,10 @@ exports.getLiveQueue = async (req, res) => {
                 activeMachines: machineCount,
                 averageWaitMinutes: activeOrders.length === 0 ? 10 : averageWaitMinutes
             }
-        });
+        };
+        cacheManager.set('workshop:live_queue', liveQueuePayload, 15);
+        res.set('X-Cache', 'MISS');
+        res.json(liveQueuePayload);
     } catch (err) {
         console.error('Error fetching live queue:', err);
         res.status(500).json({ message: 'Server error fetching live queue', error: err.message });
@@ -1156,6 +1200,12 @@ exports.getLiveQueue = async (req, res) => {
 
 exports.getPublicSettings = async (req, res) => {
     try {
+        const cachedSettings = cacheManager.get('settings:public');
+        if (cachedSettings) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cachedSettings);
+        }
+
         let settings = null;
         try {
             settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
@@ -1195,7 +1245,7 @@ exports.getPublicSettings = async (req, res) => {
             threadColors = threadColors.filter(c => !c || c.id !== '__pricing_meta__');
         }
 
-        res.json({
+        const publicSettingsPayload = {
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
             businessName: settings?.businessName || 'EDS TOWELS & CAPS',
@@ -1219,7 +1269,10 @@ exports.getPublicSettings = async (req, res) => {
                 resumeDate: settings.emergencyNoticeResumeDate,
                 createdAt: settings.emergencyNoticeCreatedAt
             } : { active: false }
-        });
+        };
+        cacheManager.set('settings:public', publicSettingsPayload, 600);
+        res.set('X-Cache', 'MISS');
+        res.json(publicSettingsPayload);
     } catch (err) {
         console.error('[getPublicSettings] Unexpected error:', err);
         const DEFAULT_THREAD_PALETTE = [

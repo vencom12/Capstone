@@ -306,6 +306,16 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     // Run self-healing database column reconciliation inside transition transactions
     await reconcileReservedCounts(tx);
 
+    // Invalidate caches on order state transition
+    try {
+        const cacheManager = require('./cacheManager');
+        cacheManager.delPattern('catalog:');
+        cacheManager.delPattern('guest:');
+        cacheManager.delPattern('workshop:');
+    } catch (cacheErr) {
+        console.warn('[CacheManager] Invalidation warning:', cacheErr.message);
+    }
+
     return updatedOrder;
 }
 

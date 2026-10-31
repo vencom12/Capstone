@@ -3,6 +3,24 @@ const { ENTITIES } = require('./apiConstants');
 
 const socketUtil = {
     emitDataChanged: (io, action, entity, payload, rooms = null) => {
+        // Automatically purge matching in-memory cache entries on entity mutation synchronously
+        try {
+            const cacheManager = require('./cacheManager');
+            if (entity === ENTITIES.PRODUCT || entity === ENTITIES.INVENTORY || entity === 'INVENTORY_BATCH' || entity === 'INVENTORY_LOG' || entity === 'FEEDBACK') {
+                cacheManager.delPattern('catalog:');
+                cacheManager.delPattern('guest:');
+            } else if (entity === ENTITIES.ORDER) {
+                cacheManager.delPattern('catalog:');
+                cacheManager.delPattern('guest:');
+                cacheManager.delPattern('workshop:');
+            } else if (entity === ENTITIES.SETTINGS || entity === 'SETTINGS') {
+                cacheManager.delPattern('settings:');
+                cacheManager.delPattern('workshop:');
+            }
+        } catch (cacheErr) {
+            // Non-blocking safeguard
+        }
+
         if (!io) return;
         (async () => {
             let processedPayload = payload;
@@ -22,9 +40,9 @@ const socketUtil = {
 
             const data = { action, entity, payload: processedPayload };
             const payloadSize = Buffer.byteLength(JSON.stringify(data));
-            
+
             logger.logSocketEvent('dataChanged', payloadSize, data);
-            
+
             let emitter = io;
             if (rooms) {
                 if (Array.isArray(rooms)) {

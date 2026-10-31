@@ -432,12 +432,26 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/employee', employeeRoutes);
 
 // --- Shared/Public Routes ---
+const cacheManager = require('./utils/cacheManager');
+
+app.get('/api/cache/stats', (req, res) => {
+    res.json(cacheManager.getStats());
+});
+
 app.get('/api/products', async (req, res) => {
     try {
+        const cached = cacheManager.get('catalog:enriched_products');
+        if (cached) {
+            res.set('X-Cache', 'HIT');
+            return res.json(cached);
+        }
+
         const prisma = require('./utils/prisma');
         const { enrichProductsWithStock } = require('./utils/inventoryManager');
         const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
         const enriched = await enrichProductsWithStock(products);
+        cacheManager.set('catalog:enriched_products', enriched, 180);
+        res.set('X-Cache', 'MISS');
         res.json(enriched);
     } catch (err) {
         console.error('API Products Error:', err);
