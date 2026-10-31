@@ -56,6 +56,7 @@ export default function OfficialClaimSlip({
       selectedVariant: order.selectedVariant || pers.variant || '',
       personalization: {
         text: order.personalizationText || pers.text || '',
+        namesList: pers.namesList || order.namesList,
         threadColor: { name: order.threadColor || pers.color || '' },
       }
     }];
@@ -511,6 +512,18 @@ export default function OfficialClaimSlip({
                   const variantName = [toSafeString(item.selectedVariant), item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                   const itemName = toSafeString(item.name || 'Embroidered Item');
 
+                  const rawNamesList = Array.isArray(itemPers.namesList) && itemPers.namesList.length > 0
+                    ? itemPers.namesList
+                    : (Array.isArray(pers.namesList) && pers.namesList.length > 0 ? pers.namesList : []);
+
+                  const namesList: string[] = rawNamesList.length > 0
+                    ? rawNamesList.map((n: any) => toSafeString(n).trim()).filter(Boolean)
+                    : (customText.includes('\n')
+                        ? customText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                        : []);
+
+                  const isBulk = namesList.length > 1;
+
                   return (
                     <div key={idx} className="flex flex-col gap-0.5 bg-zinc-50 p-2 rounded border border-zinc-200">
                       <span className="font-bold text-black text-xs">
@@ -521,20 +534,51 @@ export default function OfficialClaimSlip({
                           Option: {variantName}
                         </span>
                       )}
-                      {customText && (
+                      {isBulk ? (
+                        <div className="mt-1 pt-1.5 border-t border-zinc-200 text-left">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-zinc-800">
+                            <span>Embroidery Roster ({namesList.length} items):</span>
+                            {threadName && <span className="text-[9px] text-zinc-600 font-normal">Thread: {threadName}</span>}
+                          </div>
+                          {fontName && <div className="text-[9px] text-zinc-500 font-normal">Style: {fontName}</div>}
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1 bg-white p-1.5 rounded border border-zinc-200 text-[10px] font-mono mt-1">
+                            {namesList.map((name: string, nIdx: number) => (
+                              <div key={nIdx} className="truncate text-zinc-900">
+                                <span className="text-zinc-500 font-bold">{nIdx + 1}.</span> {name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : customText ? (
                         <div className="text-[10px] text-zinc-800 font-semibold italic mt-0.5">
                           Embroidery: "{customText}"
                           {threadName && <span className="not-italic text-zinc-500"> ({threadName})</span>}
                           {fontName && <span className="not-italic text-zinc-500"> • {fontName}</span>}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })
               ) : (
-                <div className="flex justify-between bg-zinc-50 p-2 rounded border border-zinc-200">
-                  <span className="font-bold text-black">{order.design || 'Custom Embroidery'}</span>
-                  <span className="font-mono text-black">1x</span>
+                <div className="flex flex-col gap-1 bg-zinc-50 p-2 rounded border border-zinc-200">
+                  <div className="flex justify-between">
+                    <span className="font-bold text-black">{order.design || 'Custom Embroidery'}</span>
+                    <span className="font-mono text-black">{order.quantity || 1}x</span>
+                  </div>
+                  {Array.isArray(pers.namesList) && pers.namesList.length > 1 && (
+                    <div className="mt-1 pt-1.5 border-t border-zinc-200 text-left">
+                      <div className="text-[10px] font-bold text-zinc-800 mb-1">
+                        Embroidery Roster ({pers.namesList.length} items):
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 bg-white p-1.5 rounded border border-zinc-200 text-[10px] font-mono">
+                        {pers.namesList.map((name: string, nIdx: number) => (
+                          <div key={nIdx} className="truncate text-zinc-900">
+                            <span className="text-zinc-500 font-bold">{nIdx + 1}.</span> {name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

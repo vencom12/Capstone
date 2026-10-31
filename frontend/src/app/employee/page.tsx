@@ -26,6 +26,8 @@ import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
 import { printBagSlip } from '@/lib/printBagSlip';
+import BulkNameRosterModal from '@/components/employee/BulkNameRosterModal';
+import { WorkshopRosterData } from '@/lib/printWorkshopRoster';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -80,6 +82,10 @@ export default function EmployeePage() {
   const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
   const [queuePage, setQueuePage] = useState(1);
   const [queuePageSize, setQueuePageSize] = useState(10);
+
+  // Bulk Names Roster Modal for machine operator / artisan
+  const [activeRosterData, setActiveRosterData] = useState<WorkshopRosterData | null>(null);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
 
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
@@ -753,6 +759,18 @@ export default function EmployeePage() {
                                     const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
                                     const rawColor = item.personalization?.threadColor || item.personalization?.color;
                                     const threadColor = typeof rawColor === 'object' && rawColor !== null ? (rawColor.name || '') : (typeof rawColor === 'string' ? rawColor : '');
+
+                                    const itemPers = item.personalization || {};
+                                    const rawNamesList = Array.isArray(itemPers.namesList) && itemPers.namesList.length > 0
+                                      ? itemPers.namesList
+                                      : (Array.isArray(o.personalization?.namesList) && o.personalization.namesList.length > 0 ? o.personalization.namesList : []);
+                                    const namesList: string[] = rawNamesList.length > 0
+                                      ? rawNamesList.map((n: any) => String(n || '').trim()).filter(Boolean)
+                                      : (stitchText && stitchText.includes('\n')
+                                          ? stitchText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                                          : []);
+                                    const isBulkRoster = namesList.length > 1;
+
                                     return (
                                       <div key={idx} className="flex flex-col text-xs">
                                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -762,7 +780,39 @@ export default function EmployeePage() {
                                           <span className="font-medium text-text-main">{item.quantity}x {item.name}</span>
                                           {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                         </div>
-                                        {stitchText && (
+                                        {isBulkRoster ? (
+                                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveRosterData({
+                                                  orderId: o.orderId || o.id || 'N/A',
+                                                  client: o.personalization?.claimantName || o.client || o.clientName || 'Walk-In Customer',
+                                                  itemName: item.name || 'Embroidered Item',
+                                                  threadColor: threadColor || 'Standard Gold',
+                                                  variantText,
+                                                  namesList,
+                                                });
+                                                setIsRosterModalOpen(true);
+                                              }}
+                                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[0.7rem] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                              title="Open interactive bulk name roster checklist"
+                                            >
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                                                <rect x="9" y="3" width="6" height="4" rx="1" />
+                                                <path d="M9 14l2 2 4-4" />
+                                              </svg>
+                                              <span>📋 View Roster ({namesList.length} Names)</span>
+                                            </button>
+                                            {threadColor && (
+                                              <span className="text-text-dim/70 text-[0.65rem] font-sans">
+                                                ({threadColor})
+                                              </span>
+                                            )}
+                                          </div>
+                                        ) : stitchText ? (
                                           <div className="flex items-center gap-1 text-[0.7rem] text-text-dim font-mono mt-0.5 pl-2 border-l border-border-glass">
                                             <span>&ldquo;{stitchText}&rdquo;</span>
                                             {threadColor && (
@@ -771,7 +821,7 @@ export default function EmployeePage() {
                                               </span>
                                             )}
                                           </div>
-                                        )}
+                                        ) : null}
                                       </div>
                                     );
                                   })}
@@ -976,6 +1026,18 @@ export default function EmployeePage() {
                                 const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
                                 const rawColor2 = item.personalization?.threadColor || item.personalization?.color;
                                 const threadColor = typeof rawColor2 === 'object' && rawColor2 !== null ? (rawColor2.name || '') : (typeof rawColor2 === 'string' ? rawColor2 : '');
+
+                                const itemPers = item.personalization || {};
+                                const rawNamesList = Array.isArray(itemPers.namesList) && itemPers.namesList.length > 0
+                                  ? itemPers.namesList
+                                  : (Array.isArray(o.personalization?.namesList) && o.personalization.namesList.length > 0 ? o.personalization.namesList : []);
+                                const namesList: string[] = rawNamesList.length > 0
+                                  ? rawNamesList.map((n: any) => String(n || '').trim()).filter(Boolean)
+                                  : (stitchText && stitchText.includes('\n')
+                                      ? stitchText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                                      : []);
+                                const isBulkRoster = namesList.length > 1;
+
                                 return (
                                   <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex flex-col gap-0.5">
                                     <div className="flex items-center justify-between gap-1.5">
@@ -987,11 +1049,43 @@ export default function EmployeePage() {
                                       </div>
                                       {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
                                     </div>
-                                    {stitchText && (
+                                    {isBulkRoster ? (
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveRosterData({
+                                              orderId: o.orderId || o.id || 'N/A',
+                                              client: o.personalization?.claimantName || o.client || o.clientName || 'Walk-In Customer',
+                                              itemName: item.name || 'Embroidered Garment',
+                                              threadColor: threadColor || 'Standard Gold',
+                                              variantText,
+                                              namesList,
+                                            });
+                                            setIsRosterModalOpen(true);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[0.65rem] font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                                          title="Open interactive bulk name roster checklist"
+                                        >
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                                            <rect x="9" y="3" width="6" height="4" rx="1" />
+                                            <path d="M9 14l2 2 4-4" />
+                                          </svg>
+                                          <span>📋 Roster ({namesList.length} Names)</span>
+                                        </button>
+                                        {threadColor && (
+                                          <span className="text-text-dim/70 text-[0.62rem] font-sans">
+                                            ({threadColor})
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : stitchText ? (
                                       <span className="text-[0.65rem] text-text-dim font-mono pl-2 border-l border-border-glass">
                                         &ldquo;{stitchText}&rdquo; {threadColor ? `(${threadColor})` : ''}
                                       </span>
-                                    )}
+                                    ) : null}
                                   </div>
                                 );
                               })
@@ -1674,6 +1768,16 @@ export default function EmployeePage() {
         transaction={viewingReceiptOrder}
         user={viewingReceiptOrder?.user || viewingReceiptOrder?.customer}
         transactionId={viewingReceiptOrder?.transactionID || viewingReceiptOrder?.transactionId || viewingReceiptOrder?.receiptID || viewingReceiptOrder?.receiptId || viewingReceiptOrder?.orderId}
+      />
+
+      {/* Bulk Names Roster Modal for Artisan Workstation */}
+      <BulkNameRosterModal
+        isOpen={isRosterModalOpen}
+        onClose={() => {
+          setIsRosterModalOpen(false);
+          setActiveRosterData(null);
+        }}
+        data={activeRosterData}
       />
 
       {/* Change Password Modal */}

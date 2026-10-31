@@ -35,6 +35,7 @@ export default function OrderDetailsModal({
   const [isClaimSlipOpen, setIsClaimSlipOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [helpCategory, setHelpCategory] = useState<string | undefined>(undefined);
+  const [expandedRosterIdx, setExpandedRosterIdx] = useState<number | null>(null);
 
   if (!order) return null;
 
@@ -267,31 +268,81 @@ export default function OrderDetailsModal({
                 const rawPersColor = item.personalization?.threadColor || (order.personalization as any)?.threadColor || (order.personalization as any)?.color;
                 const persColor = typeof rawPersColor === 'object' && rawPersColor !== null ? (rawPersColor.name || '') : (typeof rawPersColor === 'string' ? rawPersColor : '');
 
+                const rawNamesList = Array.isArray(item.personalization?.namesList) && item.personalization.namesList.length > 0
+                  ? item.personalization.namesList
+                  : (Array.isArray((order.personalization as any)?.namesList) && (order.personalization as any).namesList.length > 0 ? (order.personalization as any).namesList : []);
+
+                const namesList: string[] = rawNamesList.length > 0
+                  ? rawNamesList.map((n: any) => String(n || '').trim()).filter(Boolean)
+                  : (persText && persText.includes('\n')
+                      ? persText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                      : []);
+
+                const isBulk = namesList.length > 1;
+                const isExpanded = expandedRosterIdx === idx;
+
                 return (
-                  <div key={idx} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/[0.02] border border-white/5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {item.imageUrl && (
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.name} 
-                          className="w-8 h-8 rounded-lg object-cover bg-bg-surface border border-border-glass shrink-0" 
-                        />
-                      )}
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-bold text-text-main truncate text-xs leading-tight">{item.name}</span>
-                        <div className="flex items-center gap-1 text-[0.68rem] text-text-dim flex-wrap">
-                          <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
-                          {persText && (
-                            <span className="text-primary font-semibold">
-                              • Stitch: &ldquo;{persText}&rdquo; ({persColor || 'Gold'})
-                            </span>
-                          )}
+                  <div key={idx} className="flex flex-col gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {item.imageUrl && (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name} 
+                            className="w-8 h-8 rounded-lg object-cover bg-bg-surface border border-border-glass shrink-0" 
+                          />
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-text-main truncate text-xs leading-tight">{item.name}</span>
+                          <div className="flex items-center gap-1 text-[0.68rem] text-text-dim flex-wrap">
+                            <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                            {isBulk ? (
+                              <span className="text-primary font-semibold">
+                                • Stitch: Bulk Roster ({namesList.length} Names) ({persColor || 'Gold'})
+                              </span>
+                            ) : persText ? (
+                              <span className="text-primary font-semibold">
+                                • Stitch: &ldquo;{persText}&rdquo; ({persColor || 'Gold'})
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
+                      <span className="font-mono font-bold text-xs text-text-main shrink-0 ml-2">
+                        ₱{(item.price * item.quantity).toFixed(2)}
+                      </span>
                     </div>
-                    <span className="font-mono font-bold text-xs text-text-main shrink-0 ml-2">
-                      ₱{(item.price * item.quantity).toFixed(2)}
-                    </span>
+
+                    {isBulk && (
+                      <div className="border-t border-white/5 pt-1.5 flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRosterIdx(isExpanded ? null : idx)}
+                          className="inline-flex items-center gap-1 text-[0.68rem] text-primary hover:text-primary/80 font-bold cursor-pointer transition-all self-start"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                            <rect x="9" y="3" width="6" height="4" rx="1" />
+                            <path d="M9 14l2 2 4-4" />
+                          </svg>
+                          <span>{isExpanded ? 'Hide' : 'View'} full personalized name roster ({namesList.length} names)</span>
+                          <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.7rem] font-mono mt-0.5">
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                              {namesList.map((name, nIdx) => (
+                                <div key={nIdx} className="truncate text-text-main flex items-center gap-1.5">
+                                  <span className="text-text-dim font-bold w-4 shrink-0 text-right">{nIdx + 1}.</span>
+                                  <span className="font-semibold truncate">{name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })

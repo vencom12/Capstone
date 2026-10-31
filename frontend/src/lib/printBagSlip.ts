@@ -42,15 +42,31 @@ export function printBagSlip(order: any): void {
     itemsList = [{ name: order.design, quantity: order.quantity || 1 }];
   }
 
+  const pers = order.personalization || {};
   const persText =
-    order.personalization?.text ||
+    pers.text ||
     order.personalizationText ||
     order.monogramText ||
     '';
   const persColor =
-    order.personalization?.color ||
+    pers.color ||
+    pers.threadColor?.name ||
     order.threadColor ||
     'Standard Gold';
+
+  let namesList: string[] = [];
+  if (Array.isArray(pers.namesList) && pers.namesList.length > 0) {
+    namesList = pers.namesList.map((n: any) => String(n || '').trim()).filter(Boolean);
+  } else if (Array.isArray(order.namesList) && order.namesList.length > 0) {
+    namesList = order.namesList.map((n: any) => String(n || '').trim()).filter(Boolean);
+  } else if (itemsList.some((it: any) => Array.isArray(it.personalization?.namesList) && it.personalization.namesList.length > 0)) {
+    const itemWithNames = itemsList.find((it: any) => Array.isArray(it.personalization?.namesList) && it.personalization.namesList.length > 0);
+    namesList = (itemWithNames?.personalization?.namesList || []).map((n: any) => String(n || '').trim()).filter(Boolean);
+  } else if (persText.includes('\n')) {
+    namesList = persText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean);
+  }
+
+  const isBulkNames = namesList.length > 1;
 
   const claimCode = order.claimCode || order.verificationCode || orderId;
 
@@ -209,7 +225,22 @@ export function printBagSlip(order: any): void {
 
           <!-- Stitched Customization Detail -->
           ${
-            persText
+            isBulkNames
+              ? `
+            <div class="monogram-box" style="text-align: left;">
+              <div class="monogram-title" style="text-align: center;">BULK EMBROIDERY ROSTER (${namesList.length} PIECES)</div>
+              <div style="font-size: 10px; font-weight: bold; text-align: center; margin-bottom: 4px;">Thread: ${persColor}</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-size: 10px; border-top: 1px dashed #000; padding-top: 4px;">
+                ${namesList.map((name, i) => `
+                  <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span style="font-weight: 700; color: #444;">${i + 1}.</span>
+                    <strong style="font-size: 10.5px;">${name}</strong>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `
+              : persText
               ? `
             <div class="monogram-box">
               <div class="monogram-title">STITCHED EMBROIDERY</div>
