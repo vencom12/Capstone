@@ -89,7 +89,6 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [monogramText, setMonogramText] = useState('');
   const [intakeLetteringMode, setIntakeLetteringMode] = useState<'single' | 'bulk'>('single');
   const [intakeBulkText, setIntakeBulkText] = useState('');
-  const [isHoldForPickup, setIsHoldForPickup] = useState(false);
 
   // Admin-configured Small/Big Garment Lettering Rates
   const [letteringRates, setLetteringRates] = useState<{ smallRate: number; bigRate: number }>({
@@ -655,7 +654,6 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setSelectedVariant(null);
     setCustomByogName('');
     setTicketItems([]);
-    setIsHoldForPickup(false);
   };
 
   const handleResetForm = () => {
@@ -804,7 +802,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           readyBy: estimatedReadyTime,
           verificationCode: `#${res.order.orderId.replace('WI-', 'A-')}`,
           isDirectSale: isDirectComplete,
-          isHoldForPickup: isPlainOrder && isHoldForPickup,
+          isHoldForPickup: false,
           status: isDirectComplete ? 'Completed' : (res.order.status || 'In Queue')
         });
         resetIntakeInputs();
@@ -1080,8 +1078,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={cat}
                       type="button"
                       onClick={() => handleSelectCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${selectedCategory === cat
-                        ? 'bg-primary text-white shadow-sm'
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${selectedCategory === cat
+                        ? 'bg-text-main text-bg-surface shadow-xs'
                         : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main'
                         }`}
                     >
@@ -1162,8 +1160,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               ) : (
                 <>
-                  {/* Spacious, Un-Truncated Item Cards */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  {/* Compressed Item Cards */}
+                  <div className="grid grid-cols-2 gap-2">
                     {displayedCatalog.map((item) => {
                       const isSelected = selectedProductId === item.id;
                       return (
@@ -1171,19 +1169,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           key={item.id}
                           type="button"
                           onClick={() => handleSelectItem(item)}
-                          className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                            ? 'bg-primary/10 border-primary text-text-main shadow-sm ring-1 ring-primary/40'
-                            : 'bg-bg-card border-border-glass text-text-main hover:border-primary/40'
+                          className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                            ? 'bg-white/10 border-text-main text-text-main shadow-sm'
+                            : 'bg-bg-card border-border-glass text-text-main hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-start gap-2">
                             <span className="font-bold text-xs leading-snug">{item.name}</span>
                             <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5 gap-1.5 min-w-0">
-                            <span className="truncate">{item.category}</span>
-                            <span className="shrink-0 font-medium">{item.isByog ? 'Customer Item' : `• ${item.stock} in stock`}</span>
-                          </div>
+                          <span className="text-[10px] text-text-dim mt-1 font-medium">
+                            {item.isByog ? 'Customer Item' : `${item.stock} in stock`}
+                          </span>
                         </button>
                       );
                     })}
@@ -1304,7 +1301,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars/line)</span>
                     </span>
                     <span className="text-[10px] text-text-dim">
-                      Tier: <strong className="text-primary">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
+                      Tier: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
                     </span>
                   </div>
 
@@ -1320,7 +1317,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       }}
                       className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                         intakeLetteringMode === 'single'
-                          ? 'bg-primary text-white shadow-sm'
+                          ? 'bg-text-main text-bg-surface shadow-xs'
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
@@ -1336,7 +1333,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       }}
                       className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                         intakeLetteringMode === 'bulk'
-                          ? 'bg-primary text-white shadow-sm'
+                          ? 'bg-text-main text-bg-surface shadow-xs'
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
@@ -1406,7 +1403,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-[11px] text-text-dim">
                       <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line incl. spaces):</span>
-                      <span className="font-mono font-bold text-primary">
+                      <span className="font-mono font-semibold text-text-main">
                         {intakeBulkSummary.lineCount} {intakeBulkSummary.lineCount === 1 ? 'line' : 'lines'} = {intakeBulkSummary.lineCount} pcs
                       </span>
                     </div>
@@ -1872,8 +1869,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               ) : (
                 <>
-                  {/* Spacious, Un-Truncated Item Cards */}
-                  <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+                  {/* Compressed Item Cards */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     {displayedCatalog.map((item) => {
                       const isSelected = quickProductId === item.id;
                       return (
@@ -1881,7 +1878,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           key={item.id}
                           type="button"
                           onClick={() => handleSelectQuickItem(item)}
-                          className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
+                          className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
                             ? 'bg-white/10 border-text-main text-text-main shadow-sm'
                             : 'bg-white/[0.03] border-border-glass text-text-main hover:border-white/20'
                             }`}
@@ -1890,7 +1887,6 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             <span className="font-bold text-xs leading-snug">{item.name}</span>
                             <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
-                          <span className="text-[11px] text-text-dim mt-1.5 pt-1 border-t border-white/5">{item.category}</span>
                         </button>
                       );
                     })}
@@ -2160,7 +2156,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 type="button"
                 disabled={isPunchSubmitting}
                 onClick={handleQuickSlipPunch}
-                className="w-full py-3 px-4 rounded-lg bg-primary hover:bg-primary/90 active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg bg-text-main hover:bg-text-main/90 active:scale-[0.99] text-bg-surface font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
