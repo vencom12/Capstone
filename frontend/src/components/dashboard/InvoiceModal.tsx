@@ -13,6 +13,18 @@ interface InvoiceModalProps {
   transactionId?: string | null;
 }
 
+function groupNames(names: string[]): Array<{ name: string; count: number }> {
+  if (!Array.isArray(names) || names.length === 0) return [];
+  const map = new Map<string, number>();
+  for (const raw of names) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed) {
+      map.set(trimmed, (map.get(trimmed) || 0) + 1);
+    }
+  }
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
+
 export default function InvoiceModal({
   isOpen,
   onClose,
@@ -354,6 +366,18 @@ export default function InvoiceModal({
                       const rawPersColor = item.personalization?.threadColor || (order as any)?.personalization?.threadColor || (order as any)?.personalization?.color;
                       const persColor = typeof rawPersColor === 'object' && rawPersColor !== null ? (rawPersColor.name || '') : (typeof rawPersColor === 'string' ? rawPersColor : '');
 
+                      const rawNamesList = Array.isArray(item.personalization?.namesList) && item.personalization.namesList.length > 0
+                        ? item.personalization.namesList
+                        : (Array.isArray((order as any)?.personalization?.namesList) && (order as any).personalization.namesList.length > 0 ? (order as any).personalization.namesList : []);
+
+                      const namesList: string[] = rawNamesList.length > 0
+                        ? rawNamesList.map((n: any) => String(n || '').trim()).filter(Boolean)
+                        : (persText && persText.includes('\n')
+                            ? persText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                            : (persText ? [persText] : []));
+
+                      const grouped = groupNames(namesList);
+
                       const linePrice = (parseFloat(item.price || 0)) * (item.quantity || 1);
 
                       return (
@@ -367,11 +391,19 @@ export default function InvoiceModal({
                                 {variantDetails}
                               </span>
                             )}
-                            {persText && (
+                            {grouped.length > 0 ? (
+                              <div style={{ marginTop: '2px', borderTop: '1px dashed #e4e4e7', paddingTop: '2px' }}>
+                                {grouped.map((g, gIdx) => (
+                                  <span key={gIdx} style={{ color: '#000000', fontSize: '8.5px', display: 'block', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                    • {g.count > 1 ? `${g.count}x ` : ''}&ldquo;{g.name}&rdquo; {gIdx === 0 && persColor ? `(${persColor})` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : persText ? (
                               <span style={{ color: '#000000', fontSize: '8.5px', display: 'block', marginTop: '1px', fontStyle: 'italic' }}>
-                                Stitched: &ldquo;{persText}&rdquo; {persColor ? `(${persColor})` : ''}
+                                • &ldquo;{persText}&rdquo; {persColor ? `(${persColor})` : ''}
                               </span>
-                            )}
+                            ) : null}
                           </td>
                           <td style={{ textAlign: 'center', padding: '3px 0', verticalAlign: 'top', fontWeight: '600', color: '#000000', fontFamily: 'monospace' }}>
                             {item.quantity || 1}

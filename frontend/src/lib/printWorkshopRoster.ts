@@ -13,6 +13,18 @@ export interface WorkshopRosterData {
   namesList: string[];
 }
 
+function groupNames(names: string[]): Array<{ name: string; count: number }> {
+  if (!Array.isArray(names) || names.length === 0) return [];
+  const map = new Map<string, number>();
+  for (const raw of names) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed) {
+      map.set(trimmed, (map.get(trimmed) || 0) + 1);
+    }
+  }
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
+
 export function printWorkshopRoster(data: WorkshopRosterData): void {
   if (typeof window === 'undefined' || !data) return;
 
@@ -158,7 +170,7 @@ export function printWorkshopRoster(data: WorkshopRosterData): void {
       <body>
         <div class="header">
           <div>
-            <div class="title">EDS TOWELS &amp; CAPS • ARTISAN PRODUCTION ROSTER</div>
+            <div class="title">EDS TOWELS &amp; CAPS • ARTISAN PRODUCTION SHEET</div>
             <div class="subtitle">Commercial Embroidery Workstation • Pacific Mall Lucena</div>
           </div>
           <div class="badge">BATCH CHECKLIST</div>
@@ -179,17 +191,19 @@ export function printWorkshopRoster(data: WorkshopRosterData): void {
               <th style="width: 35px;">#</th>
               <th style="width: 55px; text-align: center;">Done</th>
               <th>Name to Embroider</th>
+              <th style="width: 60px; text-align: center;">Qty</th>
               <th style="width: 80px;">Length</th>
               <th style="width: 120px;">QC / Status</th>
             </tr>
           </thead>
           <tbody>
-            ${data.namesList.map((name, i) => `
+            ${groupNames(data.namesList).map((g, i) => `
               <tr>
                 <td><strong>${i + 1}</strong></td>
                 <td style="text-align: center;"><span class="chk-box"></span></td>
-                <td style="font-size: 13px; font-weight: 800; letter-spacing: 0.5px; font-family: monospace;">${name}</td>
-                <td style="font-size: 11px; color: #555;">${name.length} chars</td>
+                <td style="font-size: 13px; font-weight: 800; letter-spacing: 0.5px; font-family: monospace;">${g.name}</td>
+                <td style="text-align: center; font-weight: bold; font-family: monospace;">${g.count > 1 ? `${g.count}x` : '1x'}</td>
+                <td style="font-size: 11px; color: #555;">${g.name.length} chars</td>
                 <td></td>
               </tr>
             `).join('')}

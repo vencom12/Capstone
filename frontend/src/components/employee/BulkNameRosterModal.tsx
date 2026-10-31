@@ -93,7 +93,7 @@ export default function BulkNameRosterModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/5 text-text-main border border-border-glass">
-                Bulk Embroidery Roster
+                Personalized Names
               </span>
               <span className="font-mono text-xs font-bold text-text-dim">
                 #{data.orderId}
@@ -146,7 +146,7 @@ export default function BulkNameRosterModal({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search name in roster..."
+              placeholder="Search personalized name..."
               className="w-full bg-bg-surface border border-border-glass rounded-lg px-2.5 py-1.5 text-xs text-text-main placeholder:text-text-dim/50 outline-none focus:border-primary transition-all"
             />
           </div>

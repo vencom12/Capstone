@@ -22,6 +22,18 @@ interface OrderDetailsModalProps {
   onReorder?: (order: Order) => void;
 }
 
+function groupNames(names: string[]): Array<{ name: string; count: number }> {
+  if (!Array.isArray(names) || names.length === 0) return [];
+  const map = new Map<string, number>();
+  for (const raw of names) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed) {
+      map.set(trimmed, (map.get(trimmed) || 0) + 1);
+    }
+  }
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
+
 export default function OrderDetailsModal({
   order,
   isOpen,
@@ -297,8 +309,8 @@ export default function OrderDetailsModal({
                           <div className="flex items-center gap-1 text-[0.68rem] text-text-dim flex-wrap">
                             <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
                             {isBulk ? (
-                              <span className="text-primary font-semibold">
-                                • Stitch: Bulk Roster ({namesList.length} Names) ({persColor || 'Gold'})
+                              <span className="text-text-main font-medium">
+                                • Stitch: {namesList.length} Names ({persColor || 'Gold'})
                               </span>
                             ) : persText ? (
                               <span className="text-primary font-semibold">
@@ -325,17 +337,17 @@ export default function OrderDetailsModal({
                             <rect x="9" y="3" width="6" height="4" rx="1" />
                             <path d="M9 14l2 2 4-4" />
                           </svg>
-                          <span>{isExpanded ? 'Hide' : 'View'} name roster ({namesList.length} names)</span>
+                          <span>{isExpanded ? 'Hide' : 'View'} personalized names ({namesList.length} pcs)</span>
                           <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
                         </button>
 
                         {isExpanded && (
                           <div className="p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.7rem] font-mono mt-0.5">
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                              {namesList.map((name, nIdx) => (
-                                <div key={nIdx} className="truncate text-text-main flex items-center gap-1.5">
-                                  <span className="text-text-dim font-bold w-4 shrink-0 text-right">{nIdx + 1}.</span>
-                                  <span className="font-semibold truncate">{name}</span>
+                            <div className="flex flex-col gap-1">
+                              {groupNames(namesList).map((g, gIdx) => (
+                                <div key={gIdx} className="truncate text-text-main flex items-center gap-1.5">
+                                  <span className="text-text-dim">•</span>
+                                  <span className="font-semibold truncate">{g.count > 1 ? `${g.count}x ` : ''}&ldquo;{g.name}&rdquo;</span>
                                 </div>
                               ))}
                             </div>

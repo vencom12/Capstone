@@ -801,7 +801,7 @@ export default function EmployeePage() {
                                                 setIsRosterModalOpen(true);
                                               }}
                                               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-bg-surface hover:bg-white/10 text-text-main border border-border-glass text-[0.7rem] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
-                                              title="Open interactive bulk name roster checklist"
+                                              title="View personalized names list"
                                             >
                                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -809,7 +809,7 @@ export default function EmployeePage() {
                                                 <line x1="9" y1="12" x2="15" y2="12" />
                                                 <line x1="9" y1="16" x2="13" y2="16" />
                                               </svg>
-                                              <span>View Roster ({namesList.length} Names)</span>
+                                              <span>View Names ({namesList.length} pcs)</span>
                                             </button>
                                             {threadColor && (
                                               <span className="text-text-dim text-[0.65rem] font-sans">
@@ -1077,7 +1077,7 @@ export default function EmployeePage() {
                                             setIsRosterModalOpen(true);
                                           }}
                                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-bg-surface hover:bg-white/10 text-text-main border border-border-glass text-[0.65rem] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
-                                          title="Open interactive bulk name roster checklist"
+                                          title="View personalized names list"
                                         >
                                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -1085,7 +1085,7 @@ export default function EmployeePage() {
                                             <line x1="9" y1="12" x2="15" y2="12" />
                                             <line x1="9" y1="16" x2="13" y2="16" />
                                           </svg>
-                                          <span>Roster ({namesList.length} Names)</span>
+                                          <span>Names ({namesList.length} pcs)</span>
                                         </button>
                                         {threadColor && (
                                           <span className="text-text-dim text-[0.62rem] font-sans">

@@ -4,6 +4,18 @@
  * Opens print preview immediately in a hidden background iframe without reloading the page.
  */
 
+function groupNames(names: string[]): Array<{ name: string; count: number }> {
+  if (!Array.isArray(names) || names.length === 0) return [];
+  const map = new Map<string, number>();
+  for (const raw of names) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed) {
+      map.set(trimmed, (map.get(trimmed) || 0) + 1);
+    }
+  }
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
+
 export function printBagSlip(order: any): void {
   if (typeof window === 'undefined' || !order) return;
 
@@ -223,53 +235,47 @@ export function printBagSlip(order: any): void {
 
           <div class="dashed-divider"></div>
 
-          <!-- Stitched Customization Detail -->
-          ${
-            isBulkNames
-              ? `
-            <div class="monogram-box" style="text-align: left;">
-              <div class="monogram-title" style="text-align: center;">BULK EMBROIDERY ROSTER (${namesList.length} PIECES)</div>
-              <div style="font-size: 10px; font-weight: bold; text-align: center; margin-bottom: 4px;">Thread: ${persColor}</div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-size: 10px; border-top: 1px dashed #000; padding-top: 4px;">
-                ${namesList.map((name, i) => `
-                  <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    <span style="font-weight: 700; color: #444;">${i + 1}.</span>
-                    <strong style="font-size: 10.5px;">${name}</strong>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `
-              : persText
-              ? `
-            <div class="monogram-box">
-              <div class="monogram-title">STITCHED EMBROIDERY</div>
-              <div class="monogram-text">"${persText}"</div>
-              <div style="font-size: 10px; font-weight: bold;">Thread: ${persColor}</div>
-            </div>
-          `
-              : `
-            <div style="font-size: 11px; font-weight: bold; padding: 4px 0;">
-              PLAIN RETAIL INVENTORY
-            </div>
-          `
-          }
-
-          <!-- Items list -->
-          <div style="text-align: left; margin-top: 4px;">
-            <div style="font-size: 10px; font-weight: 900; margin-bottom: 2px;">PACKAGE CONTENTS:</div>
+          <!-- Products and Customization Details below each product -->
+          <div style="text-align: left; margin: 4px 0;">
+            <div style="font-size: 10px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase;">PACKAGE CONTENTS:</div>
             ${
               itemsList.length > 0
                 ? itemsList
-                    .map(
-                      (item) => `
-                <div style="font-size: 10.5px; padding: 1px 0;">
-                  • ${item.quantity || 1}x ${item.name || 'Embroidered Item'}
-                </div>
-              `
-                    )
+                    .map((item) => {
+                      const itemPers = item.personalization || {};
+                      const rawItemNames = Array.isArray(itemPers.namesList) && itemPers.namesList.length > 0
+                        ? itemPers.namesList
+                        : (Array.isArray(order.personalization?.namesList) && order.personalization.namesList.length > 0 ? order.personalization.namesList : []);
+                      const itemNames = rawItemNames.length > 0
+                        ? rawItemNames.map((n: any) => String(n || '').trim()).filter(Boolean)
+                        : (itemPers.text && itemPers.text.includes('\n')
+                            ? itemPers.text.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
+                            : (itemPers.text ? [itemPers.text] : []));
+                      const grouped = groupNames(itemNames);
+                      const itemThread = itemPers.threadColor?.name || itemPers.color || persColor;
+
+                      return `
+                        <div style="margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dotted #ccc;">
+                          <div style="font-size: 11px; font-weight: 900;">
+                            • ${item.quantity || 1}x ${item.name || 'Embroidered Item'}
+                          </div>
+                          ${itemThread ? `<div style="font-size: 9px; color: #444; margin-left: 10px;">Thread: ${itemThread}</div>` : ''}
+                          ${
+                            grouped.length > 0
+                              ? grouped.map((g) => `
+                                <div style="font-size: 10.5px; font-weight: 800; font-family: monospace; margin-left: 10px;">
+                                  - ${g.count > 1 ? `${g.count}x ` : ''}"${g.name}"
+                                </div>
+                              `).join('')
+                              : itemPers.text
+                              ? `<div style="font-size: 10.5px; font-weight: 800; font-family: monospace; margin-left: 10px;">- "${itemPers.text}"</div>`
+                              : ''
+                          }
+                        </div>
+                      `;
+                    })
                     .join('')
-                : `<div style="font-size: 10.5px;">• 1x Embroidered Item</div>`
+                : `<div style="font-size: 10.5px;">• 1x Custom Item</div>`
             }
           </div>
 

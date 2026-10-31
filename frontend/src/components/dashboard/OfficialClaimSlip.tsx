@@ -17,6 +17,18 @@ function toSafeString(val: any): string {
   return '';
 }
 
+function groupNames(names: string[]): Array<{ name: string; count: number }> {
+  if (!Array.isArray(names) || names.length === 0) return [];
+  const map = new Map<string, number>();
+  for (const raw of names) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed) {
+      map.set(trimmed, (map.get(trimmed) || 0) + 1);
+    }
+  }
+  return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+}
+
 export default function OfficialClaimSlip({
   order,
   showPrintAction = true,
@@ -522,63 +534,68 @@ export default function OfficialClaimSlip({
                         ? customText.split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean)
                         : []);
 
-                  const isBulk = namesList.length > 1;
+                  const grouped = groupNames(namesList);
 
                   return (
-                    <div key={idx} className="flex flex-col gap-0.5 bg-zinc-50 p-2 rounded border border-zinc-200">
-                      <span className="font-bold text-black text-xs">
-                        {item.quantity || 1}x {itemName}
-                      </span>
+                    <div key={idx} className="flex flex-col gap-0.5 bg-zinc-50 p-2 rounded border border-zinc-200 text-left">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-black text-xs">
+                          {item.quantity || 1}x {itemName}
+                        </span>
+                        {threadName && (
+                          <span className="text-[10px] text-zinc-500 font-medium">
+                            Thread: {threadName}
+                          </span>
+                        )}
+                      </div>
                       {variantName && (
                         <span className="text-[10px] text-zinc-600">
                           Option: {variantName}
                         </span>
                       )}
-                      {isBulk ? (
-                        <div className="mt-1 pt-1.5 border-t border-zinc-200 text-left">
-                          <div className="flex items-center justify-between text-[10px] font-bold text-zinc-800">
-                            <span>Embroidery Roster ({namesList.length} items):</span>
-                            {threadName && <span className="text-[9px] text-zinc-600 font-normal">Thread: {threadName}</span>}
-                          </div>
-                          {fontName && <div className="text-[9px] text-zinc-500 font-normal">Style: {fontName}</div>}
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-1 bg-white p-1.5 rounded border border-zinc-200 text-[10px] font-mono mt-1">
-                            {namesList.map((name: string, nIdx: number) => (
-                              <div key={nIdx} className="truncate text-zinc-900">
-                                <span className="text-zinc-500 font-bold">{nIdx + 1}.</span> {name}
-                              </div>
-                            ))}
-                          </div>
+                      {fontName && (
+                        <span className="text-[9px] text-zinc-500">
+                          Style: {fontName}
+                        </span>
+                      )}
+
+                      {/* Product names directly below it */}
+                      {grouped.length > 0 ? (
+                        <div className="mt-1 flex flex-col gap-0.5 pt-1 border-t border-dashed border-zinc-300">
+                          {grouped.map((g, gIdx) => (
+                            <div key={gIdx} className="text-[11px] font-mono font-bold text-black">
+                              • {g.count > 1 ? `${g.count}x ` : ''}&ldquo;{g.name}&rdquo;
+                            </div>
+                          ))}
                         </div>
                       ) : customText ? (
-                        <div className="text-[10px] text-zinc-800 font-semibold italic mt-0.5">
-                          Embroidery: "{customText}"
-                          {threadName && <span className="not-italic text-zinc-500"> ({threadName})</span>}
-                          {fontName && <span className="not-italic text-zinc-500"> • {fontName}</span>}
+                        <div className="mt-1 text-[11px] font-mono font-bold text-black pt-1 border-t border-dashed border-zinc-300">
+                          • &ldquo;{customText}&rdquo;
                         </div>
                       ) : null}
                     </div>
                   );
                 })
               ) : (
-                <div className="flex flex-col gap-1 bg-zinc-50 p-2 rounded border border-zinc-200">
+                <div className="flex flex-col gap-1 bg-zinc-50 p-2 rounded border border-zinc-200 text-left">
                   <div className="flex justify-between">
-                    <span className="font-bold text-black">{order.design || 'Custom Embroidery'}</span>
-                    <span className="font-mono text-black">{order.quantity || 1}x</span>
+                    <span className="font-bold text-black text-xs">{order.design || 'Custom Embroidery'}</span>
+                    <span className="font-mono text-black font-bold text-xs">{order.quantity || 1}x</span>
                   </div>
-                  {Array.isArray(pers.namesList) && pers.namesList.length > 1 && (
-                    <div className="mt-1 pt-1.5 border-t border-zinc-200 text-left">
-                      <div className="text-[10px] font-bold text-zinc-800 mb-1">
-                        Embroidery Roster ({pers.namesList.length} items):
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 bg-white p-1.5 rounded border border-zinc-200 text-[10px] font-mono">
-                        {pers.namesList.map((name: string, nIdx: number) => (
-                          <div key={nIdx} className="truncate text-zinc-900">
-                            <span className="text-zinc-500 font-bold">{nIdx + 1}.</span> {name}
+                  {(() => {
+                    const fallbackNames = Array.isArray(pers.namesList) ? pers.namesList : (pers.text ? [pers.text] : []);
+                    const grouped = groupNames(fallbackNames);
+                    if (grouped.length === 0) return null;
+                    return (
+                      <div className="mt-1 flex flex-col gap-0.5 pt-1 border-t border-dashed border-zinc-300">
+                        {grouped.map((g, gIdx) => (
+                          <div key={gIdx} className="text-[11px] font-mono font-bold text-black">
+                            • {g.count > 1 ? `${g.count}x ` : ''}&ldquo;{g.name}&rdquo;
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
             </div>
