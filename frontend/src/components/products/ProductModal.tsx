@@ -41,6 +41,7 @@ export default function ProductModal({
   const { setAuthOpen } = useUIStore();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [variantError, setVariantError] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
@@ -346,20 +347,20 @@ export default function ProductModal({
       setImageFit('cover');
       const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
       setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
-      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-        // Select first in-stock variant, or fallback to first variant so customer can pre-order
-        const firstInStock = product.variants.find((v) => (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0);
-        const chosen = firstInStock || product.variants[0];
-        if (chosen) {
-          setSelectedVariant(chosen);
-          setSelectedColor(chosen.color || '');
-          setSelectedSize(chosen.size || '');
-        } else {
-          setSelectedVariant(null);
-          setSelectedColor('');
-          setSelectedSize('');
-        }
+      if (product.variants && Array.isArray(product.variants) && product.variants.length === 1) {
+        // Single option available: auto-select
+        const onlyOption = product.variants[0];
+        setSelectedVariant(onlyOption);
+        setSelectedColor(onlyOption.color || '');
+        setSelectedSize(onlyOption.size || '');
       } else {
+        // Multiple options available: require customer to explicitly choose
+        setSelectedVariant(null);
+        setSelectedColor('');
+        setSelectedSize('');
+      }
+      setVariantError(null);
+      if (!product.variants || product.variants.length === 0) {
         setSelectedVariant(null);
         setSelectedColor('');
         setSelectedSize('');
@@ -482,6 +483,13 @@ export default function ProductModal({
       const err = `${product.name} currently has no variants configured.`;
       setActionError(err);
       showToast(err, 'error');
+      return null;
+    }
+
+    if (hasVariants && !selectedVariant) {
+      const err = 'Please select a color/variant for this product.';
+      setVariantError(err);
+      setActionError(err);
       return null;
     }
 
@@ -677,7 +685,7 @@ export default function ProductModal({
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-text-dim text-xs tracking-wider font-semibold">
-              STITCH PREVIEW
+              IMAGE NOT AVAILABLE
             </div>
           )}
 
@@ -975,6 +983,7 @@ export default function ProductModal({
                         suppressHydrationWarning
                         onClick={() => {
                           setSelectedVariant(variant);
+                          setVariantError(null);
                           setCustomActiveImage(null);
                           if (variant.color) setSelectedColor(variant.color);
                           if (variant.size) setSelectedSize(variant.size);
@@ -1018,6 +1027,7 @@ export default function ProductModal({
                       type="button"
                       onClick={() => {
                         setSelectedVariant(variant);
+                        setVariantError(null);
                         if (variant.imageUrl) setCustomActiveImage(variant.imageUrl);
                       }}
                       title={`${variant.name} is sold out — click to preview photo`}

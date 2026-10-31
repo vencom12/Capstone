@@ -200,6 +200,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [createdOrderTicket, setCreatedOrderTicket] = useState<any | null>(null);
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [quickPunchError, setQuickPunchError] = useState<string | null>(null);
+  const [intakeVariantError, setIntakeVariantError] = useState<string | null>(null);
+  const [quickVariant, setQuickVariant] = useState<ProductVariant | null>(null);
+  const [quickVariantError, setQuickVariantError] = useState<string | null>(null);
 
   // Claim & Handover Desk state
   const [turnOverSearch, setTurnOverSearch] = useState('');
@@ -364,6 +367,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   const handleSelectQuickCategory = (cat: 'Towels' | 'Fans' | 'Custom' | 'All') => {
     setSelectedCategory(cat);
+    setQuickVariant(null);
+    setQuickVariantError(null);
     if (cat === 'Custom') {
       if (byogItem) {
         setQuickProductId(byogItem.id);
@@ -381,11 +386,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const handleSelectItem = (item: any) => {
     setSelectedProductId(item.id);
     setSelectedVariant(null);
+    setIntakeVariantError(null);
     setUnitPrice(item.price);
   };
 
   const handleSelectQuickItem = (item: any) => {
     setQuickProductId(item.id);
+    setQuickVariant(null);
+    setQuickVariantError(null);
     setQuickPrice(item.price);
   };
 
@@ -549,7 +557,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   }, [ticketItems, intakeLetteringMode, intakeBulkSummary.lineCount, monogramText]);
 
   const handleAddCurrentItemToTicket = () => {
+    setIntakeVariantError(null);
     const isByog = Boolean(activeSelectedItem.isByog);
+    if (!isByog && activeSelectedItem.variants && activeSelectedItem.variants.length > 0 && !selectedVariant) {
+      setIntakeVariantError('Please select a product variant (color) before adding this item.');
+      return;
+    }
     const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
     const itemName = isByog
       ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
@@ -690,6 +703,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         defaultClientName = `Walk-In (${ticketItems.map(i => i.text).filter(Boolean).slice(0, 2).join(' & ')}${ticketItems.length > 2 ? ' +' : ''})`;
       } else {
         const isByog = activeSelectedItem.isByog;
+        if (!isByog && activeSelectedItem.variants && activeSelectedItem.variants.length > 0 && !selectedVariant) {
+          setIntakeVariantError('Please select a product variant (color) before punching this order.');
+          setIsSubmitting(false);
+          return;
+        }
         const byogTag = byogGarmentType === 'big' ? 'Big Item' : 'Small Item';
         const itemName = isByog
           ? `BYOG [${byogTag}]${customByogName.trim() ? ` (${customByogName.trim()})` : ''}`
@@ -810,9 +828,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
   const handleQuickSlipPunch = async () => {
     setQuickPunchError(null);
+    setQuickVariantError(null);
     const isByog = Boolean(activeQuickItem.isByog);
+    if (!isByog && activeQuickItem.variants && activeQuickItem.variants.length > 0 && !quickVariant) {
+      setQuickVariantError('Please select a product variant (color) before logging this sale.');
+      return;
+    }
     const byogTag = quickByogGarmentType === 'big' ? 'Big Item' : 'Small Item';
-    const itemName = isByog ? `BYOG [${byogTag}]` : activeQuickItem.name;
+    const itemName = isByog
+      ? `BYOG [${byogTag}]`
+      : quickVariant
+      ? `${activeQuickItem.name} - ${quickVariant.name}`
+      : activeQuickItem.name;
     const isBulk = quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0;
     const namesArr = isBulk
       ? quickBulkSummary.namesList.map((n) => n.toUpperCase())
@@ -844,6 +871,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
     setQuickBulkText('');
     setQuickLetteringMode('single');
     setQuickQuantity(1);
+    setQuickVariant(null);
+    setQuickVariantError(null);
     showToast(`Recorded ₱${totalAmount.toFixed(2)} ${itemName}!`, 'success');
 
     // 2. Dispatch to server in background
@@ -859,6 +888,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             quantity: effectiveQuickQty,
             price: effectiveQuickPrice,
             isByog: activeQuickItem.isByog,
+            selectedVariant: quickVariant?.name || null,
             personalization: {
               text: cleanText,
               namesList: namesArr,
@@ -1176,12 +1206,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               onClick={() => {
                                 if (isVarOutOfStock) return;
                                 setSelectedVariant(v);
+                                setIntakeVariantError(null);
                                 if (v.priceOverride) setUnitPrice(v.priceOverride);
                               }}
-                              className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${isVarOutOfStock
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
                                 ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
                                 : isVarSelected
-                                  ? 'bg-primary text-white border-primary shadow-sm cursor-pointer'
+                                  ? 'bg-white/10 text-text-main border-text-main shadow-sm cursor-pointer'
                                   : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
@@ -1192,13 +1223,23 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 />
                               )}
                               <span>{v.name}</span>
-                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-danger font-bold' : 'opacity-75'}`}>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
                               </span>
                             </button>
                           );
                         })}
                       </div>
+                      {intakeVariantError && (
+                        <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg bg-bg-surface border border-border-glass text-xs text-text-main font-medium">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                          <span>{intakeVariantError}</span>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1841,8 +1882,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           type="button"
                           onClick={() => handleSelectQuickItem(item)}
                           className={`p-3 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                            ? 'bg-primary/10 border-primary text-white shadow-sm ring-1 ring-primary/40'
-                            : 'bg-white/[0.03] border-border-glass text-text-main hover:border-primary/40'
+                            ? 'bg-white/10 border-text-main text-text-main shadow-sm'
+                            : 'bg-white/[0.03] border-border-glass text-text-main hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-start gap-2">
@@ -1854,6 +1895,67 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       );
                     })}
                   </div>
+
+                  {/* Variant Swatches for Quick Slip Punch */}
+                  {activeQuickItem && activeQuickItem.variants && activeQuickItem.variants.length > 0 && (
+                    <div className="mb-3.5 pt-2 border-t border-border-glass">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                          Select Color / Variant:
+                        </span>
+                        {quickVariant && (
+                          <span className="text-xs font-semibold text-text-main">{quickVariant.name}</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeQuickItem.variants.map((v: ProductVariant, vIdx: number) => {
+                          const isVarSelected = quickVariant?.name === v.name;
+                          const vStock = (v as any).availableStock !== undefined ? (v as any).availableStock : (v.stock ?? 0);
+                          const isVarOutOfStock = vStock <= 0;
+                          return (
+                            <button
+                              key={vIdx}
+                              type="button"
+                              disabled={isVarOutOfStock}
+                              onClick={() => {
+                                if (isVarOutOfStock) return;
+                                setQuickVariant(v);
+                                setQuickVariantError(null);
+                                if (v.priceOverride) setQuickPrice(v.priceOverride);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
+                                ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
+                                : isVarSelected
+                                  ? 'bg-white/10 text-text-main border-text-main shadow-sm cursor-pointer'
+                                  : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
+                                }`}
+                            >
+                              {v.color && (
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/30"
+                                  style={{ backgroundColor: v.color }}
+                                />
+                              )}
+                              <span>{v.name}</span>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
+                                ({isVarOutOfStock ? '0' : vStock})
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {quickVariantError && (
+                        <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg bg-bg-surface border border-border-glass text-xs text-text-main font-medium">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                          <span>{quickVariantError}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Step 2: Monogram text from slip */}
                   {activeQuickItem?.isByog && (
