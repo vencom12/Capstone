@@ -1214,6 +1214,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 }`}
                             >
 
+                              {v.color && (
+                                <span
+                                  className="w-3 h-3 rounded-full border border-black/20 dark:border-white/30 shrink-0 shadow-xs"
+                                  style={{ backgroundColor: v.color }}
+                                />
+                              )}
                               <span>{v.name}</span>
                               <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
@@ -1514,10 +1520,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Stock Warning if Quantity Exceeds On-Hand Stock */}
                   {intakeExceedsStock && (
-                    <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass text-[11px] text-text-dim flex items-center gap-2">
-                      
-                      <span>
-                        <strong>Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong>Pre-Order</strong> with extended workshop preparation &amp; production schedule.
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                      <svg className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span className="leading-relaxed">
+                        <strong className="font-extrabold text-rose-600 dark:text-rose-400">Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong className="font-bold underline">Pre-Order</strong> with extended workshop preparation &amp; production schedule.
                       </span>
                     </div>
                   )}
@@ -1888,6 +1896,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 }`}
                             >
 
+                              {v.color && (
+                                <span
+                                  className="w-3 h-3 rounded-full border border-black/20 dark:border-white/30 shrink-0 shadow-xs"
+                                  style={{ backgroundColor: v.color }}
+                                />
+                              )}
                               <span>{v.name}</span>
                               <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
