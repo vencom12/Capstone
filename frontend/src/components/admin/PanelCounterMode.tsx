@@ -1763,10 +1763,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       {/* ───────────────────────────────────────────────────────────── */}
       {activeTab === 'quick_punch' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade">
-          {/* Main Column: Slip Punch Form (8 cols) */}
-          <div className="lg:col-span-8 flex flex-col gap-3">
+          {/* Main Column: Step 1 (Catalog) & Step 2 (Name/Qty) (7 cols) */}
+          <div className="lg:col-span-7 flex flex-col gap-3">
+            {/* Card 1: 1. Pick Stitched Item from Slip */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm">
-              {/* Header with Category Pills */}
+              {/* Category Pills Header */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
                   {selectedCategory === 'Custom' ? '1. Customer Garment from Slip (BYOG)' : '1. Pick Stitched Item from Slip'}
@@ -1777,9 +1778,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       key={cat}
                       type="button"
                       onClick={() => handleSelectQuickCategory(cat)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'bg-white/5 text-text-dim hover:text-text-main'
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${selectedCategory === cat
+                        ? 'bg-text-main text-bg-surface shadow-xs'
+                        : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main'
                         }`}
                     >
                       {cat}
@@ -1789,26 +1790,30 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {selectedCategory === 'Custom' ? (
-                <div className="mb-3 space-y-2">
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/30">
-                    <div className="flex items-center gap-2">
-                      
-                      <span className="font-bold text-xs text-text-main">Client-Provided Garment (BYOG)</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <div>
+                      <span className="font-bold text-xs text-text-main block">Client-Provided Garment (BYOG)</span>
+                      <span className="text-[11px] text-text-dim">Slip item brought by customer (Cap, Shirt, Towel)</span>
                     </div>
-                    <span className="font-mono font-bold text-xs text-primary">Base: ₱{activeQuickItem?.price || 100}</span>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-text-dim block uppercase font-bold">Base Service</span>
+                      <span className="font-mono font-bold text-xs text-primary">₱{activeQuickItem?.price || 100}</span>
+                    </div>
                   </div>
+
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                         Slip Garment Rate
-                      </span>
+                      </label>
                       <span className="text-[10px] text-text-dim">1st word included</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setQuickByogGarmentType('small')}
-                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
                             ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
                             : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
@@ -1817,12 +1822,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           <span>Small Item</span>
                           <span className="font-mono text-primary text-[11px]">₱7/letter</span>
                         </div>
-                        <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
+                        <div className="text-[10px] text-text-dim mt-0.5">Cap, Hand/Face Towel, Fan, Handkerchief</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickByogGarmentType('big')}
-                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
                             ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
                             : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
@@ -1831,7 +1836,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           <span>Big Item</span>
                           <span className="font-mono text-primary text-[11px]">₱10/letter</span>
                         </div>
-                        <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
+                        <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel, Hoodie</div>
                       </button>
                     </div>
                   </div>
@@ -1839,7 +1844,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               ) : (
                 <>
                   {/* Compressed Item Cards */}
-                  <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {displayedCatalog.map((item) => {
                       const isSelected = quickProductId === item.id;
                       return (
@@ -1849,13 +1854,16 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           onClick={() => handleSelectQuickItem(item)}
                           className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
                             ? 'bg-white/10 border-text-main text-text-main shadow-sm'
-                            : 'bg-white/[0.03] border-border-glass text-text-main hover:border-white/20'
+                            : 'bg-bg-card border-border-glass text-text-main hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-start gap-2">
                             <span className="font-bold text-xs leading-snug">{item.name}</span>
                             <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
+                          {item.isByog && (
+                            <span className="text-[10px] text-text-dim mt-1 font-medium">Customer Item</span>
+                          )}
                         </button>
                       );
                     })}
@@ -1863,15 +1871,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Variant Swatches for Quick Slip Punch */}
                   {activeQuickItem && activeQuickItem.variants && activeQuickItem.variants.length > 0 && (
-                    <div className="mb-3.5 pt-2 border-t border-border-glass">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                          Select Color / Variant:
-                        </span>
-                        {quickVariant && (
-                          <span className="text-xs font-semibold text-text-main">{quickVariant.name}</span>
-                        )}
-                      </div>
+                    <div className="mt-3 pt-2.5 border-t border-border-glass flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-text-dim">Color:</span>
                       <div className="flex flex-wrap gap-1.5">
                         {activeQuickItem.variants.map((v: ProductVariant, vIdx: number) => {
                           const isVarSelected = quickVariant?.name === v.name;
@@ -1895,7 +1896,6 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                   : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
-
                               {v.color && (
                                 <span
                                   className="w-3 h-3 rounded-full border border-black/20 dark:border-white/30 shrink-0 shadow-xs"
@@ -1911,7 +1911,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         })}
                       </div>
                       {quickVariantError && (
-                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in">
+                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in w-full">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-rose-500">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
@@ -1923,230 +1923,284 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </div>
                   )}
 
-                  {/* Step 2: Monogram text from slip */}
+                  {/* BYOG Custom Note & Garment Size (if user clicked BYOG card in 'All' tab) */}
                   {activeQuickItem?.isByog && (
-                    <div className="mb-2.5">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                          Slip Garment Rate
-                        </span>
-                        <span className="text-[10px] text-primary font-semibold">No free 1st word • All letters charged</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setQuickByogGarmentType('small')}
-                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
-                              ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
-                            }`}
-                        >
-                          <div className="font-bold text-xs flex items-center justify-between">
-                            <span>Small Item</span>
-                            <span className="font-mono text-primary text-[11px]">₱7/letter</span>
-                          </div>
-                          <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setQuickByogGarmentType('big')}
-                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
-                              ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
-                            }`}
-                        >
-                          <div className="font-bold text-xs flex items-center justify-between">
-                            <span>Big Item</span>
-                            <span className="font-mono text-primary text-[11px]">₱10/letter</span>
-                          </div>
-                          <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
-                        </button>
+                    <div className="mt-3 pt-2.5 border-t border-border-glass space-y-2.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                            Slip Garment Rate
+                          </label>
+                          <span className="text-[10px] text-text-dim">1st word included</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuickByogGarmentType('small')}
+                            className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
+                                ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                                : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                              }`}
+                          >
+                            <div className="font-bold text-xs flex items-center justify-between">
+                              <span>Small Item</span>
+                              <span className="font-mono text-primary text-[11px]">₱7/letter</span>
+                            </div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Cap, Hand/Face Towel, Fan</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickByogGarmentType('big')}
+                            className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
+                                ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                                : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
+                              }`}
+                          >
+                            <div className="font-bold text-xs flex items-center justify-between">
+                              <span>Big Item</span>
+                              <span className="font-mono text-primary text-[11px]">₱10/letter</span>
+                            </div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel</div>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
                 </>
               )}
-              <div className="mb-3.5">
-                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
-                  <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                    2. Name(s) from Slip <span className="normal-case font-normal">(Max {MAX_CHARS_PER_LINE} chars/line)</span>
-                  </span>
-                  <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (quickLetteringMode === 'bulk' && quickBulkSummary.namesList[0]) {
-                          setQuickText(sanitizeSingleLineText(quickBulkSummary.namesList[0]).toUpperCase());
-                        }
-                        setQuickLetteringMode('single');
-                      }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                        quickLetteringMode === 'single'
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      Single Name
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (quickLetteringMode === 'single' && quickText.trim() && !quickBulkText.trim()) {
-                          setQuickBulkText(sanitizeSingleLineText(quickText).toUpperCase());
-                        }
-                        setQuickLetteringMode('bulk');
-                      }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                        quickLetteringMode === 'bulk'
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      Bulk List
-                    </button>
-                  </div>
-                </div>
+            </div>
 
-                {quickLetteringMode === 'single' ? (
-                  <>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        maxLength={MAX_CHARS_PER_LINE}
-                        placeholder={`NAME / MONOGRAM FROM SLIP (Max ${MAX_CHARS_PER_LINE} chars)`}
-                        value={quickText}
-                        onPaste={(e) => {
-                          const pasted = e.clipboardData.getData('text');
-                          if (pasted && /\r?\n/.test(pasted.trim())) {
-                            e.preventDefault();
-                            setQuickBulkText(sanitizeBulkMultilineText(pasted.toUpperCase()));
-                            setQuickLetteringMode('bulk');
-                          }
-                        }}
-                        onChange={(e) => setQuickText(sanitizeSingleLineText(e.target.value.toUpperCase()))}
-                        className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 pr-14"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-dim">
-                        {quickText.length}/{MAX_CHARS_PER_LINE}
-                      </span>
-                    </div>
-                    {quickText.trim() && (
-                      <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
-                        <span className="text-text-dim text-[11px]">
-                          {activeQuickItem?.isByog ? (
-                            quickLettering.extraCost > 0 ? (
-                              <>
-                                BYOG: <strong className="text-primary">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
-                              </>
-                            ) : (
-                              <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
-                            )
-                          ) : quickLettering.extraCost > 0 ? (
+            {/* Card 2: 2. Name(s) from Slip & Quantity */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  2. Name(s) from Slip <span className="normal-case font-normal">(Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                </span>
+                <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (quickLetteringMode === 'bulk' && quickBulkSummary.namesList[0]) {
+                        setQuickText(sanitizeSingleLineText(quickBulkSummary.namesList[0]).toUpperCase());
+                      }
+                      setQuickLetteringMode('single');
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                      quickLetteringMode === 'single'
+                        ? 'bg-text-main text-bg-surface shadow-xs'
+                        : 'text-text-dim hover:text-text-main'
+                    }`}
+                  >
+                    Single Name
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (quickLetteringMode === 'single' && quickText.trim() && !quickBulkText.trim()) {
+                        setQuickBulkText(sanitizeSingleLineText(quickText).toUpperCase());
+                      }
+                      setQuickLetteringMode('bulk');
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                      quickLetteringMode === 'bulk'
+                        ? 'bg-text-main text-bg-surface shadow-xs'
+                        : 'text-text-dim hover:text-text-main'
+                    }`}
+                  >
+                    Bulk List (Paste)
+                  </button>
+                </div>
+              </div>
+
+              {quickLetteringMode === 'single' ? (
+                <>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      maxLength={MAX_CHARS_PER_LINE}
+                      placeholder={`NAME / MONOGRAM FROM SLIP (Max ${MAX_CHARS_PER_LINE} chars)`}
+                      value={quickText}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        if (pasted && /\r?\n/.test(pasted.trim())) {
+                          e.preventDefault();
+                          setQuickBulkText(sanitizeBulkMultilineText(pasted.toUpperCase()));
+                          setQuickLetteringMode('bulk');
+                        }
+                      }}
+                      onChange={(e) => setQuickText(sanitizeSingleLineText(e.target.value.toUpperCase()))}
+                      className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition pr-16"
+                    />
+                    <span
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono font-bold ${
+                        quickText.length >= MAX_CHARS_PER_LINE ? 'text-primary' : 'text-text-dim'
+                      }`}
+                    >
+                      {quickText.length}/{MAX_CHARS_PER_LINE}
+                    </span>
+                  </div>
+                  {quickText.trim() && (
+                    <div className="text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
+                      <span className="text-text-dim text-[11px]">
+                        {activeQuickItem?.isByog ? (
+                          quickLettering.extraCost > 0 ? (
                             <>
-                              First word included. Extra: <strong className="text-primary">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
+                              BYOG: <strong className="text-primary">{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong> ({isQuickBigGarment ? 'big garment' : 'small garment'} • every letter charged)
                             </>
                           ) : (
-                            <span>First word included in base price (₱0 extra)</span>
-                          )}
-                        </span>
-                        {quickLettering.extraCost > 0 && (
-                          <span className="font-mono font-bold text-primary text-xs shrink-0 ml-1">
-                            +₱{quickLettering.extraCost.toFixed(2)}
-                          </span>
+                            <span>BYOG: ₱{quickLettering.ratePerLetter}/letter • all letters charged</span>
+                          )
+                        ) : quickLettering.extraCost > 0 ? (
+                          <>
+                            First word included. Extra: <strong className="text-primary">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
+                          </>
+                        ) : (
+                          <span>First word included in base price (₱0 extra)</span>
                         )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    <textarea
-                      rows={3}
-                      value={quickBulkText}
-                      onChange={(e) => setQuickBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()))}
-                      placeholder={`Paste 1 name per line (Max ${MAX_CHARS_PER_LINE} chars/line)`}
-                      className="w-full bg-bg-surface border border-border-glass px-3.5 py-2 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 resize-y"
-                    />
-                    {quickBulkSummary.lineCount > 0 && (
-                      <div className="text-[11px] text-text-dim flex justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
-                        <span>{quickBulkSummary.lineCount} lines = {quickBulkSummary.lineCount} pcs</span>
-                        <span className="font-mono font-bold text-primary">
-                          {quickBulkSummary.totalExtraCost > 0 ? `+₱${quickBulkSummary.totalExtraCost.toFixed(2)} extra letters` : '₱0 extra letters'}
+                      </span>
+                      {quickLettering.extraCost > 0 && (
+                        <span className="font-mono font-bold text-primary text-xs shrink-0 ml-2">
+                          +₱{quickLettering.extraCost.toFixed(2)}
                         </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Step 3: Quantity & Payment */}
-              <div className="bg-bg-card border border-border-glass rounded-xl p-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                {/* Quantity */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-dim font-bold shrink-0">Qty:</span>
-                  {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
-                    <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
-                      {effectiveQuickQty} pcs (Bulk)
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-[11px] text-text-dim">
+                    <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line incl. spaces):</span>
+                    <span className="font-mono font-semibold text-text-main">
+                      {quickBulkSummary.lineCount} {quickBulkSummary.lineCount === 1 ? 'line' : 'lines'} = {quickBulkSummary.lineCount} pcs
                     </span>
-                  ) : (
-                    <QuantityInput
-                      value={quickQuantity}
-                      onChange={(q) => setQuickQuantity(q)}
-                      min={1}
-                      size="sm"
-                      showPresets={true}
-                      presets={[10]}
-                      ariaLabel="Quick sale quantity"
-                    />
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={quickBulkText}
+                    onChange={(e) => setQuickBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()))}
+                    placeholder={`COACH 1\nCOACH 2\nPLAYER 3 A\n(Max ${MAX_CHARS_PER_LINE} chars per line)`}
+                    className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 transition resize-y"
+                  />
+                  {quickBulkSummary.lineCount > 0 && (
+                    <div className="text-[11px] text-text-dim flex justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
+                      <span>{quickBulkSummary.lineCount} lines = {quickBulkSummary.lineCount} pcs</span>
+                      <span className="font-mono font-bold text-primary">
+                        {quickBulkSummary.totalExtraCost > 0 ? `+₱${quickBulkSummary.totalExtraCost.toFixed(2)} extra letters` : '₱0 extra letters'}
+                      </span>
+                    </div>
                   )}
                 </div>
+              )}
 
-                {/* Symmetrical, Compact Payment Toggle */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-dim font-bold shrink-0">Payment:</span>
-                  <div className="inline-flex rounded-lg border border-border-glass p-0.5 bg-bg-surface shadow-xs items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuickPayment('Cash')}
-                      className={`py-1.5 px-3 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                        quickPayment === 'Cash'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <rect x="2" y="6" width="20" height="12" rx="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <path d="M6 12h.01M18 12h.01" />
-                      </svg>
-                      <span>Cash</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickPayment('GCash')}
-                      className={`py-1.5 px-3 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                        quickPayment === 'GCash'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                        <line x1="12" y1="18" x2="12.01" y2="18" />
-                      </svg>
-                      <span>GCash</span>
-                    </button>
-                  </div>
+              {/* Quantity Selector Section (IDENTICAL to Customer Intake bottom of Card 2) */}
+              <div className="pt-2 border-t border-border-glass/40 flex items-center justify-between gap-2">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-text-main">Quantity</span>
+                  <span className="text-[11px] text-text-dim">
+                    {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0
+                      ? `Auto-synced to ${quickBulkSummary.lineCount} pasted lines`
+                      : 'Type or step for quick slip quantity'}
+                  </span>
+                </div>
+                {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
+                  <span className="px-3 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                    {effectiveQuickQty} pcs
+                  </span>
+                ) : (
+                  <QuantityInput
+                    value={quickQuantity}
+                    onChange={(q) => setQuickQuantity(q)}
+                    min={1}
+                    size="sm"
+                    showPresets={true}
+                    presets={[10]}
+                    ariaLabel="Quick sale quantity"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Step 3 (Payment & Register) + Cash Tin (5 cols) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-[72px] self-start flex flex-col gap-3">
+            {/* Card 3: 3. Quick Payment & Register */}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  3. Quick Payment &amp; Register
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold font-mono">
+                  {effectiveQuickQty} {effectiveQuickQty === 1 ? 'pc' : 'pcs'}
+                </span>
+              </div>
+
+              {/* Item & Price Block */}
+              <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="text-[11px] text-text-dim">Stitched Item:</span>
+                  <span className="text-xs font-bold text-text-main truncate">
+                    {activeQuickItem?.name || 'Custom Garment'} ({effectiveQuickQty} {effectiveQuickQty === 1 ? 'pc' : 'pcs'})
+                  </span>
+                  {quickVariant && (
+                    <span className="text-[11px] text-text-dim truncate">
+                      Color: {quickVariant.name}
+                    </span>
+                  )}
+                  {quickText && (
+                    <span className="text-[11px] font-mono font-bold text-primary truncate">
+                      "{quickText}"
+                    </span>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[11px] text-text-dim block">Total Due:</span>
+                  <span className="text-2xl font-black font-mono text-primary">
+                    ₱{quickGrandTotal.toFixed(2)}
+                  </span>
                 </div>
               </div>
 
-              {/* Action Button */}
+              {/* Payment Method Selector (Matches Customer Intake perfectly!) */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickPayment('Cash')}
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${quickPayment === 'Cash'
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                    }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M6 12h.01M18 12h.01" />
+                  </svg>
+                  <span>Cash</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickPayment('GCash')}
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${quickPayment === 'GCash'
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                    }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                    <line x1="12" y1="18" x2="12.01" y2="18" />
+                  </svg>
+                  <span>GCash</span>
+                </button>
+              </div>
+
+              {/* Primary Action Button */}
               <button
                 type="button"
                 disabled={isPunchSubmitting}
                 onClick={handleQuickSlipPunch}
-                className="w-full py-3 px-4 rounded-lg bg-text-main hover:bg-text-main/90 active:scale-[0.99] text-bg-surface font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-secondary active:scale-[0.99] text-white font-extrabold text-sm shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 <span>
@@ -2157,10 +2211,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </button>
               <InlineError error={quickPunchError} />
             </div>
-          </div>
 
-          {/* Right Column: Live Shift Tally (4 cols) */}
-          <div className="lg:col-span-4 lg:sticky lg:top-[72px] self-start flex flex-col gap-3">
+            {/* Register Cash Tin Card */}
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase tracking-wider font-bold text-text-dim block">
@@ -2175,6 +2227,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
             </div>
 
+            {/* Recent Slips Logged */}
             {punchedSlipsToday.length > 0 && (
               <div className="bg-bg-surface border border-border-glass rounded-xl p-3 shadow-sm flex flex-col gap-1.5 max-h-[220px] overflow-y-auto">
                 <span className="text-[10px] font-bold text-text-dim uppercase tracking-wider mb-1">
@@ -2183,7 +2236,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 {punchedSlipsToday.map((slip, sIdx) => (
                   <div
                     key={sIdx}
-                    className="p-2 rounded-lg bg-white/[0.03] border border-border-glass flex justify-between items-center text-xs"
+                    className="p-2 rounded-lg bg-bg-card border border-border-glass flex justify-between items-center text-xs"
                   >
                     <div className="flex flex-col text-left">
                       <span className="font-bold text-text-main text-xs">
