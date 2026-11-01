@@ -1029,15 +1029,15 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       `}</style>
 
       {/* Clean Top Tab Switcher */}
-      <div className="sticky top-0 lg:top-[52px] z-[40] bg-bg-dark/95 backdrop-blur-md pt-1 pb-2 border-b border-border-glass mb-3 overflow-x-auto no-scrollbar w-full max-w-full flex items-center justify-start">
+      <div className="pb-3 border-b border-border-glass mb-4 overflow-x-auto no-scrollbar w-full max-w-full flex items-center justify-start">
         {/* Tab Switcher */}
-        <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 gap-1 shrink-0">
+        <div className="flex bg-bg-card border border-border-glass rounded-xl p-1 gap-1 shrink-0 shadow-xs">
           <button
             type="button"
             onClick={() => setActiveTab('register')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'register'
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-text-dim hover:text-text-main'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'register'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-text-dim hover:text-text-main hover:bg-white/5'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1048,9 +1048,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('quick_punch')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'quick_punch'
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-text-dim hover:text-text-main'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'quick_punch'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-text-dim hover:text-text-main hover:bg-white/5'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1061,9 +1061,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('turnover')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${activeTab === 'turnover'
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-text-dim hover:text-text-main'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${activeTab === 'turnover'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-text-dim hover:text-text-main hover:bg-white/5'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1071,7 +1071,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </svg>
             <span>Claim &amp; Handover</span>
             {readyForClaimOrders.length > 0 && (
-              <span className="bg-white/15 text-current border border-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+              <span className="bg-white/20 text-current border border-white/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
                 {readyForClaimOrders.length} Ready
               </span>
             )}
@@ -1620,7 +1620,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           </div>
 
           {/* Right Column: Payment & Ticket Actions (5 cols) */}
-          <div className="lg:col-span-5 lg:sticky lg:top-[104px] self-start flex flex-col gap-3">
+          <div className="lg:col-span-5 lg:sticky lg:top-[80px] self-start flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4">
               
               {/* Header: Clean POS Order Ticket */}
@@ -2237,76 +2237,89 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Step 3: Quantity & Payment */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch mt-1">
-                <div className="flex flex-col justify-center gap-1 bg-bg-card border border-border-glass rounded-xl p-3 min-w-0 shadow-xs">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <span className="text-xs text-text-dim font-bold shrink-0">Qty:</span>
-                    {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
-                      <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
-                        {effectiveQuickQty} pcs (Bulk)
-                      </span>
-                    ) : (
-                      <QuantityInput
-                        value={quickQuantity}
-                        onChange={(q) => setQuickQuantity(q)}
-                        min={1}
-                        size="sm"
-                        showPresets={true}
-                        presets={[10]}
-                        ariaLabel="Quick sale quantity"
-                      />
-                    )}
+              {/* Step 3: Quantity, Payment & Log Finished Sale */}
+              <div className="mt-2 pt-3 border-t border-border-glass flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Quantity */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-dim font-bold shrink-0">Qty:</span>
+                  {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                      {effectiveQuickQty} pcs (Bulk)
+                    </span>
+                  ) : (
+                    <QuantityInput
+                      value={quickQuantity}
+                      onChange={(q) => setQuickQuantity(q)}
+                      min={1}
+                      size="sm"
+                      showPresets={true}
+                      presets={[10]}
+                      ariaLabel="Quick sale quantity"
+                    />
+                  )}
+                </div>
+
+                {/* Symmetrical, Balanced Payment Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-dim font-bold shrink-0">Payment:</span>
+                  <div className="flex rounded-xl border border-border-glass p-0.5 bg-bg-card shadow-xs items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setQuickPayment('Cash')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        quickPayment === 'Cash'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <path d="M6 12h.01M18 12h.01" />
+                      </svg>
+                      <span>Cash</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickPayment('GCash')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        quickPayment === 'GCash'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                      </svg>
+                      <span>GCash</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-border-glass p-1 bg-bg-card shadow-xs items-center min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setQuickPayment('Cash')}
-                    className={`h-full min-h-[40px] flex items-center justify-center py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      quickPayment === 'Cash'
-                        ? 'bg-primary text-white shadow-xs ring-2 ring-primary/20'
-                        : 'text-text-dim hover:text-text-main hover:bg-white/5'
-                    }`}
-                  >
-                    Cash
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickPayment('GCash')}
-                    className={`h-full min-h-[40px] flex items-center justify-center py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      quickPayment === 'GCash'
-                        ? 'bg-primary text-white shadow-xs ring-2 ring-primary/20'
-                        : 'text-text-dim hover:text-text-main hover:bg-white/5'
-                    }`}
-                  >
-                    GCash
-                  </button>
-                </div>
+                {/* Action Button - Compact & Proportionate */}
+                <button
+                  type="button"
+                  disabled={isPunchSubmitting}
+                  onClick={handleQuickSlipPunch}
+                  className="py-2.5 px-5 rounded-xl bg-primary hover:bg-secondary active:scale-[0.99] text-white font-bold text-xs shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shrink-0 self-stretch sm:self-auto"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>
+                    {isPunchSubmitting
+                      ? 'Recording...'
+                      : `Log Finished Sale • ₱${quickGrandTotal.toFixed(2)} (${quickPayment})`}
+                  </span>
+                </button>
               </div>
-
-              {/* Action Button */}
-              <button
-                type="button"
-                disabled={isPunchSubmitting}
-                onClick={handleQuickSlipPunch}
-                className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-secondary active:scale-[0.99] text-white font-extrabold text-sm shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>
-                  {isPunchSubmitting
-                    ? 'Recording Sale...'
-                    : `Log Finished Sale — ₱${quickGrandTotal.toFixed(2)} (${quickPayment})`}
-                </span>
-              </button>
               <InlineError error={quickPunchError} />
             </div>
           </div>
 
           {/* Right Column: Live Shift Tally (4 cols) */}
-          <div className="lg:col-span-4 lg:sticky lg:top-[104px] self-start flex flex-col gap-3">
+          <div className="lg:col-span-4 lg:sticky lg:top-[80px] self-start flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase tracking-wider font-bold text-text-dim block">
