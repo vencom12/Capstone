@@ -1213,12 +1213,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                   : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
-                              {v.color && (
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/30"
-                                  style={{ backgroundColor: v.color }}
-                                />
-                              )}
+
                               <span>{v.name}</span>
                               <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
@@ -1228,8 +1223,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         })}
                       </div>
                       {intakeVariantError && (
-                        <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg bg-bg-surface border border-border-glass text-xs text-text-main font-medium">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-rose-500">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
                             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -1487,14 +1482,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       })}
                     </div>
                   </div>
-                ) : (
-                  <div className="mt-3 pt-3 border-t border-border-glass">
-                    <div className="px-3 py-2 rounded-lg bg-white/[0.02] border border-dashed border-border-glass text-[11px] text-text-dim flex items-center justify-between">
-                      <span>No letters entered • <strong>Plain product (No thread needed)</strong></span>
-                      <span className="text-[10px] text-text-dim/60">Type a name above to pick thread color</span>
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* Item Quantity & Staging Section */}
                 <div className="mt-3.5 pt-3 border-t border-border-glass flex flex-col gap-2.5">
@@ -1551,7 +1539,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      <span>+ Add to Order Ticket ({effectiveIntakeQty}x)</span>
+                      <span>Add to Order Ticket ({effectiveIntakeQty}x)</span>
                     </button>
                   </div>
                 </div>
@@ -1899,12 +1887,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                   : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
-                              {v.color && (
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/30"
-                                  style={{ backgroundColor: v.color }}
-                                />
-                              )}
+
                               <span>{v.name}</span>
                               <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
@@ -1914,8 +1897,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         })}
                       </div>
                       {quickVariantError && (
-                        <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg bg-bg-surface border border-border-glass text-xs text-text-main font-medium">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-rose-500">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
                             <line x1="12" y1="16" x2="12.01" y2="16" />
