@@ -207,18 +207,22 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                      {item.selectedVariant && (
-                        <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold">
-                          {item.selectedColor && (
-                            <span
-                              className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
-                              style={{ backgroundColor: item.selectedColor }}
-                            />
-                          )}
-                          <span className="truncate">{item.selectedVariant}</span>
-                          {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
-                        </span>
-                      )}
+                      {(() => {
+                        const showVariant = Boolean(item.selectedVariant && !String(item.name || '').toLowerCase().includes(String(item.selectedVariant).toLowerCase()));
+                        if (!showVariant && !item.selectedSize && !item.selectedColor) return null;
+                        return (
+                          <span className="text-[0.7rem] text-primary flex items-center gap-1 font-semibold">
+                            {item.selectedColor && (
+                              <span
+                                className="w-2 h-2 rounded-full inline-block border border-white/20 shrink-0"
+                                style={{ backgroundColor: item.selectedColor }}
+                              />
+                            )}
+                            {showVariant && <span className="truncate">{item.selectedVariant}</span>}
+                            {item.selectedSize && <span className="opacity-70">({item.selectedSize})</span>}
+                          </span>
+                        );
+                      })()}
                       {isPreOrder && (
                         <span className="text-[0.6rem] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/30">
                           Pre-Order

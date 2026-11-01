@@ -121,7 +121,7 @@ export default function PanelOverview({
       const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
         referenceNumber: ref || undefined,
       });
-      showToast(res?.message || `Confirmed GCash Ref ...${ref.slice(-4)} on phone!`, 'success');
+      showToast(res?.message || `Payment verified for Ref: ...${ref.slice(-4)}`, 'success');
       refreshData().catch(() => {});
     } catch (err: any) {
       showToast(err.message || 'Failed to confirm payment reference', 'error');
@@ -688,12 +688,20 @@ export default function PanelOverview({
                           {o.items && Array.isArray(o.items) ? (
                             <div className="flex flex-col gap-1 max-w-[250px]">
                               {o.items.map((item: any, idx: number) => {
-                                const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                const rawName = String(item.name || '').trim();
+                                const lowerName = rawName.toLowerCase();
+                                const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                                  .filter(Boolean)
+                                  .map((p: string) => String(p).trim())
+                                  .filter((p: string, pIdx: number, arr: string[]) => {
+                                    if (!p) return false;
+                                    if (lowerName.includes(p.toLowerCase())) return false;
+                                    return arr.indexOf(p) === pIdx;
+                                  });
+                                const variantText = variantParts.join(' • ');
                                 return (
                                   <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
-                                    {item.selectedColor && (
-                                      <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                    )}
+                                    
                                     <span className="font-medium">{item.quantity}x {item.name}</span>
                                     {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                   </div>
@@ -724,7 +732,7 @@ export default function PanelOverview({
                               <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                 <div
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
-                                  title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
+                                  title={`Full GCash Ref: ${ref}`}
                                 >
                                   <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
                                   <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
@@ -737,7 +745,7 @@ export default function PanelOverview({
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    SMS Verified
+                                    Payment Verified
                                   </span>
                                 ) : (
                                   <button
@@ -745,12 +753,12 @@ export default function PanelOverview({
                                     onClick={(e) => handleVerifySmsMatch(o, e)}
                                     disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
-                                    title="Tap after glancing at your phone's GCash SMS to confirm the last 4 digits match"
+                                    title="Tap to verify and approve payment against GCash transaction receipt"
                                   >
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Confirm SMS (...${last4})`}</span>
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Verify Payment (...${last4})`}</span>
                                   </button>
                                 )}
                               </div>
@@ -763,7 +771,7 @@ export default function PanelOverview({
                               ${o.status === 'Preparing Order'
                                 ? 'bg-primary/20 text-primary border border-primary/30'
                                 : o.status === 'In Transit'
-                                  ? 'bg-warning/20 text-warning border border-warning/30'
+                                  ? 'bg-white/5 text-text-dim border border-border-glass'
                                   : o.status === 'Ready For Pick Up'
                                     ? 'bg-success/20 text-success border border-success/30'
                                     : 'bg-white/10 text-text-dim border border-white/20'
@@ -809,27 +817,31 @@ export default function PanelOverview({
         )}
 
         {/* Mobile Grid layout */}
-        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2">
           {isSyncing && orders.length === 0 ? (
             Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))
           ) : activeOrders.length === 0 ? (
-            <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders found.</div>
+            <div className="glass-card p-6 text-center text-text-dim col-span-full rounded-xl">No active orders found.</div>
           ) : (
             paginatedOrders.map((o) => {
               const id = o.id || o._id;
               const isChecked = selectedIds.includes(id);
+              const rawClient = o.client || 'Valued Customer';
+              const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
+
               return (
                 <div
                   key={id}
                   onClick={() => viewReceipt(o)}
-                  className={`bg-bg-card backdrop-blur-[12px] border rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px] cursor-pointer hover:border-primary/50 transition-all ${isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
-                    }`}
+                  className={`bg-bg-card backdrop-blur-[12px] border rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/50 transition-all gap-3 cursor-pointer ${
+                    isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
+                  }`}
                 >
                   {/* Select Toggle Box */}
                   <div
-                    className="absolute top-4 right-4 z-10"
+                    className="absolute top-3.5 right-3.5 z-10 p-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -840,15 +852,15 @@ export default function PanelOverview({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
+                  <div className="grid grid-cols-2 gap-3 items-start pr-6">
                     {/* Left Column */}
-                    <div className="flex flex-col gap-2.5 text-left justify-between h-full">
+                    <div className="flex flex-col gap-1.5 text-left">
                       <span
-                        className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
+                        className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
                           ${o.status === 'Preparing Order'
                             ? 'bg-primary/20 text-primary border border-primary/30'
                             : o.status === 'In Transit'
-                              ? 'bg-warning/20 text-warning border border-warning/30'
+                              ? 'bg-white/5 text-text-dim border border-border-glass'
                               : o.status === 'Ready For Pick Up'
                                 ? 'bg-success/20 text-success border border-success/30'
                                 : 'bg-white/10 text-text-dim border border-white/20'
@@ -858,84 +870,68 @@ export default function PanelOverview({
                         {o.status}
                       </span>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">
-                            {o.orderId}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                        {o.isRush && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
+                            RUSH
                           </span>
-                          {o.isRush && (
-                            <span className="px-1 py-0.2 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
-                              RUSH
-                            </span>
-                          )}
-                          {o.isByog && (
-                            <span className={`px-1 py-0.2 rounded text-[9px] font-sans font-semibold border ${
-                              o.garmentsReceivedAt
-                                ? 'bg-primary/10 text-primary border-primary/25'
-                                : 'bg-white/5 text-text-dim border-border-glass'
-                            }`}>
-                              {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop'}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[0.65rem] text-text-dim mt-0.5">
-                          {new Date(o.date || o.createdAt).toLocaleString()}
-                        </span>
-                        {(o.estimatedTime || o.dueDate) && (
-                          <div className="text-[10px] text-text-dim mt-0.5 flex items-center gap-1.5 flex-wrap">
-                            {o.estimatedTime ? <span>⏱ ~{o.estimatedTime}m</span> : null}
-                            {(() => {
-                              const createdTime = new Date(o.date || o.createdAt).getTime();
-                              const isCorruptedDue = o.dueDate && !isNaN(createdTime) && new Date(o.dueDate).getTime() < createdTime;
-                              const effectiveDue = isCorruptedDue
-                                ? (o.personalization?.estimatedReadyDate || o.dueDate)
-                                : (o.dueDate || o.personalization?.estimatedReadyDate);
-                              return effectiveDue ? (
-                                <span className="text-primary font-medium">
-                                  Ready: {new Date(effectiveDue).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              ) : null;
-                            })()}
-                          </div>
+                        )}
+                        {o.isByog && (
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-sans font-semibold border ${
+                            o.garmentsReceivedAt
+                              ? 'bg-primary/10 text-primary border-primary/25'
+                              : 'bg-white/5 text-text-dim border-border-glass'
+                          }`}>
+                            {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG'}
+                          </span>
                         )}
                       </div>
 
-                      <div className="flex flex-col text-left">
-                        <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">
-                          Client
-                        </span>
-                        <span className="font-bold text-text-main truncate max-w-[140px]">
-                          {o.client || 'Valued Customer'}
-                        </span>
+                      <span className="text-[11px] text-text-dim">
+                        {new Date(o.date || o.createdAt).toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })}, {new Date(o.date || o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+
+                      <div className="mt-1">
+                        <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Client</span>
+                        <span className="text-xs font-bold text-text-main truncate block max-w-[150px]">{cleanClient}</span>
                       </div>
                     </div>
 
-                    {/* Right Column */}
-                    <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
-                      <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">
-                        Items
-                      </span>
-                      <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
+                    {/* Right Column: Items & Total */}
+                    <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">
+                      <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Items</span>
+                      <div className="flex flex-col gap-1">
                         {o.items && Array.isArray(o.items) ? (
                           o.items.map((item: any, idx: number) => {
-                            const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                            const rawName = String(item.name || '').trim();
+                            const lowerName = rawName.toLowerCase();
+                            const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                              .filter(Boolean)
+                              .map((p: string) => String(p).trim())
+                              .filter((p: string, pIdx: number, arr: string[]) => {
+                                if (!p) return false;
+                                if (lowerName.includes(p.toLowerCase())) return false;
+                                return arr.indexOf(p) === pIdx;
+                              });
+                            const variantText = variantParts.join(' • ');
                             return (
-                              <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex items-center justify-between gap-2">
+                              <div key={idx} className="flex items-center justify-between gap-1 py-0.5 border-b border-white/5 last:border-0">
                                 <div className="flex items-center gap-1.5 truncate">
-                                  {item.selectedColor && (
-                                    <span className="w-2.5 h-2.5 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                  )}
-                                  <span className="truncate">{item.quantity}x {item.name}</span>
+                                  
+                                  <span className="text-xs font-bold text-text-main truncate">{item.quantity}x {item.name}</span>
                                 </div>
-                                {variantText && <span className="text-text-dim text-[0.7rem] shrink-0 font-sans">({variantText})</span>}
+                                {variantText && <span className="text-text-dim text-[10px] shrink-0 font-sans">({variantText})</span>}
                               </div>
                             );
                           })
                         ) : (
-                          <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
+                          <div className="text-xs text-text-main font-medium">{o.design || 'Embroidery Design'}</div>
                         )}
                       </div>
-                      <div className="mt-2 pt-2 border-t border-white/5 font-mono font-bold text-primary text-sm text-left flex items-center justify-between gap-2 flex-wrap">
+
+                      {/* Total Amount & Ref Badge */}
+                      <div className="mt-1 pt-1.5 border-t border-white/5 font-mono font-bold text-primary text-sm flex items-center justify-between gap-1.5 flex-wrap">
                         <span>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</span>
                         {(() => {
                           const ref = getOrderGcashRef(o);
@@ -943,8 +939,8 @@ export default function PanelOverview({
                           if (!ref) return null;
                           const last4 = ref.slice(-4);
                           return (
-                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-black">
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
                                 Ref: ...{last4}
                               </span>
                               {smsVerified ? (
@@ -953,9 +949,9 @@ export default function PanelOverview({
                                 <button
                                   type="button"
                                   onClick={(e) => handleVerifySmsMatch(o, e)}
-                                  className="text-[10px] font-sans font-medium bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main px-1.5 py-0.5 rounded cursor-pointer"
+                                  className="text-[10px] font-sans font-bold bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main min-h-[30px] px-2 py-0.5 rounded-md cursor-pointer active:scale-95"
                                 >
-                                  Confirm SMS
+                                  Verify
                                 </button>
                               )}
                             </div>
@@ -966,13 +962,13 @@ export default function PanelOverview({
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex gap-2 pt-2 border-t border-white/5" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => setClaimStubOrder(o)}
-                      className="flex-1 bg-white/5 border border-border-glass text-text-main py-2 rounded-lg text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      className="flex-1 bg-white/5 border border-border-glass text-text-main min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
                         <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -980,12 +976,18 @@ export default function PanelOverview({
                     </button>
                     <button
                       type="button"
-                      onClick={() => viewReceipt(o)}
-                      className="flex-1 bg-white/5 border border-border-glass text-text-main py-2 rounded-lg text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                      onClick={() => {
+                        setViewingReceiptOrder(o);
+                        setIsReceiptModalOpen(true);
+                      }}
+                      className="flex-1 bg-primary/15 border border-primary/30 text-primary min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
                       </svg>
                       <span>Receipt</span>
                     </button>
@@ -995,7 +997,6 @@ export default function PanelOverview({
             })
           )}
         </div>
-
         <Pagination
           currentPage={currentPage}
           totalItems={activeOrders.length}

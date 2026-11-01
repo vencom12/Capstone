@@ -200,7 +200,7 @@ export function printBagSlip(order: any): void {
       </head>
       <body>
         <div class="slip-container">
-          <div class="shop-title">EDS TOWELS & CAPS</div>
+          <div class="shop-title">Edz Towels & Caps Embroidery</div>
           <div style="font-size: 9.5px; margin-top: 1px;">PACIFIC MALL LUCENA • GROUND FLOOR</div>
           <div style="font-size: 8.5px; color: #444;">Tel: 0917 582 8192</div>
 

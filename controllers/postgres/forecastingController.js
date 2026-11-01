@@ -71,7 +71,6 @@ async function getActiveSuggestionsInternal(force = false) {
     const [
         trafficRollups,
         orderRollups,
-        orders14d,
         inventory,
         products,
         totalOrders
@@ -95,14 +94,6 @@ async function getActiveSuggestionsInternal(force = false) {
             WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
             GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
         `,
-        // Fetch raw items JSON only for safety stock velocities (last 14 days)
-        prisma.order.findMany({
-            where: {
-                date: { gte: date14dAgo },
-                NOT: { status: 'Order Canceled' }
-            },
-            select: { items: true, createdAt: true }
-        }),
         prisma.inventory.findMany(),
         prisma.product.findMany(),
         prisma.order.count()
@@ -151,92 +142,23 @@ async function getActiveSuggestionsInternal(force = false) {
     const projectedOrders = calculateLinearProjections(dailyOrders, 7);
     const projectedRevenue = calculateLinearProjections(dailyRevenue, 7);
 
-    // 4. Inventory Spools Stock Velocity & safety threshold calculations (last 14 days)
-    const productRecipes = {};
-    products.forEach(p => {
-        productRecipes[p.name.toLowerCase()] = p.recipe || [];
-    });
-
-    const materialConsumption = {};
-    inventory.forEach(inv => {
-        materialConsumption[inv.id] = 0;
-        materialConsumption[inv.item.toLowerCase()] = 0;
-    });
-
-    // Sum consumption of materials from orders in the last 14 days
-    orders14d.forEach(order => {
-        const items = order.items || [];
-        items.forEach(item => {
-            const recipe = productRecipes[item.name.toLowerCase()] || [];
-            recipe.forEach(recipeItem => {
-                const key = recipeItem.inventoryId || recipeItem.name.toLowerCase();
-                const qty = (item.quantity || 1) * (recipeItem.quantity || 1);
-                if (materialConsumption[key] !== undefined) {
-                    materialConsumption[key] += qty;
-                } else {
-                    materialConsumption[recipeItem.name.toLowerCase()] = (materialConsumption[recipeItem.name.toLowerCase()] || 0) + qty;
-                }
-            });
-        });
-    });
-
-    // Calculate Safety Stock Velocity (daily depletion rate)
-    const safetyStockProjections = inventory.map(inv => {
-        const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
-        const dailyVelocity = consumption / 14;
-        const daysRemaining = dailyVelocity > 0 ? (inv.count / dailyVelocity) : 9999;
-        return {
-            id: inv.id,
-            item: inv.item,
-            count: inv.count,
-            unit: inv.unit,
-            minThreshold: inv.minThreshold,
-            supplierUnitCost: Number(inv.supplierUnitCost) || 0,
-            dailyVelocity,
-            daysRemaining: daysRemaining === 9999 ? 'Stable' : parseFloat(daysRemaining.toFixed(1)),
-            isAlarmed: inv.count <= inv.minThreshold,
-            depletionRisk: daysRemaining <= 5 ? 'Critical' : (daysRemaining <= 10 ? 'Warning' : 'Low')
-        };
-    });
-
-    // 5. Heuristic Suggestions Generator (Robust Local Fallback)
+    // 4. Low Stock Inventory Alerts (Simple direct threshold check)
     const fallbackSuggestions = [];
-
-    // restock alarms
-    for (const proj of safetyStockProjections) {
-        if (proj.isAlarmed || proj.depletionRisk === 'Critical' || proj.depletionRisk === 'Warning') {
-            const suggestAmount = Math.max(10, proj.minThreshold * 2 - proj.count);
-
-            // Phase 3: Predictive Procurement - Auto-draft PO for Critical Items
-            if (proj.depletionRisk === 'Critical' || proj.isAlarmed) {
-                const existingDraft = await prisma.purchaseOrder.findFirst({
-                    where: { inventoryId: proj.id, status: 'Draft' }
-                });
-                if (!existingDraft) {
-                    const realUnitCost = Number(proj.supplierUnitCost) || 0;
-                    await prisma.purchaseOrder.create({
-                        data: {
-                            inventoryId: proj.id,
-                            quantity: suggestAmount,
-                            status: 'Draft',
-                            estimatedCost: realUnitCost > 0 ? parseFloat((suggestAmount * realUnitCost).toFixed(2)) : 0.0
-                        }
-                    });
-                }
-            }
-
+    for (const inv of inventory) {
+        if (inv.count <= inv.minThreshold) {
+            const suggestAmount = Math.max(10, inv.minThreshold * 2 - inv.count);
             fallbackSuggestions.push({
-                id: `SUG-INV-${proj.id}`,
-                title: `Restock Spools: ${proj.item}`,
+                id: `SUG-INV-${inv.id}`,
+                title: `Restock Item: ${inv.item}`,
                 category: 'Inventory',
-                severity: proj.depletionRisk === 'Critical' ? 'critical' : 'warning',
-                description: `Stock level for spools of "${proj.item}" is currently at ${proj.count} ${proj.unit} (Safety Limit: ${proj.minThreshold}). Based on order consumption velocity of ${proj.dailyVelocity.toFixed(2)} spools/day, stock is projected to deplete in ${proj.daysRemaining} days. Recommend restocking immediately.`,
-                actionText: `Restock +${suggestAmount} Spools`,
+                severity: 'warning',
+                description: `Stock for "${inv.item}" is low (${inv.count} ${inv.unit} remaining, safety limit: ${inv.minThreshold}).`,
+                actionText: `Restock +${suggestAmount} Units`,
                 action: {
                     type: 'restock',
                     payload: {
-                        inventoryId: proj.id,
-                        itemName: proj.item,
+                        inventoryId: inv.id,
+                        itemName: inv.item,
                         amount: suggestAmount
                     }
                 }
@@ -254,23 +176,13 @@ async function getActiveSuggestionsInternal(force = false) {
 
     products.forEach(p => {
         let totalUnitMaterialCost = 0;
-        const recipe = productRecipes[p.name.toLowerCase()] || [];
-
-        if (Array.isArray(recipe) && recipe.length > 0) {
-            recipe.forEach(r => {
-                const cost = inventoryCostMap[r.inventoryId] || inventoryCostMap[(r.name || '').toLowerCase()] || 0;
-                totalUnitMaterialCost += cost * (Number(r.quantity) || 1);
-            });
-        } else {
-            // Check direct inventory match by product name
-            const lowerName = p.name.toLowerCase();
-            const matchedInv = inventory.find(inv => {
-                const itemLower = inv.item.toLowerCase();
-                return lowerName.includes(itemLower) || itemLower.includes(lowerName);
-            });
-            if (matchedInv && Number(matchedInv.supplierUnitCost) > 0) {
-                totalUnitMaterialCost = Number(matchedInv.supplierUnitCost);
-            }
+        const lowerName = p.name.toLowerCase();
+        const matchedInv = inventory.find(inv => {
+            const itemLower = inv.item.toLowerCase();
+            return lowerName.includes(itemLower) || itemLower.includes(lowerName);
+        });
+        if (matchedInv && Number(matchedInv.supplierUnitCost) > 0) {
+            totalUnitMaterialCost = Number(matchedInv.supplierUnitCost);
         }
 
         // Only evaluate if supplier unit cost is recorded and positive
@@ -368,7 +280,7 @@ Here is the current business status:
 - Total traffic visits (last 365 days): ${totalVisits365D}
 - Total orders (last 365 days): ${totalOrders365D}
 - Total realized revenue (last 365 days): ₱${totalRevenue365D.toFixed(2)}
-- Safety spools status & depletion days: ${JSON.stringify(safetyStockProjections)}
+- Inventory stock status: ${JSON.stringify(inventory.map(inv => ({ item: inv.item, count: inv.count, minThreshold: inv.minThreshold, isLow: inv.count <= inv.minThreshold })))}
 - Product price lists: ${JSON.stringify(products.map(p => ({ id: p.id, name: p.name, price: p.price, stock: p.count })))}
 
 We have generated these automated baseline suggestions:
@@ -378,7 +290,7 @@ MANDATORY STORE BUSINESS POLICIES & CONSTRAINTS:
 1. ZERO DISCOUNTS: The store NEVER gives discounts, coupons, markdowns, or clearance sales under any circumstances. NEVER propose discounts, promotions, or price cuts.
 2. CONSERVATIVE PRICING: The store does NOT raise prices easily. NEVER suggest raising prices based on popularity, high sales velocity, seasonal demand, or A/B testing elasticity.
 3. SUPPLIER-COST-DRIVEN PRICING ONLY: The store ONLY raises a product's price if the supplier's raw material acquisition cost increases, threatening the business profit margin. If supplier costs are stable, prices MUST remain unchanged.
-4. INVENTORY PROCUREMENT: Focus recommendations on proactive procurement of depleted raw materials (spools, blanks) before safety limits run out, and prioritizing pending orders in queue.
+4. INVENTORY PROCUREMENT: Focus recommendations on proactive procurement of depleted inventory items and blanks before safety limits run out, and prioritizing pending orders in queue.
 
 Your task is to review these baseline suggestions, consolidate them, or refine their strategic reasoning to make them feel highly professional and descriptive while strictly obeying the business policies above.
 Format your output as a raw JSON array of objects. Do not include markdown code block formatting (like \`\`\`json).
@@ -387,7 +299,7 @@ Each object in the array must contain:
 - title: String (compelling, short strategic title)
 - category: "Inventory" | "Pricing" | "Operations" | "Demand"
 - severity: "info" | "warning" | "critical"
-- description: String (concise strategic reasoning in 1-2 sentences referencing specific numbers, e.g. visits, spools count, depletion rate, or pending hours)
+- description: String (concise strategic reasoning in 1-2 sentences referencing specific numbers, e.g. visits, stock count, depletion rate, or pending hours)
 - actionText: String (label for the implementation action button)
 - action: Object (the execution details: restock, updatePrice, prioritizeOrder)
 
@@ -521,8 +433,8 @@ exports.executeSuggestionAction = async (req, res) => {
 
             entity = ENTITIES.INVENTORY;
             entityId = updated.id;
-            actionDetails = `Restocked spool "${updated.item}" (+${amount} cones). New total: ${updated.count}`;
-            logAiChange(username, 'Restock Spool', actionDetails);
+            actionDetails = `Restocked item "${updated.item}" (+${amount} units). New total: ${updated.count}`;
+            logAiChange(username, 'Restock Item', actionDetails);
 
             // Invalidate BI Cache so suggestions reflect restock immediately
             biCache = null;

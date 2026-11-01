@@ -40,7 +40,10 @@ development/dev_routes.js
 /generated/prisma
 *.md
 *.pdf
+*.docx
+diagrams/
 *.pid
 *.traineddata
 ~$*
 scratch/
+

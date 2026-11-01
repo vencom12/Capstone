@@ -148,7 +148,7 @@ export default function OrderSuccessModal({
         <div className="pt-0.5 pb-2 border-b border-border-glass/40 -mt-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              
               <span className="text-[11px] font-bold text-text-main">
                 Step 3 of 3:
               </span>
@@ -242,7 +242,10 @@ export default function OrderSuccessModal({
                 const itemPers = item.personalization || {};
                 const customText = itemPers.text || '';
                 const threadName = typeof itemPers.threadColor === 'object' ? itemPers.threadColor?.name : (itemPers.threadColor || itemPers.color || '');
-                const variantName = item.selectedVariant || item.variant || '';
+                const rawItemName = item.name || '';
+                const lowerItemName = rawItemName.toLowerCase();
+                const variantName = (item.selectedVariant || item.variant || '').trim();
+                const showVariant = variantName && !lowerItemName.includes(variantName.toLowerCase());
 
                 return (
                   <div
@@ -259,7 +262,7 @@ export default function OrderSuccessModal({
                         <span className="text-xs font-bold text-text-main truncate">
                           {item.quantity || 1}x {item.name}
                         </span>
-                        {variantName && (
+                        {showVariant && (
                           <span className="text-[0.68rem] text-text-dim truncate">
                             Variant: {variantName}
                           </span>

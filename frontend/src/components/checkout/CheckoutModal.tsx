@@ -586,7 +586,7 @@ export default function CheckoutModal({
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-3 mb-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              
               <span className="text-[11px] font-bold text-text-main">
                 Step {checkoutActiveStep} of 4:
               </span>
@@ -837,7 +837,17 @@ export default function CheckoutModal({
               </div>
               <div className="max-h-[96px] overflow-y-auto pr-1 flex flex-col gap-1.5 scrollbar-thin">
                 {items.map((item) => {
-                  const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                  const rawName = String(item.name || '').trim();
+                  const lowerName = rawName.toLowerCase();
+                  const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                    .filter(Boolean)
+                    .map((p: string) => String(p).trim())
+                    .filter((p: string, pIdx: number, arr: string[]) => {
+                      if (!p) return false;
+                      if (lowerName.includes(p.toLowerCase())) return false;
+                      return arr.indexOf(p) === pIdx;
+                    });
+                  const variantText = variantParts.join(' • ');
                   return (
                     <div key={item.id} className="flex justify-between items-center p-1.5 px-2 bg-white/[0.02] border border-border-glass/40 rounded-lg text-xs">
                       <div className="flex flex-col text-left min-w-0 pr-2">

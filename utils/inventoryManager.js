@@ -163,7 +163,7 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
         }
     }
 
-    // CASE 3: Transition from PROCESSED to CANCELED (Rollback physical blanks & raw threads stockpile)
+    // CASE 3: Transition from PROCESSED to CANCELED (Rollback physical blanks & items stockpile)
     else if (isOldProcessed && isCancel) {
         for (const item of items) {
             const productId = item.productId || item.id;
@@ -380,15 +380,9 @@ async function reconcileReservedCounts(tx = prisma) {
 }
 
 /**
- * Helper to calculate thread quantities currently promised to active/pending orders.
- * 
- * @param {object} tx - Prisma context
- * @returns {Promise<object>} Map of inventoryId to reserved quantity
+ * No micro-metered thread calculations are performed.
+ * Garments and products use direct stock tracking.
  */
-async function getReservedThreadCounts(tx = prisma) {
-    // Thread spools are continuously maintained workshop studio assets, not micro-metered per letter
-    return {};
-}
 
 /**
  * Automatically cancels unpaid checkouts exceeding the 24-hour payment window
@@ -428,7 +422,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
     await autoExpireUnpaidOrders(tx);
 
     const inventory = await tx.inventory.findMany();
-    const reservedThreads = await getReservedThreadCounts(tx);
+    
 
     // Dynamic verified product ratings aggregation (Amazon/Shopee Standard)
     let ratingMap = {};
@@ -675,7 +669,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
 module.exports = {
     handleOrderStateTransition,
     enrichProductsWithStock,
-    getReservedThreadCounts,
+    
     reconcileReservedCounts,
     autoExpireUnpaidOrders,
     RESERVED_STATES,

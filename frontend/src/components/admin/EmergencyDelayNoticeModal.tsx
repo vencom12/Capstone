@@ -289,7 +289,7 @@ export default function EmergencyDelayNoticeModal({
                   Option A: Accept with Delay
                 </span>
                 {orderingPolicy === 'ALLOW_WITH_DELAY' && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-[11px] font-bold text-text-main">✓ Active</span>
                 )}
               </div>
               <span className="text-[11px] text-text-dim leading-snug">
@@ -315,7 +315,7 @@ export default function EmergencyDelayNoticeModal({
                   Option B: Pause New Orders
                 </span>
                 {orderingPolicy === 'PAUSE_ORDERS' && (
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-[11px] font-bold text-text-main">✓ Active</span>
                 )}
               </div>
               <span className="text-[11px] text-text-dim leading-snug">

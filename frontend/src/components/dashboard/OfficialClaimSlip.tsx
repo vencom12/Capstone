@@ -202,7 +202,7 @@ export default function OfficialClaimSlip({
               print-color-adjust: exact !important;
             }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
               background: #fff;
               color: #000;
               width: 100%;
@@ -216,7 +216,7 @@ export default function OfficialClaimSlip({
               background: #fff;
               color: #000;
               padding: 10px 8px;
-              font-family: monospace;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
               font-size: 11px;
               line-height: 1.35;
               text-align: center;
@@ -325,7 +325,13 @@ export default function OfficialClaimSlip({
       {/* Slip / Receipt Card */}
       <div
         id={`official-claim-slip-${orderId}`}
-        className="bg-white text-zinc-950 p-6 rounded-2xl font-mono text-center flex flex-col gap-3 text-xs border border-zinc-300 shadow-md select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
+        className="w-full max-w-[340px] sm:max-w-[360px] bg-white text-zinc-950 font-sans p-4 sm:p-5 rounded-xl text-center flex flex-col gap-3 text-xs border border-zinc-300 shadow-md select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
+        style={{
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+          lineHeight: '1.3',
+          color: '#000000',
+          backgroundColor: '#ffffff'
+        }}
       >
         {isDirectSale ? (
           /* ========================================================= */
@@ -338,7 +344,7 @@ export default function OfficialClaimSlip({
                 OFFICIAL SALES RECEIPT
               </div>
               <div className="text-lg font-black text-black mt-0.5 tracking-wider">
-                EDS TOWELS &amp; CAPS
+                Edz Towels &amp; Caps Embroidery
               </div>
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
@@ -397,7 +403,16 @@ export default function OfficialClaimSlip({
                   const itemPrice = Number(item.price || item.unitPrice || (effectiveTotal > 0 && totalQuantity > 0 ? (effectiveTotal / totalQuantity) : 0));
                   const lineTotal = itemPrice > 0 ? itemPrice * qty : 0;
                   const itemName = toSafeString(item.name || item.itemName || order.design) || 'Plain Garment';
-                  const variantName = [toSafeString(item.selectedVariant), toSafeString(item.selectedColor), item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                  const lowerItemName = itemName.toLowerCase();
+                  const variantParts = [toSafeString(item.selectedVariant), toSafeString(item.selectedColor), item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                    .filter(Boolean)
+                    .map((part: string) => part.trim())
+                    .filter((part: string, pIdx: number, arr: string[]) => {
+                      if (!part) return false;
+                      if (lowerItemName.includes(part.toLowerCase())) return false;
+                      return arr.indexOf(part) === pIdx;
+                    });
+                  const variantName = variantParts.join(' · ');
 
                   return (
                     <div key={idx} className="flex justify-between items-start bg-zinc-50 p-2 rounded border border-zinc-200">
@@ -447,7 +462,7 @@ export default function OfficialClaimSlip({
             {/* Direct Sale Footer Notice */}
             <div className="pt-1.5 flex flex-col items-center gap-1 text-center">
               <p className="text-[10px] font-bold text-zinc-800 uppercase m-0 leading-tight">
-                Thank you for shopping at Eds Towels &amp; Caps!
+                Thank you for shopping at Edz Towels &amp; Caps Embroidery!
               </p>
               <p className="text-[9px] text-zinc-500 m-0 leading-tight">
                 Direct counter purchase • No claim code required
@@ -468,7 +483,7 @@ export default function OfficialClaimSlip({
                 COUNTER CLAIM SLIP
               </div>
               <div className="text-lg font-black text-black mt-0.5 tracking-wider">
-                EDS TOWELS &amp; CAPS
+                Edz Towels &amp; Caps Embroidery
               </div>
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
@@ -521,8 +536,17 @@ export default function OfficialClaimSlip({
                   const customText = toSafeString(itemPers.text || pers.text);
                   const threadName = toSafeString(itemPers.threadColor?.name || itemPers.color || pers.color);
                   const fontName = toSafeString(itemPers.font?.name || pers.font);
-                  const variantName = [toSafeString(item.selectedVariant), item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
                   const itemName = toSafeString(item.name || 'Embroidered Item');
+                  const lowerName = itemName.toLowerCase();
+                  const variantParts = [toSafeString(item.selectedVariant), item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                    .filter(Boolean)
+                    .map((p: string) => p.trim())
+                    .filter((p: string, pIdx: number, arr: string[]) => {
+                      if (!p) return false;
+                      if (lowerName.includes(p.toLowerCase())) return false;
+                      return arr.indexOf(p) === pIdx;
+                    });
+                  const variantName = variantParts.join(' • ');
 
                   const rawNamesList = Array.isArray(itemPers.namesList) && itemPers.namesList.length > 0
                     ? itemPers.namesList
@@ -606,7 +630,7 @@ export default function OfficialClaimSlip({
                 Present this slip or Claim Code upon pickup
               </p>
               <p className="text-[9px] text-zinc-500 m-0 leading-tight">
-                Eds Towels &amp; Caps Counter • Pacific Mall Lucena
+                Edz Towels &amp; Caps Embroidery Counter • Pacific Mall Lucena
               </p>
             </div>
           </>

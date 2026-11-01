@@ -405,8 +405,8 @@ const executeAction = async (functionName, args, req) => {
 
             entity = ENTITIES.INVENTORY;
             entityId = updated.id;
-            actionDetails = `Restocked spool "${updated.item}" (+${amount} cones). New total: ${updated.count}`;
-            logAiChange(username, 'Restock Spool (AI Recommendation)', actionDetails);
+            actionDetails = `Restocked item "${updated.item}" (+${amount} units). New total: ${updated.count}`;
+            logAiChange(username, 'Restock Item (AI Recommendation)', actionDetails);
 
             try {
                 await getActiveSuggestions(true);
@@ -558,7 +558,7 @@ exports.chat = async (req, res) => {
             const firstName = (dbUser.name || dbUser.username || 'Team Member').split(' ')[0];
             const reply = `Hello **${firstName}** (${roleTitle}). StitchMaster AI active with live DB access.\n\n` +
                 `• **Operations:** Check rush queue, machine fleet & order status\n` +
-                `• **Materials:** Audit thread spools & generate restock forms\n` +
+                `• **Materials:** Audit inventory stock & generate restock forms\n` +
                 (dbUser.role === 'admin' 
                     ? `• **Business:** Daily revenue/profit, product pricing & catalog stock\n` 
                     : `• **Workbench:** Review assigned machines & update task status\n`) +
@@ -614,7 +614,7 @@ exports.chat = async (req, res) => {
         const isStockAuditQuery = (
             /\b(low stock|out of stock|stock level|stock status|check stock|stocks? (are|is)|how (are|is) (the )?stocks?|stock alert|stock health|audit stock|catalog stock|stock report|stock count|variant stock|product stock)\b/i.test(cleanMsg) ||
             (/\bstocks?\b/i.test(cleanMsg) && /\b(variant|product|catalog|material|spool|item|check|status|level|depleted|available|breakdown|all|goods?|real-time|real time)\b/i.test(cleanMsg)) ||
-            /\b(materials.*(low|critically)|thread spools.*(low|stock)|stockpiles?.*low|depleted.*variants?)\b/i.test(cleanMsg)
+            /\b(materials.*(low|critically)|stock items.*(low|stock)|stockpiles?.*low|depleted.*variants?)\b/i.test(cleanMsg)
         ) && !/\b(acquisition|requisition|order supplies|form)\b/i.test(cleanMsg);
 
         if (isStockAuditQuery) {
@@ -647,7 +647,7 @@ exports.chat = async (req, res) => {
             if (depletedOrOosProducts.length === 0 && lowMaterials.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "**Stock Levels Healthy:** All blank garments, variants, and thread spools are above minimum safety thresholds.",
+                    reply: "**Stock Levels Healthy:** All blank garments, variants, and store items are above minimum safety thresholds.",
                     tokensUsed: 0
                 });
             }
@@ -1046,45 +1046,12 @@ exports.chat = async (req, res) => {
 
         const conversionRate = totalVisits365D > 0 ? (totalOrders365D / totalVisits365D) : 0;
 
-        const productRecipes = {};
-        products.forEach(p => {
-            productRecipes[p.name.toLowerCase()] = p.recipe || [];
-        });
-
-        const materialConsumption = {};
-        inventory.forEach(inv => {
-            materialConsumption[inv.id] = 0;
-            materialConsumption[inv.item.toLowerCase()] = 0;
-        });
-
-        orders14d.forEach(order => {
-            const items = order.items || [];
-            items.forEach(item => {
-                const recipe = productRecipes[item.name.toLowerCase()] || [];
-                recipe.forEach(recipeItem => {
-                    const key = recipeItem.inventoryId || recipeItem.name.toLowerCase();
-                    const qty = (item.quantity || 1) * (recipeItem.quantity || 1);
-                    if (materialConsumption[key] !== undefined) {
-                        materialConsumption[key] += qty;
-                    } else {
-                        materialConsumption[recipeItem.name.toLowerCase()] = (materialConsumption[recipeItem.name.toLowerCase()] || 0) + qty;
-                    }
-                });
-            });
-        });
-
-        const biForecastSummary = dbUser.role === 'admin' ? inventory.map(inv => {
-            const consumption = materialConsumption[inv.id] || materialConsumption[inv.item.toLowerCase()] || 0;
-            const velocity = consumption / 14;
-            const days = velocity > 0 ? (inv.count / velocity) : 9999;
-            return {
-                item: inv.item,
-                count: inv.count,
-                velocity: parseFloat(velocity.toFixed(2)),
-                daysRemaining: days === 9999 ? 'Stable' : parseFloat(days.toFixed(1)),
-                risk: days <= 5 ? 'Critical' : (days <= 10 ? 'Warning' : 'Low')
-            };
-        }) : [];
+        const biForecastSummary = dbUser.role === 'admin' ? inventory.map(inv => ({
+            item: inv.item,
+            count: inv.count,
+            minThreshold: inv.minThreshold,
+            isLowStock: inv.count <= inv.minThreshold
+        })) : [];
 
         const orderSummary = {
             total: orders.length,
@@ -1186,7 +1153,7 @@ exports.chat = async (req, res) => {
         } else if (dbUser.role === 'admin') {
             userPromptContext += `\nCRITICAL ROLE PRIVILEGES & DUTIES:
 - You are chatting with an Administrator.
-- You have administrative access to adjust pricing, authorize spools restocks, prioritize orders, and audit registry logs.
+- You have administrative access to adjust pricing, authorize inventory restocks, prioritize orders, and audit registry logs.
 - Frame your assistance around business growth, efficiency, and optimization.`;
         }
 
@@ -1230,7 +1197,7 @@ exports.chat = async (req, res) => {
         - Every time you modify the database, the system will automatically record it in the change logs.
         - CRITICAL COMMAND & BATCH INSTRUCTION COMPLIANCE:
           1. Follow user instructions thoroughly and completely. Never skip or ignore requested items.
-          2. If the user instructs you to create MULTIPLE products (or spools, items, tasks), you MUST call the corresponding bulk or multiple tools to perform the actions.
+          2. If the user instructs you to create MULTIPLE products (or inventory items, tasks), you MUST call the corresponding bulk or multiple tools to perform the actions.
           3. For multiple products creation, call the "bulkCreateProducts" tool with the exact list of products, making sure to capture all attributes specified by the user (such as custom name, price, tag, description, or imageUrl). If attributes are labeled or structured in the prompt, map them exactly.
         
         CRITICAL TOOL USE CONSTRAINTS:

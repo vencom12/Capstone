@@ -595,13 +595,21 @@ export default function AdminPage() {
                                 <td className="glass-td text-left text-sm">
                                   {o.items && Array.isArray(o.items) ? (
                                     <div className="flex flex-col gap-0.5 truncate max-w-[250px]">
-                                      {o.items.map((item: any, idx: number) => {
-                                        const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                                                            {o.items.map((item: any, idx: number) => {
+                                        const rawName = String(item.name || '').trim();
+                                        const lowerName = rawName.toLowerCase();
+                                        const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                                          .filter(Boolean)
+                                          .map((p: string) => String(p).trim())
+                                          .filter((p: string, pIdx: number, arr: string[]) => {
+                                            if (!p) return false;
+                                            if (lowerName.includes(p.toLowerCase())) return false;
+                                            return arr.indexOf(p) === pIdx;
+                                          });
+                                        const variantText = variantParts.join(' • ');
                                         return (
                                           <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
-                                            {item.selectedColor && (
-                                              <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                            )}
+                                            
                                             <span className="font-medium">{item.quantity}x {item.name}</span>
                                             {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                           </div>
@@ -788,7 +796,7 @@ export default function AdminPage() {
           {/* Top-Right User Profile & Quick Actions */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-border-glass text-[0.7rem] text-text-dim">
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+              
               <span className="font-medium capitalize">
                 {dbType === 'postgres' || dbType === 'supabase' ? 'Supabase' : dbType}
               </span>

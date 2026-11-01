@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { showToast } from '@/components/ui/Toast';
-import { printWorkshopRoster, WorkshopRosterData } from '@/lib/printWorkshopRoster';
+export interface WorkshopRosterData {
+  orderId: string;
+  client: string;
+  itemName: string;
+  threadColor: string;
+  variantText?: string;
+  namesList: string[];
+}
 
 interface BulkNameRosterModalProps {
   isOpen: boolean;
@@ -77,9 +84,7 @@ export default function BulkNameRosterModal({
     showToast('Names list copied to clipboard!', 'success');
   };
 
-  const handlePrint = () => {
-    printWorkshopRoster(data);
-  };
+
 
   const filteredIndices = names
     .map((name, idx) => ({ name, idx }))
@@ -104,7 +109,7 @@ export default function BulkNameRosterModal({
             </h3>
             <p className="text-xs text-text-dim mt-0.5">
               Customer: <strong className="text-text-main">{data.client}</strong>
-              {data.variantText && ` • ${data.variantText}`}
+              {data.variantText && !data.itemName.toLowerCase().includes(data.variantText.toLowerCase()) && ` • ${data.variantText}`}
             </p>
           </div>
 
@@ -230,18 +235,7 @@ export default function BulkNameRosterModal({
         {/* Footer Actions */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-border-glass flex-wrap">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3.5 py-2 rounded-xl bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-              <span>Print Production Sheet</span>
-            </button>
+
 
             <button
               type="button"

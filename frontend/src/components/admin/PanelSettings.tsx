@@ -456,7 +456,7 @@ export default function PanelSettings({
         </div>
         {isFetchingSettings && (
           <div className="hidden sm:flex items-center gap-2 pr-3 text-xs text-text-dim">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            
             <span className="text-[11px] font-medium">Syncing...</span>
           </div>
         )}
@@ -1252,7 +1252,7 @@ export default function PanelSettings({
                         : 'bg-danger/10 border-danger/20 text-danger'
                     }`}>
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${pingResult.success ? 'bg-primary animate-pulse' : 'bg-danger'}`}></span>
+                        
                         <span className="font-bold uppercase tracking-wider text-[11px]">
                           {pingResult.success ? 'Operational' : 'Connection Error'}
                         </span>
@@ -1343,7 +1343,7 @@ export default function PanelSettings({
                     </div>
                     {theme === 'dark' && (
                       <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        
                         Active Theme
                       </span>
                     )}
@@ -1377,7 +1377,7 @@ export default function PanelSettings({
                     </div>
                     {theme === 'light' && (
                       <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        
                         Active Theme
                       </span>
                     )}

@@ -733,7 +733,7 @@ export default function PanelAnalytics({
                   AI Operational Intelligence &amp; Continuous Learning
                 </h3>
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success border border-success/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  
                   365-Day Model Active
                 </span>
               </div>

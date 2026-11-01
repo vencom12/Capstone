@@ -271,10 +271,20 @@ export default function OrderDetailsModal({
           <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
             {order.items && order.items.length > 0 ? (
               order.items.map((item, idx) => {
-                const variantText = [
+                const rawItemName = String(item.name || 'Custom Garment').trim();
+                const lowerItemName = rawItemName.toLowerCase();
+                const variantParts = [
                   item.selectedVariant,
                   item.selectedSize ? `Size: ${item.selectedSize}` : null
-                ].filter(Boolean).join(' • ');
+                ]
+                  .filter(Boolean)
+                  .map((part: string) => String(part).trim())
+                  .filter((part: string, pIdx: number, arr: string[]) => {
+                    if (!part) return false;
+                    if (lowerItemName.includes(part.toLowerCase())) return false;
+                    return arr.indexOf(part) === pIdx;
+                  });
+                const variantText = variantParts.join(' · ');
 
                 const persText = item.personalization?.text || (order.personalization as any)?.text;
                 const rawPersColor = item.personalization?.threadColor || (order.personalization as any)?.threadColor || (order.personalization as any)?.color;

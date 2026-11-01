@@ -1095,7 +1095,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {/* Clean BYOG Status & Base Price Header */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      
                       <div>
                         <span className="font-bold text-xs text-text-main block">Client-Provided Garment (BYOG)</span>
                         <span className="text-[11px] text-text-dim">Customer brings their own item (Cap, Shirt, Towel, Uniform)</span>
@@ -1796,7 +1796,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <div className="mb-3 space-y-2">
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      
                       <span className="font-bold text-xs text-text-main">Client-Provided Garment (BYOG)</span>
                     </div>
                     <span className="font-mono font-bold text-xs text-primary">Base: ₱{activeQuickItem?.price || 100}</span>
@@ -2220,7 +2220,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
             <div className="flex items-center gap-2">
               <div className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-mono text-xs font-bold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                
                 <span>{readyForClaimOrders.length} Packaged Bag(s) Waiting on Side</span>
               </div>
             </div>
@@ -2283,7 +2283,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <div>
                           {isReady ? (
                             <span className="text-xs px-2.5 py-1 rounded-md font-bold border border-primary/30 bg-primary/10 text-primary flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                              
                               <span>Bagged • Ready for Handover</span>
                             </span>
                           ) : isCompleted ? (

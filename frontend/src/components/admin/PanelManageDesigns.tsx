@@ -1438,7 +1438,7 @@ export default function PanelManageDesigns({
                         key={idx}
                         className="flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs border border-danger/60 bg-danger/15 text-text-main shadow-xs animate-[fadeIn_0.2s_ease-out]"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0 animate-ping" />
+                        
                         <span className="font-semibold text-danger-light text-[0.72rem]">
                           Remove <strong className="text-text-main">"{v.name}"</strong>?
                         </span>
@@ -1532,7 +1532,7 @@ export default function PanelManageDesigns({
                 {isAdmin && lastDeletedVariant && (
                   <div className="flex items-center justify-between px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[0.72rem] text-text-dim animate-fadeIn mt-0.5">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                      
                       Removed variant <strong className="text-text-main">"{lastDeletedVariant.variant.name}"</strong>
                     </span>
                     <button

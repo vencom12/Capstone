@@ -1731,7 +1731,7 @@ export default function PanelRawMaterials({
                       className={`inline-flex items-center gap-1 text-[0.62rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 backdrop-blur-md ${stockLevel.badgeClass}`}
                       title={stockLevel.description}
                     >
-                      <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: stockLevel.dotColor }} />
+                      
                       {stockLevel.label}
                     </span>
                   </div>

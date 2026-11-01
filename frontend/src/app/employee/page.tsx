@@ -27,7 +27,7 @@ import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
 import { printBagSlip } from '@/lib/printBagSlip';
 import BulkNameRosterModal from '@/components/employee/BulkNameRosterModal';
-import { WorkshopRosterData } from '@/lib/printWorkshopRoster';
+import { WorkshopRosterData } from '@/components/employee/BulkNameRosterModal';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -451,6 +451,14 @@ export default function EmployeePage() {
     }
   };
 
+    const handleQuickStatusChange = async (targetStatus: string, targetProgress?: number) => {
+    if (!selectedOrder) return;
+    const target = selectedOrder;
+    setIsProcessModalOpen(false);
+    setSelectedOrder(null);
+    await advanceOrderStatus(target, targetStatus, targetProgress);
+  };
+
   const advanceOrderStatus = async (order: any, nextStatus: string, customProgress?: number) => {
     const orderId = order.id || order._id;
     if (!orderId || updatingOrderIds[orderId]) return;
@@ -461,7 +469,7 @@ export default function EmployeePage() {
     const previousProgress = order.progress;
     const progress = customProgress !== undefined
       ? customProgress
-      : (nextStatus === 'Preparing Order' ? 50 : 100);
+      : (nextStatus === 'Preparing Order' ? 50 : (nextStatus === 'Ready For Pick Up' ? 90 : (nextStatus === 'In Queue' ? 10 : (nextStatus?.includes('Hold') ? 5 : (nextStatus === 'Order Canceled' ? 0 : 100)))));
 
     // 1. Instant optimistic UI transition (0ms UI lag)
     setOrders(prev => prev.map(o => {
@@ -621,6 +629,135 @@ export default function EmployeePage() {
     queuePage * queuePageSize
   );
 
+  // --- Mobile Touch Swipe Navigation & Gesture Detection ---
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchEndPos = useRef<{ x: number; y: number } | null>(null);
+
+  const totalActiveQueueCount = orders.filter(
+    (o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)
+  ).length;
+
+  const isAnyModalOpen = Boolean(
+    isProcessModalOpen ||
+    confirmingHandoverOrder ||
+    isReceiptModalOpen ||
+    isRosterModalOpen ||
+    isChangePasswordOpen
+  );
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Only track single-finger touches
+    if (e.touches.length !== 1) {
+      touchStartPos.current = null;
+      return;
+    }
+
+    // Abort if any modal or navigation drawer is active
+    if (isSidebarOpen || isAnyModalOpen) {
+      touchStartPos.current = null;
+      return;
+    }
+
+    const touch = e.touches[0];
+    const target = e.target as HTMLElement | null;
+
+    // Do not intercept interactive elements (inputs, textareas, selects, buttons, sliders, links, dialogs)
+    if (target) {
+      if (target.closest('input, textarea, select, button, a, [role="slider"], [role="spinbutton"], [role="dialog"], .no-swipe, [data-no-swipe="true"]')) {
+        touchStartPos.current = null;
+        return;
+      }
+      // Allow native horizontal scrolling within elements that have overflow-x scroll
+      const scrollParent = target.closest('.overflow-x-auto, .overflow-x-scroll');
+      if (scrollParent && scrollParent.scrollWidth > scrollParent.clientWidth) {
+        touchStartPos.current = null;
+        return;
+      }
+    }
+
+    // Ignore gestures originating right at device screen edges (system gesture safety zone)
+    if (touch.clientX < 18 || touch.clientX > (typeof window !== 'undefined' ? window.innerWidth - 18 : 360)) {
+      touchStartPos.current = null;
+      return;
+    }
+
+    touchStartPos.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+    touchEndPos.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current || e.touches.length !== 1) return;
+    touchEndPos.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+  };
+
+  const handleTouchCancel = () => {
+    touchStartPos.current = null;
+    touchEndPos.current = null;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartPos.current || !touchEndPos.current) {
+      touchStartPos.current = null;
+      touchEndPos.current = null;
+      return;
+    }
+
+    const deltaX = touchEndPos.current.x - touchStartPos.current.x;
+    const deltaY = touchEndPos.current.y - touchStartPos.current.y;
+    const deltaTime = Date.now() - touchStartPos.current.time;
+
+    touchStartPos.current = null;
+    touchEndPos.current = null;
+
+    // Strict validation:
+    // 1. Gesture completed within 650ms
+    // 2. Minimum horizontal displacement of 55px
+    // 3. Clear horizontal dominance (|deltaX| > |deltaY| * 1.4) ensuring vertical scrolling is never intercepted
+    if (deltaTime > 650) return;
+    if (Math.abs(deltaX) < 55) return;
+    if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.4) return;
+
+    const triggerHaptic = () => {
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(20);
+        } catch (_) {}
+      }
+    };
+
+    // Swiping Left (finger moves right to left): advances forward in workspace tabs
+    if (deltaX < -55) {
+      if (activeTab === 'orders') {
+        setActiveTab('counter');
+        triggerHaptic();
+      } else if (activeTab === 'counter') {
+        setActiveTab('history');
+        triggerHaptic();
+      }
+    }
+    // Swiping Right (finger moves left to right): steps backward in workspace tabs
+    else if (deltaX > 55) {
+      if (activeTab === 'counter') {
+        setActiveTab('orders');
+        triggerHaptic();
+      } else if (activeTab === 'history') {
+        setActiveTab('counter');
+        triggerHaptic();
+      } else if (activeTab === 'orders') {
+        // Swiping right from the order queue slides open the navigation drawer
+        setSidebarOpen(true);
+        triggerHaptic();
+      }
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'orders':
@@ -727,9 +864,7 @@ export default function EmployeePage() {
                             <td className="glass-td text-left">
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-1.5">
-                                  <span className={`w-2 h-2 rounded-full ${o.priorityScore >= 80 ? 'bg-danger animate-pulse ' :
-                                      o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
-                                    }`}></span>
+                                  
                                   <span className="font-bold text-text-main text-sm">
                                     Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
                                   </span>
@@ -778,9 +913,7 @@ export default function EmployeePage() {
                                     return (
                                       <div key={idx} className="flex flex-col text-xs">
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                          {item.selectedColor && (
-                                            <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                          )}
+                                          
                                           <span className="font-medium text-text-main">{item.quantity}x {item.name}</span>
                                           {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
                                         </div>
@@ -899,7 +1032,18 @@ export default function EmployeePage() {
                                   </svg>
                                   <span>Bag Slip</span>
                                 </button>
-                                {o.status === 'In Queue' && (
+                                {o.status?.includes('Hold') && (
+                          <button
+                            type="button"
+                            onClick={() => advanceOrderStatus(o, 'In Queue', 10)}
+                            disabled={updatingOrderIds[o.id || o._id]}
+                            className="flex-1 min-h-[40px] bg-white/10 hover:bg-white/15 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
+                          >
+                            {updatingOrderIds[o.id || o._id] ? 'Resuming...' : 'Resume to Queue'}
+                          </button>
+                        )}
+
+                        {o.status === 'In Queue' && (
                                   o.isByog && !o.garmentsReceivedAt ? (
                                     <button
                                       onClick={() => handleReceiveGarments(o)}
@@ -969,71 +1113,92 @@ export default function EmployeePage() {
             )}
 
             {/* Tablet & Mobile Card Block View */}
-            <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
+            <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2 pr-1">
               {isSyncing && orders.length === 0 ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <CardSkeleton key={i} />
                 ))
               ) : activeOrders.length === 0 ? (
-                <div className="glass-card p-6 text-center text-text-dim">No active orders in queue.</div>
+                <div className="glass-card p-6 text-center text-text-dim col-span-full">No active orders in queue.</div>
               ) : (
                 paginatedQueueOrders.map((o) => {
+                  const rawClient = o.personalization?.claimantName || o.client || o.clientName || 'Valued Customer';
+                  const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
+                  const hasPrimaryAction = (o.status === 'In Queue') || (o.status === 'Preparing Order') || (o.status === 'Ready For Pick Up') || Boolean(o.status?.includes('Hold'));
+
                   return (
-                    <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px]">
-                      <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
-                        {/* Left Side: ID & Status Badge, Client, Priority Details */}
-                        <div className="flex flex-col gap-2 text-left justify-between h-full">
+                    <div
+                      key={o.id || o._id}
+                      className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/40 transition-all gap-3"
+                    >
+                      {/* Top Split Body: Left Info / Right Items */}
+                      <div className="grid grid-cols-2 gap-3 items-start">
+                        {/* Left Column: Status Badge, Order ID, Date, Priority, Client */}
+                        <div className="flex flex-col gap-1.5 text-left">
                           {/* Status Badge */}
-                          <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
-                            ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                              o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                                'bg-white/10 text-text-dim border border-white/20'
+                          <span className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
+                            ${o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
+                              o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
+                                'bg-white/5 text-text-dim border border-border-glass'
                             }
                           `}>
                             {o.status} ({o.progress || 0}%)
                           </span>
 
-                          {/* Upper Left: ID & Timestamp & Priority */}
-                          <div className="flex flex-col">
-                            <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
-                            <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleString()}</span>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${o.priorityScore >= 80 ? 'bg-danger animate-pulse' :
-                                  o.priorityScore >= 40 ? 'bg-warning' : 'bg-primary'
-                                }`}></span>
-                              <span className="text-[0.7rem] font-bold text-text-main">
-                                Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
+                          {/* Order ID & Claim Code */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                            {(o.claimCode || o.personalization?.claimCode) && (
+                              <span className="text-[10.5px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
+                                {o.claimCode || o.personalization?.claimCode}
                               </span>
-                              {o.isRush && (
-                                <span className="text-[0.6rem] bg-danger/25 text-danger font-extrabold px-1 rounded uppercase">
-                                  Rush
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[0.65rem] text-text-dim mt-0.5">
-                              Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
-                            </span>
-                            {o.dueDate && (
-                              <span className={`text-[0.65rem] font-bold mt-0.5 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
-                                {getRelativeTime(o.dueDate)}
+                            )}
+                            {o.isRush && (
+                              <span className="text-[9px] bg-danger/25 text-danger font-extrabold px-1 rounded uppercase">
+                                Rush
                               </span>
                             )}
                           </div>
 
+                          {/* Date & Time */}
+                          <span className="text-[11px] text-text-dim">
+                            {new Date(o.date || o.createdAt).toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })}, {new Date(o.date || o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+
+                          {/* Priority Score & Est */}
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-main">
+                            
+                            <span>Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}</span>
+                            <span className="text-text-dim font-normal">•</span>
+                            <span className="text-text-dim font-normal">Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}</span>
+                          </div>
+
                           {/* Client Name */}
-                          <div className="flex flex-col text-left">
-                            <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">Client</span>
-                            <span className="font-bold text-text-main truncate max-w-[140px]">{o.client || 'Valued Customer'}</span>
+                          <div className="mt-1">
+                            <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Client</span>
+                            <span className="text-xs font-bold text-text-main truncate block max-w-[150px]" title={rawClient}>
+                              {cleanClient}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Right Side: Orders / Items (Scrollable List) */}
-                        <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
-                          <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">Orders / Items</span>
-                          <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
+                        {/* Right Column: Orders / Items (Clean & Finger-Friendly) */}
+                        <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">
+                          <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Orders / Items</span>
+                          <div className="flex flex-col gap-2">
                             {o.items && Array.isArray(o.items) ? (
                               o.items.map((item: any, idx: number) => {
-                                const variantText = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null].filter(Boolean).join(' • ');
+                                const rawName = String(item.name || '').trim();
+                                const lowerName = rawName.toLowerCase();
+                                const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                                  .filter(Boolean)
+                                  .map((p: string) => String(p).trim())
+                                  .filter((p: string, pIdx: number, arr: string[]) => {
+                                    if (!p) return false;
+                                    if (lowerName.includes(p.toLowerCase())) return false;
+                                    return arr.indexOf(p) === pIdx;
+                                  });
+                                const variantText = variantParts.join(' • ');
                                 const stitchText = item.personalization?.text || item.personalizationText || (typeof item.personalization === 'string' ? item.personalization : null);
                                 const rawColor2 = item.personalization?.threadColor || item.personalization?.color;
                                 const threadColor = typeof rawColor2 === 'object' && rawColor2 !== null ? (rawColor2.name || '') : (typeof rawColor2 === 'string' ? rawColor2 : '');
@@ -1050,18 +1215,14 @@ export default function EmployeePage() {
                                 const isBulkRoster = namesList.length > 1;
 
                                 return (
-                                  <div key={idx} className="py-1 border-b border-white/5 last:border-0 flex flex-col gap-0.5">
-                                    <div className="flex items-center justify-between gap-1.5">
-                                      <div className="flex items-center gap-1.5 truncate">
-                                        {item.selectedColor && (
-                                          <span className="w-2 h-2 rounded-full border border-white/20 inline-block shrink-0" style={{ backgroundColor: item.selectedColor }} />
-                                        )}
-                                        <span className="truncate">{item.quantity}x {item.name}</span>
-                                      </div>
-                                      {variantText && <span className="text-text-dim text-[0.65rem] shrink-0 font-sans">({variantText})</span>}
+                                  <div key={idx} className="flex flex-col gap-1 border-b border-white/5 last:border-0 pb-1">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      
+                                      <span className="text-xs font-bold text-text-main truncate">{item.quantity}x {item.name}</span>
                                     </div>
+
                                     {isBulkRoster ? (
-                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                      <div className="flex flex-col gap-1 mt-0.5">
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -1076,10 +1237,10 @@ export default function EmployeePage() {
                                             });
                                             setIsRosterModalOpen(true);
                                           }}
-                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-bg-surface hover:bg-white/10 text-text-main border border-border-glass text-[0.65rem] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 w-fit min-h-[34px]"
                                           title="View personalized names list"
                                         >
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                                             <rect x="9" y="3" width="6" height="4" rx="1" />
                                             <line x1="9" y1="12" x2="15" y2="12" />
@@ -1088,51 +1249,60 @@ export default function EmployeePage() {
                                           <span>Names ({namesList.length} pcs)</span>
                                         </button>
                                         {threadColor && (
-                                          <span className="text-text-dim text-[0.62rem] font-sans">
-                                            ({threadColor})
+                                          <span className="text-text-dim text-[11px] font-sans">
+                                            {threadColor}
                                           </span>
                                         )}
                                       </div>
                                     ) : stitchText ? (
-                                      <span className="text-[0.65rem] text-text-dim font-mono pl-2 border-l border-border-glass">
+                                      <span className="text-[11px] text-text-dim font-mono pl-1.5 border-l border-primary/40 truncate">
                                         &ldquo;{stitchText}&rdquo; {threadColor ? `(${threadColor})` : ''}
                                       </span>
+                                    ) : variantText ? (
+                                      <span className="text-text-dim text-[11px] font-sans">({variantText})</span>
                                     ) : null}
                                   </div>
                                 );
                               })
                             ) : (
-                              <div className="py-0.5">{o.design || 'Embroidery Design'}</div>
+                              <div className="text-xs text-text-main font-medium">{o.design || 'Embroidery Design'}</div>
                             )}
                           </div>
-                          {o.status === 'In Queue' && o.design && activeDesigns.includes(o.design.toLowerCase().trim()) && (
-                            <span className="inline-flex items-center justify-center gap-1 text-[0.6rem] bg-primary/15 text-primary border border-primary/30 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider w-full mt-1">
-                              Batch Matched
-                            </span>
-                          )}
                         </div>
                       </div>
 
-                      {/* Underneath Button */}
-                      <div className="flex gap-2 mt-auto w-full">
+                      {/* Bottom Action Bar (Balanced & Touch-Friendly) */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-white/5 w-full">
                         <button
                           type="button"
                           onClick={() => printBagSlip(o)}
                           title="Print 80mm thermal slip for garment bag"
-                          className="bg-white/5 border border-border-glass text-text-main py-2.5 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center shrink-0 flex items-center justify-center gap-1"
+                          className={`${hasPrimaryAction ? 'px-3' : 'flex-1'} min-h-[40px] bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 active:scale-95`}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim shrink-0">
                             <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
                             <circle cx="7" cy="7" r="1.5" />
                           </svg>
                           <span>Bag Slip</span>
                         </button>
+
+                        {o.status?.includes('Hold') && (
+                          <button
+                            type="button"
+                            onClick={() => advanceOrderStatus(o, 'In Queue', 10)}
+                            disabled={updatingOrderIds[o.id || o._id]}
+                            className="flex-1 min-h-[40px] bg-white/10 hover:bg-white/15 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
+                          >
+                            {updatingOrderIds[o.id || o._id] ? 'Resuming...' : 'Resume to Queue'}
+                          </button>
+                        )}
+
                         {o.status === 'In Queue' && (
                           o.isByog && !o.garmentsReceivedAt ? (
                             <button
                               onClick={() => handleReceiveGarments(o)}
                               disabled={updatingOrderIds[o.id]}
-                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center disabled:opacity-50"
+                              className="flex-1 min-h-[40px] bg-white/5 hover:bg-white/10 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
                             >
                               Intake
                             </button>
@@ -1140,7 +1310,7 @@ export default function EmployeePage() {
                             <button
                               onClick={() => advanceOrderStatus(o, 'Preparing Order', 50)}
                               disabled={updatingOrderIds[o.id]}
-                              className="flex-1 bg-white/5 hover:bg-white/10 border border-border-glass hover:border-primary/50 text-text-main hover:text-primary py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center disabled:opacity-50"
+                              className="flex-1 min-h-[40px] bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
                             >
                               {updatingOrderIds[o.id] ? 'Updating...' : 'Start Stitching'}
                             </button>
@@ -1150,21 +1320,21 @@ export default function EmployeePage() {
                           <button
                             onClick={() => advanceOrderStatus(o, 'Ready For Pick Up', 90)}
                             disabled={updatingOrderIds[o.id]}
-                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center disabled:opacity-50"
+                            className="flex-1 min-h-[40px] bg-primary/20 hover:bg-primary/30 border border-primary/35 text-primary py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
                           >
                             {updatingOrderIds[o.id] ? 'Updating...' : 'Finish & Stage'}
                           </button>
                         )}
                         {o.status === 'Ready For Pick Up' && (
                           <button
-                            onClick={() => {
-                              setConfirmingHandoverOrder(o);
-                            }}
-                            className="flex-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
+                            onClick={() => setConfirmingHandoverOrder(o)}
+                            className="flex-1 min-h-[40px] bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/35 text-emerald-400 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center active:scale-95"
                           >
                             Handover
                           </button>
                         )}
+
+                        {/* Adjust Button */}
                         <button
                           onClick={() => {
                             setSelectedOrder(o);
@@ -1172,12 +1342,13 @@ export default function EmployeePage() {
                             setOrderProgressInput((o.progress || 10).toString());
                             setIsProcessModalOpen(true);
                           }}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-bold cursor-pointer flex items-center justify-center"
+                          className={`${hasPrimaryAction ? 'w-10 px-2.5' : 'flex-1 px-3'} min-h-[40px] bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 active:scale-95`}
                           title="Manual adjustments"
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
                           </svg>
+                          {!hasPrimaryAction && <span>Adjust Status</span>}
                         </button>
                       </div>
                     </div>
@@ -1342,19 +1513,25 @@ export default function EmployeePage() {
                 </div>
 
                 {/* Tablet & Mobile Card Block View */}
-                <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pr-1">
+                <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2 pr-1">
                   {archivedOrders.length === 0 ? (
-                    <div className="glass-card p-6 text-center text-text-dim col-span-full">
+                    <div className="glass-card p-6 text-center text-text-dim col-span-full rounded-xl">
                       No historical completed or canceled orders found.
                     </div>
                   ) : (
                     archivedOrders.map((o) => {
+                      const rawClient = o.client || 'Valued Customer';
+                      const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
+
                       return (
-                        <div key={o.id || o._id} className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-lg p-5 flex flex-col justify-between text-left relative group h-[260px]">
-                          <div className="grid grid-cols-2 gap-4 py-1 text-sm flex-1 overflow-hidden mb-3">
-                            {/* Left Side: ID & Timestamp, Status Badge, Client Name */}
-                            <div className="flex flex-col gap-2.5 text-left justify-between h-full">
-                              <span className={`inline-block text-[0.7rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider w-fit
+                        <div
+                          key={o.id || o._id}
+                          className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs gap-3"
+                        >
+                          <div className="grid grid-cols-2 gap-3 items-start">
+                            {/* Left Side: ID & Timestamp, Status Badge, Client */}
+                            <div className="flex flex-col gap-1.5 text-left">
+                              <span className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
                                 ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
                                   'bg-danger/20 text-danger border border-danger/30'
                                 }
@@ -1362,24 +1539,22 @@ export default function EmployeePage() {
                                 {o.status}
                               </span>
 
-                              <div className="flex flex-col">
-                                <span className="font-mono text-sm font-bold text-text-main truncate max-w-[120px]">{o.orderId}</span>
-                                <span className="text-[0.65rem] text-text-dim mt-0.5">{new Date(o.date || o.createdAt).toLocaleDateString()}</span>
-                              </div>
+                              <span className="font-mono text-sm font-bold text-text-main mt-0.5">{o.orderId}</span>
+                              <span className="text-[11px] text-text-dim">{new Date(o.date || o.createdAt).toLocaleDateString()}</span>
 
-                              <div className="flex flex-col text-left">
-                                <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold mb-0.5">Client</span>
-                                <span className="font-bold text-text-main truncate max-w-[140px]">{o.client || 'Valued Customer'}</span>
+                              <div className="mt-1">
+                                <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Client</span>
+                                <span className="text-xs font-bold text-text-main truncate block max-w-[150px]">{cleanClient}</span>
                               </div>
                             </div>
 
-                            {/* Right Side: Orders / Items (Scrollable List) */}
-                            <div className="flex flex-col gap-1 text-left border-l border-border-glass/20 pl-4 h-full overflow-hidden">
-                              <span className="text-text-dim text-[0.7rem] uppercase tracking-wider block font-semibold">Orders / Items</span>
-                              <div className="flex-1 overflow-y-auto pr-1 text-xs text-text-main font-medium scrollbar-thin">
+                            {/* Right Side: Orders / Items */}
+                            <div className="flex flex-col gap-1 text-left border-l border-border-glass/30 pl-3">
+                              <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Orders / Items</span>
+                              <div className="flex flex-col gap-1 text-xs text-text-main font-medium">
                                 {o.items && Array.isArray(o.items) ? (
                                   o.items.map((item: any, idx: number) => (
-                                    <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate">
+                                    <div key={idx} className="py-0.5 border-b border-white/5 last:border-0 truncate font-semibold">
                                       {item.quantity}x {item.name}
                                     </div>
                                   ))
@@ -1390,15 +1565,22 @@ export default function EmployeePage() {
                             </div>
                           </div>
 
-                          <div className="w-full mt-1">
+                          <div className="w-full pt-2 border-t border-white/5">
                             <button
                               onClick={() => {
                                 setViewingReceiptOrder(o);
                                 setIsReceiptModalOpen(true);
                               }}
-                              className="w-full bg-primary/10 border border-primary/20 text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer text-center"
+                              className="w-full bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
                             >
-                              View Receipt Preview
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
+                              </svg>
+                              <span>View Receipt Preview</span>
                             </button>
                           </div>
                         </div>
@@ -1508,7 +1690,13 @@ export default function EmployeePage() {
       <EmployeeSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
+      <div
+        className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
         <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-2 sm:gap-4 max-w-full overflow-hidden">
           <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
@@ -1536,6 +1724,16 @@ export default function EmployeePage() {
               <span className="text-text-dim/40 hidden sm:inline">/</span>
               <span className="font-bold text-text-main text-sm sm:text-base tracking-tight truncate">
                 {tabTitles[activeTab] || 'Workbench'}
+              </span>
+              <span
+                className="min-[651px]:hidden text-[0.62rem] px-2 py-0.5 rounded-full bg-white/5 border border-border-glass text-text-dim font-medium shrink-0 flex items-center gap-1 select-none"
+                title="Swipe left or right on screen to switch tabs"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18-6-6 6-6"/>
+                  <path d="m15 6 6 6-6 6"/>
+                </svg>
+                Swipe
               </span>
             </div>
           </div>
@@ -1619,6 +1817,91 @@ export default function EmployeePage() {
         </main>
       </div>
 
+      {/* Mobile Artisan Quick Switcher Bar (One-Thumb Mobile Friendly Navigation) */}
+      {!isAnyModalOpen && (
+        <nav
+          aria-label="Artisan Quick Switcher"
+          className="min-[651px]:hidden fixed bottom-0 left-0 right-0 z-[1800] bg-bg-sidebar/95 backdrop-blur-xl border-t border-border-glass px-2 py-1.5 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] flex items-center justify-around shadow-2xl transition-all"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl transition-all cursor-pointer border ${
+              activeTab === 'orders'
+                ? 'bg-primary/15 text-primary border-primary/30 font-bold shadow-sm'
+                : 'bg-transparent text-text-dim border-transparent hover:text-text-main'
+            }`}
+          >
+            <div className="relative">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              {totalActiveQueueCount > 0 && (
+                <span className={`absolute -top-1.5 -right-3 text-[0.6rem] font-black px-1.5 py-0.2 rounded-full leading-tight ${
+                  activeTab === 'orders' ? 'bg-primary text-white' : 'bg-white/20 text-text-main'
+                }`}>
+                  {totalActiveQueueCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[0.68rem] tracking-tight">Queue</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('counter')}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl transition-all cursor-pointer border ${
+              activeTab === 'counter'
+                ? 'bg-primary/15 text-primary border-primary/30 font-bold shadow-sm'
+                : 'bg-transparent text-text-dim border-transparent hover:text-text-main'
+            }`}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9Z" />
+              <path d="M12 12h.01" />
+              <path d="M16 12h.01" />
+              <path d="M8 12h.01" />
+              <path d="M12 16h.01" />
+              <path d="M16 16h.01" />
+              <path d="M8 16h.01" />
+              <path d="m6 6 2-3h8l2 3" />
+            </svg>
+            <span className="text-[0.68rem] tracking-tight">Walk-In</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl transition-all cursor-pointer border ${
+              activeTab === 'history'
+                ? 'bg-primary/15 text-primary border-primary/30 font-bold shadow-sm'
+                : 'bg-transparent text-text-dim border-transparent hover:text-text-main'
+            }`}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18" />
+              <path d="M18 9l-5 5-4-4-4 4" />
+            </svg>
+            <span className="text-[0.68rem] tracking-tight">History</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-text-dim hover:text-text-main transition-all cursor-pointer border border-transparent"
+            aria-label="Open Navigation Drawer"
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+            <span className="text-[0.68rem] tracking-tight">Menu</span>
+          </button>
+        </nav>
+      )}
+
       {/* Modals */}
 
 
@@ -1687,83 +1970,162 @@ export default function EmployeePage() {
         )}
       </GlassModal>
 
-      {/* Process Order Modal */}
+      {/* Quick Status Action Sheet Modal */}
       <GlassModal
         isOpen={isProcessModalOpen}
         onClose={() => {
           setIsProcessModalOpen(false);
           setSelectedOrder(null);
         }}
-        title="Process Order Ticket"
-        maxWidth="max-w-[450px]"
+        title="Adjust Order Status"
+        maxWidth="max-w-[420px]"
       >
         {selectedOrder && (
-          <form onSubmit={handleUpdateOrderStatus} className="flex flex-col gap-4 text-left">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-text-dim">Order ID</span>
-              <span className="font-mono font-bold text-text-main text-base">{selectedOrder.orderId}</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-text-main">Order Status</label>
-              <GlassSelect
-                value={orderStatusInput}
-                onChange={(status) => {
-                  setOrderStatusInput(status);
-                  // Map status to dynamic defaults
-                  const progressMap: Record<string, string> = {
-                    'In Queue': '15',
-                    'Preparing Order': '50',
-                    'Ready For Pick Up': '90',
-                    'Completed': '100',
-                    'Order Canceled': '0'
-                  };
-                  if (progressMap[status] !== undefined) {
-                    setOrderProgressInput(progressMap[status]);
-                  }
-                }}
-                options={[
-                  'In Queue',
-                  'Preparing Order',
-                  'Ready For Pick Up',
-                  'Completed',
-                  'Order Canceled'
-                ]}
-                cols={2}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-semibold text-text-main">Progress Percentage</label>
-                <span className="text-primary font-mono font-bold text-sm">{orderProgressInput}%</span>
+          <div className="flex flex-col gap-3 text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-border-glass">
+              <div>
+                <span className="text-[11px] text-text-dim uppercase tracking-wider block">Order ID</span>
+                <span className="font-mono font-bold text-text-main text-base">{selectedOrder.orderId}</span>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={orderProgressInput}
-                onChange={(e) => setOrderProgressInput(e.target.value)}
-                className="w-full h-1.5 bg-border-glass rounded-lg appearance-none cursor-pointer accent-primary"
-              />
+              <div className="text-right">
+                <span className="text-[11px] text-text-dim uppercase tracking-wider block">Current Status</span>
+                <span className="text-xs font-bold text-text-main px-2.5 py-0.5 rounded-full bg-white/5 border border-border-glass inline-block mt-0.5">
+                  {selectedOrder.status}
+                </span>
+              </div>
             </div>
-            <div className="flex gap-3 mt-4">
-              <button
-                type="submit"
-                className="flex-1 bg-bg-surface hover:bg-primary/15 border border-primary/50 hover:border-primary text-text-main hover:text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer text-sm"
-              >
-                Update Ticket
-              </button>
+
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider mt-1">
+              Select Production Milestone
+            </span>
+
+            <div className="flex flex-col gap-2">
+              {/* Option: In Queue */}
+              {selectedOrder.status !== 'In Queue' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickStatusChange('In Queue', 10)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-left transition-all cursor-pointer active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-text-main">Move to In Queue</div>
+                      <div className="text-[11px] text-text-dim">Ready on table awaiting machine hooping</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-text-dim group-hover:text-text-main">10%</span>
+                </button>
+              )}
+
+              {/* Option: Preparing Order / Stitching */}
+              {selectedOrder.status !== 'Preparing Order' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickStatusChange('Preparing Order', 50)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-left transition-all cursor-pointer active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-text-main">Start Stitching (Preparing Order)</div>
+                      <div className="text-[11px] text-text-dim">Loaded on commercial embroidery machine</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-text-dim group-hover:text-text-main">50%</span>
+                </button>
+              )}
+
+              {/* Option: Ready For Pick Up */}
+              {selectedOrder.status !== 'Ready For Pick Up' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickStatusChange('Ready For Pick Up', 90)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-left transition-all cursor-pointer active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-text-main">Stage for Counter Pick Up</div>
+                      <div className="text-[11px] text-text-dim">Stitching finished and bagged with claim stub</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-text-dim group-hover:text-text-main">90%</span>
+                </button>
+              )}
+
+              {/* Option: On Hold */}
+              {!selectedOrder.status?.includes('Hold') && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickStatusChange('On Hold - Awaiting Materials', 5)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-left transition-all cursor-pointer active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-text-main">Put On Hold (Awaiting Materials)</div>
+                      <div className="text-[11px] text-text-dim">Paused for thread color or garment replenishment</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-text-dim group-hover:text-text-main">5%</span>
+                </button>
+              )}
+
+              {/* Option: Complete */}
+              {selectedOrder.status !== 'Completed' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickStatusChange('Completed', 100)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-left transition-all cursor-pointer active:scale-95 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-text-main">Handover &amp; Complete</div>
+                      <div className="text-[11px] text-text-dim">Customer claimed and verified items</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-text-dim group-hover:text-text-main">100%</span>
+                </button>
+              )}
+
+              {/* Option: Cancel Order */}
+              {selectedOrder.status !== 'Order Canceled' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to cancel Order #${selectedOrder.orderId}?`)) {
+                      handleQuickStatusChange('Order Canceled', 0);
+                    }
+                  }}
+                  className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/20 text-left transition-all cursor-pointer active:scale-95 group mt-1"
+                >
+                  <div className="flex items-center gap-2.5">
+                    
+                    <div>
+                      <div className="text-sm font-bold text-rose-400">Cancel Order</div>
+                      <div className="text-[11px] text-text-dim">Abort production and flag ticket as canceled</div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono text-rose-400">0%</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border-glass mt-1">
               <button
                 type="button"
                 onClick={() => {
                   setIsProcessModalOpen(false);
                   setSelectedOrder(null);
                 }}
-                className="bg-white/5 border border-border-glass text-text-main font-bold py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-sm"
+                className="w-full bg-white/5 border border-border-glass text-text-main font-bold py-2.5 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-xs"
               >
-                Cancel
+                Close
               </button>
             </div>
-          </form>
+          </div>
         )}
       </GlassModal>
 

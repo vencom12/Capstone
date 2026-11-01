@@ -1346,7 +1346,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
         const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
 
         if (lowStockItems.length === 0) {
-            return res.status(400).send('All stockpile spools are healthy. No restocks required!');
+            return res.status(400).send('All inventory items are healthy. No restocks required!');
         }
 
         // Calculate dynamic height based on number of items
@@ -1365,7 +1365,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
 
         // Header
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
 
         doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
         doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });
@@ -1494,7 +1494,7 @@ exports.downloadDailyFinancialPdf = async (req, res) => {
 
         doc.pipe(res);
 
-        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
 
         doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });
         doc.font('Helvetica').fontSize(8).text('DAILY FINANCIAL & EXPENSES REPORT', { align: 'center' });

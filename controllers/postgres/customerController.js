@@ -1248,7 +1248,7 @@ exports.getPublicSettings = async (req, res) => {
         const publicSettingsPayload = {
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
-            businessName: settings?.businessName || 'EDS TOWELS & CAPS',
+            businessName: settings?.businessName || 'Edz Towels & Caps Embroidery',
             businessAddress: settings?.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: settings?.businessContact || '0928 810 3928',
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
@@ -1289,7 +1289,7 @@ exports.getPublicSettings = async (req, res) => {
         res.json({
             giftPackagingPrice: 5.00,
             deliveryEnabled: false,
-            businessName: 'EDS TOWELS & CAPS',
+            businessName: 'Edz Towels & Caps Embroidery',
             businessAddress: 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: '0928 810 3928',
             receiptTagline: 'Custom Embroidery & Apparel Workshop',
@@ -1423,7 +1423,7 @@ exports.downloadReceipt = async (req, res) => {
 
         // Fetch dynamic business settings
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'EDS TOWELS & CAPS';
+        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
         const bizTagline = settings?.receiptTagline || 'Custom Embroidery & Apparel';
         const bizAddress = settings?.businessAddress || 'Pacific Mall Lucena, Quezon Province';
         const bizContact = settings?.businessContact || '0928 810 3928';
@@ -1502,8 +1502,18 @@ exports.downloadReceipt = async (req, res) => {
 
         // Items
         items.forEach(item => {
-            const variantInfo = [item.selectedVariant, item.selectedSize ? `Size:${item.selectedSize}` : ''].filter(Boolean).join(' ');
-            const displayName = variantInfo ? `${item.name || 'Design'} (${variantInfo})` : (item.name || 'Design');
+            const rawName = item.name || 'Design';
+            const lowerName = rawName.toLowerCase();
+            const variantParts = [item.selectedVariant, item.selectedSize ? `Size:${item.selectedSize}` : '']
+                .filter(Boolean)
+                .map(part => String(part).trim())
+                .filter((part, pIdx, arr) => {
+                    if (!part) return false;
+                    if (lowerName.includes(part.toLowerCase())) return false;
+                    return arr.indexOf(part) === pIdx;
+                });
+            const variantInfo = variantParts.join(' ');
+            const displayName = variantInfo ? `${rawName} (${variantInfo})` : rawName;
             const name = displayName.substring(0, 18).padEnd(18);
             const qty = String(item.quantity || 1).padEnd(4);
             const price = `P${(parseFloat(item.price || 0) * (item.quantity || 1)).toFixed(2)}`.padStart(8);
