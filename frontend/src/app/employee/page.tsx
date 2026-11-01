@@ -1812,7 +1812,7 @@ export default function EmployeePage() {
           </div>
         </header>
 
-        <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-8 pb-24 scrollbar-thin overflow-x-hidden">
+        <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-8 pb-24 scrollbar-thin overflow-x-clip">
           {renderTabContent()}
         </main>
       </div>

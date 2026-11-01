@@ -839,7 +839,7 @@ export default function AdminPage() {
         </header>
 
         {/* Content injection viewport */}
-        <main className="dash-main flex-1 max-w-[1500px] w-full mx-auto pb-24 overflow-x-hidden">
+        <main className="dash-main flex-1 max-w-[1500px] w-full mx-auto pb-24 overflow-x-clip">
           {loadError && (
             <div className="mx-5 mt-4 px-4 py-3 rounded-xl bg-danger/10 border border-danger/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm text-danger">

@@ -1009,7 +1009,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       `}</style>
 
       {/* Clean Top Tab Switcher */}
-      <div className="flex flex-row items-center justify-start pb-2 border-b border-border-glass mb-1 overflow-x-auto no-scrollbar w-full max-w-full">
+      <div className="sticky top-0 lg:top-[52px] z-[40] bg-bg-dark/95 backdrop-blur-md pt-1 pb-2 border-b border-border-glass mb-3 overflow-x-auto no-scrollbar w-full max-w-full flex items-center justify-start">
         {/* Tab Switcher */}
         <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 gap-1 shrink-0">
           <button
@@ -1556,7 +1556,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           </div>
 
           {/* Right Column: Payment & Ticket Actions (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-3">
+          <div className="lg:col-span-5 lg:sticky lg:top-[104px] self-start flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
@@ -2142,7 +2142,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           </div>
 
           {/* Right Column: Live Shift Tally (4 cols) */}
-          <div className="lg:col-span-4 flex flex-col gap-3">
+          <div className="lg:col-span-4 lg:sticky lg:top-[104px] self-start flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase tracking-wider font-bold text-text-dim block">
