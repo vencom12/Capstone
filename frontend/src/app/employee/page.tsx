@@ -676,7 +676,7 @@ export default function EmployeePage() {
     }
 
     // Ignore gestures originating right at device screen edges (system gesture safety zone)
-    if (touch.clientX < 18 || touch.clientX > (typeof window !== 'undefined' ? window.innerWidth - 18 : 360)) {
+    if (touch.clientX < 40 || touch.clientX > (typeof window !== 'undefined' ? window.innerWidth - 40 : 360)) {
       touchStartPos.current = null;
       return;
     }
@@ -732,27 +732,21 @@ export default function EmployeePage() {
       }
     };
 
-    // Swiping Left (finger moves right to left): advances forward in workspace tabs
+    // Clean in-page tab switching: swipe left moves to next tab, swipe right moves to previous tab
+    const WORKSPACE_TABS = ['orders', 'counter', 'history', 'support', 'settings'];
+    const currentIndex = WORKSPACE_TABS.indexOf(activeTab);
+
+    // Swiping Left (finger moves right to left): advances to the next tab
     if (deltaX < -55) {
-      if (activeTab === 'orders') {
-        setActiveTab('counter');
-        triggerHaptic();
-      } else if (activeTab === 'counter') {
-        setActiveTab('history');
+      if (currentIndex !== -1 && currentIndex < WORKSPACE_TABS.length - 1) {
+        setActiveTab(WORKSPACE_TABS[currentIndex + 1]);
         triggerHaptic();
       }
     }
-    // Swiping Right (finger moves left to right): steps backward in workspace tabs
+    // Swiping Right (finger moves left to right): returns to the previous tab
     else if (deltaX > 55) {
-      if (activeTab === 'counter') {
-        setActiveTab('orders');
-        triggerHaptic();
-      } else if (activeTab === 'history') {
-        setActiveTab('counter');
-        triggerHaptic();
-      } else if (activeTab === 'orders') {
-        // Swiping right from the order queue slides open the navigation drawer
-        setSidebarOpen(true);
+      if (currentIndex > 0) {
+        setActiveTab(WORKSPACE_TABS[currentIndex - 1]);
         triggerHaptic();
       }
     }
@@ -1685,13 +1679,13 @@ export default function EmployeePage() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main relative">
+    <div className="flex h-screen w-full overflow-hidden bg-transparent text-text-main relative overscroll-x-none touch-pan-y">
       {/* Dynamic sliding drawer sidebar */}
       <EmployeeSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Viewport */}
       <div
-        className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full"
+        className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full overscroll-x-none touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
