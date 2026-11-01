@@ -265,16 +265,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           const validProducts = data.filter(p => !p.name.includes('TEST Embroidered Hand Towel'));
           setLiveProducts(validProducts);
           if (validProducts.length > 0) {
-            const firstP = validProducts[0];
-            setSelectedProductId(firstP.id);
-            const defVar = firstP.variants && firstP.variants.length > 0
-              ? firstP.variants.find((v: any) => ((v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0)) || firstP.variants[0]
-              : null;
-            setSelectedVariant(defVar);
-            setUnitPrice(defVar?.priceOverride || firstP.price);
-            setQuickProductId(firstP.id);
-            setQuickVariant(defVar);
-            setQuickPrice(defVar?.priceOverride || firstP.price);
+            setSelectedProductId(validProducts[0].id);
+            setUnitPrice(validProducts[0].price);
+            setQuickProductId(validProducts[0].id);
+            setQuickPrice(validProducts[0].price);
           }
         }
       } catch (err) {
@@ -364,12 +358,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       const firstInCat = storeCatalog.find(i => i.category === cat && !i.isByog);
       if (firstInCat && (!activeSelectedItem || activeSelectedItem.isByog || activeSelectedItem.category !== cat)) {
         setSelectedProductId(firstInCat.id);
-        const defVar = firstInCat.variants && firstInCat.variants.length > 0
-          ? firstInCat.variants.find((v: any) => ((v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0)) || firstInCat.variants[0]
-          : null;
-        setSelectedVariant(defVar);
-        setIntakeVariantError(null);
-        setUnitPrice(defVar?.priceOverride || firstInCat.price);
+        setSelectedVariant(null);
+        setUnitPrice(firstInCat.price);
       }
     }
   };
@@ -387,33 +377,23 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       const firstInCat = storeCatalog.find(i => i.category === cat && !i.isByog);
       if (firstInCat && (!activeQuickItem || activeQuickItem.isByog || activeQuickItem.category !== cat)) {
         setQuickProductId(firstInCat.id);
-        const defVar = firstInCat.variants && firstInCat.variants.length > 0
-          ? firstInCat.variants.find((v: any) => ((v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0)) || firstInCat.variants[0]
-          : null;
-        setQuickVariant(defVar);
-        setQuickPrice(defVar?.priceOverride || firstInCat.price);
+        setQuickPrice(firstInCat.price);
       }
     }
   };
 
   const handleSelectItem = (item: any) => {
     setSelectedProductId(item.id);
-    const defVar = item.variants && item.variants.length > 0
-      ? item.variants.find((v: any) => ((v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0)) || item.variants[0]
-      : null;
-    setSelectedVariant(defVar);
+    setSelectedVariant(null);
     setIntakeVariantError(null);
-    setUnitPrice(defVar?.priceOverride || item.price);
+    setUnitPrice(item.price);
   };
 
   const handleSelectQuickItem = (item: any) => {
     setQuickProductId(item.id);
-    const defVar = item.variants && item.variants.length > 0
-      ? item.variants.find((v: any) => ((v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)) > 0)) || item.variants[0]
-      : null;
-    setQuickVariant(defVar);
+    setQuickVariant(null);
     setQuickVariantError(null);
-    setQuickPrice(defVar?.priceOverride || item.price);
+    setQuickPrice(item.price);
   };
 
   // Lettering extra pricing rule:
@@ -1029,15 +1009,15 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
       `}</style>
 
       {/* Clean Top Tab Switcher */}
-      <div className="pb-3 border-b border-border-glass mb-4 overflow-x-auto no-scrollbar w-full max-w-full flex items-center justify-start">
+      <div className="relative z-10 flex items-center justify-start pt-1 pb-3 border-b border-border-glass/50 mb-4 overflow-x-auto no-scrollbar w-full max-w-full">
         {/* Tab Switcher */}
-        <div className="flex bg-bg-card border border-border-glass rounded-xl p-1 gap-1 shrink-0 shadow-xs">
+        <div className="flex bg-bg-surface border border-border-glass rounded-lg p-0.5 gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('register')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'register'
-              ? 'bg-primary text-white shadow-xs'
-              : 'text-text-dim hover:text-text-main hover:bg-white/5'
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'register'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-dim hover:text-text-main'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1048,9 +1028,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('quick_punch')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'quick_punch'
-              ? 'bg-primary text-white shadow-xs'
-              : 'text-text-dim hover:text-text-main hover:bg-white/5'
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${activeTab === 'quick_punch'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-dim hover:text-text-main'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1061,9 +1041,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           <button
             type="button"
             onClick={() => setActiveTab('turnover')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${activeTab === 'turnover'
-              ? 'bg-primary text-white shadow-xs'
-              : 'text-text-dim hover:text-text-main hover:bg-white/5'
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${activeTab === 'turnover'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-dim hover:text-text-main'
               }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -1071,7 +1051,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             </svg>
             <span>Claim &amp; Handover</span>
             {readyForClaimOrders.length > 0 && (
-              <span className="bg-white/20 text-current border border-white/30 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+              <span className="bg-white/15 text-current border border-white/20 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
                 {readyForClaimOrders.length} Ready
               </span>
             )}
@@ -1086,52 +1066,36 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade">
           {/* Main Column: Item Selector & Monogram Text (7 cols) */}
           <div className="lg:col-span-7 flex flex-col gap-3">
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-3.5">
-              {/* Category Header & Clean Segmented Control */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  <span className="text-xs font-black text-text-main uppercase tracking-wider">
-                    {selectedCategory === 'Custom' ? '1. Client Garment (BYOG)' : '1. Store Catalog Garments'}
-                  </span>
-                </div>
-                <span className="text-[11px] text-text-dim font-medium">
-                  {selectedCategory === 'Custom' ? 'Client-Provided Item' : `${displayedCatalog.length} Products`}
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm">
+              {/* Category Pills Header */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  {selectedCategory === 'Custom' ? '1. Customer Garment (BYOG)' : '1. Pick Store Item'}
                 </span>
-              </div>
-
-              {/* Segmented Category Filter Bar - Equal Grid, Zero Clipping */}
-              <div className="grid grid-cols-4 p-1 bg-bg-card border border-border-glass rounded-xl gap-1 shadow-xs">
-                {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => {
-                  const isCatActive = selectedCategory === cat;
-                  const labelMap: Record<typeof cat, string> = {
-                    Towels: 'Towels',
-                    Fans: 'Fans',
-                    Custom: 'BYOG',
-                    All: 'All Items'
-                  };
-                  return (
+                <div className="flex gap-1">
+                  {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => handleSelectCategory(cat)}
-                      className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all cursor-pointer text-center truncate ${isCatActive
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${selectedCategory === cat
+                        ? 'bg-text-main text-bg-surface shadow-xs'
+                        : 'bg-bg-card border border-border-glass text-text-dim hover:text-text-main'
                         }`}
                     >
-                      {labelMap[cat]}
+                      {cat}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
               {/* If Custom is selected: Directly show BYOG Garment Size & Rate without redundant card selection! */}
               {selectedCategory === 'Custom' ? (
                 <div className="space-y-3">
                   {/* Clean BYOG Status & Base Price Header */}
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-primary/10 border border-primary/30">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
+                      
                       <div>
                         <span className="font-bold text-xs text-text-main block">Client-Provided Garment (BYOG)</span>
                         <span className="text-[11px] text-text-dim">Customer brings their own item (Cap, Shirt, Towel, Uniform)</span>
@@ -1155,9 +1119,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <button
                         type="button"
                         onClick={() => setByogGarmentType('small')}
-                        className={`p-3 rounded-xl border-2 text-left cursor-pointer transition ${byogGarmentType === 'small'
-                            ? 'bg-primary/10 border-primary text-text-main ring-1 ring-primary/40 shadow-xs'
-                            : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${byogGarmentType === 'small'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
                       >
                         <div className="font-bold text-xs flex items-center justify-between">
@@ -1169,9 +1133,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <button
                         type="button"
                         onClick={() => setByogGarmentType('big')}
-                        className={`p-3 rounded-xl border-2 text-left cursor-pointer transition ${byogGarmentType === 'big'
-                            ? 'bg-primary/10 border-primary text-text-main ring-1 ring-primary/40 shadow-xs'
-                            : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                        className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${byogGarmentType === 'big'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
                       >
                         <div className="font-bold text-xs flex items-center justify-between">
@@ -1190,13 +1154,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
                       value={customByogName}
                       onChange={(e) => setCustomByogName(e.target.value)}
-                      className="w-full bg-bg-card border border-border-glass p-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary/50"
+                      className="w-full bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary/50"
                     />
                   </div>
                 </div>
               ) : (
                 <>
-                  {/* High Quality Product Selection Cards */}
+                  {/* Compressed Item Cards */}
                   <div className="grid grid-cols-2 gap-2">
                     {displayedCatalog.map((item) => {
                       const isSelected = selectedProductId === item.id;
@@ -1205,23 +1169,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           key={item.id}
                           type="button"
                           onClick={() => handleSelectItem(item)}
-                          className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                            ? 'border-primary bg-primary/[0.04] ring-1 ring-primary/30 shadow-xs'
-                            : 'border-border-glass bg-bg-card hover:border-primary/30 hover:bg-white/[0.02] text-text-main'
+                          className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                            ? 'bg-white/10 border-text-main text-text-main shadow-sm'
+                            : 'bg-bg-card border-border-glass text-text-main hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-                              <span className={`font-bold text-xs leading-snug truncate ${isSelected ? 'text-primary' : 'text-text-main'}`}>
-                                {item.name}
-                              </span>
-                            </div>
-                            <span className={`font-mono font-bold text-xs shrink-0 px-2 py-0.5 rounded-md ${
-                              isSelected ? 'bg-primary/15 text-primary' : 'bg-white/5 text-text-main'
-                            }`}>
-                              ₱{item.price}
-                            </span>
+                            <span className="font-bold text-xs leading-snug">{item.name}</span>
+                            <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
                           {item.isByog && (
                             <span className="text-[10px] text-text-dim mt-1 font-medium">Customer Item</span>
@@ -1233,23 +1188,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Variant Swatches (if available) */}
                   {activeSelectedItem.variants && activeSelectedItem.variants.length > 0 && (
-                    <div className="mt-2 pt-2.5 border-t border-border-glass flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                          Select Color Variant:
-                        </span>
-                        {selectedVariant && (
-                          <span className="text-xs font-semibold text-text-main flex items-center gap-1.5">
-                            {selectedVariant.color && (
-                              <span
-                                className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
-                                style={{ backgroundColor: selectedVariant.color }}
-                              />
-                            )}
-                            <span>{selectedVariant.name}</span>
-                          </span>
-                        )}
-                      </div>
+                    <div className="mt-3 pt-2.5 border-t border-border-glass flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-text-dim">Color:</span>
                       <div className="flex flex-wrap gap-1.5">
                         {activeSelectedItem.variants.map((v: ProductVariant, vIdx: number) => {
                           const isVarSelected = selectedVariant?.name === v.name;
@@ -1266,23 +1206,22 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 setIntakeVariantError(null);
                                 if (v.priceOverride) setUnitPrice(v.priceOverride);
                               }}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
-                                ? 'opacity-35 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
+                                ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
                                 : isVarSelected
-                                  ? 'bg-primary text-white border-primary shadow-xs ring-2 ring-primary/20 cursor-pointer font-bold'
-                                  : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-primary/30 cursor-pointer'
+                                  ? 'bg-white/10 text-text-main border-text-main shadow-sm cursor-pointer'
+                                  : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
+
                               {v.color && (
                                 <span
-                                  className={`w-3.5 h-3.5 rounded-full border shrink-0 shadow-xs ${
-                                    isVarSelected ? 'border-white/60' : 'border-black/20 dark:border-white/30'
-                                  }`}
+                                  className="w-3 h-3 rounded-full border border-black/20 dark:border-white/30 shrink-0 shadow-xs"
                                   style={{ backgroundColor: v.color }}
                                 />
                               )}
                               <span>{v.name}</span>
-                              <span className={`text-[10px] font-mono ${isVarSelected ? 'text-white/80' : 'opacity-70'}`}>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
                               </span>
                             </button>
@@ -1290,7 +1229,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         })}
                       </div>
                       {intakeVariantError && (
-                        <div className="mt-1 flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300 font-semibold animate-in fade-in">
+                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-rose-500">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
@@ -1357,21 +1296,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
               {/* STEP 2: EMBROIDERY TEXT (SINGLE OR BULK MULTI-LINE PASTE) */}
               <div className="mt-3.5 pt-3 border-t border-border-glass">
-                <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                      <span className="text-xs font-black text-text-main uppercase tracking-wider block">
-                        2. Personalization &amp; Lettering
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-text-dim mt-0.5 block">
-                      Tier: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong> • 1st word included
+                    <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider block">
+                      2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                    </span>
+                    <span className="text-[10px] text-text-dim">
+                      Tier: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
                     </span>
                   </div>
 
                   {/* Single vs Bulk List Toggle */}
-                  <div className="flex bg-bg-card border border-border-glass rounded-xl p-0.5 gap-1 shadow-xs">
+                  <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -1380,10 +1316,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         }
                         setIntakeLetteringMode('single');
                       }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                         intakeLetteringMode === 'single'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                          ? 'bg-text-main text-bg-surface shadow-xs'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
                     >
                       Single Name
@@ -1396,10 +1332,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         }
                         setIntakeLetteringMode('bulk');
                       }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                         intakeLetteringMode === 'bulk'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                          ? 'bg-text-main text-bg-surface shadow-xs'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
                     >
                       Bulk List (Paste)
@@ -1413,7 +1349,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <input
                         type="text"
                         maxLength={MAX_CHARS_PER_LINE}
-                        placeholder="e.g. SOPHIA (Leave empty for plain item)"
+                        placeholder={`OPTIONAL: e.g. SOPHIA (Max ${MAX_CHARS_PER_LINE} chars incl. spaces; paste multiple lines for Bulk)`}
                         value={monogramText}
                         onPaste={(e) => {
                           const pasted = e.clipboardData.getData('text');
@@ -1427,10 +1363,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           setMonogramText(sanitizeSingleLineText(e.target.value.toUpperCase()));
                           if (intakeError) setIntakeError(null);
                         }}
-                        className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition pr-16"
+                        className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm font-extrabold tracking-wider outline-none font-mono focus:border-primary/60 transition pr-16"
                       />
                       <span
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold ${
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono font-bold ${
                           monogramText.length >= MAX_CHARS_PER_LINE ? 'text-primary' : 'text-text-dim'
                         }`}
                       >
@@ -1438,7 +1374,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       </span>
                     </div>
                     {monogramText.trim() && (
-                      <div className="mt-2 text-xs flex items-center justify-between px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="mt-2 text-xs flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-border-glass">
                         <span className="text-text-dim text-[11px]">
                           {activeSelectedItem.isByog ? (
                             counterLettering.extraCost > 0 ? (
@@ -1453,7 +1389,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               First word included. Additional letters: <strong className="text-primary">+{counterLettering.extraLettersCount} letters × ₱{counterLettering.ratePerLetter}</strong> ({isSelectedBigGarment ? 'big garment' : 'small garment'})
                             </>
                           ) : (
-                            <span>First word included in base price (₱0 extra fee)</span>
+                            <span>First word included in base price (₱0 extra)</span>
                           )}
                         </span>
                         {counterLettering.extraCost > 0 && (
@@ -1467,8 +1403,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 ) : (
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-[11px] text-text-dim">
-                      <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line):</span>
-                      <span className="font-mono font-bold text-primary">
+                      <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line incl. spaces):</span>
+                      <span className="font-mono font-semibold text-text-main">
                         {intakeBulkSummary.lineCount} {intakeBulkSummary.lineCount === 1 ? 'line' : 'lines'} = {intakeBulkSummary.lineCount} pcs
                       </span>
                     </div>
@@ -1480,14 +1416,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         if (intakeError) setIntakeError(null);
                       }}
                       placeholder={`COACH 1\nCOACH 2\nPLAYER 3 A\n(Max ${MAX_CHARS_PER_LINE} chars per line)`}
-                      className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 transition resize-y"
+                      className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 transition resize-y"
                     />
                     {intakeBulkSummary.lines.length > 0 && (
-                      <div className="bg-bg-card border border-border-glass rounded-xl p-2.5 max-h-32 overflow-y-auto flex flex-col gap-1 shadow-xs">
+                      <div className="bg-bg-surface border border-border-glass rounded-lg p-2 max-h-32 overflow-y-auto flex flex-col gap-1">
                         {intakeBulkSummary.lines.map((line) => (
                           <div
                             key={line.lineIndex}
-                            className="flex items-center justify-between text-[11px] py-1 border-b border-border-glass/40 last:border-none"
+                            className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-none"
                           >
                             <span className="font-mono text-text-main truncate">
                               <strong className="text-text-dim mr-1.5">#{line.lineIndex}</strong>
@@ -1504,14 +1440,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </div>
                 )}
 
-                {/* Thread Color Selector - Clean Palette Grid */}
+                {/* Thread Color Selector - Only shown when text is entered */}
                 {(intakeLetteringMode === 'bulk' ? intakeBulkSummary.lineCount > 0 : Boolean(monogramText.trim())) ? (
-                  <div className="mt-3.5 pt-3 border-t border-border-glass animate-in fade-in duration-200">
+                  <div className="mt-3 pt-3 border-t border-border-glass animate-in fade-in duration-200">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold text-text-dim uppercase tracking-wider">
+                      <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
                         Thread Color
                       </span>
-                      <span className="text-xs font-mono font-bold text-text-main">
+                      <span className="text-xs font-mono font-semibold text-text-main">
                         {threadColor}
                       </span>
                     </div>
@@ -1528,11 +1464,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               if (isAvailable) setThreadColor(tc.name);
                             }}
                             title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
-                            className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border text-[10px] font-medium transition overflow-hidden ${!isAvailable
+                            className={`relative flex flex-col items-center gap-1 p-1.5 rounded-lg border text-[10px] font-medium transition overflow-hidden ${!isAvailable
                                 ? 'opacity-30 grayscale cursor-not-allowed border-dashed border-border-glass bg-bg-surface/50'
                                 : isSelected
-                                  ? 'bg-primary/10 border-primary text-text-main ring-2 ring-primary/30 cursor-pointer shadow-xs font-bold'
-                                  : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-primary/30 cursor-pointer'
+                                  ? 'bg-white/10 border-primary text-text-main ring-1 ring-primary cursor-pointer'
+                                  : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-white/20 cursor-pointer'
                               }`}
                           >
                             {!isAvailable && (
@@ -1541,7 +1477,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               </div>
                             )}
                             <span
-                              className="w-4 h-4 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
+                              className="w-3.5 h-3.5 rounded-full border border-black/30 dark:border-white/20 shrink-0 shadow-sm"
                               style={{ backgroundColor: tc.hex }}
                             />
                             <span className="truncate w-full text-center text-[10px] leading-tight">
@@ -1584,7 +1520,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Stock Warning if Quantity Exceeds On-Hand Stock */}
                   {intakeExceedsStock && (
-                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5 shadow-xs animate-in fade-in">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 flex items-start gap-2.5 shadow-sm animate-in fade-in">
                       <svg className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
@@ -1594,11 +1530,11 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border-glass/40">
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-border-glass/40">
                     <div className="text-[11px] text-text-dim">
                       <span className="font-medium text-text-main">
                         Item Subtotal ({effectiveIntakeQty} pcs):{' '}
-                        <strong className="text-primary font-mono text-xs">
+                        <strong className="text-primary font-mono">
                           ₱{grandTotal.toFixed(2)}
                         </strong>
                       </span>
@@ -1606,9 +1542,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     <button
                       type="button"
                       onClick={handleAddCurrentItemToTicket}
-                      className="py-2.5 px-4 rounded-xl bg-bg-card hover:bg-primary/5 hover:border-primary/40 active:scale-[0.98] border border-border-glass text-text-main text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                      className="py-2 px-3.5 rounded-lg bg-bg-surface hover:bg-white/10 active:scale-[0.98] border border-border-glass text-text-main text-xs font-extrabold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                     >
-                      <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
                       <span>Add to Order Ticket ({effectiveIntakeQty}x)</span>
@@ -1620,46 +1556,42 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
           </div>
 
           {/* Right Column: Payment & Ticket Actions (5 cols) */}
-          <div className="lg:col-span-5 lg:sticky lg:top-[80px] self-start flex flex-col gap-3">
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4">
-              
-              {/* Header: Clean POS Order Ticket */}
-              <div className="flex items-center justify-between pb-3 border-b border-border-glass">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="text-xs font-black text-text-main uppercase tracking-wider">
-                    3. Order Summary &amp; Checkout
-                  </span>
-                </div>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-bold font-mono">
-                  {ticketItems.length > 0 ? `${ticketItems.length} Staged` : 'Live Preview'}
+          <div className="lg:col-span-5 lg:sticky lg:top-[72px] self-start flex flex-col gap-3">
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  3. Payment &amp; Queue Ticket
                 </span>
+                {ticketItems.length > 0 && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold font-mono">
+                    {ticketItems.length} {ticketItems.length === 1 ? 'item' : 'items'} staged
+                  </span>
+                )}
               </div>
 
-              {/* Order Items Section */}
+              {/* Multi-Item Staged Basket */}
               {ticketItems.length > 0 ? (
-                /* Staged Multi-Item Basket */
-                <div className="flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
                   <div className="text-[11px] font-bold text-text-dim flex justify-between items-center px-1">
                     <span>Staged Items ({ticketTotalPieces} pcs total)</span>
                     <button
                       type="button"
                       onClick={() => setTicketItems([])}
-                      className="text-[10px] text-text-dim hover:text-rose-500 underline cursor-pointer"
+                      className="text-[10px] text-text-dim hover:text-red-400 underline cursor-pointer"
                     >
-                      Clear All
+                      Clear Staged
                     </button>
                   </div>
                   {ticketItems.map((item, idx) => (
                     <div
                       key={item.id}
-                      className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-start justify-between gap-2.5 text-xs shadow-xs"
+                      className="bg-bg-card border border-border-glass rounded-lg p-2.5 flex items-start justify-between gap-2 text-xs"
                     >
-                      <div className="flex flex-col gap-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono font-bold text-text-dim text-[11px]">#{idx + 1}</span>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-text-dim">#{idx + 1}</span>
                           <span className="font-bold text-text-main truncate">{item.name}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/5 border border-border-glass text-text-dim font-mono">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/5 border border-border-glass text-text-dim font-mono">
                             {item.quantity}x
                           </span>
                         </div>
@@ -1669,8 +1601,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           ) : (
                             <span className="italic text-text-dim/60">Plain item</span>
                           )}
-                          {item.threadColor && item.text && (
-                            <span className="text-[10px] text-text-dim">• {item.threadColor}</span>
+                          {item.threadColor && (
+                            <span className="text-[10px] text-text-dim/70">• {item.threadColor}</span>
                           )}
                         </div>
                       </div>
@@ -1689,7 +1621,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           type="button"
                           onClick={() => handleRemoveTicketItem(item.id)}
                           title="Remove item"
-                          className="text-text-dim hover:text-rose-500 p-1 cursor-pointer transition"
+                          className="text-text-dim hover:text-red-400 p-1 cursor-pointer transition"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1699,111 +1631,70 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </div>
                   ))}
                 </div>
-              ) : (
-                /* Live Item Preview Receipt */
-                <div className="bg-bg-card border border-border-glass rounded-xl p-3.5 flex flex-col gap-2 shadow-xs">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <div className="font-bold text-xs text-text-main flex items-center gap-1.5 flex-wrap">
-                        <span>{activeSelectedItem?.name || 'Custom Garment'}</span>
-                        {selectedVariant && (
-                          <span className="text-[11px] text-text-dim font-normal">({selectedVariant.name})</span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-text-dim mt-0.5">
-                        {intakeLetteringMode === 'bulk' && intakeBulkSummary.lineCount > 0 ? (
-                          <span className="font-mono font-bold text-primary">
-                            Bulk ({intakeBulkSummary.lineCount} names) • {threadColor}
-                          </span>
-                        ) : monogramText.trim() ? (
-                          <span className="font-mono font-bold text-primary">
-                            "{monogramText.trim()}" • {threadColor}
-                          </span>
-                        ) : (
-                          <span className="italic text-text-dim/60">Plain item (No embroidery)</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="font-mono font-bold text-xs text-text-main shrink-0">
-                      ₱{grandTotal.toFixed(2)}
+              ) : null}
+
+              {/* Compact Quantity & Price Block */}
+              <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex items-center justify-between">
+                {ticketItems.length === 0 ? (
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-text-dim">Current Item:</span>
+                    <span className="text-xs font-bold text-text-main">
+                      {activeSelectedItem?.name || 'Custom Garment'} ({effectiveIntakeQty} {effectiveIntakeQty === 1 ? 'pc' : 'pcs'})
                     </span>
                   </div>
-
-                  <div className="pt-2 border-t border-border-glass/50 flex justify-between items-center text-[11px] text-text-dim">
-                    <span>
-                      {effectiveIntakeQty} {effectiveIntakeQty === 1 ? 'piece' : 'pieces'} × ₱{unitPrice.toFixed(2)} base
+                ) : (
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-text-dim">Combined Total:</span>
+                    <span className="text-xs font-bold text-text-main">
+                      {ticketItems.length} items ({ticketTotalPieces} pcs)
                     </span>
-                    {(intakeLetteringMode === 'bulk' ? intakeBulkSummary.totalExtraCost > 0 : counterLettering.extraCost > 0) && (
-                      <span className="font-mono font-semibold text-primary">
-                        +₱{(intakeLetteringMode === 'bulk' ? intakeBulkSummary.totalExtraCost : counterLettering.extraCost * effectiveIntakeQty).toFixed(2)} lettering
-                      </span>
-                    )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Total Due Banner - High Contrast, Dignified Typography */}
-              <div className="bg-bg-card border-2 border-primary/20 rounded-xl p-4 flex items-center justify-between shadow-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-text-dim block">
-                    Total Amount Due
-                  </span>
-                  <span className="text-xs font-semibold text-text-main">
-                    {ticketItems.length > 0
-                      ? `${ticketTotalPieces} pcs (${ticketItems.length} items)`
-                      : `${effectiveIntakeQty} pcs total`}
-                  </span>
-                </div>
                 <div className="text-right">
-                  <span className="text-2xl sm:text-3xl font-black font-mono text-primary tracking-tight">
+                  <span className="text-[11px] text-text-dim block">Total Due:</span>
+                  <span className="text-2xl font-black font-mono text-primary">
                     ₱{ticketGrandTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              {/* Payment Method Selector - Symmetric & Unified */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
-                  Select Payment Method
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('Cash')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      paymentMethod === 'Cash'
-                        ? 'bg-primary text-white border-primary shadow-xs ring-2 ring-primary/20'
-                        : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:bg-white/5'
+              {/* Payment Method Selector */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('Cash')}
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'Cash'
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
                     }`}
-                  >
-                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                      <rect x="2" y="6" width="20" height="12" rx="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <path d="M6 12h.01M18 12h.01" />
-                    </svg>
-                    <span>Cash Register</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('GCash')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      paymentMethod === 'GCash'
-                        ? 'bg-primary text-white border-primary shadow-xs ring-2 ring-primary/20'
-                        : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:bg-white/5'
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M6 12h.01M18 12h.01" />
+                  </svg>
+                  <span>Cash</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('GCash')}
+                  className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${paymentMethod === 'GCash'
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
                     }`}
-                  >
-                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                      <line x1="12" y1="18" x2="12.01" y2="18" />
-                    </svg>
-                    <span>GCash QR Ph</span>
-                  </button>
-                </div>
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                    <line x1="12" y1="18" x2="12.01" y2="18" />
+                  </svg>
+                  <span>GCash</span>
+                </button>
               </div>
 
-              {/* GCash Standee Prompt & Reference Input */}
+              {/* GCash Counter QR Standee Info & Optional Ref # */}
               {paymentMethod === 'GCash' && (
-                <div className="bg-bg-card border border-border-glass rounded-xl p-3.5 flex flex-col gap-2.5 shadow-xs animate-in fade-in">
+                <div className="bg-bg-card border border-border-glass rounded-xl p-3 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -1814,10 +1705,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </svg>
                     <div>
                       <span className="text-xs font-bold text-text-main block">
-                        Customer scans counter QR standee
+                        Customer scans printed counter QR standee
                       </span>
                       <span className="text-[11px] text-text-dim">
-                        Scan QR Ph, verify ₱{ticketGrandTotal.toFixed(2)} payment receipt.
+                        Customer scans counter QR Ph, pays ₱{ticketGrandTotal.toFixed(2)}, and shows receipt.
                       </span>
                     </div>
                   </div>
@@ -1831,49 +1722,36 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 </div>
               )}
 
-              {/* Customer Contact Input */}
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider block">
-                  Customer Receipt (Optional)
-                </span>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Customer Mobile # or Google Email"
-                    value={customerContact}
-                    onChange={(e) => setCustomerContact(e.target.value)}
-                    className="w-full bg-bg-card border border-border-glass pl-9 pr-3.5 py-2.5 rounded-xl text-text-main text-xs outline-none focus:border-primary transition"
-                  />
-                </div>
+              {/* Optional: Single Customer Contact Line */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Customer Phone or Google Email (optional)"
+                  value={customerContact}
+                  onChange={(e) => setCustomerContact(e.target.value)}
+                  className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs outline-none focus:border-primary transition"
+                />
               </div>
 
-              {/* Primary Action Button - Artisan Crimson Theme */}
+              {/* Big Action Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-secondary active:scale-[0.99] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg bg-text-main hover:bg-text-main/90 active:scale-[0.99] text-bg-surface font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
               >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 <span>
                   {isSubmitting
-                    ? 'Processing Order...'
+                    ? 'Processing...'
                     : !hasAnyEmbroidery
-                      ? `Complete Direct Sale (₱${ticketGrandTotal.toFixed(2)})`
+                      ? 'Direct Sale & Hand Over (Complete)'
                       : (ticketItems.length > 0
-                        ? `Punch ${ticketTotalPieces} Items & Send to Queue (₱${ticketGrandTotal.toFixed(2)})`
-                        : `Punch Order & Send to Queue (₱${ticketGrandTotal.toFixed(2)})`)}
+                        ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Queue for Stitching`
+                        : 'Punch Order & Queue for Stitching')}
                 </span>
               </button>
-              <div className="text-center text-[10px] text-text-dim -mt-1 font-medium">
-                Automatic official claim slip printing &amp; live production sync
-              </div>
               <InlineError error={intakeError} />
             </div>
           </div>
@@ -1887,54 +1765,40 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade">
           {/* Main Column: Slip Punch Form (8 cols) */}
           <div className="lg:col-span-8 flex flex-col gap-3">
-            <div className="bg-bg-surface border border-border-glass rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col gap-3.5">
-              {/* Header with Category Segmented Control */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  <span className="text-xs font-black text-text-main uppercase tracking-wider">
-                    {selectedCategory === 'Custom' ? '1. Client Garment from Slip (BYOG)' : '1. Select Stitched Item from Slip'}
-                  </span>
-                </div>
-                <span className="text-[11px] text-text-dim font-medium">Quick Punch Mode</span>
-              </div>
-
-              {/* Segmented Category Filter Bar - Equal Grid, Zero Clipping */}
-              <div className="grid grid-cols-4 p-1 bg-bg-card border border-border-glass rounded-xl gap-1 shadow-xs">
-                {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => {
-                  const isCatActive = selectedCategory === cat;
-                  const labelMap: Record<typeof cat, string> = {
-                    Towels: 'Towels',
-                    Fans: 'Fans',
-                    Custom: 'BYOG',
-                    All: 'All Items'
-                  };
-                  return (
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm">
+              {/* Header with Category Pills */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
+                  {selectedCategory === 'Custom' ? '1. Customer Garment from Slip (BYOG)' : '1. Pick Stitched Item from Slip'}
+                </span>
+                <div className="flex gap-1">
+                  {(['Towels', 'Fans', 'Custom', 'All'] as const).map(cat => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => handleSelectQuickCategory(cat)}
-                      className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all cursor-pointer text-center truncate ${isCatActive
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${selectedCategory === cat
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-white/5 text-text-dim hover:text-text-main'
                         }`}
                     >
-                      {labelMap[cat]}
+                      {cat}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
               {selectedCategory === 'Custom' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-primary/10 border border-primary/30">
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/30">
                     <div className="flex items-center gap-2">
+                      
                       <span className="font-bold text-xs text-text-main">Client-Provided Garment (BYOG)</span>
                     </div>
                     <span className="font-mono font-bold text-xs text-primary">Base: ₱{activeQuickItem?.price || 100}</span>
                   </div>
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                         Slip Garment Rate
                       </span>
@@ -1944,38 +1808,38 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <button
                         type="button"
                         onClick={() => setQuickByogGarmentType('small')}
-                        className={`p-3 rounded-xl border-2 text-left cursor-pointer transition ${quickByogGarmentType === 'small'
-                            ? 'bg-primary/10 border-primary text-text-main ring-1 ring-primary/40 shadow-xs'
-                            : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
                       >
                         <div className="font-bold text-xs flex items-center justify-between">
                           <span>Small Item</span>
                           <span className="font-mono text-primary text-[11px]">₱7/letter</span>
                         </div>
-                        <div className="text-[10px] text-text-dim mt-0.5">Cap, Hand/Face Towel, Fan</div>
+                        <div className="text-[10px] text-text-dim">Cap, Hand/Face Towel, Fan</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickByogGarmentType('big')}
-                        className={`p-3 rounded-xl border-2 text-left cursor-pointer transition ${quickByogGarmentType === 'big'
-                            ? 'bg-primary/10 border-primary text-text-main ring-1 ring-primary/40 shadow-xs'
-                            : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                        className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
+                            ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
+                            : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                           }`}
                       >
                         <div className="font-bold text-xs flex items-center justify-between">
                           <span>Big Item</span>
                           <span className="font-mono text-primary text-[11px]">₱10/letter</span>
                         </div>
-                        <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel</div>
+                        <div className="text-[10px] text-text-dim">Shirt, Polo, Jacket, Bath Towel</div>
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <>
-                  {/* Item Selection Cards */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Compressed Item Cards */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     {displayedCatalog.map((item) => {
                       const isSelected = quickProductId === item.id;
                       return (
@@ -1983,23 +1847,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           key={item.id}
                           type="button"
                           onClick={() => handleSelectQuickItem(item)}
-                          className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between min-h-[62px] ${isSelected
-                            ? 'border-primary bg-primary/[0.04] ring-1 ring-primary/30 shadow-xs'
-                            : 'border-border-glass bg-bg-card hover:border-primary/30 hover:bg-white/[0.02] text-text-main'
+                          className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                            ? 'bg-white/10 border-text-main text-text-main shadow-sm'
+                            : 'bg-white/[0.03] border-border-glass text-text-main hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-start gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
-                              <span className={`font-bold text-xs leading-snug truncate ${isSelected ? 'text-primary' : 'text-text-main'}`}>
-                                {item.name}
-                              </span>
-                            </div>
-                            <span className={`font-mono font-bold text-xs shrink-0 px-2 py-0.5 rounded-md ${
-                              isSelected ? 'bg-primary/15 text-primary' : 'bg-white/5 text-text-main'
-                            }`}>
-                              ₱{item.price}
-                            </span>
+                            <span className="font-bold text-xs leading-snug">{item.name}</span>
+                            <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
                         </button>
                       );
@@ -2008,21 +1863,13 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Variant Swatches for Quick Slip Punch */}
                   {activeQuickItem && activeQuickItem.variants && activeQuickItem.variants.length > 0 && (
-                    <div className="mt-2 pt-2.5 border-t border-border-glass flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-text-dim uppercase tracking-wider">
-                          Select Color Variant:
+                    <div className="mb-3.5 pt-2 border-t border-border-glass">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                          Select Color / Variant:
                         </span>
                         {quickVariant && (
-                          <span className="text-xs font-semibold text-text-main flex items-center gap-1.5">
-                            {quickVariant.color && (
-                              <span
-                                className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
-                                style={{ backgroundColor: quickVariant.color }}
-                              />
-                            )}
-                            <span>{quickVariant.name}</span>
-                          </span>
+                          <span className="text-xs font-semibold text-text-main">{quickVariant.name}</span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -2041,23 +1888,22 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                                 setQuickVariantError(null);
                                 if (v.priceOverride) setQuickPrice(v.priceOverride);
                               }}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
-                                ? 'opacity-35 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 ${isVarOutOfStock
+                                ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim line-through'
                                 : isVarSelected
-                                  ? 'bg-primary text-white border-primary shadow-xs ring-2 ring-primary/20 cursor-pointer font-bold'
-                                  : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main hover:border-primary/30 cursor-pointer'
+                                  ? 'bg-white/10 text-text-main border-text-main shadow-sm cursor-pointer'
+                                  : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main cursor-pointer'
                                 }`}
                             >
+
                               {v.color && (
                                 <span
-                                  className={`w-3.5 h-3.5 rounded-full border shrink-0 shadow-xs ${
-                                    isVarSelected ? 'border-white/60' : 'border-black/20 dark:border-white/30'
-                                  }`}
+                                  className="w-3 h-3 rounded-full border border-black/20 dark:border-white/30 shrink-0 shadow-xs"
                                   style={{ backgroundColor: v.color }}
                                 />
                               )}
                               <span>{v.name}</span>
-                              <span className={`text-[10px] font-mono ${isVarSelected ? 'text-white/80' : 'opacity-70'}`}>
+                              <span className={`text-[10px] font-mono ${isVarOutOfStock ? 'text-text-dim line-through' : 'opacity-75'}`}>
                                 ({isVarOutOfStock ? '0' : vStock})
                               </span>
                             </button>
@@ -2065,7 +1911,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         })}
                       </div>
                       {quickVariantError && (
-                        <div className="mt-1 flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300 font-semibold animate-in fade-in">
+                        <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-500 dark:text-rose-400 font-bold animate-in fade-in">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-rose-500">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
@@ -2079,7 +1925,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
 
                   {/* Step 2: Monogram text from slip */}
                   {activeQuickItem?.isByog && (
-                    <div className="mt-2.5">
+                    <div className="mb-2.5">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
                           Slip Garment Rate
@@ -2090,9 +1936,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <button
                           type="button"
                           onClick={() => setQuickByogGarmentType('small')}
-                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'small'
                               ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                             }`}
                         >
                           <div className="font-bold text-xs flex items-center justify-between">
@@ -2104,9 +1950,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <button
                           type="button"
                           onClick={() => setQuickByogGarmentType('big')}
-                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition ${quickByogGarmentType === 'big'
                               ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary/40'
-                              : 'bg-bg-card border-border-glass text-text-dim hover:text-text-main'
+                              : 'bg-white/[0.03] border-border-glass text-text-dim hover:text-text-main'
                             }`}
                         >
                           <div className="font-bold text-xs flex items-center justify-between">
@@ -2120,16 +1966,12 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   )}
                 </>
               )}
-
-              <div className="mt-1 pt-3 border-t border-border-glass">
-                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    <span className="text-xs font-black text-text-main uppercase tracking-wider">
-                      2. Name(s) from Slip
-                    </span>
-                  </div>
-                  <div className="flex bg-bg-card border border-border-glass rounded-xl p-0.5 gap-1 shadow-xs">
+              <div className="mb-3.5">
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                  <span className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
+                    2. Name(s) from Slip <span className="normal-case font-normal">(Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                  </span>
+                  <div className="flex bg-bg-card border border-border-glass rounded-lg p-0.5 gap-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -2138,10 +1980,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         }
                         setQuickLetteringMode('single');
                       }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                         quickLetteringMode === 'single'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
                     >
                       Single Name
@@ -2154,10 +1996,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         }
                         setQuickLetteringMode('bulk');
                       }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                         quickLetteringMode === 'bulk'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
                     >
                       Bulk List
@@ -2171,7 +2013,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <input
                         type="text"
                         maxLength={MAX_CHARS_PER_LINE}
-                        placeholder="NAME / MONOGRAM FROM SLIP"
+                        placeholder={`NAME / MONOGRAM FROM SLIP (Max ${MAX_CHARS_PER_LINE} chars)`}
                         value={quickText}
                         onPaste={(e) => {
                           const pasted = e.clipboardData.getData('text');
@@ -2182,14 +2024,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           }
                         }}
                         onChange={(e) => setQuickText(sanitizeSingleLineText(e.target.value.toUpperCase()))}
-                        className="w-full bg-bg-card border border-border-glass px-3.5 py-2.5 rounded-xl text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 pr-14"
+                        className="w-full bg-bg-surface border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 pr-14"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-text-dim">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-dim">
                         {quickText.length}/{MAX_CHARS_PER_LINE}
                       </span>
                     </div>
                     {quickText.trim() && (
-                      <div className="mt-2 text-xs flex items-center justify-between px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="mt-1.5 text-xs flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
                         <span className="text-text-dim text-[11px]">
                           {activeQuickItem?.isByog ? (
                             quickLettering.extraCost > 0 ? (
@@ -2204,7 +2046,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               First word included. Extra: <strong className="text-primary">+{quickLettering.extraLettersCount} letters × ₱{quickLettering.ratePerLetter}</strong>
                             </>
                           ) : (
-                            <span>First word included in base price (₱0 extra fee)</span>
+                            <span>First word included in base price (₱0 extra)</span>
                           )}
                         </span>
                         {quickLettering.extraCost > 0 && (
@@ -2222,10 +2064,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       value={quickBulkText}
                       onChange={(e) => setQuickBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()))}
                       placeholder={`Paste 1 name per line (Max ${MAX_CHARS_PER_LINE} chars/line)`}
-                      className="w-full bg-bg-card border border-border-glass px-3.5 py-2 rounded-xl text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/60 resize-y"
+                      className="w-full bg-bg-surface border border-border-glass px-3.5 py-2 rounded-lg text-text-main text-xs font-mono font-bold tracking-wider outline-none focus:border-primary/50 resize-y"
                     />
                     {quickBulkSummary.lineCount > 0 && (
-                      <div className="text-[11px] text-text-dim flex justify-between px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="text-[11px] text-text-dim flex justify-between px-2 py-1 rounded bg-white/5 border border-border-glass">
                         <span>{quickBulkSummary.lineCount} lines = {quickBulkSummary.lineCount} pcs</span>
                         <span className="font-mono font-bold text-primary">
                           {quickBulkSummary.totalExtraCost > 0 ? `+₱${quickBulkSummary.totalExtraCost.toFixed(2)} extra letters` : '₱0 extra letters'}
@@ -2237,89 +2079,70 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Step 3: Quantity & Payment */}
-              {/* Step 3: Quantity, Payment & Log Finished Sale */}
-              <div className="mt-2 pt-3 border-t border-border-glass flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                {/* Quantity */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-dim font-bold shrink-0">Qty:</span>
-                  {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
-                    <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
-                      {effectiveQuickQty} pcs (Bulk)
-                    </span>
-                  ) : (
-                    <QuantityInput
-                      value={quickQuantity}
-                      onChange={(q) => setQuickQuantity(q)}
-                      min={1}
-                      size="sm"
-                      showPresets={true}
-                      presets={[10]}
-                      ariaLabel="Quick sale quantity"
-                    />
-                  )}
-                </div>
-
-                {/* Symmetrical, Balanced Payment Toggle */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-dim font-bold shrink-0">Payment:</span>
-                  <div className="flex rounded-xl border border-border-glass p-0.5 bg-bg-card shadow-xs items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuickPayment('Cash')}
-                      className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        quickPayment === 'Cash'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <rect x="2" y="6" width="20" height="12" rx="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <path d="M6 12h.01M18 12h.01" />
-                      </svg>
-                      <span>Cash</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickPayment('GCash')}
-                      className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        quickPayment === 'GCash'
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'text-text-dim hover:text-text-main hover:bg-white/5'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                        <line x1="12" y1="18" x2="12.01" y2="18" />
-                      </svg>
-                      <span>GCash</span>
-                    </button>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 items-stretch">
+                <div className="flex flex-col justify-center gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 min-w-0">
+                    <span className="text-xs text-text-dim font-medium shrink-0">Qty:</span>
+                    {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
+                      <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                        {effectiveQuickQty} pcs (Bulk)
+                      </span>
+                    ) : (
+                      <QuantityInput
+                        value={quickQuantity}
+                        onChange={(q) => setQuickQuantity(q)}
+                        min={1}
+                        size="sm"
+                        showPresets={true}
+                        presets={[10]}
+                        ariaLabel="Quick sale quantity"
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* Action Button - Compact & Proportionate */}
-                <button
-                  type="button"
-                  disabled={isPunchSubmitting}
-                  onClick={handleQuickSlipPunch}
-                  className="py-2.5 px-5 rounded-xl bg-primary hover:bg-secondary active:scale-[0.99] text-white font-bold text-xs shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shrink-0 self-stretch sm:self-auto"
-                >
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>
-                    {isPunchSubmitting
-                      ? 'Recording...'
-                      : `Log Finished Sale • ₱${quickGrandTotal.toFixed(2)} (${quickPayment})`}
-                  </span>
-                </button>
+                <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03] items-center min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setQuickPayment('Cash')}
+                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                      }`}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickPayment('GCash')}
+                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                      }`}
+                  >
+                    GCash
+                  </button>
+                </div>
               </div>
+
+              {/* Action Button */}
+              <button
+                type="button"
+                disabled={isPunchSubmitting}
+                onClick={handleQuickSlipPunch}
+                className="w-full py-3 px-4 rounded-lg bg-text-main hover:bg-text-main/90 active:scale-[0.99] text-bg-surface font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>
+                  {isPunchSubmitting
+                    ? 'Recording...'
+                    : `Log Finished Sale — ₱${quickGrandTotal.toFixed(2)} (${quickPayment})`}
+                </span>
+              </button>
               <InlineError error={quickPunchError} />
             </div>
           </div>
 
           {/* Right Column: Live Shift Tally (4 cols) */}
-          <div className="lg:col-span-4 lg:sticky lg:top-[80px] self-start flex flex-col gap-3">
+          <div className="lg:col-span-4 lg:sticky lg:top-[72px] self-start flex flex-col gap-3">
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase tracking-wider font-bold text-text-dim block">
