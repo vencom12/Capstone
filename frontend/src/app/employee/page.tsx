@@ -56,6 +56,8 @@ export default function EmployeePage() {
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
   const [isChimeActive, setIsChimeActive] = useState(true);
   const prevOrdersCountRef = useRef<number>(0);
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchEndPos = useRef<{ x: number; y: number } | null>(null);
 
   // Initialize audio chime preference from localStorage
   useEffect(() => {
@@ -630,8 +632,6 @@ export default function EmployeePage() {
   );
 
   // --- Mobile Touch Swipe Navigation & Gesture Detection ---
-  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
-  const touchEndPos = useRef<{ x: number; y: number } | null>(null);
 
   const totalActiveQueueCount = orders.filter(
     (o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)
