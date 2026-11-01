@@ -109,6 +109,7 @@ html {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-text-size-adjust: 100%;
+  overscroll-behavior-x: none;
   text-size-adjust: 100%;
 }
 
@@ -123,6 +124,7 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-x: none;
 }
 
 /* Touch momentum scrolling for scrollable containers */

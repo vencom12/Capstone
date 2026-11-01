@@ -652,6 +652,12 @@ export default function EmployeePage() {
       return;
     }
 
+    // Handheld mobile scope: only engage touch tab gestures on mobile / tablet screens (<= 850px)
+    if (typeof window !== 'undefined' && window.innerWidth > 850) {
+      touchStartPos.current = null;
+      return;
+    }
+
     // Abort if any modal or navigation drawer is active
     if (isSidebarOpen || isAnyModalOpen) {
       touchStartPos.current = null;
