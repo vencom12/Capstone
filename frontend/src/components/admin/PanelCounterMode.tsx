@@ -2079,45 +2079,63 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Step 3: Quantity & Payment */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 items-stretch">
-                <div className="flex flex-col justify-center gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2 min-w-0">
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <span className="text-xs text-text-dim font-medium shrink-0">Qty:</span>
-                    {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
-                      <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
-                        {effectiveQuickQty} pcs (Bulk)
-                      </span>
-                    ) : (
-                      <QuantityInput
-                        value={quickQuantity}
-                        onChange={(q) => setQuickQuantity(q)}
-                        min={1}
-                        size="sm"
-                        showPresets={true}
-                        presets={[10]}
-                        ariaLabel="Quick sale quantity"
-                      />
-                    )}
-                  </div>
+              <div className="bg-bg-card border border-border-glass rounded-xl p-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Quantity */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-dim font-bold shrink-0">Qty:</span>
+                  {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
+                    <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
+                      {effectiveQuickQty} pcs (Bulk)
+                    </span>
+                  ) : (
+                    <QuantityInput
+                      value={quickQuantity}
+                      onChange={(q) => setQuickQuantity(q)}
+                      min={1}
+                      size="sm"
+                      showPresets={true}
+                      presets={[10]}
+                      ariaLabel="Quick sale quantity"
+                    />
+                  )}
                 </div>
 
-                <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03] items-center min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setQuickPayment('Cash')}
-                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                {/* Symmetrical, Compact Payment Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-dim font-bold shrink-0">Payment:</span>
+                  <div className="inline-flex rounded-lg border border-border-glass p-0.5 bg-bg-surface shadow-xs items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setQuickPayment('Cash')}
+                      className={`py-1.5 px-3 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        quickPayment === 'Cash'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
-                  >
-                    Cash
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickPayment('GCash')}
-                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <path d="M6 12h.01M18 12h.01" />
+                      </svg>
+                      <span>Cash</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickPayment('GCash')}
+                      className={`py-1.5 px-3 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        quickPayment === 'GCash'
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-dim hover:text-text-main'
                       }`}
-                  >
-                    GCash
-                  </button>
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                      </svg>
+                      <span>GCash</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
