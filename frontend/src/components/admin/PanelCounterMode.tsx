@@ -1178,9 +1178,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                             <span className="font-bold text-xs leading-snug">{item.name}</span>
                             <span className="font-mono font-bold text-xs text-text-main shrink-0">₱{item.price}</span>
                           </div>
-                          <span className="text-[10px] text-text-dim mt-1 font-medium">
-                            {item.isByog ? 'Customer Item' : `${item.stock} in stock`}
-                          </span>
+                          {item.isByog && (
+                            <span className="text-[10px] text-text-dim mt-1 font-medium">Customer Item</span>
+                          )}
                         </button>
                       );
                     })}
@@ -1518,7 +1518,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         min={1}
                         size="sm"
                         showPresets={true}
-                        presets={[10, 25, 50, 100]}
+                        presets={[10]}
                         ariaLabel="Item Quantity"
                       />
                     )}
@@ -2082,10 +2082,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               </div>
 
               {/* Step 3: Quantity & Payment */}
-              <div className="grid grid-cols-2 gap-3 mb-4 items-center">
-                <div className="flex flex-col gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-dim font-medium">Qty:</span>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 items-stretch">
+                <div className="flex flex-col justify-center gap-1 bg-white/[0.03] border border-border-glass rounded-lg p-2 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 min-w-0">
+                    <span className="text-xs text-text-dim font-medium shrink-0">Qty:</span>
                     {quickLetteringMode === 'bulk' && quickBulkSummary.lineCount > 0 ? (
                       <span className="px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
                         {effectiveQuickQty} pcs (Bulk)
@@ -2097,18 +2097,18 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         min={1}
                         size="sm"
                         showPresets={true}
-                        presets={[10, 25, 50, 100]}
+                        presets={[10]}
                         ariaLabel="Quick sale quantity"
                       />
                     )}
                   </div>
                 </div>
 
-                <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03]">
+                <div className="flex rounded-lg border border-border-glass p-1 bg-white/[0.03] items-center min-w-0">
                   <button
                     type="button"
                     onClick={() => setQuickPayment('Cash')}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'Cash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
                       }`}
                   >
                     Cash
@@ -2116,7 +2116,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <button
                     type="button"
                     onClick={() => setQuickPayment('GCash')}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
+                    className={`flex-1 h-full min-h-[38px] flex items-center justify-center py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${quickPayment === 'GCash' ? 'bg-primary text-white shadow-sm' : 'text-text-dim hover:text-text-main'
                       }`}
                   >
                     GCash
