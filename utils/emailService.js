@@ -394,48 +394,60 @@ async function sendVerificationOtpEmail(recipientEmail, recipientName, otpCode) 
 /**
  * Sends a password reset email with a one-hour link.
  */
-async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken) {
+async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken, otpCode) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-  const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
+  const businessName = process.env.BUSINESS_NAME || 'Edz Towels & Caps';
 
   const contentHtml = `
     <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
-      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, we received a request to reset your password. Tap below to choose a new one:
+      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, we received a request to reset your password.
+      ${otpCode ? 'Use the 6-digit verification code below to reset your password:' : 'Tap below to choose a new one:'}
     </div>
 
-    <div style="margin: 14px 0;">
+    ${otpCode ? `
+    <div style="margin: 18px 0; text-align: center;">
+      <div style="display: inline-block; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);
+                  color: #ffffff; padding: 12px 28px; border-radius: 8px; font-size: 28px; font-weight: 800; letter-spacing: 6px; font-family: monospace;">
+        ${otpCode}
+      </div>
+      <div style="color: #94a3b8; font-size: 11px; line-height: 1.4; text-align: center; margin-top: 8px;">
+        Enter this 6-digit code in the app to reset your password. Valid for 15 minutes.
+      </div>
+    </div>
+    ` : ''}
+
+    <div style="margin: 14px 0; text-align: center;">
       <a href="${resetUrl}" 
-         style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
-                color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 6px; 
-                font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+         style="display: inline-block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
+                color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; 
+                font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
                 box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);">
-        Reset Password &rarr;
+        Or Click Here to Reset Password &rarr;
       </a>
     </div>
 
-    <div style="color: #64748b; font-size: 10.5px; text-align: center;">
-      Link expires in 1 hour. If you didn't request this, you can safely ignore this email.
+    <div style="color: #64748b; font-size: 10.5px; text-align: center; margin-top: 10px;">
+      If you did not request this code, you can safely ignore this email.
     </div>
   `;
 
   const htmlContent = renderEmailShell({
     title: 'Reset Password',
-    subtitle: 'Security link valid for 1 hour',
+    subtitle: otpCode ? '6-digit verification code' : 'Security link valid for 1 hour',
     contentHtml,
   });
 
   return dispatchEmail({
     to: recipientEmail,
-    subject: `Reset your password — ${businessName}`,
+    subject: otpCode ? `${otpCode} is your password reset code — ${businessName}` : `Reset your password — ${businessName}`,
     html: htmlContent,
-    simulationInfo: { tag: 'PASSWORD RESET', url: resetUrl },
+    simulationInfo: { tag: 'PASSWORD RESET', url: resetUrl, code: otpCode },
   });
 }
 
 /**
- * Sends a security alert email when a password has been updated.
- */
+
 async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';

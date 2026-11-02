@@ -941,10 +941,10 @@ exports.googleComplete = async (req, res) => {
 };
 
 /**
- * POST /auth/password/forgot — Emails a one-hour reset link (generic success to avoid account enumeration)
+ * POST /auth/password/forgot — Sends 6-digit OTP verification code + fallback link
  */
 exports.forgotPassword = async (req, res) => {
-    const generic = { success: true, message: 'If an account exists for that email or username, a reset link has been sent to its registered email.', cooldownSeconds: 60 };
+    const generic = { success: true, message: 'If an account exists for that email or username, a verification code has been sent to its registered email.', cooldownSeconds: 60 };
     try {
         const input = String(req.body.email || req.body.username || '').trim();
         if (!input) {
@@ -972,15 +972,33 @@ exports.forgotPassword = async (req, res) => {
             if (elapsed < 60) {
                 return res.status(429).json({
                     success: false,
-                    message: `Please wait ${60 - elapsed} seconds before requesting another reset email.`,
+                    message: `Please wait ${60 - elapsed} seconds before requesting another code.`,
                     cooldownRemaining: 60 - elapsed
                 });
             }
         }
 
         await prisma.emailVerification.deleteMany({ where: { userId: user.id } });
+
+        // 1. Generate 6-digit OTP code for in-modal verification
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpToken = 'rst_otp_' + user.email.toLowerCase() + '_' + otpCode;
+
+        // 2. Generate legacy link token for email button fallback
         const rawToken = 'rst_' + generateVerificationToken();
         const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+        // Store OTP (15 min expiry)
+        await prisma.emailVerification.create({
+            data: {
+                userId: user.id,
+                email: user.email,
+                token: otpToken,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+            }
+        });
+
+        // Store Link token (1 hour expiry)
         await prisma.emailVerification.create({
             data: {
                 userId: user.id,
@@ -989,23 +1007,188 @@ exports.forgotPassword = async (req, res) => {
                 expiresAt: new Date(Date.now() + 60 * 60 * 1000)
             }
         });
-        const emailResult = await sendPasswordResetEmail(user.email, user.username, rawToken);
+
+        const emailResult = await sendPasswordResetEmail(user.email, user.username, rawToken, otpCode);
         if (emailResult?.simulated) {
-            console.warn(`[forgotPassword] Notice: Reset email for ${user.email} ran in simulation mode (${emailResult.provider || 'no live provider'}). Link: ${emailResult.url || 'see logs'}`);
+            console.warn(`[forgotPassword] Notice: Reset email for ${user.email} ran in simulation mode. Code: ${otpCode}, Link: ${emailResult.url || 'see logs'}`);
         } else {
-            console.log(`[forgotPassword] Reset email sent to ${user.email} via ${emailResult?.provider || 'live provider'}.`);
+            console.log(`[forgotPassword] Reset email with code ${otpCode} sent to ${user.email} via ${emailResult?.provider || 'live provider'}.`);
         }
 
-        res.json(generic);
+        const atIdx = user.email.indexOf('@');
+        const masked = atIdx > 2 
+            ? user.email[0] + '***' + user.email.slice(atIdx - 1)
+            : user.email;
+
+        return res.json({
+            success: true,
+            maskedEmail: masked,
+            email: user.email,
+            message: `Verification code sent to ${masked}.`,
+            cooldownSeconds: 60
+        });
     } catch (err) {
         console.error('forgotPassword error:', err);
-        res.status(500).json({ success: false, message: 'Failed to send reset email. Please try again.' });
+        return res.status(500).json({ success: false, message: 'Failed to send reset code. Please try again.' });
     }
 };
 
 /**
- * POST /auth/password/reset — Sets a new password using the emailed token
+ * POST /auth/password/verify-otp — Verifies the 6-digit OTP code before setting new password
  */
+exports.verifyResetOtp = async (req, res) => {
+    try {
+        const { emailOrUsername, otpCode } = req.body;
+        if (!emailOrUsername || !otpCode) {
+            return res.status(400).json({ success: false, message: 'Email/username and 6-digit verification code are required.' });
+        }
+
+        const input = String(emailOrUsername).trim();
+        const cleanOtp = String(otpCode).trim();
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: { equals: input, mode: 'insensitive' } },
+                    { username: { equals: input, mode: 'insensitive' } }
+                ]
+            }
+        });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired verification code.' });
+        }
+
+        const expectedToken = 'rst_otp_' + user.email.toLowerCase() + '_' + cleanOtp;
+        const record = await prisma.emailVerification.findFirst({
+            where: {
+                userId: user.id,
+                token: expectedToken,
+                expiresAt: { gt: new Date() }
+            }
+        });
+
+        if (!record) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired 6-digit code. Please check your email or request a new code.' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Code verified successfully.',
+            email: user.email
+        });
+    } catch (err) {
+        console.error('verifyResetOtp error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to verify code.' });
+    }
+};
+
+/**
+ * POST /auth/password/reset-with-otp — Resets password using 6-digit code and logs user in
+ */
+exports.resetPasswordWithOtp = async (req, res) => {
+    try {
+        const { emailOrUsername, otpCode, password } = req.body;
+        if (!emailOrUsername || !otpCode) {
+            return res.status(400).json({ success: false, message: 'Email/username and 6-digit verification code are required.' });
+        }
+        if (!password || String(password).length < 6) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        }
+
+        const input = String(emailOrUsername).trim();
+        const cleanOtp = String(otpCode).trim();
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: { equals: input, mode: 'insensitive' } },
+                    { username: { equals: input, mode: 'insensitive' } }
+                ]
+            }
+        });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Account not found or expired code.' });
+        }
+
+        const expectedToken = 'rst_otp_' + user.email.toLowerCase() + '_' + cleanOtp;
+        const record = await prisma.emailVerification.findFirst({
+            where: {
+                userId: user.id,
+                token: expectedToken,
+                expiresAt: { gt: new Date() }
+            }
+        });
+
+        if (!record) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired 6-digit code. Please request a new code.' });
+        }
+
+        // Check if same as current password
+        if (user.password) {
+            const isSame = await bcrypt.compare(password, user.password);
+            if (isSame) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your new password cannot be the same as your current password.'
+                });
+            }
+        }
+
+        // Clean up reset records for this user
+        await prisma.emailVerification.deleteMany({ where: { userId: user.id } }).catch(() => {});
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const updatedUser = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                isEmailVerified: true,
+                tokenVersion: { increment: 1 }
+            }
+        });
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: updatedUser.id, role: updatedUser.role, tenantId: updatedUser.tenantId, tokenVersion: updatedUser.tokenVersion || 0 },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax'
+        };
+
+        res.cookie(`${updatedUser.role}_token`, token, cookieOptions);
+        res.cookie('token', token, cookieOptions);
+
+        sendPasswordChangedAlertEmail(updatedUser.email, updatedUser.username).catch(() => {});
+
+        return res.json({
+            success: true,
+            message: 'Password reset successfully! Logging you in...',
+            token,
+            user: {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                isEmailVerified: updatedUser.isEmailVerified,
+                walletBalance: updatedUser.walletBalance,
+                address: updatedUser.address,
+                phoneNumber: updatedUser.phoneNumber
+            }
+        });
+    } catch (err) {
+        console.error('resetPasswordWithOtp error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to reset password.' });
+    }
+};
+
+
 exports.resetPassword = async (req, res) => {
     try {
         const { token, password } = req.body;

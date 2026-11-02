@@ -30,7 +30,9 @@ interface AuthState {
   verifyEmailToken: (token: string) => Promise<{ success: boolean; message: string }>;
   loginWithGoogle: (googleUserData: { email: string; displayName?: string; photoURL?: string; phoneNumber?: string; uid: string }) => Promise<AuthResponse & { needsPassword?: boolean; setupToken?: string; suggestedUsername?: string; email?: string }>;
   completeGoogleSignup: (setupToken: string, password: string, username?: string) => Promise<AuthResponse>;
-  forgotPassword: (email: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number }>;
+  forgotPassword: (emailOrUsername: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number; maskedEmail?: string; email?: string }>;
+  verifyResetOtp: (emailOrUsername: string, otpCode: string) => Promise<{ success: boolean; message: string; email?: string }>;
+  resetPasswordWithOtp: (emailOrUsername: string, otpCode: string, password: string) => Promise<{ success: boolean; message: string; user?: any }>;
   validateResetToken: (token: string) => Promise<{ valid: boolean; maskedEmail?: string; username?: string; message?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string; user?: any }>;
   changePassword: (currentPassword: string, newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; message: string }>;
@@ -224,11 +226,32 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      forgotPassword: async (email) => {
-        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number }>(
+      forgotPassword: async (emailOrUsername) => {
+        return await api.post<{ success: boolean; message: string; cooldownSeconds?: number; maskedEmail?: string; email?: string }>(
           '/api/auth/password/forgot',
-          { email }
+          { email: emailOrUsername }
         );
+      },
+
+      verifyResetOtp: async (emailOrUsername, otpCode) => {
+        return await api.post<{ success: boolean; message: string; email?: string }>(
+          '/api/auth/password/verify-otp',
+          { emailOrUsername, otpCode }
+        );
+      },
+
+      resetPasswordWithOtp: async (emailOrUsername, otpCode, password) => {
+        const res = await api.post<{ success: boolean; message: string; user?: any }>(
+          '/api/auth/password/reset-with-otp',
+          { emailOrUsername, otpCode, password }
+        );
+        if (res.success && res.user) {
+          set({ user: res.user, isAuthenticated: true });
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('stitch-session-active', 'true');
+          }
+        }
+        return res;
       },
 
       validateResetToken: async (token) => {

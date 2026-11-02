@@ -50,7 +50,18 @@ export default function AuthModal() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Alternate views: normal login/register, forgot-password, first-time Google password setup, or OTP verification
-  const [view, setView] = useState<'main' | 'forgot' | 'googleSetup' | 'verifyOtp'>('main');
+  const [view, setView] = useState<'main' | 'forgot' | 'forgotOtp' | 'forgotNewPassword' | 'googleSetup' | 'verifyOtp'>('main');
+  // Forgot Password 3-Step Flow States
+  const [forgotTarget, setForgotTarget] = useState('');
+  const [forgotMaskedEmail, setForgotMaskedEmail] = useState('');
+  const [forgotOtpCode, setForgotOtpCode] = useState('');
+  const [forgotOtpError, setForgotOtpError] = useState<string | null>(null);
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotConfirmPass, setForgotConfirmPass] = useState('');
+  const [forgotPassShow, setForgotPassShow] = useState(false);
+  const [forgotPassError, setForgotPassError] = useState<string | null>(null);
+  const [isVerifyingForgotOtp, setIsVerifyingForgotOtp] = useState(false);
+  const [isSavingNewPassword, setIsSavingNewPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -623,23 +634,27 @@ export default function AuthModal() {
     setForgotSent(false);
     setForgotError(null);
     setFieldErrors({});
+    setForgotTarget('');
+    setForgotMaskedEmail('');
+    setForgotOtpCode('');
+    setForgotOtpError(null);
     setView('forgot');
   };
 
-  const handleForgotSubmit = async (e?: React.FormEvent) => {
+  const handleForgotSubmit = async (e?: React.FormEvent, overrideTarget?: string) => {
     if (e) e.preventDefault();
-    if (forgotCooldown > 0) return;
+    if (forgotCooldown > 0 && !overrideTarget) return;
     setForgotError(null);
     setFieldErrors({});
 
-    const target = email.trim();
+    const target = (overrideTarget || email || forgotTarget).trim();
     if (!target) {
       setFieldErrors({ forgotTarget: 'Please enter your email or username.' });
       setFormShaking(true);
       setTimeout(() => setFormShaking(false), 450);
       showToast({
         title: 'Account Needed',
-        message: 'Please enter your account email or username so we can send a reset link.',
+        message: 'Please enter your account email or username.',
         type: 'warning',
       });
       return;
@@ -648,23 +663,91 @@ export default function AuthModal() {
     setIsFormSubmitting(true);
     try {
       const res = await forgotPassword(target.toLowerCase());
-      setForgotSent(true);
+      setForgotTarget(target.toLowerCase());
+      setForgotMaskedEmail(res?.maskedEmail || res?.email || target);
+      setForgotOtpCode('');
+      setForgotOtpError(null);
       setForgotCooldown(res?.cooldownSeconds || 60);
+      setView('forgotOtp');
       showToast({
-        title: 'Reset Link Sent',
-        message: 'If your account is registered, please check your inbox for password reset instructions.',
-        type: 'success',
+        title: 'Verification Code Sent',
+        message: `A 6-digit code was sent to ${res?.maskedEmail || res?.email || target}.`,
+        type: 'info',
       });
     } catch (err: any) {
-      const errMsg = err.message || 'Could not send reset email.';
+      const errMsg = err.message || 'Could not send reset code.';
       setForgotError(errMsg);
       showToast({
-        title: 'Could Not Send Link',
+        title: 'Error',
         message: errMsg,
         type: 'error',
       });
     } finally {
       setIsFormSubmitting(false);
+    }
+  };
+
+  const handleVerifyForgotOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotOtpError(null);
+    if (!forgotOtpCode || forgotOtpCode.length < 6) {
+      setForgotOtpError('Please enter the complete 6-digit verification code.');
+      return;
+    }
+
+    setIsVerifyingForgotOtp(true);
+    try {
+      const res = await useAuthStore.getState().verifyResetOtp(forgotTarget, forgotOtpCode);
+      if (res.success) {
+        setForgotNewPass('');
+        setForgotConfirmPass('');
+        setForgotPassError(null);
+        setView('forgotNewPassword');
+        showToast({
+          title: 'Code Verified',
+          message: 'Please enter your new password.',
+          type: 'success',
+        });
+      } else {
+        setForgotOtpError(res.message || 'Invalid or expired code.');
+      }
+    } catch (err: any) {
+      setForgotOtpError(err.message || 'Invalid or expired code.');
+    } finally {
+      setIsVerifyingForgotOtp(false);
+    }
+  };
+
+  const handleSaveForgotNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotPassError(null);
+
+    if (forgotNewPass.length < 6) {
+      setForgotPassError('Password must be at least 6 characters.');
+      return;
+    }
+    if (forgotNewPass !== forgotConfirmPass) {
+      setForgotPassError('Passwords do not match. Please check again.');
+      return;
+    }
+
+    setIsSavingNewPassword(true);
+    try {
+      const res = await useAuthStore.getState().resetPasswordWithOtp(forgotTarget, forgotOtpCode, forgotNewPass);
+      if (res.success) {
+        showToast({
+          title: 'Password Reset',
+          message: 'Password updated successfully! Welcome back.',
+          type: 'success',
+        });
+        handleClose();
+      } else {
+        setForgotPassError(res.message || 'Failed to update password.');
+      }
+    } catch (err: any) {
+      setForgotPassError(err.message || 'Failed to update password.');
+    } finally {
+      setIsSavingNewPassword(false);
     }
   };
 
@@ -814,79 +897,247 @@ export default function AuthModal() {
 
   if (view === 'forgot') {
     return (
-      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[440px]" zIndex="z-[100005]" isDirty={false}>
-        <div className="flex flex-col gap-5 font-sans text-left pt-1 pb-1">
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[420px]" zIndex="z-[100005]" isDirty={false}>
+        <div className="flex flex-col gap-4 font-sans text-left pt-1 pb-1">
           <div className="text-center">
-            <h2 className="text-2xl font-black text-text-main m-0 tracking-tight">Reset Password</h2>
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] border border-border-glass mx-auto flex items-center justify-center mb-2 text-text-main">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-text-main m-0 tracking-tight">Reset Password</h2>
             <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
-              {forgotSent
-                ? 'Check your inbox and spam folder. If an account exists, a reset link is on its way (valid for 1 hour).'
-                : "Enter your account email or username and we'll send a link to set a new password."}
+              Enter your account email or username to receive an instant 6-digit verification code.
             </p>
           </div>
-          {!forgotSent ? (
-            <form noValidate onSubmit={handleForgotSubmit} className={`flex flex-col gap-3.5 ${formShaking ? 'animate-shake' : ''}`}>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
-                  <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">Email or Username *</label>
-                  <div className="shrink min-w-0 justify-end">
-                    {fieldErrors.forgotTarget && (
-                      <InlineError variant="label" message={fieldErrors.forgotTarget} />
-                    )}
-                  </div>
+
+          <form noValidate onSubmit={handleForgotSubmit} className={`flex flex-col gap-3.5 ${formShaking ? 'animate-shake' : ''}`}>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
+                <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">Email or Username *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {fieldErrors.forgotTarget && (
+                    <InlineError variant="label" message={fieldErrors.forgotTarget} />
+                  )}
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="e.g. ryven or revinaryven7@gmail.com" 
-                  value={email} 
-                  onBlur={() => validateField('forgotTarget')}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setEmail(val);
-                    if (fieldErrors.forgotTarget) validateField('forgotTarget', val);
-                    if (forgotError) setForgotError(null);
-                  }} 
-                  className={getInputCls(Boolean(fieldErrors.forgotTarget))} 
-                />
               </div>
-              <GlassButton 
-                type="submit" 
-                variant="primary" 
-                fullWidth 
-                size="lg" 
-                className="mt-1 font-bold text-sm" 
-                disabled={isSubmitting || forgotCooldown > 0}
-              >
-                {isFormSubmitting 
-                  ? 'Sending...' 
-                  : (forgotCooldown > 0 ? `Wait ${forgotCooldown}s to resend` : 'Send Reset Link')}
-              </GlassButton>
-              <InlineError variant="banner" message={forgotError} />
-            </form>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <p className="py-2 px-3 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-text-main flex items-center justify-center gap-2 text-center m-0">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-main shrink-0">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span>Instructions sent to <strong className="text-white">{email}</strong> if registered.</span>
-              </p>
-              <GlassButton 
-                type="button" 
-                variant="secondary" 
-                fullWidth 
-                size="md" 
-                className="text-xs font-semibold"
-                disabled={isSubmitting || forgotCooldown > 0} 
-                onClick={() => handleForgotSubmit()}
-              >
-                {forgotCooldown > 0 ? `Resend available in ${forgotCooldown}s` : 'Resend Email'}
-              </GlassButton>
+              <input 
+                type="text" 
+                autoFocus
+                placeholder="e.g. revinaryven7@gmail.com" 
+                value={email} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEmail(val);
+                  setForgotTarget(val);
+                  if (fieldErrors.forgotTarget) setFieldErrors({});
+                  if (forgotError) setForgotError(null);
+                }} 
+                className={getInputCls(Boolean(fieldErrors.forgotTarget))} 
+              />
             </div>
-          )}
+
+            <GlassButton 
+              type="submit" 
+              variant="primary" 
+              fullWidth 
+              size="lg" 
+              className="mt-1 font-bold text-sm" 
+              disabled={isFormSubmitting || !email.trim() || forgotCooldown > 0}
+            >
+              {isFormSubmitting 
+                ? 'Sending Code...' 
+                : (forgotCooldown > 0 ? `Wait ${forgotCooldown}s to resend` : 'Send Verification Code')}
+            </GlassButton>
+            <InlineError variant="banner" message={forgotError} />
+          </form>
+
           <button type="button" onClick={() => setView('main')} className="bg-transparent border-none text-primary font-bold hover:underline cursor-pointer p-0 text-xs text-center">
             ← Back to Sign In
           </button>
+        </div>
+      </GlassModal>
+    );
+  }
+
+  if (view === 'forgotOtp') {
+    return (
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[420px]" zIndex="z-[100005]" isDirty={false}>
+        <div className="flex flex-col gap-3 font-sans text-left pt-0 pb-1">
+          <div className="text-center pt-1 pb-1 px-4">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] border border-border-glass mx-auto flex items-center justify-center mb-2 text-text-main">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-text-main m-0 tracking-tight">
+              Enter 6-Digit Code
+            </h2>
+            <p className="text-xs text-text-dim mt-1.5 mb-0">
+              We sent a 6-digit verification code to <span className="font-semibold text-text-main">{forgotMaskedEmail || forgotTarget}</span>. Enter it below.
+            </p>
+          </div>
+
+          <form noValidate autoComplete="off" onSubmit={handleVerifyForgotOtp} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">
+                6-Digit Verification Code
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                autoFocus
+                placeholder="000000"
+                value={forgotOtpCode}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setForgotOtpCode(val);
+                  if (forgotOtpError) setForgotOtpError(null);
+                }}
+                className="w-full text-center text-2xl font-mono tracking-[0.3em] font-bold py-2.5 px-3 rounded-lg bg-bg-surface/80 border border-border-glass text-text-main placeholder:text-text-dim/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all"
+              />
+              {forgotOtpError && (
+                <div className="mt-1">
+                  <InlineError variant="field" message={forgotOtpError} />
+                </div>
+              )}
+            </div>
+
+            <GlassButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="md"
+              className="mt-1 font-bold text-sm tracking-wide shadow-sm py-2.5"
+              disabled={isVerifyingForgotOtp || forgotOtpCode.length < 6}
+            >
+              {isVerifyingForgotOtp ? 'Verifying...' : 'Verify Code'}
+            </GlassButton>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass">
+              <button
+                type="button"
+                onClick={() => setView('forgot')}
+                className="bg-transparent border-none text-text-dim hover:text-text-main hover:underline cursor-pointer p-0 text-xs"
+              >
+                ← Change Email
+              </button>
+              <button
+                type="button"
+                disabled={forgotCooldown > 0 || isFormSubmitting}
+                onClick={() => handleForgotSubmit(undefined, forgotTarget)}
+                className="bg-transparent border-none text-primary hover:underline font-semibold cursor-pointer p-0 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {forgotCooldown > 0 ? `Resend in ${forgotCooldown}s` : 'Resend Code'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </GlassModal>
+    );
+  }
+
+  if (view === 'forgotNewPassword') {
+    return (
+      <GlassModal isOpen={isAuthOpen} onClose={handleClose} maxWidth="max-w-[420px]" zIndex="z-[100005]" isDirty={false}>
+        <div className="flex flex-col gap-4 font-sans text-left pt-1 pb-1">
+          <div className="text-center">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] border border-border-glass mx-auto flex items-center justify-center mb-2 text-text-main">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-text-main m-0 tracking-tight">Set New Password</h2>
+            <p className="text-text-dim text-xs mt-1.5 m-0 leading-relaxed">
+              Choose a new password for <span className="font-semibold text-text-main">{forgotMaskedEmail || forgotTarget}</span>.
+            </p>
+          </div>
+
+          <form noValidate onSubmit={handleSaveForgotNewPassword} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">New Password *</label>
+              <div className="relative">
+                <input
+                  type={forgotPassShow ? 'text' : 'password'}
+                  autoFocus
+                  placeholder="At least 6 characters"
+                  value={forgotNewPass}
+                  onChange={(e) => {
+                    setForgotNewPass(e.target.value);
+                    if (forgotPassError) setForgotPassError(null);
+                  }}
+                  className={`${getInputCls(Boolean(forgotPassError))} pr-9`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForgotPassShow(!forgotPassShow)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-main bg-transparent border-none p-0 cursor-pointer flex items-center"
+                  title={forgotPassShow ? 'Hide password' : 'Show password'}
+                >
+                  {forgotPassShow ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.75rem] font-bold text-text-dim ml-1">Confirm New Password *</label>
+              <input
+                type={forgotPassShow ? 'text' : 'password'}
+                placeholder="Re-enter password"
+                value={forgotConfirmPass}
+                onChange={(e) => {
+                  setForgotConfirmPass(e.target.value);
+                  if (forgotPassError) setForgotPassError(null);
+                }}
+                className={getInputCls(Boolean(forgotPassError))}
+              />
+            </div>
+
+            {forgotPassError && (
+              <InlineError variant="banner" message={forgotPassError} />
+            )}
+
+            <GlassButton
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="md"
+              className="mt-1 font-bold text-sm py-2.5 shadow-sm"
+              disabled={isSavingNewPassword || forgotNewPass.length < 6 || !forgotConfirmPass}
+            >
+              {isSavingNewPassword ? 'Updating Password...' : 'Reset Password & Sign In'}
+            </GlassButton>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border-glass">
+              <button
+                type="button"
+                onClick={() => setView('forgotOtp')}
+                className="bg-transparent border-none text-text-dim hover:text-text-main hover:underline cursor-pointer p-0 text-xs"
+              >
+                ← Back to Code
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('main')}
+                className="bg-transparent border-none text-primary hover:underline font-semibold cursor-pointer p-0 text-xs"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          </form>
         </div>
       </GlassModal>
     );

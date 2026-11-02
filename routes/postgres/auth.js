@@ -45,6 +45,8 @@ router.get('/email/status', auth(), authController.emailVerificationStatus);
 router.post('/google', authController.googleAuth);
 router.post('/google/complete', authController.googleComplete);
 router.post('/password/forgot', authController.forgotPassword);
+router.post('/password/verify-otp', authController.verifyResetOtp);
+router.post('/password/reset-with-otp', authController.resetPasswordWithOtp);
 router.post('/password/reset', authController.resetPassword);
 router.get('/password/validate-token', authController.validateResetToken);
 router.post('/password/validate-token', authController.validateResetToken);
