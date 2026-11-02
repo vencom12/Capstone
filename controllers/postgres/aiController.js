@@ -23,7 +23,7 @@ const getAISettings = async () => {
             aiVisionModel: settings.aiVisionModel || 'qwen/qwen3.8-27b',
             aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.70,
-            businessName: settings.businessName || 'Eds Towels & Caps Embroidery',
+            businessName: settings.businessName || 'Edz Towels & Caps',
             businessContact: settings.businessContact || '0928 810 3928'
         };
     } catch (e) {
@@ -33,7 +33,7 @@ const getAISettings = async () => {
             aiVisionModel: 'qwen/qwen3.8-27b',
             aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: 0.70,
-            businessName: 'Eds Towels & Caps Embroidery',
+            businessName: 'Edz Towels & Caps',
             businessContact: '0928 810 3928'
         };
     }

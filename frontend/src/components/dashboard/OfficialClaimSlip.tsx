@@ -344,7 +344,7 @@ export default function OfficialClaimSlip({
                 OFFICIAL SALES RECEIPT
               </div>
               <div className="text-lg font-black text-black mt-0.5 tracking-wider">
-                Edz Towels &amp; Caps Embroidery
+                Edz Towels &amp; Caps
               </div>
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
@@ -462,7 +462,7 @@ export default function OfficialClaimSlip({
             {/* Direct Sale Footer Notice */}
             <div className="pt-1.5 flex flex-col items-center gap-1 text-center">
               <p className="text-[10px] font-bold text-zinc-800 uppercase m-0 leading-tight">
-                Thank you for shopping at Edz Towels &amp; Caps Embroidery!
+                Thank you for shopping at Edz Towels &amp; Caps!
               </p>
               <p className="text-[9px] text-zinc-500 m-0 leading-tight">
                 Direct counter purchase • No claim code required
@@ -483,7 +483,7 @@ export default function OfficialClaimSlip({
                 COUNTER CLAIM SLIP
               </div>
               <div className="text-lg font-black text-black mt-0.5 tracking-wider">
-                Edz Towels &amp; Caps Embroidery
+                Edz Towels &amp; Caps
               </div>
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
@@ -630,7 +630,7 @@ export default function OfficialClaimSlip({
                 Present this slip or Claim Code upon pickup
               </p>
               <p className="text-[9px] text-zinc-500 m-0 leading-tight">
-                Edz Towels &amp; Caps Embroidery Counter • Pacific Mall Lucena
+                Edz Towels &amp; Caps Counter • Pacific Mall Lucena
               </p>
             </div>
           </>

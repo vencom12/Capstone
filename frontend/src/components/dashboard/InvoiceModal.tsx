@@ -52,7 +52,7 @@ export default function InvoiceModal({
             .trim() || '0928 810 3928';
 
           setBusinessSettings({
-            businessName: res.businessName || 'Edz Towels & Caps Embroidery',
+            businessName: res.businessName || 'Edz Towels & Caps',
             businessAddress: res.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: cleanPhone,
             businessLogoUrl: res.businessLogoUrl || '',
@@ -106,7 +106,7 @@ export default function InvoiceModal({
   const clientName = user?.username || order?.client || fetchedData?.client || 'Customer';
   const clientPhone = user?.phoneNumber || fetchedData?.phoneNumber || '';
 
-  const fulfillmentAddress = order?.address || user?.address || fetchedData?.address || 'Store Pick up: Edz Towels & Caps Embroidery, Pacific Mall Lucena, Quezon 4301';
+  const fulfillmentAddress = order?.address || user?.address || fetchedData?.address || 'Store Pick up: Edz Towels & Caps, Pacific Mall Lucena, Quezon 4301';
   const paymentMethod = (order?.paymentMethod || fetchedData?.paymentMethod || transaction?.paymentMethod || 'GCASH').toUpperCase();
 
   const isPickup = (typeof fulfillmentAddress === 'string' && (fulfillmentAddress.toLowerCase().includes('pick up') || fulfillmentAddress.toLowerCase().includes('pick-up') || fulfillmentAddress.toLowerCase().includes('pickup'))) ||
@@ -249,7 +249,7 @@ export default function InvoiceModal({
               {/* Store Header */}
               <div style={{ textAlign: 'center', paddingBottom: '2px' }}>
                 <div style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#000000', textTransform: 'uppercase', lineHeight: '1.2' }}>
-                  {businessSettings.businessName || 'Edz Towels & Caps Embroidery'}
+                  {businessSettings.businessName || 'Edz Towels & Caps'}
                 </div>
                 <div style={{ fontSize: '8.5px', fontWeight: '700', letterSpacing: '1px', color: '#52525b', textTransform: 'uppercase', marginTop: '1px' }}>
                   {businessSettings.receiptTagline || 'Custom Embroidery & Apparel Workshop'}

@@ -1365,7 +1365,7 @@ exports.downloadShoppingListPdf = async (req, res) => {
 
         // Header
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
+        const bizName = settings?.businessName || 'Edz Towels & Caps';
 
         doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
         doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });
@@ -1494,7 +1494,7 @@ exports.downloadDailyFinancialPdf = async (req, res) => {
 
         doc.pipe(res);
 
-        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
+        const bizName = settings?.businessName || 'Edz Towels & Caps';
 
         doc.font('Helvetica-Bold').fontSize(13).text(bizName, { align: 'center' });
         doc.font('Helvetica').fontSize(8).text('DAILY FINANCIAL & EXPENSES REPORT', { align: 'center' });

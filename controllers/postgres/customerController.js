@@ -1248,7 +1248,7 @@ exports.getPublicSettings = async (req, res) => {
         const publicSettingsPayload = {
             giftPackagingPrice: settings ? settings.giftPackagingPrice : 5.00,
             deliveryEnabled: settings ? settings.deliveryEnabled : false,
-            businessName: settings?.businessName || 'Edz Towels & Caps Embroidery',
+            businessName: settings?.businessName || 'Edz Towels & Caps',
             businessAddress: settings?.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: settings?.businessContact || '0928 810 3928',
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
@@ -1289,7 +1289,7 @@ exports.getPublicSettings = async (req, res) => {
         res.json({
             giftPackagingPrice: 5.00,
             deliveryEnabled: false,
-            businessName: 'Edz Towels & Caps Embroidery',
+            businessName: 'Edz Towels & Caps',
             businessAddress: 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: '0928 810 3928',
             receiptTagline: 'Custom Embroidery & Apparel Workshop',
@@ -1423,7 +1423,7 @@ exports.downloadReceipt = async (req, res) => {
 
         // Fetch dynamic business settings
         const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-        const bizName = settings?.businessName || 'Edz Towels & Caps Embroidery';
+        const bizName = settings?.businessName || 'Edz Towels & Caps';
         const bizTagline = settings?.receiptTagline || 'Custom Embroidery & Apparel';
         const bizAddress = settings?.businessAddress || 'Pacific Mall Lucena, Quezon Province';
         const bizContact = settings?.businessContact || '0928 810 3928';

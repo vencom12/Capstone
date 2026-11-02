@@ -12,7 +12,7 @@ import GlassModal from '@/components/ui/GlassModal';
  */
 const STUDIO_BUSINESS_SAFEGUARDS = {
   studioName: 'Eds Towels & Caps',
-  legalEntity: 'Eds Towels & Caps Embroidery Studio',
+  legalEntity: 'Edz Towels & Caps Studio',
   storeAddress: 'Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Brgy. 3, Lucena City, Quezon 4301',
   operatingHours: 'Open Daily: 10:00 AM – 8:00 PM (Following official Pacific Mall hours)',
   phone: '0928 810 3928',
