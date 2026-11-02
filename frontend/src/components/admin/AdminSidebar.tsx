@@ -16,11 +16,13 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [businessName, setBusinessName] = useState('Edz Towels & Caps');
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.businessName) setBusinessName(res.businessName);
       }).catch((err) => {
         // The sidebar falls back to the default logo, so this is non-fatal, but
         // it must not fail silently.
@@ -178,7 +180,7 @@ export default function AdminSidebar({ activeTab, setActiveTab }: AdminSidebarPr
               </div>
             )}
             <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden max-[650px]:inline truncate">
-              Stitch-Opt
+              {businessName || 'Edz Towels & Caps'}
             </span>
           </Link>
 

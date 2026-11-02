@@ -17,11 +17,13 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [businessName, setBusinessName] = useState('Edz Towels & Caps');
 
   useEffect(() => {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.businessName) setBusinessName(res.businessName);
       }).catch(() => {});
     });
   }, []);
@@ -121,7 +123,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
               </div>
             )}
             <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden min-[1101px]:group-hover:block max-[650px]:!block truncate">
-              Eds Towels &amp; Caps
+              {businessName || 'Edz Towels & Caps'}
             </span>
           </Link>
 
