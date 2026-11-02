@@ -397,7 +397,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   };
 
   // Lettering extra pricing rule:
-  // Store products: First word is included in base price. Subsequent words (after space) cost admin-configured Small or Big rate per letter.
+  // Store products: First word is included in base price. Subsequent words (after space or dot) cost admin-configured Small or Big rate per letter.
   // BYOG: Customer brings garment. Every single letter has a fee (admin-configured Small or Big rate). No free first word.
   const isSelectedBigGarment = useMemo(() => {
     if (activeSelectedItem?.isByog) {

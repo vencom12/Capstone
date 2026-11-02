@@ -1216,7 +1216,7 @@ export default function ProductModal({
                           setMonogramError('Please enter text to embroider or disable lettering');
                         }
                       }}
-                      placeholder="e.g. Juan (free) or Juan D (+fee after space)"
+                      placeholder="e.g. Juan (free) or Juan D (+fee after space or dot)"
                       className={`w-full bg-bg-surface border ${
                         monogramError
                           ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'

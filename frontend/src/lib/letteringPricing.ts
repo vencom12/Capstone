@@ -4,7 +4,7 @@
  * Business rules:
  * - Maximum 20 characters per line (including spaces) — strictly enforced.
  * - First word/name on each line is included in the base embroidery/product price.
- * - Any lettering requested after a space on that line is charged per letter:
+ * - Any lettering requested after a space or dot on that line (e.g. "ryven revina" or "ryven.revina") is charged per letter:
  *   - Admin-configured Small Garment rate (default ₱7 / letter)
  *   - Admin-configured Big Garment rate (default ₱10 / letter)
  * - Small vs. Big Garment detection uses the Admin-configured product setting (`garmentSize` / `tags`),
@@ -182,10 +182,11 @@ export function calculateLetteringCost(
   }
 
   // STANDARD STORE PRODUCT:
-  // First word is included in the base product price.
-  // Any lettering requested after a space is charged per letter.
-  const firstSpaceIndex = trimmed.indexOf(' ');
-  if (firstSpaceIndex === -1) {
+  // First word/name is included in the base product price.
+  // Any lettering requested after a space or dot (e.g. "ryven revina" or "ryven.revina") is charged per letter.
+  const firstDelimiterMatch = trimmed.match(/[\s.]/);
+  const firstDelimiterIndex = firstDelimiterMatch ? (firstDelimiterMatch.index ?? -1) : -1;
+  if (firstDelimiterIndex === -1) {
     return {
       isPersonalized: true,
       isBigGarment: isBig,
@@ -199,10 +200,10 @@ export function calculateLetteringCost(
     };
   }
 
-  const baseText = trimmed.substring(0, firstSpaceIndex);
-  const extraText = trimmed.substring(firstSpaceIndex + 1);
-  // Count only non-space characters after the first word
-  const lettersOnly = extraText.replace(/\s+/g, '');
+  const baseText = trimmed.substring(0, firstDelimiterIndex);
+  const extraText = trimmed.substring(firstDelimiterIndex + 1);
+  // Count only non-space, non-dot characters after the first word/delimiter
+  const lettersOnly = extraText.replace(/[\s.]+/g, '');
   const extraLettersCount = lettersOnly.length;
   const extraCost = extraLettersCount * ratePerLetter;
 
