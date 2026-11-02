@@ -750,10 +750,10 @@ export default function PanelSettings({
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-0.5">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim">
-                      1. Additional Name Lettering Pricing (Admin-Configured Tiers)
+                      1. Additional Name Lettering Pricing
                     </h4>
                     <p className="text-xs text-text-dim">
-                      The customer gets the <strong>first word / name free</strong> on each line (included in base item price). Any extra name or word added after a space is charged per letter based on the product&apos;s configured Garment Size Tier (<strong>Small Garment</strong> vs. <strong>Big Garment</strong>).
+                      The customer gets the <strong>first word / name free</strong> on each line (included in base item price). Any extra name or word added after a space is charged per letter based on the product&apos;s configured garment size (<strong>Small Garment</strong> vs. <strong>Big Garment</strong>).
                     </p>
                   </div>
 
@@ -1188,12 +1188,12 @@ export default function PanelSettings({
                   {/* Smart Templates Preview */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
-                      Star-Calibrated Response Tiers:
+                      Review Response Templates:
                     </span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
                         <span className="font-bold text-primary flex items-center gap-1">
-                          5★ &amp; 4★ High-Praise Tier
+                          5★ &amp; 4★ Positive Reviews
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece..."
@@ -1201,7 +1201,7 @@ export default function PanelSettings({
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
                         <span className="font-bold text-text-main flex items-center gap-1">
-                          3★ Constructive Tier
+                          3★ Neutral Reviews
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality team..."
@@ -1209,7 +1209,7 @@ export default function PanelSettings({
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
                         <span className="font-bold text-danger flex items-center gap-1">
-                          1★ &amp; 2★ Service Recovery Tier
+                          1★ &amp; 2★ Negative Reviews
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "We are deeply sorry for your disappointing experience. Quality and craftsmanship are our highest priorities. A management alert has been triggered so our team can review this order..."

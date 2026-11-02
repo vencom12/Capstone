@@ -1218,10 +1218,10 @@ export default function PanelManageDesigns({
           <div className="flex flex-col gap-1.5 bg-white/[0.02] border border-border-glass p-2.5 rounded-xl">
             <div className="flex items-center justify-between">
               <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">
-                Garment Size Tier (Extra Lettering Rate Classification)
+                Garment Size (Extra Lettering Rate)
               </label>
               <span className="text-[0.65rem] text-primary font-semibold">
-                1st Word Free • Space + Letter Charges Tier Rate
+                1st Word Free • Extra Word Letter Rate
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">

@@ -387,7 +387,7 @@ export default function ProductModal({
   }, [product, isOpen]);
 
   // Lettering extra pricing rule:
-  // Uses Admin-configured Garment Size Tier ('small' | 'big') and Admin-configured Small/Big rates.
+  // Uses Admin-configured Garment Size ('small' | 'big') and Admin-configured Small/Big rates.
   const garmentSize = resolveProductGarmentSize(product);
   const isBig = garmentSize === 'big';
 
@@ -1298,8 +1298,8 @@ export default function ProductModal({
                       </span>
                       <span className="text-[10px] text-text-dim/70">
                         {isBig
-                          ? `Admin Big Garment Tier (₱${letteringRates.bigRate}/letter after 1st word)`
-                          : `Admin Small Garment Tier (₱${letteringRates.smallRate}/letter after 1st word)`}
+                          ? `Big Garment Rate (₱${letteringRates.bigRate}/letter after 1st word)`
+                          : `Small Garment Rate (₱${letteringRates.smallRate}/letter after 1st word)`}
                       </span>
                     </div>
                     <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-text-dim'}`}>

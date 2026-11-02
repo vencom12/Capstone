@@ -1302,7 +1302,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars/line)</span>
                     </span>
                     <span className="text-[10px] text-text-dim">
-                      Tier: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
+                      Rate: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
                     </span>
                   </div>
 
