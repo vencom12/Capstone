@@ -417,7 +417,7 @@ export default function AdminPage() {
     setIsLoadingHistoryReceipt(true);
 
     try {
-      const data = await api.get<any>(`/api/customer/receipt/${transactionId}`);
+      const data = await api.get<any>(`/api/admin/receipt/${transactionId}`);
       if (data) {
         setHistoryReceiptDetails(data);
       }
@@ -447,7 +447,7 @@ export default function AdminPage() {
 
     try {
       showToast('Preparing secure archived receipt download...', 'info');
-      await api.download(`/api/customer/receipt/${receiptId}/download`, `STITCH_OPT_ARCHIVED_RECEIPT_${receiptId}.pdf`);
+      await api.download(`/api/admin/receipt/${receiptId}/download`, `STITCH_OPT_ARCHIVED_RECEIPT_${receiptId}.pdf`);
       showToast('Archived Receipt PDF downloaded successfully', 'success');
     } catch (err) {
       console.error('Download failed:', err);

@@ -491,8 +491,41 @@ app.get('/api/payments/receipt/:transactionID', auth(), async (req, res) => {
             tx.order = tx.Order;
         }
 
-        if (tx.userId !== req.user.id && req.user.role === 'customer') {
-            return res.status(403).json({ message: 'Unauthorized' });
+        const isStaffOrAdmin = req.user?.role === 'admin' || req.user?.role === 'employee';
+        if (!isStaffOrAdmin) {
+            const reqUserId = req.user?.id ? String(req.user.id) : null;
+            const reqEmail = req.user?.email ? String(req.user.email).trim().toLowerCase() : null;
+            const reqPhone = req.user?.phoneNumber ? String(req.user.phoneNumber).replace(/\D/g, '') : null;
+            const reqUsername = req.user?.username ? String(req.user.username).trim().toLowerCase() : null;
+
+            const txUserId = tx.userId ? String(tx.userId) : null;
+            const orderUserId = tx.order?.userId ? String(tx.order.userId) : null;
+
+            const orderEmail = (tx.order?.personalization?.customerEmail || tx.user?.email)
+                ? String(tx.order.personalization?.customerEmail || tx.user.email).trim().toLowerCase()
+                : null;
+            const orderPhone = (tx.order?.personalization?.customerPhone || tx.user?.phoneNumber)
+                ? String(tx.order.personalization?.customerPhone || tx.user.phoneNumber).replace(/\D/g, '')
+                : null;
+            const orderClient = tx.order?.client ? String(tx.order.client).trim().toLowerCase() : null;
+
+            const isOwner = (reqUserId && (reqUserId === txUserId || reqUserId === orderUserId)) ||
+                (reqEmail && orderEmail && reqEmail === orderEmail) ||
+                (reqPhone && orderPhone && (orderPhone.endsWith(reqPhone.slice(-10)) || reqPhone.endsWith(orderPhone.slice(-10)))) ||
+                (reqUsername && orderClient && (reqUsername === orderClient || orderClient.includes(reqUsername)));
+
+            const isStaffPunchedOrWalkIn = (
+                tx.order?.orderId?.startsWith('WI-') ||
+                tx.order?.notes?.toLowerCase().includes('walk-in') ||
+                tx.order?.address?.toLowerCase().includes('physical store') ||
+                !orderUserId
+            );
+
+            if (!isOwner) {
+                if (!isStaffPunchedOrWalkIn || (orderUserId && orderUserId !== txUserId && orderUserId !== reqUserId)) {
+                    return res.status(403).json({ message: 'You do not have permission to view this receipt.' });
+                }
+            }
         }
 
         return res.json({

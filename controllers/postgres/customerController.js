@@ -824,10 +824,43 @@ exports.getReceipt = async (req, res) => {
             return res.status(404).json({ message: 'We could not find that receipt.' });
         }
 
-        // Authorization check for customer role
-        const targetUserId = tx?.userId || linkedOrder?.userId || receiptData?.userId;
-        if (req.user?.role === 'customer' && targetUserId && req.user?.id && targetUserId !== req.user.id) {
-            return res.status(403).json({ message: 'You do not have permission to view this receipt.' });
+        // Authorization check
+        const isStaffOrAdmin = req.user?.role === 'admin' || req.user?.role === 'employee';
+        if (!isStaffOrAdmin) {
+            const reqUserId = req.user?.id ? String(req.user.id) : null;
+            const reqEmail = req.user?.email ? String(req.user.email).trim().toLowerCase() : null;
+            const reqPhone = req.user?.phoneNumber ? String(req.user.phoneNumber).replace(/\D/g, '') : null;
+            const reqUsername = req.user?.username ? String(req.user.username).trim().toLowerCase() : null;
+
+            const orderUserId = linkedOrder?.userId ? String(linkedOrder.userId) : null;
+            const txUserId = tx?.userId ? String(tx.userId) : null;
+            const receiptUserId = receiptData?.userId ? String(receiptData.userId) : null;
+
+            const orderEmail = (linkedOrder?.personalization?.customerEmail || linkedOrder?.user?.email)
+                ? String(linkedOrder.personalization?.customerEmail || linkedOrder.user.email).trim().toLowerCase()
+                : null;
+            const orderPhone = (linkedOrder?.personalization?.customerPhone || linkedOrder?.user?.phoneNumber)
+                ? String(linkedOrder.personalization?.customerPhone || linkedOrder.user.phoneNumber).replace(/\D/g, '')
+                : null;
+            const orderClient = linkedOrder?.client ? String(linkedOrder.client).trim().toLowerCase() : null;
+
+            const isOwner = (reqUserId && (reqUserId === orderUserId || reqUserId === txUserId || reqUserId === receiptUserId)) ||
+                (reqEmail && orderEmail && reqEmail === orderEmail) ||
+                (reqPhone && orderPhone && (orderPhone.endsWith(reqPhone.slice(-10)) || reqPhone.endsWith(orderPhone.slice(-10)))) ||
+                (reqUsername && orderClient && (reqUsername === orderClient || orderClient.includes(reqUsername)));
+
+            const isStaffPunchedOrWalkIn = (
+                linkedOrder?.orderId?.startsWith('WI-') ||
+                linkedOrder?.notes?.toLowerCase().includes('walk-in') ||
+                linkedOrder?.address?.toLowerCase().includes('physical store') ||
+                !orderUserId
+            );
+
+            if (!isOwner) {
+                if (!isStaffPunchedOrWalkIn || (orderUserId && orderUserId !== txUserId && orderUserId !== reqUserId)) {
+                    return res.status(403).json({ message: 'You do not have permission to view this receipt.' });
+                }
+            }
         }
 
         // Prepare clean non-circular order object

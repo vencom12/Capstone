@@ -92,5 +92,10 @@ router.get('/delay-notice', staffAuth(), adminController.getDelayNoticeStatus);
 router.post('/delay-notice', adminAuth(), auditLogger('Settings', 'BROADCAST_DELAY_NOTICE'), adminController.broadcastDelayNotice);
 router.post('/delay-notice/lift', adminAuth(), auditLogger('Settings', 'LIFT_DELAY_NOTICE'), adminController.liftDelayNotice);
 
+// Receipt viewing & PDF generation (Admin & Staff authorized)
+const customerController = require('../../controllers/postgres/customerController');
+router.get('/receipt/:id', staffAuth(), customerController.getReceipt);
+router.get('/receipt/:id/download', staffAuth(), customerController.downloadReceipt);
+
 module.exports = router;
 

@@ -25,50 +25,42 @@ function resolveToken(req, roles = []) {
     const portalHeader = req.headers?.['x-portal'];
     const path = req.originalUrl || req.baseUrl || req.url || '';
 
-    // Check if context is customer
-    const isCustomerContext = portalHeader === 'customer' || 
-                              path.includes('/api/customer') || 
-                              (Array.isArray(roles) && roles.length === 1 && roles.includes('customer'));
-
-    // Check if context is admin
-    const isAdminContext = portalHeader === 'admin' || 
-                           path.includes('/api/admin') || 
-                           (Array.isArray(roles) && roles.length === 1 && roles.includes('admin'));
-
-    // Check if context is employee / staff
-    const isEmployeeContext = portalHeader === 'employee' || 
-                             path.includes('/api/employee') || 
-                             (Array.isArray(roles) && roles.length === 1 && roles.includes('employee'));
-
-    if (isCustomerContext) {
-        // Customer requests MUST prioritize customer_token
+    // 1. Explicit Portal Header Context (Highest priority to avoid cookie crosstalk)
+    if (portalHeader === 'admin') {
+        return cookies.admin_token || cookies.token || null;
+    }
+    if (portalHeader === 'employee') {
+        return cookies.employee_token || cookies.admin_token || cookies.token || null;
+    }
+    if (portalHeader === 'customer') {
         return cookies.customer_token || cookies.token || cookies.employee_token || cookies.admin_token || null;
     }
 
-    if (isAdminContext) {
-        // Admin requests prioritize admin_token
-        return cookies.admin_token || cookies.token || null;
-    }
-
-    if (isEmployeeContext) {
-        // Employee requests prioritize employee_token
-        return cookies.employee_token || cookies.admin_token || cookies.token || null;
-    }
-
-    // Role-specific check if roles array is specified
+    // 2. Role-specific check if roles array is specified
     if (Array.isArray(roles) && roles.length > 0) {
-        if (roles.includes('customer') && !roles.includes('admin')) {
-            return cookies.customer_token || cookies.token || cookies.admin_token || null;
-        }
         if (roles.includes('admin') && !roles.includes('customer')) {
             return cookies.admin_token || cookies.token || null;
         }
         if (roles.includes('employee') && !roles.includes('customer')) {
             return cookies.employee_token || cookies.admin_token || cookies.token || null;
         }
+        if (roles.includes('customer') && !roles.includes('admin')) {
+            return cookies.customer_token || cookies.token || cookies.admin_token || null;
+        }
     }
 
-    // Default fallback order: customer_token before admin_token for customer safety
+    // 3. Path-based context if no explicit portal header was sent
+    if (path.includes('/api/admin')) {
+        return cookies.admin_token || cookies.token || null;
+    }
+    if (path.includes('/api/employee')) {
+        return cookies.employee_token || cookies.admin_token || cookies.token || null;
+    }
+    if (path.includes('/api/customer')) {
+        return cookies.customer_token || cookies.token || cookies.employee_token || cookies.admin_token || null;
+    }
+
+    // 4. Default fallback order
     return cookies.customer_token || cookies.admin_token || cookies.employee_token || cookies.token || null;
 }
 

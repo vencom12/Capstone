@@ -320,7 +320,7 @@ export default function PanelOverview({
     setIsReceiptModalOpen(true);
 
     try {
-      const data = await api.get<any>(`/api/customer/receipt/${transactionId}`);
+      const data = await api.get<any>(`/api/admin/receipt/${transactionId}`);
       if (data) {
         setReceiptDetails(data);
       } else {
@@ -352,7 +352,7 @@ export default function PanelOverview({
 
     try {
       showToast('Preparing secure receipt download...', 'info');
-      await api.download(`/api/customer/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
+      await api.download(`/api/admin/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
       showToast('Receipt PDF downloaded successfully', 'success');
     } catch (err) {
       console.error('Download failed:', err);
