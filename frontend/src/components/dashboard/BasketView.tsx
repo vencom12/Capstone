@@ -211,7 +211,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         preOrderShortage: Math.max(0, newQty - Math.max(0, availableStock)),
       });
       showToast(
-        `Quantity (${newQty}) exceeds current on-hand stock (${Math.max(0, availableStock)}). Marked as Pre-Order with extended production schedule.`,
+        `Quantity (${newQty}) exceeds ready stock (${Math.max(0, availableStock)}). Marked as Pre-Order.`,
         'warning'
       );
       return;
@@ -555,7 +555,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                             <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.7rem] text-text-dim flex items-center gap-2">
                               <span>⏳</span>
                               <span>
-                                <strong>Pre-Order Item:</strong> Quantity ({item.quantity} pcs) exceeds current on-hand stock ({Math.max(0, availableStock)} pcs). Includes extended workshop preparation &amp; production time.
+                                <strong>Pre-Order:</strong> Quantity ({item.quantity} pcs) exceeds ready stock ({Math.max(0, availableStock)} pcs).
                               </span>
                             </div>
                           )}

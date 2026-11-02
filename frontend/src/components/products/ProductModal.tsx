@@ -518,9 +518,9 @@ export default function ProductModal({
     }
 
     if (requiresPreOrder && !preOrderAccepted) {
-      const err = `Your quantity (${quantity} pcs) exceeds current on-hand stock (${remainingOnHandForVariant} available). Please accept the Pre-Order extended production schedule below to proceed.`;
+      const err = `Quantity (${quantity} pcs) exceeds ready stock (${remainingOnHandForVariant} available). Please accept Pre-Order terms to proceed.`;
       setActionError(err);
-      showToast('Please accept the Pre-Order production wait time to proceed.', 'warning');
+      showToast('Please accept Pre-Order terms to proceed.', 'warning');
       return null;
     }
 
@@ -1292,14 +1292,14 @@ export default function ProductModal({
                       <span className="text-text-dim text-[11px]">
                         {totalExtraLetteringCost > 0
                           ? letteringMode === 'bulk'
-                            ? `Bulk extra lettering (${bulkSummary.totalExtraLetters} extra letters after space × ₱${bulkSummary.ratePerLetter}):`
-                            : `Additional name lettering (${lettering.extraLettersCount} letters after space × ₱${lettering.ratePerLetter}):`
-                          : 'First name / word on each line:'}
+                            ? `Extra lettering (${bulkSummary.totalExtraLetters} letters × ₱${bulkSummary.ratePerLetter}):`
+                            : `Extra lettering (${lettering.extraLettersCount} letters × ₱${lettering.ratePerLetter}):`
+                          : 'First word on each line:'}
                       </span>
                       <span className="text-[10px] text-text-dim/70">
                         {isBig
-                          ? `Big Garment Rate (₱${letteringRates.bigRate}/letter after 1st word)`
-                          : `Small Garment Rate (₱${letteringRates.smallRate}/letter after 1st word)`}
+                          ? `Big Garment (+₱${letteringRates.bigRate}/letter)`
+                          : `Small Garment (+₱${letteringRates.smallRate}/letter)`}
                       </span>
                     </div>
                     <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
@@ -1399,10 +1399,10 @@ export default function ProductModal({
                   </svg>
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-text-main text-xs">
-                      Quantity Exceeds Current On-Hand Stock ({remainingOnHandForVariant} available)
+                      Pre-Order Required ({remainingOnHandForVariant} in stock)
                     </span>
                     <span className="text-[11px] text-text-dim leading-relaxed">
-                      You are ordering <strong>{quantity} pcs</strong>, which is <strong>{preOrderShortage} pcs</strong> beyond our current ready-to-stitch stock. You may proceed with this order as a <strong>Pre-Order (100% upfront payment)</strong> with an extended workshop preparation &amp; production schedule.
+                      Ordering <strong>{quantity} pcs</strong> exceeds ready stock by <strong>{preOrderShortage} pcs</strong>. This order will be queued as a <strong>Pre-Order (full payment upfront)</strong>.
                     </span>
                     <span className="text-[11px] font-mono font-bold text-primary mt-0.5">
                       ⏱ {estimatedPreOrderScheduleLabel}

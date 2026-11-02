@@ -1247,9 +1247,9 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">
-                            Garment Size &amp; Lettering Rate
+                            Garment Size
                           </label>
-                          <span className="text-[10px] text-primary font-semibold">No free 1st word • All letters charged</span>
+                          <span className="text-[10px] text-primary font-semibold">All letters charged (BYOG)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -1261,10 +1261,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               }`}
                           >
                             <div className="font-bold text-xs flex items-center justify-between">
-                              <span>Small Garment</span>
+                              <span>Small</span>
                               <span className="font-mono text-primary text-[11px]">₱7/letter</span>
                             </div>
-                            <div className="text-[10px] text-text-dim mt-0.5">Cap, Face Towel, Hand Towel, Fan, Handkerchief</div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Caps, towels, fans</div>
                           </button>
                           <button
                             type="button"
@@ -1275,10 +1275,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                               }`}
                           >
                             <div className="font-bold text-xs flex items-center justify-between">
-                              <span>Big Garment</span>
+                              <span>Big</span>
                               <span className="font-mono text-primary text-[11px]">₱10/letter</span>
                             </div>
-                            <div className="text-[10px] text-text-dim mt-0.5">Shirt, Polo, Jacket, Bath Towel, Hoodie</div>
+                            <div className="text-[10px] text-text-dim mt-0.5">Bath towels, shirts, hoodies</div>
                           </button>
                         </div>
                       </div>
@@ -1299,10 +1299,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                   <div>
                     <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider block">
-                      2. Name / Word to Embroider <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                      2. Embroidery Text <span className="normal-case font-normal text-text-dim/60">(Optional • Max {MAX_CHARS_PER_LINE} chars)</span>
                     </span>
                     <span className="text-[10px] text-text-dim">
-                      Rate: <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/extra letter)` : `Small Garment (+₱${letteringRates.smallRate}/extra letter)`}</strong>
+                      <strong className="text-text-main font-semibold">{isSelectedBigGarment ? `Big Garment (+₱${letteringRates.bigRate}/letter)` : `Small Garment (+₱${letteringRates.smallRate}/letter)`}</strong>
                     </span>
                   </div>
 
@@ -1322,7 +1322,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
-                      Single Name
+                      Single
                     </button>
                     <button
                       type="button"
@@ -1338,7 +1338,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                           : 'text-text-dim hover:text-text-main'
                       }`}
                     >
-                      Bulk List (Paste)
+                      Bulk List
                     </button>
                   </div>
                 </div>
@@ -1403,7 +1403,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 ) : (
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-[11px] text-text-dim">
-                      <span>Paste or type 1 name per line (strictly max {MAX_CHARS_PER_LINE} chars per line incl. spaces):</span>
+                      <span>1 name per line (max {MAX_CHARS_PER_LINE} characters):</span>
                       <span className="font-mono font-semibold text-text-main">
                         {intakeBulkSummary.lineCount} {intakeBulkSummary.lineCount === 1 ? 'line' : 'lines'} = {intakeBulkSummary.lineCount} pcs
                       </span>
@@ -1525,7 +1525,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                       <span className="leading-relaxed">
-                        <strong className="font-extrabold text-rose-600 dark:text-rose-400">Stock Warning:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds current on-hand stock ({Math.max(0, selectedAvailableStock)} pcs). Order will be queued as a <strong className="font-bold underline">Pre-Order</strong> with extended workshop preparation &amp; production schedule.
+                        <strong className="font-extrabold text-rose-600 dark:text-rose-400">Pre-Order:</strong> Quantity ({effectiveIntakeQty} pcs) exceeds ready stock ({Math.max(0, selectedAvailableStock)} pcs). Queued as a <strong className="font-bold">Pre-Order</strong>.
                       </span>
                     </div>
                   )}
@@ -1560,7 +1560,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             <div className="bg-bg-surface border border-border-glass rounded-xl p-4 shadow-sm flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-text-dim uppercase tracking-wider">
-                  3. Payment &amp; Queue Ticket
+                  3. Payment &amp; Ticket
                 </span>
                 {ticketItems.length > 0 && (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold font-mono">
@@ -1746,10 +1746,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   {isSubmitting
                     ? 'Processing...'
                     : !hasAnyEmbroidery
-                      ? 'Direct Sale & Hand Over (Complete)'
+                      ? 'Complete Sale'
                       : (ticketItems.length > 0
-                        ? `Punch ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} & Queue for Stitching`
-                        : 'Punch Order & Queue for Stitching')}
+                        ? `Queue ${ticketTotalPieces} Item${ticketTotalPieces > 1 ? 's' : ''} for Stitching`
+                        : 'Queue Order for Stitching')}
                 </span>
               </button>
               <InlineError error={intakeError} />

@@ -750,17 +750,17 @@ export default function PanelSettings({
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-0.5">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-text-dim">
-                      1. Additional Name Lettering Pricing
+                      1. Extra Lettering Rates
                     </h4>
                     <p className="text-xs text-text-dim">
-                      The customer gets the <strong>first word / name free</strong> on each line (included in base item price). Any extra name or word added after a space is charged per letter based on the product&apos;s configured garment size (<strong>Small Garment</strong> vs. <strong>Big Garment</strong>).
+                      First word per line is free. Additional words are charged per letter by garment size (<strong>Small</strong> vs. <strong>Big</strong>).
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                        <span>Small Garment Extra Letter Rate</span>
+                        <span>Small Garment Rate</span>
                         <span className="text-[10px] text-text-dim font-mono">₱ / extra letter</span>
                       </label>
                       <input
@@ -773,13 +773,13 @@ export default function PanelSettings({
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
-                        Applies to products configured as <strong>Small Garment</strong> (e.g. Fans, Caps, Face Towels). Default: <strong>₱7.00</strong>
+                        For small items (caps, fans, face towels). Default: <strong>₱7.00</strong>
                       </span>
                     </div>
 
                     <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
                       <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                        <span>Big Garment Extra Letter Rate</span>
+                        <span>Big Garment Rate</span>
                         <span className="text-[10px] text-text-dim font-mono">₱ / extra letter</span>
                       </label>
                       <input
@@ -792,7 +792,7 @@ export default function PanelSettings({
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
-                        Applies to products configured as <strong>Big Garment</strong> (e.g. Bath Towels, Shirts, Jackets). Default: <strong>₱10.00</strong>
+                        For large items (bath towels, shirts, jackets). Default: <strong>₱10.00</strong>
                       </span>
                     </div>
                   </div>
@@ -1154,18 +1154,18 @@ export default function PanelSettings({
                     <div className="flex flex-col max-w-[480px]">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-xs text-text-main">
-                          Customer Review Smart Auto-Reply System
+                          Review Auto-Reply
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           autoReplyReviews 
                             ? 'bg-white/15 text-text-main border border-white/30' 
                             : 'bg-white/5 text-text-dim border border-white/10'
                         }`}>
-                          {autoReplyReviews ? 'Active (3-5★ Auto-Reply)' : 'Disabled (Manual Only)'}
+                          {autoReplyReviews ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
                       <span className="text-[11px] text-text-dim mt-1 leading-relaxed">
-                        3★, 4★, and 5★ reviews are automatically replied to by the system after a 5-minute grace period with personalized craftsmanship responses. 1★ and 2★ reviews are strictly excluded from automated replies and require manual intervention and personal review by the administrator.
+                        Automatically replies to 3★ to 5★ reviews after 5 minutes. 1★ and 2★ reviews require manual review.
                       </span>
                     </div>
 
@@ -1188,12 +1188,12 @@ export default function PanelSettings({
                   {/* Smart Templates Preview */}
                   <div className="flex flex-col gap-2">
                     <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
-                      Review Response Templates:
+                      Response Templates:
                     </span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
                         <span className="font-bold text-primary flex items-center gap-1">
-                          5★ &amp; 4★ Positive Reviews
+                          4★ &amp; 5★ Positive
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece..."
@@ -1201,7 +1201,7 @@ export default function PanelSettings({
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
                         <span className="font-bold text-text-main flex items-center gap-1">
-                          3★ Neutral Reviews
+                          3★ Neutral
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality team..."
@@ -1209,7 +1209,7 @@ export default function PanelSettings({
                       </div>
                       <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
                         <span className="font-bold text-danger flex items-center gap-1">
-                          1★ &amp; 2★ Negative Reviews
+                          1★ &amp; 2★ Negative
                         </span>
                         <p className="text-text-dim m-0 leading-relaxed italic">
                           "We are deeply sorry for your disappointing experience. Quality and craftsmanship are our highest priorities. A management alert has been triggered so our team can review this order..."

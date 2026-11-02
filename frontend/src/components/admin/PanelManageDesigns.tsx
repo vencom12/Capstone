@@ -1218,10 +1218,10 @@ export default function PanelManageDesigns({
           <div className="flex flex-col gap-1.5 bg-white/[0.02] border border-border-glass p-2.5 rounded-xl">
             <div className="flex items-center justify-between">
               <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">
-                Garment Size (Extra Lettering Rate)
+                Garment Size
               </label>
               <span className="text-[0.65rem] text-primary font-semibold">
-                1st Word Free • Extra Word Letter Rate
+                1st word free • Extra letters billed
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1236,8 +1236,8 @@ export default function PanelManageDesigns({
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 <div>
-                  <div className="text-xs font-bold">Small Garment</div>
-                  <div className="text-[0.65rem] opacity-80">Fans, Face/Hand Towels, Caps</div>
+                  <div className="text-xs font-bold">Small</div>
+                  <div className="text-[0.65rem] opacity-80">Caps, fans, face towels</div>
                 </div>
                 <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-primary/20">
                   Small Rate
@@ -1254,8 +1254,8 @@ export default function PanelManageDesigns({
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 <div>
-                  <div className="text-xs font-bold">Big Garment</div>
-                  <div className="text-[0.65rem] opacity-80">Bath Towels, Shirts, Jackets</div>
+                  <div className="text-xs font-bold">Big</div>
+                  <div className="text-[0.65rem] opacity-80">Bath towels, shirts, blankets</div>
                 </div>
                 <span className="text-[0.7rem] font-mono font-bold px-2 py-0.5 rounded bg-primary/20">
                   Big Rate
