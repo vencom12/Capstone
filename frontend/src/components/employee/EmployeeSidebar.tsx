@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface EmployeeSidebarProps {
   activeTab: string;
@@ -14,6 +15,12 @@ interface EmployeeSidebarProps {
 export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggle }: EmployeeSidebarProps) {
   const { user, logout } = useAuthStore();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    router.replace('/');
+    await logout();
+  };
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
@@ -190,7 +197,7 @@ export default function EmployeeSidebar({ activeTab, setActiveTab, onMobileToggl
           )}
 
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer max-[1100px]:justify-center min-[1101px]:group-hover:justify-start max-[650px]:justify-start"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>

@@ -1796,18 +1796,7 @@ export default function EmployeePage() {
                 </div>
               </button>
 
-              <button
-                onClick={async () => {
-                  isLoggingOutRef.current = true;
-                  router.replace('/');
-                  await logout();
-                }}
-                className="bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border-none shrink-0"
-                title="Log out of session"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                <span className="hidden sm:inline text-[0.75rem]">Logout</span>
-              </button>
+
             </div>
           </div>
         </header>
