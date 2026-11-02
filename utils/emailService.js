@@ -447,7 +447,8 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
 }
 
 /**
-
+ * Sends a security alert email when a password has been updated.
+ */
 async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';

@@ -10,7 +10,7 @@ const getApiBase = () => {
                         hostname === '127.0.0.1' || 
                         hostname === '[::1]' || 
                         hostname === '::1';
-    if (isLocalhost) {
+    if (isLocalhost || window.location.port === '3000') {
       if (window.location.port === '5001') {
         return window.location.origin;
       }
