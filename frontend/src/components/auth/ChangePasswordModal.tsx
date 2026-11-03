@@ -196,6 +196,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
               </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="Enter current password"
                 value={currentPassword}
                 onBlur={() => validateField('currentPassword')}
@@ -223,6 +224,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
               </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="At least 6 characters"
                 value={newPassword}
                 onBlur={() => validateField('newPassword')}
@@ -250,6 +252,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
               </div>
               <input
                 type={showPasswords ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="Re-enter new password"
                 value={confirmPassword}
                 onBlur={() => validateField('confirmPassword')}

@@ -189,6 +189,7 @@ export default function QuantityInput({
           id={id}
           name={name}
           type="text"
+          maxLength={4}
           inputMode="numeric"
           pattern="[0-9]*"
           value={disabled ? '0' : displayValue}

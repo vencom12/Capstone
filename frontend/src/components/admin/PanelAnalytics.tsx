@@ -636,9 +636,11 @@ export default function PanelAnalytics({
             <input
               type="number"
               min="0"
+              max="100000"
               step="50"
               value={dailyStallOverhead}
-              onChange={(e) => handleSaveRent(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => handleSaveRent(Math.min(100000, Math.max(0, parseInt(e.target.value) || 0)))}
+              onBlur={() => handleSaveRent(Math.min(100000, Math.max(0, parseInt(String(dailyStallOverhead), 10) || 0)))}
               className="w-28 bg-bg-card border border-border-glass px-2.5 py-1.5 rounded-lg text-text-main font-mono text-sm font-bold outline-none focus:border-primary transition"
             />
             <button

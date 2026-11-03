@@ -549,16 +549,16 @@ exports.createProduct = async (req, res) => {
 
         const newProduct = await prisma.product.create({
             data: {
-                name,
-                price: parseFloat(price),
+                name: String(name || '').slice(0, 100).trim(),
+                price: Math.min(50000, Math.max(0, parseFloat(price) || 0)),
                 tag: formattedTag,
                 tags: productTags,
-                description,
+                description: description ? String(description).slice(0, 500).trim() : null,
                 imageUrl,
                 recipe,
                 variants,
-                count: initialCount,
-                minThreshold: minThreshold !== undefined ? parseInt(minThreshold) : 5
+                count: Math.min(100000, Math.max(0, initialCount)),
+                minThreshold: Math.min(1000, Math.max(0, minThreshold !== undefined ? parseInt(minThreshold, 10) : 5))
             }
         });
 
@@ -582,10 +582,11 @@ exports.updateProduct = async (req, res) => {
         const { name, price, tag, description, count, minThreshold, garmentSize } = req.body;
         const updateData = {};
 
-        if (name !== undefined) updateData.name = name;
-        if (price !== undefined) updateData.price = parseFloat(price);
+        if (name !== undefined) updateData.name = String(name || '').slice(0, 100).trim();
+        if (price !== undefined) updateData.price = Math.min(50000, Math.max(0, parseFloat(price) || 0));
         if (tag !== undefined) updateData.tag = formatCategoryTag(tag);
-        if (description !== undefined) updateData.description = description;
+        if (description !== undefined) updateData.description = description ? String(description).slice(0, 500).trim() : null;
+        if (minThreshold !== undefined) updateData.minThreshold = Math.min(1000, Math.max(0, parseInt(minThreshold, 10) || 5));
         if (garmentSize !== undefined) {
             const existingProd = await prisma.product.findUnique({ where: { id: req.params.id }, select: { tags: true } });
             const otherTags = Array.isArray(existingProd?.tags)
@@ -709,26 +710,26 @@ exports.updateInventoryItem = async (req, res) => {
                 return res.status(403).json({ message: 'Only administrators can alter material measurement units' });
             }
         } else {
-            if (minThreshold !== undefined) updateData.minThreshold = parseInt(minThreshold);
-            if (item !== undefined) updateData.item = item;
-            if (unit !== undefined) updateData.unit = unit;
-            if (packSize !== undefined) updateData.packSize = Math.max(1, parseInt(packSize) || 1);
+            if (minThreshold !== undefined) updateData.minThreshold = Math.min(10000, Math.max(0, parseInt(minThreshold, 10) || 10));
+            if (item !== undefined) updateData.item = String(item || '').slice(0, 80).trim();
+            if (unit !== undefined) updateData.unit = String(unit || 'Cones').slice(0, 20).trim();
+            if (packSize !== undefined) updateData.packSize = Math.min(10000, Math.max(1, parseInt(packSize, 10) || 1));
             // Allow admins to set/update the actual supplier cost per unit
             if (supplierUnitCost !== undefined) {
-                updateData.supplierUnitCost = supplierUnitCost === '' || supplierUnitCost === null ? null : parseFloat(supplierUnitCost);
+                updateData.supplierUnitCost = supplierUnitCost === '' || supplierUnitCost === null ? null : Math.min(100000, Math.max(0, parseFloat(supplierUnitCost) || 0));
             }
         }
 
         let newCount = existing.count;
         if (action && amount !== undefined) {
-            const qty = parseInt(amount);
+            const qty = Math.min(100000, Math.max(0, parseInt(amount, 10) || 0));
             if (action === 'Add') {
                 newCount = existing.count + qty;
             } else if (action === 'Deduct') {
                 newCount = existing.count - qty;
             }
         } else if (count !== undefined) {
-            newCount = parseInt(count);
+            newCount = Math.min(1000000, Math.max(0, parseInt(count, 10) || 0));
         }
 
         // Safeguard: Prevent manual stock reductions below active order commitments

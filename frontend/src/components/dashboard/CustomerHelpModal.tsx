@@ -352,6 +352,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
                 <label className="text-xs font-bold text-text-dim">Order ID (Optional)</label>
                 <input
                   type="text"
+                  maxLength={30}
                   placeholder="e.g. ORD-2026-1001"
                   value={orderId}
                   onChange={(e) => setOrderId(e.target.value)}
@@ -374,6 +375,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
                   </div>
                   <input
                     type="text"
+                    maxLength={80}
                     placeholder="e.g. Maria Santos"
                     value={customerName}
                     onBlur={() => validateField('customerName')}
@@ -397,6 +399,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
                   </div>
                   <input
                     type="email"
+                    maxLength={100}
                     placeholder="e.g. maria@gmail.com"
                     value={customerEmail}
                     onBlur={() => validateField('customerEmail')}
@@ -423,6 +426,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
               </div>
               <textarea
                 rows={4}
+                maxLength={1000}
                 placeholder="Describe your custom embroidery requirements, questions, or order instructions in detail..."
                 value={message}
                 onBlur={() => validateField('message')}

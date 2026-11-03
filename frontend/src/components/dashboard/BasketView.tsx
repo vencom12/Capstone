@@ -1123,6 +1123,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                         </div>
                         <textarea
                           rows={5}
+                          maxLength={2000}
                           value={editBulkText}
                           onChange={(e) => setEditBulkText(sanitizeBulkMultilineText(e.target.value))}
                           placeholder={`Paste or type names (1 per line, max 20 chars/line):\nCoach1\nCoach2\nCoach3 A\nPlayer 4`}

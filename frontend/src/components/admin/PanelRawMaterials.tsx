@@ -161,6 +161,8 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
         {isEditing ? (
           <input
             type="number"
+            min="0"
+            max="100000"
             autoFocus
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -280,6 +282,8 @@ function InlineThresholdAdjuster({ material, refreshData, fetchAuditLogs, isAdmi
       <div className="flex items-center gap-1.5 animate-fade" onClick={(e) => e.stopPropagation()}>
         <input
           type="number"
+          min="0"
+          max="10000"
           autoFocus
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -448,6 +452,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
               type="number"
               autoFocus
               min="0"
+              max="100000"
               step="1"
               value={packInputValue}
               onChange={(e) => handlePackChange(e.target.value)}
@@ -461,6 +466,7 @@ function InlineSupplierCostAdjuster({ material, refreshData, isAdmin = true, set
               type="number"
               autoFocus
               min="0"
+              max="100000"
               step="0.5"
               value={inputValue}
               onChange={(e) => handleUnitChange(e.target.value)}
@@ -1489,6 +1495,7 @@ export default function PanelRawMaterials({
         )}
         <input
           type="text"
+          maxLength={80}
           placeholder="Search materials..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -1900,6 +1907,7 @@ export default function PanelRawMaterials({
               {spoolColor === 'Custom' && (
                 <input
                   type="text"
+                  maxLength={50}
                   required
                   placeholder="Specify custom thread color (e.g. Lavender, Emerald)"
                   value={customColor}
@@ -1916,6 +1924,7 @@ export default function PanelRawMaterials({
               <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Custom Material Name</label>
               <input
                 type="text"
+                maxLength={100}
                 required
                 placeholder="e.g. Sports Cap, Canvas Tote Bag"
                 value={customName}
@@ -1932,9 +1941,11 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="0"
+                max="100000"
                 placeholder="e.g. 50"
                 value={itemCount}
                 onChange={(e) => setItemCount(e.target.value)}
+                onBlur={() => setItemCount(String(Math.min(100000, Math.max(0, parseInt(itemCount, 10) || 0))))}
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
             </div>
@@ -1965,8 +1976,10 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="0"
+                max="10000"
                 value={itemThreshold}
                 onChange={(e) => setItemThreshold(e.target.value)}
+                onBlur={() => setItemThreshold(String(Math.min(10000, Math.max(0, parseInt(itemThreshold, 10) || 10))))}
                 placeholder="e.g. 10"
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
@@ -1980,9 +1993,11 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="1"
+                max="10000"
                 placeholder="1 if loose (e.g. 8)"
                 value={itemPackSize}
                 onChange={(e) => handleAddPackSizeChange(e.target.value)}
+                onBlur={() => handleAddPackSizeChange(String(Math.min(10000, Math.max(1, parseInt(itemPackSize, 10) || 1))))}
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
             </div>
@@ -2010,10 +2025,12 @@ export default function PanelRawMaterials({
                     <input
                       type="number"
                       min="0"
+                      max="100000"
                       step="0.50"
                       placeholder="e.g. 80.00"
                       value={itemPackCost}
                       onChange={(e) => handleAddPackCostChange(e.target.value)}
+                      onBlur={() => handleAddPackCostChange(itemPackCost ? String(Math.min(100000, Math.max(0, parseFloat(itemPackCost) || 0))) : '')}
                       className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
                     />
                   </div>
@@ -2028,10 +2045,12 @@ export default function PanelRawMaterials({
                     <input
                       type="number"
                       min="0"
+                      max="100000"
                       step="0.01"
                       placeholder="e.g. 10.00"
                       value={itemSupplierCost}
                       onChange={(e) => handleAddUnitCostChange(e.target.value)}
+                      onBlur={() => handleAddUnitCostChange(itemSupplierCost ? String(Math.min(100000, Math.max(0, parseFloat(itemSupplierCost) || 0))) : '')}
                       className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-primary text-xs outline-none w-full font-mono font-bold focus:border-primary transition"
                     />
                   </div>
@@ -2061,10 +2080,12 @@ export default function PanelRawMaterials({
                 <input
                   type="number"
                   min="0"
+                  max="100000"
                   step="0.50"
                   placeholder="e.g. 45.00"
                   value={itemSupplierCost}
                   onChange={(e) => handleAddUnitCostChange(e.target.value)}
+                  onBlur={() => setItemSupplierCost(String(Math.min(100000, Math.max(0, parseFloat(itemSupplierCost) || 0))))}
                   className="bg-bg-surface border border-border-glass py-2 pl-6 pr-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
                 />
               </div>
@@ -2095,6 +2116,7 @@ export default function PanelRawMaterials({
             <label className="text-[0.68rem] font-bold uppercase tracking-wider text-text-dim">Material Name</label>
             <input
               type="text"
+              maxLength={100}
               required
               value={editItemName}
               onChange={(e) => setEditItemName(e.target.value)}
@@ -2110,8 +2132,10 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="0"
+                max="100000"
                 value={editItemCount}
                 onChange={(e) => setEditItemCount(e.target.value)}
+                onBlur={() => setEditItemCount(String(Math.min(100000, Math.max(0, parseInt(editItemCount, 10) || 0))))}
                 placeholder="e.g. 20"
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
@@ -2143,8 +2167,10 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="0"
+                max="10000"
                 value={editItemThreshold}
                 onChange={(e) => setEditItemThreshold(e.target.value)}
+                onBlur={() => setEditItemThreshold(String(Math.min(10000, Math.max(0, parseInt(editItemThreshold, 10) || 10))))}
                 placeholder="e.g. 10"
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
@@ -2158,8 +2184,10 @@ export default function PanelRawMaterials({
               <input
                 type="number"
                 min="1"
+                max="10000"
                 value={editItemPackSize}
                 onChange={(e) => handleEditPackSizeChange(e.target.value)}
+                onBlur={() => handleEditPackSizeChange(String(Math.min(10000, Math.max(1, parseInt(editItemPackSize, 10) || 1))))}
                 placeholder="1 if loose (e.g. 8)"
                 className="bg-bg-surface border border-border-glass py-2 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
               />
@@ -2188,10 +2216,12 @@ export default function PanelRawMaterials({
                     <input
                       type="number"
                       min="0"
+                      max="100000"
                       step="0.50"
                       placeholder="e.g. 80.00"
                       value={editItemPackCost}
                       onChange={(e) => handleEditPackCostChange(e.target.value)}
+                      onBlur={() => handleEditPackCostChange(editItemPackCost ? String(Math.min(100000, Math.max(0, parseFloat(editItemPackCost) || 0))) : '')}
                       className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
                     />
                   </div>
@@ -2206,10 +2236,12 @@ export default function PanelRawMaterials({
                     <input
                       type="number"
                       min="0"
+                      max="100000"
                       step="0.01"
                       placeholder="e.g. 10.00"
                       value={editItemSupplierCost}
                       onChange={(e) => handleEditUnitCostChange(e.target.value)}
+                      onBlur={() => handleEditUnitCostChange(editItemSupplierCost ? String(Math.min(100000, Math.max(0, parseFloat(editItemSupplierCost) || 0))) : '')}
                       className="bg-bg-surface border border-border-glass py-1.5 pl-6 pr-2 rounded-lg text-primary text-xs outline-none w-full font-mono font-bold focus:border-primary transition"
                     />
                   </div>
@@ -2239,10 +2271,12 @@ export default function PanelRawMaterials({
                 <input
                   type="number"
                   min="0"
+                  max="100000"
                   step="0.50"
                   placeholder="0.00"
                   value={editItemSupplierCost}
                   onChange={(e) => handleEditUnitCostChange(e.target.value)}
+                  onBlur={() => setEditItemSupplierCost(String(Math.min(100000, Math.max(0, parseFloat(editItemSupplierCost) || 0))))}
                   className="bg-bg-surface border border-border-glass py-2 pl-6 pr-3 rounded-lg text-text-main text-xs outline-none w-full font-mono font-bold focus:border-primary/50 transition"
                 />
               </div>
@@ -2339,10 +2373,12 @@ export default function PanelRawMaterials({
             <input
               type="number"
               min="0.01"
+              max="1000"
               step="any"
               required
               value={linkingQuantity}
               onChange={(e) => setLinkingQuantity(parseFloat(e.target.value) || 1)}
+              onBlur={() => setLinkingQuantity(Math.min(1000, Math.max(0.01, parseFloat(Number(linkingQuantity).toFixed(2)) || 1)))}
               className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
             />
             <p className="text-[0.7rem] text-text-dim mt-1 m-0">
@@ -2376,9 +2412,12 @@ export default function PanelRawMaterials({
             <label className="modal-label">Global Low Stock Threshold</label>
             <input
               type="number"
+              min="0"
+              max="10000"
               placeholder="e.g. 10"
               value={globalThreshold}
               onChange={(e) => setGlobalThreshold(e.target.value)}
+              onBlur={() => setGlobalThreshold(String(Math.min(10000, Math.max(0, parseInt(globalThreshold, 10) || 10))))}
               className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono"
             />
           </div>
@@ -2415,6 +2454,7 @@ export default function PanelRawMaterials({
               <label className="text-[0.65rem] font-bold uppercase text-text-dim">Supplier / Vendor</label>
               <input
                 type="text"
+                maxLength={100}
                 value={batchSupplier}
                 onChange={(e) => setBatchSupplier(e.target.value)}
                 placeholder="e.g. Standard Thread Supply"
@@ -2425,6 +2465,7 @@ export default function PanelRawMaterials({
               <label className="text-[0.65rem] font-bold uppercase text-text-dim">Delivery Receipt (DR) #</label>
               <input
                 type="text"
+                maxLength={50}
                 value={batchDrNumber}
                 onChange={(e) => setBatchDrNumber(e.target.value)}
                 placeholder="e.g. DR-2026-8812 (optional)"
@@ -2489,9 +2530,16 @@ export default function PanelRawMaterials({
                         <input
                           type="number"
                           min="1"
+                          max="1000"
                           value={item.packs}
                           onChange={(e) => {
-                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            const val = Math.min(1000, Math.max(1, parseInt(e.target.value) || 1));
+                            const updated = [...batchItems];
+                            updated[idx].packs = val;
+                            setBatchItems(updated);
+                          }}
+                          onBlur={() => {
+                            const val = Math.min(1000, Math.max(1, parseInt(String(item.packs), 10) || 1));
                             const updated = [...batchItems];
                             updated[idx].packs = val;
                             setBatchItems(updated);
@@ -2703,11 +2751,13 @@ export default function PanelRawMaterials({
                         <input
                           type="number"
                           min="0"
+                          max="10000"
                           value={currentVal === 0 ? '' : currentVal}
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                            handleSlipQuantityChange(id, isNaN(val) ? 0 : val);
+                            handleSlipQuantityChange(id, isNaN(val) ? 0 : Math.min(10000, val));
                           }}
+                          onBlur={() => handleSlipQuantityChange(id, Math.min(10000, Math.max(0, currentVal || 0)))}
                           className="w-18 px-2 py-1 text-center bg-bg-surface border border-border-glass rounded-lg text-xs font-bold text-text-main focus:border-primary focus:outline-none"
                           placeholder="0"
                         />

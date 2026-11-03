@@ -789,6 +789,7 @@ export default function PanelManageDesigns({
         )}
         <input
           type="text"
+          maxLength={80}
           placeholder="Search products..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -1046,6 +1047,7 @@ export default function PanelManageDesigns({
               </label>
               <input
                 type="text"
+                maxLength={100}
                 disabled={!isAdmin}
                 placeholder="e.g. Premium Embroidered Towel"
                 value={name}
@@ -1090,6 +1092,7 @@ export default function PanelManageDesigns({
                 <div className="relative flex items-center">
                   <input
                     type="text"
+                    maxLength={50}
                     disabled={!isAdmin}
                     autoFocus
                     placeholder="e.g. Tote Bag, Hoodies"
@@ -1149,6 +1152,8 @@ export default function PanelManageDesigns({
               <input
                 type="number"
                 step="0.01"
+                min="0"
+                max="50000"
                 disabled={!isAdmin}
                 placeholder="e.g. 45.00"
                 value={price}
@@ -1205,10 +1210,13 @@ export default function PanelManageDesigns({
               <input
                 type="number"
                 required
+                min="0"
+                max="1000"
                 disabled={!isAdmin}
                 placeholder="e.g. 5"
                 value={minThreshold}
                 onChange={(e) => setMinThreshold(e.target.value)}
+                onBlur={() => setMinThreshold(String(Math.min(1000, Math.max(0, parseInt(minThreshold, 10) || 5))))}
                 className="bg-bg-surface border border-border-glass h-9 px-3 rounded-lg text-text-main text-xs outline-none w-full font-mono disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
@@ -1272,6 +1280,7 @@ export default function PanelManageDesigns({
             <textarea
               placeholder="Explain stitched features or customization limitations..."
               rows={2}
+              maxLength={500}
               disabled={!isAdmin}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -1313,6 +1322,7 @@ export default function PanelManageDesigns({
                       </label>
                       <input
                         type="text"
+                        maxLength={80}
                         placeholder="e.g. Royal Blue / 30x60cm"
                         value={variantName}
                         onChange={(e) => handleVariantNameInput(e.target.value)}
@@ -1375,9 +1385,12 @@ export default function PanelManageDesigns({
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
+                        max="50000"
                         placeholder="e.g. 250.00"
                         value={variantPrice}
                         onChange={(e) => setVariantPrice(e.target.value)}
+                        onBlur={() => setVariantPrice(variantPrice ? String(Math.min(50000, Math.max(0, parseFloat(variantPrice) || 0))) : '')}
                         className="bg-bg-surface border border-border-glass h-9 min-h-[36px] px-2.5 rounded-lg text-text-main text-xs outline-none font-mono font-bold w-full focus:border-primary/50 transition-all leading-normal"
                       />
                     </div>
@@ -1651,6 +1664,7 @@ export default function PanelManageDesigns({
             <input
               type="text"
               required
+              maxLength={50}
               value={newColorName}
               onChange={(e) => setNewColorName(e.target.value)}
               placeholder="e.g. Royal Purple, Tiffany Mint, Champagne"
@@ -1670,6 +1684,7 @@ export default function PanelManageDesigns({
               <input
                 type="text"
                 required
+                maxLength={7}
                 value={newColorHex}
                 onChange={(e) => setNewColorHex(e.target.value)}
                 placeholder="#8B5CF6"

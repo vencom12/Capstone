@@ -924,6 +924,7 @@ export default function AuthModal() {
               </div>
               <input 
                 type="text" 
+                maxLength={100}
                 autoFocus
                 placeholder="e.g. revinaryven7@gmail.com" 
                 value={email} 
@@ -1062,6 +1063,7 @@ export default function AuthModal() {
               <div className="relative">
                 <input
                   type={forgotPassShow ? 'text' : 'password'}
+                  maxLength={100}
                   autoFocus
                   placeholder="At least 6 characters"
                   value={forgotNewPass}
@@ -1096,6 +1098,7 @@ export default function AuthModal() {
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Confirm New Password *</label>
               <input
                 type={forgotPassShow ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="Re-enter password"
                 value={forgotConfirmPass}
                 onChange={(e) => {
@@ -1242,6 +1245,7 @@ export default function AuthModal() {
               <label className="text-[0.75rem] font-bold text-text-dim ml-1">Username *</label>
               <input 
                 type="text" 
+                maxLength={30}
                 autoComplete="off"
                 value={googleSetup.username} 
                 onChange={(e) => { 
@@ -1264,6 +1268,7 @@ export default function AuthModal() {
               <div className="relative">
                 <input 
                   type={showPassword ? 'text' : 'password'} 
+                  maxLength={100}
                   autoComplete="new-password"
                   placeholder="At least 6 characters" 
                   value={newPassword} 
@@ -1309,6 +1314,7 @@ export default function AuthModal() {
               <div className="relative">
                 <input 
                   type={showPassword ? 'text' : 'password'} 
+                  maxLength={100}
                   placeholder="Re-enter password" 
                   value={confirmPassword} 
                   onBlur={() => validateField('googleConfirm')}
@@ -1572,6 +1578,7 @@ export default function AuthModal() {
               <div className="relative">
                 <input 
                   type="text" 
+                  maxLength={30}
                   autoComplete="off"
                   placeholder="e.g. johndoe"
                   value={username}
@@ -1638,6 +1645,7 @@ export default function AuthModal() {
             <div className="relative">
               <input 
                 type={mode === 'login' ? 'text' : 'email'} 
+                maxLength={100}
                 autoComplete={mode === 'register' ? 'off' : 'username'}
                 placeholder={mode === 'login' ? 'e.g. johndoe or user@email.com' : 'you@example.com (optional)'}
                 value={email}
@@ -1716,6 +1724,7 @@ export default function AuthModal() {
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
+                maxLength={100}
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 placeholder="••••••••"
                 value={password}

@@ -524,6 +524,7 @@ export default function AdminPage() {
               />
               <input
                 type="text"
+                maxLength={80}
                 placeholder="Search ID, client, or status..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}

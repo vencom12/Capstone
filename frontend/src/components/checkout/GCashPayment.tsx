@@ -330,6 +330,7 @@ export default function GCashPayment({
               <div className="flex gap-2">
                 <input
                   type="text"
+                  maxLength={19}
                   placeholder="e.g. 1002 9384 1029"
                   value={manualRef}
                   onChange={(e) => {

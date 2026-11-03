@@ -149,6 +149,7 @@ export default function BulkNameRosterModal({
           <div className="flex items-center gap-2 flex-1 min-w-[180px]">
             <input
               type="text"
+              maxLength={80}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search personalized name..."

@@ -771,6 +771,7 @@ export default function EmployeePage() {
             <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
               <input
                 type="text"
+                maxLength={80}
                 placeholder="Search queue..."
                 value={ordersSearchQuery}
                 onChange={(e) => setOrdersSearchQuery(e.target.value)}
@@ -1400,6 +1401,7 @@ export default function EmployeePage() {
             <div className="flex justify-start items-center flex-wrap gap-3 mb-4">
               <input
                 type="text"
+                maxLength={80}
                 placeholder="Search history ID, client..."
                 value={historySearchQuery}
                 onChange={(e) => setHistorySearchQuery(e.target.value)}

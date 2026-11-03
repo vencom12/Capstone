@@ -451,6 +451,7 @@ export default function PanelOverview({
             />
             <input
               type="text"
+              maxLength={80}
               placeholder="Search ID or Customer..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

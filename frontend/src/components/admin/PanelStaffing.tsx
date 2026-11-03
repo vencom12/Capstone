@@ -427,6 +427,7 @@ export default function PanelStaffing({
         </button>
         <input
           type="text"
+          maxLength={80}
           placeholder="Search credentials or phone..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -876,6 +877,7 @@ export default function PanelStaffing({
             </label>
             <input
               type="text"
+              maxLength={30}
               placeholder="e.g. revin_artisan"
               value={username}
               onChange={(e) => {
@@ -903,6 +905,7 @@ export default function PanelStaffing({
             </label>
             <input
               type="email"
+              maxLength={100}
               placeholder="e.g. revin@stitchopt.com"
               value={email}
               onChange={(e) => {
@@ -931,6 +934,7 @@ export default function PanelStaffing({
               </label>
               <input
                 type="password"
+                maxLength={100}
                 placeholder={editingStaff ? '••••••••' : 'Enter strong password (min 8 chars)'}
                 value={password}
                 onChange={(e) => {
@@ -986,6 +990,7 @@ export default function PanelStaffing({
             </label>
             <input
               type="tel"
+              maxLength={25}
               placeholder="e.g. +639123456789 or 09123456789"
               value={phone}
               onChange={(e) => {
@@ -1049,6 +1054,7 @@ export default function PanelStaffing({
                 <label className="text-[0.72rem] font-bold text-text-dim">Reason for Deactivation (Optional):</label>
                 <input
                   type="text"
+                  maxLength={200}
                   placeholder="e.g. Account suspended, policy violation, customer requested..."
                   value={disableReason}
                   onChange={(e) => setDisableReason(e.target.value)}

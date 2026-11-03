@@ -639,6 +639,7 @@ export default function DashboardPage() {
                             <div className="flex flex-col gap-2.5 ml-[30px] animate-[fadeIn_0.2s_ease-out]">
                               <input
                                 type={field.type}
+                                maxLength={100}
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 autoFocus
@@ -1184,6 +1185,7 @@ export default function DashboardPage() {
             </label>
             <input
               type="text"
+              maxLength={50}
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
               placeholder={user?.username || 'Enter your account name'}
@@ -1250,7 +1252,7 @@ export default function DashboardPage() {
                   type="email"
                   required
                   autoFocus
-                  placeholder="you@gmail.com"
+                  maxLength={100} placeholder="you@gmail.com"
                   value={linkEmailInput}
                   onChange={(e) => {
                     setLinkEmailInput(e.target.value);

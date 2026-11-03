@@ -415,6 +415,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         <div className="flex items-center gap-2">
           <input
             type="text"
+            maxLength={80}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search reviews..."
@@ -576,6 +577,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
 
                       <textarea
                         rows={2}
+                        maxLength={500}
                         value={replyInput}
                         onChange={(e) => setReplyInput(e.target.value)}
                         placeholder="Type a friendly reply to this customer..."
@@ -611,6 +613,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
                         <span className="text-text-dim shrink-0 font-medium">Private Note:</span>
                         <input
                           type="text"
+                          maxLength={250}
                           value={noteInput}
                           onChange={(e) => setNoteInput(e.target.value)}
                           placeholder="Optional internal note..."

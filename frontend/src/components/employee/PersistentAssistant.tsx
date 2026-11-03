@@ -1051,6 +1051,7 @@ export default function PersistentAssistant() {
                 <input
                   ref={inputRef}
                   type="text"
+                  maxLength={1000}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Ask copilot about orders, inventory, sales..."

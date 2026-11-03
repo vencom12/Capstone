@@ -818,6 +818,7 @@ export default function CheckoutModal({
               </div>
               <input
                 type="text"
+                maxLength={250}
                 placeholder="e.g. Authorized sibling to claim, special request, etc."
                 value={pickupNote}
                 onChange={(e) => setPickupNote(e.target.value)}

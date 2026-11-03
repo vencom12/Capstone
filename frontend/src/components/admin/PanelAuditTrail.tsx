@@ -238,6 +238,7 @@ export default function PanelAuditTrail() {
           </svg>
           <input
             type="text"
+            maxLength={80}
             placeholder="Search action, actor, entity ID, IP..."
             value={searchQuery}
             onChange={(e) => {

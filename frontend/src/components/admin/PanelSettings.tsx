@@ -495,6 +495,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="text"
+                      maxLength={80}
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -509,6 +510,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="text"
+                      maxLength={120}
                       value={receiptTagline}
                       onChange={(e) => setReceiptTagline(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -526,6 +528,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="text"
+                      maxLength={200}
                       value={businessAddress}
                       onChange={(e) => setBusinessAddress(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -540,6 +543,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="text"
+                      maxLength={25}
                       value={businessContact}
                       onChange={(e) => setBusinessContact(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -557,6 +561,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="email"
+                      maxLength={100}
                       value={businessEmail}
                       onChange={(e) => setBusinessEmail(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -571,6 +576,7 @@ export default function PanelSettings({
                     </label>
                     <input
                       type="text"
+                      maxLength={120}
                       value={businessWebsite}
                       onChange={(e) => setBusinessWebsite(e.target.value)}
                       className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
@@ -1077,6 +1083,7 @@ export default function PanelSettings({
                     </select>
                     <input
                       type="text"
+                      maxLength={80}
                       placeholder="Or enter custom model ID..."
                       value={aiChatModel}
                       onChange={(e) => setAiChatModel(e.target.value)}
@@ -1108,6 +1115,7 @@ export default function PanelSettings({
                     </select>
                     <input
                       type="text"
+                      maxLength={80}
                       placeholder="Or enter custom vision model ID..."
                       value={aiVisionModel}
                       onChange={(e) => setAiVisionModel(e.target.value)}
@@ -1126,6 +1134,7 @@ export default function PanelSettings({
                   </div>
                   <input
                     type="text"
+                    maxLength={200}
                     value={aiProviderUrl}
                     onChange={(e) => setAiProviderUrl(e.target.value)}
                     className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs min-w-[280px] md:max-w-[380px] flex-1 outline-none focus:border-primary transition-all font-mono"
@@ -1432,6 +1441,7 @@ export default function PanelSettings({
                     <label className="text-xs font-semibold text-text-dim">Current Password</label>
                     <input
                       type={showSecPass ? 'text' : 'password'}
+                      maxLength={100}
                       required
                       placeholder="Enter current password"
                       value={currPass}
@@ -1446,6 +1456,7 @@ export default function PanelSettings({
                       <label className="text-xs font-semibold text-text-dim">New Password</label>
                       <input
                         type={showSecPass ? 'text' : 'password'}
+                        maxLength={100}
                         required
                         minLength={6}
                         placeholder="At least 6 characters"
@@ -1460,6 +1471,7 @@ export default function PanelSettings({
                       <label className="text-xs font-semibold text-text-dim">Confirm New Password</label>
                       <input
                         type={showSecPass ? 'text' : 'password'}
+                        maxLength={100}
                         required
                         minLength={6}
                         placeholder="Re-enter new password"

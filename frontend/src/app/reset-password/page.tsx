@@ -299,6 +299,7 @@ function ResetPasswordContent() {
             <div className="relative">
               <input
                 type={show ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="At least 8 characters"
                 value={password}
                 onBlur={() => validateField('password')}
@@ -368,6 +369,7 @@ function ResetPasswordContent() {
             </div>
             <input
               type={show ? 'text' : 'password'}
+              maxLength={100}
               placeholder="Re-enter your password"
               value={confirm}
               onBlur={() => validateField('confirm')}

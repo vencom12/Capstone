@@ -856,6 +856,7 @@ export default function AiAttendant() {
                 suppressHydrationWarning
                 ref={inputRef}
                 type="text"
+                maxLength={1000}
                 placeholder="Ask me anything about our products or services..."
                 value={input}
                 onChange={e => setInput(e.target.value)}

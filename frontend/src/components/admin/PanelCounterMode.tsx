@@ -1151,6 +1151,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   <div>
                     <input
                       type="text"
+                      maxLength={80}
                       placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
                       value={customByogName}
                       onChange={(e) => setCustomByogName(e.target.value)}
@@ -1284,6 +1285,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                       </div>
                       <input
                         type="text"
+                        maxLength={80}
                         placeholder="Describe item brought by customer (e.g. Uniform, Polo, Baby Bib)..."
                         value={customByogName}
                         onChange={(e) => setCustomByogName(e.target.value)}
@@ -1410,6 +1412,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                     </div>
                     <textarea
                       rows={4}
+                      maxLength={2000}
                       value={intakeBulkText}
                       onChange={(e) => {
                         setIntakeBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()));
@@ -1714,6 +1717,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </div>
                   <input
                     type="text"
+                    maxLength={19}
                     placeholder="GCash Ref # (optional, e.g. 8492)"
                     value={gcashRef}
                     onChange={(e) => setGcashRef(e.target.value)}
@@ -1726,6 +1730,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               <div>
                 <input
                   type="text"
+                  maxLength={100}
                   placeholder="Customer Phone or Google Email (optional)"
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
@@ -2076,6 +2081,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                   </div>
                   <textarea
                     rows={4}
+                    maxLength={2000}
                     value={quickBulkText}
                     onChange={(e) => setQuickBulkText(sanitizeBulkMultilineText(e.target.value.toUpperCase()))}
                     placeholder={`COACH 1\nCOACH 2\nPLAYER 3 A\n(Max ${MAX_CHARS_PER_LINE} chars per line)`}
@@ -2267,6 +2273,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
             <div className="w-full sm:w-96 relative">
               <input
                 type="text"
+                maxLength={60}
                 placeholder="Search Claim Code (#A-XXXX), Ticket #, or Customer..."
                 value={turnOverSearch}
                 onChange={(e) => {

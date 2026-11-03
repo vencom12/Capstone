@@ -214,6 +214,7 @@ export default function EmergencyDelayNoticeModal({
           {selectedReason === 'Custom Reason' && (
             <input
               type="text"
+              maxLength={100}
               placeholder="e.g. Artisan Medical Consultation / Flu"
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
@@ -332,6 +333,7 @@ export default function EmergencyDelayNoticeModal({
           </label>
           <textarea
             rows={2}
+            maxLength={500}
             placeholder="e.g. Nanay Ed is feeling unwell and resting. Embroidery operations will resume tomorrow morning at 10:00 AM."
             value={customMessage}
             onChange={(e) => setCustomMessage(e.target.value)}

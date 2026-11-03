@@ -305,7 +305,7 @@ exports.submitOrder = async (req, res) => {
 
             const isBig = resolveIsBigGarment(product, item.garmentSize || item.personalization?.garmentSize);
             const namesList = item.personalization?.namesList || item.namesList;
-            const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+            const qty = Math.min(1000, Math.max(1, parseInt(item.quantity, 10) || 1));
 
             if (Array.isArray(namesList) && namesList.length > 0) {
                 let bulkExtraSum = 0;

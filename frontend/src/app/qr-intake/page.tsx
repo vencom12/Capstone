@@ -89,7 +89,7 @@ export default function QRIntakePage() {
           <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Your Name</label>
-                <input required type="text" value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Maria Santos" className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main outline-none focus:border-primary text-sm" />
+                <input required type="text" maxLength={60} value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Maria Santos" className="bg-bg-surface border border-border-glass p-3 rounded-lg text-text-main outline-none focus:border-primary text-sm" />
              </div>
 
              {/* Garment Size Selection */}
@@ -134,7 +134,7 @@ export default function QRIntakePage() {
 
              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-text-dim uppercase tracking-wider">Describe Your Garment (Optional)</label>
-                <input type="text" value={garmentDescription} onChange={e => setGarmentDescription(e.target.value)} placeholder="e.g. Navy Blue Hospital Scrubs / White Uniform" className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main outline-none focus:border-primary text-xs" />
+                <input type="text" maxLength={80} value={garmentDescription} onChange={e => setGarmentDescription(e.target.value)} placeholder="e.g. Navy Blue Hospital Scrubs / White Uniform" className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main outline-none focus:border-primary text-xs" />
              </div>
 
              <div className="flex flex-col gap-1.5">

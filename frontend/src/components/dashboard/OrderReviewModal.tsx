@@ -244,6 +244,7 @@ export default function OrderReviewModal({
           </label>
           <textarea
             rows={3}
+            maxLength={500}
             placeholder="Share details about the letter sharpness, fabric feel, or Pacific Mall store pickup..."
             value={comment}
             onChange={(e) => {

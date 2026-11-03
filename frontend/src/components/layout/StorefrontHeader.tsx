@@ -506,6 +506,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 ref={searchInputRef}
                 suppressHydrationWarning
                 type="text"
+                maxLength={80}
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onFocus={() => setIsSearchFocused(true)}

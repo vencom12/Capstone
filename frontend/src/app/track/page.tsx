@@ -244,6 +244,7 @@ function OrderTrackerContent() {
         <form onSubmit={handleManualSearch} className="w-full flex flex-col gap-3">
           <input
             type="text"
+            maxLength={30}
             placeholder="e.g. WI-582B or A-582B"
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value.toUpperCase())}

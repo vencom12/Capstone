@@ -347,24 +347,22 @@ export default function ProductModal({
       setImageFit('cover');
       const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
       setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
-      if (product.variants && Array.isArray(product.variants) && product.variants.length === 1) {
-        // Single option available: auto-select
-        const onlyOption = product.variants[0];
-        setSelectedVariant(onlyOption);
-        setSelectedColor(onlyOption.color || '');
-        setSelectedSize(onlyOption.size || '');
+      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+        // Auto-select first in-stock option if available, otherwise first variant
+        const firstInStock = product.variants.find((v: any) => {
+          const s = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+          return s > 0;
+        });
+        const initialVariant = firstInStock || product.variants[0];
+        setSelectedVariant(initialVariant);
+        setSelectedColor(initialVariant.color || '');
+        setSelectedSize(initialVariant.size || '');
       } else {
-        // Multiple options available: require customer to explicitly choose
         setSelectedVariant(null);
         setSelectedColor('');
         setSelectedSize('');
       }
       setVariantError(null);
-      if (!product.variants || product.variants.length === 0) {
-        setSelectedVariant(null);
-        setSelectedColor('');
-        setSelectedSize('');
-      }
       
       // Fetch real live shop queue load from backend capacity API
       import('@/lib/api').then(({ api }) => {
@@ -462,17 +460,21 @@ export default function ProductModal({
   // Variant-driven stock:
   const selectedVariantStock = selectedVariant
     ? (selectedVariant.availableStock !== undefined ? selectedVariant.availableStock : (selectedVariant.stock ?? 0))
-    : 0;
-  const effectiveStock = hasVariants ? selectedVariantStock : 0;
-  const isOutOfStock = !hasVariants || effectiveStock <= 0;
+    : (hasVariants
+        ? (product.variants || []).reduce((sum: number, v: any) => sum + (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)), 0)
+        : (product.availableStock !== undefined ? product.availableStock : (product.count ?? 0)));
+  const effectiveStock = selectedVariantStock;
+  const isOutOfStock = effectiveStock <= 0;
 
   // Existing quantity in basket for this product + variant
   const existingVariantBasketQty = items
-    .filter((i) => i.productId === productId && i.selectedVariant === selectedVariant?.name)
+    .filter((i) => i.productId === productId && (!selectedVariant || i.selectedVariant === selectedVariant?.name))
     .reduce((sum, i) => sum + i.quantity, 0);
 
   const remainingOnHandForVariant = Math.max(0, effectiveStock - existingVariantBasketQty);
-  const requiresPreOrder = hasVariants && quantity > remainingOnHandForVariant;
+  const requiresPreOrder = hasVariants
+    ? Boolean(selectedVariant && quantity > remainingOnHandForVariant)
+    : quantity > remainingOnHandForVariant;
   const preOrderShortage = requiresPreOrder ? Math.max(1, quantity - remainingOnHandForVariant) : 0;
 
   const validateAndBuildBasketItem = (): BasketItem | null => {
@@ -1236,6 +1238,7 @@ export default function ProductModal({
                     </div>
                     <textarea
                       rows={5}
+                      maxLength={2000}
                       value={bulkNamesText}
                       onChange={(e) => {
                         const clamped = sanitizeBulkMultilineText(e.target.value);
