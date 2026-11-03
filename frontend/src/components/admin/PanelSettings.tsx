@@ -770,6 +770,7 @@ export default function PanelSettings({
                         max="100"
                         value={smallGarmentLetterRate}
                         onChange={(e) => setSmallGarmentLetterRate(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setSmallGarmentLetterRate(Math.min(100, Math.max(1, Math.round(Number(smallGarmentLetterRate)) || 7)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -789,6 +790,7 @@ export default function PanelSettings({
                         max="100"
                         value={bigGarmentLetterRate}
                         onChange={(e) => setBigGarmentLetterRate(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setBigGarmentLetterRate(Math.min(200, Math.max(1, Math.round(Number(bigGarmentLetterRate)) || 10)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -823,6 +825,7 @@ export default function PanelSettings({
                         max="60"
                         value={artisanSecondsPerLetter}
                         onChange={(e) => setArtisanSecondsPerLetter(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setArtisanSecondsPerLetter(Math.min(60, Math.max(2, parseFloat(Number(artisanSecondsPerLetter).toFixed(1)) || 12)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -843,6 +846,7 @@ export default function PanelSettings({
                         max="10"
                         value={artisanHandlingMinutes}
                         onChange={(e) => setArtisanHandlingMinutes(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setArtisanHandlingMinutes(Math.min(15, Math.max(0.2, parseFloat(Number(artisanHandlingMinutes).toFixed(2)) || 1.0)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -863,6 +867,7 @@ export default function PanelSettings({
                         max="5"
                         value={artisanCapOffsetMinutes}
                         onChange={(e) => setArtisanCapOffsetMinutes(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setArtisanCapOffsetMinutes(Math.min(5, Math.max(0, parseFloat(Number(artisanCapOffsetMinutes).toFixed(2)) || 0.5)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -897,6 +902,7 @@ export default function PanelSettings({
                         max="1200"
                         value={artisanDailyMinutes}
                         onChange={(e) => setArtisanDailyMinutes(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setArtisanDailyMinutes(Math.min(1200, Math.max(60, Math.round(Number(artisanDailyMinutes)) || 500)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -917,6 +923,7 @@ export default function PanelSettings({
                         max="90"
                         value={expressLanePercent}
                         onChange={(e) => setExpressLanePercent(parseFloat(e.target.value) || 0)}
+                        onBlur={() => setExpressLanePercent(Math.min(95, Math.max(5, Math.round(Number(expressLanePercent)) || 65)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -944,6 +951,7 @@ export default function PanelSettings({
                         max="1000"
                         value={maxBulkPiecesPerDay}
                         onChange={(e) => setMaxBulkPiecesPerDay(parseInt(e.target.value) || 0)}
+                        onBlur={() => setMaxBulkPiecesPerDay(Math.min(1000, Math.max(5, Math.round(Number(maxBulkPiecesPerDay)) || 50)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">
@@ -966,6 +974,7 @@ export default function PanelSettings({
                         max="30"
                         value={preOrderPrepDays}
                         onChange={(e) => setPreOrderPrepDays(Math.max(0, parseInt(e.target.value) || 0))}
+                        onBlur={() => setPreOrderPrepDays(Math.min(30, Math.max(0, Math.round(Number(preOrderPrepDays)) || 3)))}
                         className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm font-mono outline-none focus:border-primary transition-all"
                       />
                       <span className="text-[11px] text-text-dim">

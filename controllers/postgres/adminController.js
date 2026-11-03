@@ -1204,21 +1204,45 @@ exports.updateSettings = async (req, res) => {
         // Mandatory compliance: Inventory audit trails cannot be disabled
         updateData.inventoryAuditLog = true;
 
-        const incomingSmallRate = updateData.smallGarmentLetterRate !== undefined ? (parseFloat(updateData.smallGarmentLetterRate) || 7) : undefined;
-        const incomingBigRate = updateData.bigGarmentLetterRate !== undefined ? (parseFloat(updateData.bigGarmentLetterRate) || 10) : undefined;
-        const incomingPrepDays = updateData.preOrderPrepDays !== undefined ? Math.max(0, parseInt(updateData.preOrderPrepDays) || 3) : undefined;
+        const incomingSmallRate = updateData.smallGarmentLetterRate !== undefined ? Math.min(100, Math.max(1, parseFloat(updateData.smallGarmentLetterRate) || 7)) : undefined;
+        const incomingBigRate = updateData.bigGarmentLetterRate !== undefined ? Math.min(200, Math.max(1, parseFloat(updateData.bigGarmentLetterRate) || 10)) : undefined;
+        const incomingPrepDays = updateData.preOrderPrepDays !== undefined ? Math.min(30, Math.max(0, parseInt(updateData.preOrderPrepDays, 10) || 3)) : undefined;
         delete updateData.smallGarmentLetterRate;
         delete updateData.bigGarmentLetterRate;
         delete updateData.preOrderPrepDays;
 
-        if (updateData.maxBulkPiecesPerDay !== undefined) updateData.maxBulkPiecesPerDay = parseInt(updateData.maxBulkPiecesPerDay) || 50;
-        if (updateData.largeOrderQuoteThreshold !== undefined) updateData.largeOrderQuoteThreshold = parseInt(updateData.largeOrderQuoteThreshold) || 100;
-        if (updateData.artisanSecondsPerLetter !== undefined) updateData.artisanSecondsPerLetter = parseFloat(updateData.artisanSecondsPerLetter) || 12.0;
-        if (updateData.artisanHandlingMinutes !== undefined) updateData.artisanHandlingMinutes = parseFloat(updateData.artisanHandlingMinutes) || 1.0;
-        if (updateData.artisanCapOffsetMinutes !== undefined) updateData.artisanCapOffsetMinutes = parseFloat(updateData.artisanCapOffsetMinutes) || 0.5;
-        if (updateData.artisanDailyMinutes !== undefined) updateData.artisanDailyMinutes = parseFloat(updateData.artisanDailyMinutes) || 500.0;
-        if (updateData.expressLanePercent !== undefined) updateData.expressLanePercent = parseFloat(updateData.expressLanePercent) || 35.0;
-        if (updateData.efficiencyFactor !== undefined) updateData.efficiencyFactor = parseFloat(updateData.efficiencyFactor) || 0.85;
+        if (updateData.maxBulkPiecesPerDay !== undefined) {
+            const val = parseInt(updateData.maxBulkPiecesPerDay, 10) || 50;
+            updateData.maxBulkPiecesPerDay = Math.min(1000, Math.max(5, val));
+        }
+        if (updateData.largeOrderQuoteThreshold !== undefined) {
+            const val = parseInt(updateData.largeOrderQuoteThreshold, 10) || 100;
+            updateData.largeOrderQuoteThreshold = Math.min(1000, Math.max(10, val));
+        }
+        if (updateData.artisanSecondsPerLetter !== undefined) {
+            const val = parseFloat(updateData.artisanSecondsPerLetter) || 12.0;
+            updateData.artisanSecondsPerLetter = Math.min(60.0, Math.max(2.0, val));
+        }
+        if (updateData.artisanHandlingMinutes !== undefined) {
+            const val = parseFloat(updateData.artisanHandlingMinutes) || 1.0;
+            updateData.artisanHandlingMinutes = Math.min(15.0, Math.max(0.2, val));
+        }
+        if (updateData.artisanCapOffsetMinutes !== undefined) {
+            const val = parseFloat(updateData.artisanCapOffsetMinutes) || 0.5;
+            updateData.artisanCapOffsetMinutes = Math.min(5.0, Math.max(0.0, val));
+        }
+        if (updateData.artisanDailyMinutes !== undefined) {
+            const val = parseFloat(updateData.artisanDailyMinutes) || 500.0;
+            updateData.artisanDailyMinutes = Math.min(1200.0, Math.max(60.0, val));
+        }
+        if (updateData.expressLanePercent !== undefined) {
+            const val = parseFloat(updateData.expressLanePercent) || 65.0;
+            updateData.expressLanePercent = Math.min(95.0, Math.max(5.0, val));
+        }
+        if (updateData.efficiencyFactor !== undefined) {
+            const val = parseFloat(updateData.efficiencyFactor) || 0.85;
+            updateData.efficiencyFactor = Math.min(1.0, Math.max(0.1, val));
+        }
         if (updateData.dailyRent !== undefined) updateData.dailyRent = parseFloat(updateData.dailyRent) || 0;
         if (updateData.availableThreadColors !== undefined && typeof updateData.availableThreadColors === 'string') {
             try {
