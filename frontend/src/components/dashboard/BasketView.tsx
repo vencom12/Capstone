@@ -63,9 +63,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
   const [editSelectedSize, setEditSelectedSize] = useState<string>('');
   const [editImageUrl, setEditImageUrl] = useState<string>('');
   const [editIsPersonalized, setEditIsPersonalized] = useState<boolean>(false);
-  const [editLetteringMode, setEditLetteringMode] = useState<'single' | 'bulk'>('single');
-  const [editSingleText, setEditSingleText] = useState<string>('');
-  const [editBulkText, setEditBulkText] = useState<string>('');
+  const [editCustomText, setEditCustomText] = useState<string>('');
   const [editThreadColor, setEditThreadColor] = useState<{ name: string; hex: string }>({
     name: 'Metallic Gold',
     hex: '#d4af37',
@@ -132,9 +130,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
     setEditSelectedSize(item.selectedSize || '');
     setEditImageUrl(item.imageUrl || '');
     setEditIsPersonalized(hasPers);
-    setEditLetteringMode(isBulk ? 'bulk' : 'single');
-    setEditSingleText( sanitizeSingleLineText(namesArr[0] || item.personalization?.text || '') );
-    setEditBulkText( sanitizeBulkMultilineText(namesArr.join('\n')) );
+    setEditCustomText(sanitizeBulkMultilineText(namesArr.join('\n') || item.personalization?.text || ''));
     const tcName =
       typeof item.personalization?.threadColor === 'object'
         ? (item.personalization.threadColor as any)?.name || 'Metallic Gold'
@@ -833,23 +829,24 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
         );
         const isBig = garmentSize === 'big';
 
-        const singleBreakdown = calculateLetteringCost(editSingleText, isBig, letteringRates);
-        const bulkSummary = parseBulkLetteringLines(editBulkText, isBig, letteringRates);
+        const bulkSummary = parseBulkLetteringLines(editCustomText, isBig, letteringRates);
+        const isMultiLine = editIsPersonalized && bulkSummary.lineCount > 1;
+        const singleBreakdown = calculateLetteringCost(editCustomText.split('\n')[0] || '', isBig, letteringRates);
 
         const effectiveQuantity =
-          editIsPersonalized && editLetteringMode === 'bulk'
+          editIsPersonalized && isMultiLine
             ? Math.max(1, bulkSummary.lineCount)
             : Math.max(1, editQuantity);
 
         const avgExtraPerUnit = !editIsPersonalized
           ? 0
-          : editLetteringMode === 'bulk'
+          : isMultiLine
           ? bulkSummary.averageExtraCostPerUnit
           : singleBreakdown.extraCost;
 
         const totalExtraCost = !editIsPersonalized
           ? 0
-          : editLetteringMode === 'bulk'
+          : isMultiLine
           ? bulkSummary.totalExtraCost
           : singleBreakdown.extraCost * effectiveQuantity;
 
@@ -863,12 +860,8 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           setEditError(null);
 
           if (editIsPersonalized) {
-            if (editLetteringMode === 'single' && !editSingleText.trim()) {
-              setEditError('Please enter a name for Single Name embroidery, or turn off Personalization.');
-              return;
-            }
-            if (editLetteringMode === 'bulk' && bulkSummary.lineCount === 0) {
-              setEditError('Please enter or paste at least 1 line of text in Bulk List mode.');
+            if (!editCustomText.trim()) {
+              setEditError('Please enter text to embroider or remove lettering.');
               return;
             }
           }
@@ -883,18 +876,18 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
           const updatedPersonalization = editIsPersonalized
             ? {
                 text:
-                  editLetteringMode === 'bulk'
+                  isMultiLine
                     ? bulkSummary.namesList.length === 1
                       ? bulkSummary.namesList[0]
                       : `${bulkSummary.namesList.length} Names (${bulkSummary.namesList.slice(0, 3).join(', ')}${
                           bulkSummary.namesList.length > 3 ? '...' : ''
                         })`
-                    : sanitizeSingleLineText(editSingleText).trim(),
+                    : sanitizeSingleLineText(editCustomText).trim(),
                 namesList:
-                  editLetteringMode === 'bulk'
+                  isMultiLine
                     ? bulkSummary.namesList
-                    : [sanitizeSingleLineText(editSingleText).trim()],
-                isBulkList: editLetteringMode === 'bulk' && bulkSummary.namesList.length > 1,
+                    : [sanitizeSingleLineText(editCustomText).trim()],
+                isBulkList: isMultiLine,
                 font: editingItem.personalization?.font || 'Classic Cursive Script',
                 threadColor: editThreadColor.name,
                 threadHex: editThreadColor.hex,
@@ -1004,197 +997,237 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                 </div>
               )}
 
-              {/* 2. Personalization Toggle & Single vs Bulk Mode */}
+              {/* 2. Custom Embroidery Lettering */}
               <div className="flex flex-col gap-3 bg-white/[0.02] border border-border-glass rounded-xl p-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <span className="text-xs font-bold text-text-main block">
-                      2. Custom Embroidery Lettering
-                    </span>
-                    <span className="text-[0.68rem] text-text-dim">
-                      First word/name free • Max {MAX_CHARS_PER_LINE} chars per line (including spaces)
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
+                      <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                      <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                      <path d="M2 2l7.586 7.586"/>
+                      <circle cx="11" cy="11" r="2"/>
+                    </svg>
+                    <div>
+                      <span className="text-xs font-bold text-text-main block">
+                        2. Custom Embroidery Lettering
+                      </span>
+                      <span className="text-[0.68rem] text-text-dim">
+                        First word free • Max {MAX_CHARS_PER_LINE} chars per line
+                      </span>
+                    </div>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editIsPersonalized}
-                      onChange={(e) => setEditIsPersonalized(e.target.checked)}
-                      className="w-4 h-4 rounded accent-primary cursor-pointer"
-                    />
-                    <span className="text-xs font-bold text-primary">
-                      {editIsPersonalized ? 'Personalized' : 'Plain (No Text)'}
-                    </span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editIsPersonalized) {
+                        setEditIsPersonalized(false);
+                        setEditCustomText('');
+                        setEditError(null);
+                      } else {
+                        setEditIsPersonalized(true);
+                        setEditError(null);
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                      editIsPersonalized
+                        ? 'bg-primary text-white hover:bg-accent shadow-sm hover:shadow-md border-none'
+                        : 'bg-bg-surface hover:bg-bg-surface/80 border border-border-glass text-text-main hover:text-primary hover:border-primary/40'
+                    }`}
+                    title={editIsPersonalized ? 'Click to remove lettering customization' : 'Click to add custom embroidery text'}
+                  >
+                    {editIsPersonalized ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/>
+                          <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        <span>Remove Lettering</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Add Custom Lettering</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {editIsPersonalized && (
-                  <>
-                    {/* Mode Switcher: Single Name <-> Bulk List */}
-                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-surface border border-border-glass rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editLetteringMode === 'bulk') {
-                            const firstLine = bulkSummary.namesList[0] || '';
-                            if (firstLine) setEditSingleText(sanitizeSingleLineText(firstLine));
+                  <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
+                    {/* Estimated Stitching Time */}
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-text-dim shrink-0 inline-block"></span>
+                        <span className="text-[0.72rem] text-text-dim font-medium">
+                          Estimated artisan stitching:
+                        </span>
+                      </div>
+                      <strong className="text-text-main font-mono text-xs font-bold">
+                        {(() => {
+                          if (bulkSummary.lineCount > 1) {
+                            const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
+                            const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
+                            return `~${mins} mins (${bulkSummary.lineCount} pcs)`;
                           }
-                          setEditLetteringMode('single');
-                        }}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
-                          editLetteringMode === 'single'
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'bg-transparent text-text-dim hover:text-text-main'
-                        }`}
-                      >
-                        Single Name
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editLetteringMode === 'single' && editSingleText.trim() && !editBulkText.trim()) {
-                            setEditBulkText(sanitizeSingleLineText(editSingleText));
-                          }
-                          setEditLetteringMode('bulk');
-                        }}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
-                          editLetteringMode === 'bulk'
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'bg-transparent text-text-dim hover:text-text-main'
-                        }`}
-                      >
-                        Bulk List (Copy &amp; Paste)
-                      </button>
+                          const letters = editCustomText.replace(/\s+/g, '').length || 5;
+                          const mins = Math.max(1, Math.ceil((1.0 + letters * 0.2) * effectiveQuantity));
+                          return `~${mins} ${mins === 1 ? 'min' : 'mins'}`;
+                        })()}
+                      </strong>
                     </div>
 
-                    {/* Single Name Input */}
-                    {editLetteringMode === 'single' ? (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-[0.7rem]">
-                          <span className="text-text-dim font-medium">
-                            Embroidery Name (or paste multiple lines to switch to Bulk):
-                          </span>
-                          <span
-                            className={`font-mono font-bold ${
-                              editSingleText.length >= MAX_CHARS_PER_LINE ? 'text-primary' : 'text-text-dim'
-                            }`}
-                          >
-                            {editSingleText.length}/{MAX_CHARS_PER_LINE} chars
-                          </span>
-                        </div>
-                        <input
-                          type="text"
-                          value={editSingleText}
-                          maxLength={MAX_CHARS_PER_LINE}
-                          onPaste={(e) => {
-                            const pasted = e.clipboardData.getData('text');
-                            if (pasted && /\r?\n/.test(pasted.trim())) {
-                              e.preventDefault();
-                              const sanitizedMulti = sanitizeBulkMultilineText(pasted);
-                              setEditBulkText(sanitizedMulti);
-                              setEditLetteringMode('bulk');
-                            }
-                          }}
-                          onChange={(e) => setEditSingleText(sanitizeSingleLineText(e.target.value))}
-                          placeholder="e.g. Coach1 A (max 20 chars)"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-text-main text-sm font-medium focus:outline-none focus:border-primary"
-                        />
-                        {editSingleText.trim() && (
-                          <div className="text-[0.7rem] text-text-dim flex items-center justify-between bg-white/[0.03] px-2.5 py-1.5 rounded-lg border border-white/5">
-                            <span>{singleBreakdown.explanation}</span>
-                            <span className="font-mono font-bold text-primary">
-                              {singleBreakdown.extraCost > 0
-                                ? `+₱${singleBreakdown.extraCost.toFixed(2)}/pc`
-                                : 'Included'}
+                    {/* Unified Textarea with Active Line Detection */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
+                        <span className="font-semibold flex items-center gap-1.5">
+                          {isMultiLine ? (
+                            <span className="text-primary font-bold">
+                              {bulkSummary.lineCount} Names Detected (1 line = 1 piece)
                             </span>
-                          </div>
+                          ) : (
+                            <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                          )}
+                        </span>
+                        {isMultiLine ? (
+                          <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+                            {bulkSummary.lineCount} lines = {bulkSummary.lineCount} qty
+                          </span>
+                        ) : (
+                          <span className={`font-mono ${(editCustomText.split('\n')[0] || '').length >= MAX_CHARS_PER_LINE ? 'text-primary font-bold' : ''}`}>
+                            {(editCustomText.split('\n')[0] || '').length}/{MAX_CHARS_PER_LINE}
+                          </span>
                         )}
                       </div>
-                    ) : (
-                      /* Bulk Multi-Line Textarea */
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between items-center text-[0.7rem]">
-                          <span className="text-text-dim font-medium">
-                            1 line = 1 piece (Max {MAX_CHARS_PER_LINE} chars per line incl. spaces):
+                      <textarea
+                        rows={Math.max(2, Math.min(6, (editCustomText.match(/\n/g) || []).length + 2))}
+                        maxLength={2000}
+                        aria-label="Edit custom embroidery text"
+                        id="editCustomText"
+                        name="editCustomText"
+                        value={editCustomText}
+                        onChange={(e) => {
+                          const sanitized = sanitizeBulkMultilineText(e.target.value);
+                          setEditCustomText(sanitized);
+                          const parsed = parseBulkLetteringLines(sanitized, isBig, letteringRates);
+                          if (parsed.lineCount > 1) {
+                            setEditQuantity(parsed.lineCount);
+                          } else if (parsed.lineCount === 1 && editQuantity < 1) {
+                            setEditQuantity(1);
+                          }
+                          if (editError) setEditError(null);
+                        }}
+                        placeholder={`Type a name (e.g. Juan), or press Enter / paste multiple names for bulk:\nJuan\nMaria C\nPedro Penduko`}
+                        className="w-full bg-bg-surface border border-border-glass focus:border-primary/50 focus:ring-1 focus:ring-primary/20 p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y"
+                      />
+                      <div className="flex items-center justify-between text-[10px] text-text-dim/80">
+                        <span>
+                          {isMultiLine
+                            ? 'Each line is capped at 20 characters and auto-syncs order quantity.'
+                            : 'First word is included free. Press Enter to add more names for bulk orders.'}
+                        </span>
+                      </div>
+
+                      {/* Per-Line Breakdown List when multiple lines exist */}
+                      {isMultiLine && bulkSummary.lines.length > 0 && (
+                        <div className="mt-1 p-2.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5 max-h-[140px] overflow-y-auto">
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
+                            <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
+                            <span>Extra Fee</span>
+                          </div>
+                          {bulkSummary.lines.map((line) => (
+                            <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-b-0">
+                              <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                                <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
+                                <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
+                                <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
+                              </div>
+                              <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
+                                {line.extraCost > 0
+                                  ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
+                                  : 'Free (₱0)'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Real-time Lettering Cost Breakdown Notice */}
+                    {editCustomText.trim() && (
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
+                        <div className="flex flex-col">
+                          <span className="text-text-dim text-[11px]">
+                            {totalExtraCost > 0
+                              ? isMultiLine
+                                ? `Extra lettering (${bulkSummary.totalExtraLetters} letters × ₱${bulkSummary.ratePerLetter}):`
+                                : `Extra lettering (${singleBreakdown.extraLettersCount} letters × ₱${singleBreakdown.ratePerLetter}):`
+                              : 'First word on each line:'}
                           </span>
-                          <span className="font-mono font-bold text-primary">
-                            {bulkSummary.lineCount} {bulkSummary.lineCount === 1 ? 'line' : 'lines'} = {bulkSummary.lineCount} qty
+                          <span className="text-[10px] text-text-dim/70">
+                            {isBig
+                              ? `Big Garment (+₱${letteringRates.bigRate}/letter)`
+                              : `Small Garment (+₱${letteringRates.smallRate}/letter)`}
                           </span>
                         </div>
-                        <textarea
-                          rows={5}
-                          maxLength={2000}
-                          value={editBulkText}
-                          onChange={(e) => setEditBulkText(sanitizeBulkMultilineText(e.target.value))}
-                          placeholder={`Paste or type names (1 per line, max 20 chars/line):\nCoach1\nCoach2\nCoach3 A\nPlayer 4`}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-text-main text-xs font-mono leading-relaxed focus:outline-none focus:border-primary resize-y"
-                        />
-
-                        {/* Per-line breakdown preview */}
-                        {bulkSummary.lines.length > 0 && (
-                          <div className="bg-bg-surface border border-border-glass rounded-lg p-2.5 max-h-[140px] overflow-y-auto flex flex-col gap-1">
-                            {bulkSummary.lines.map((line) => (
-                              <div
-                                key={line.lineIndex}
-                                className="flex items-center justify-between text-[0.68rem] py-0.5 border-b border-white/5 last:border-none"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-text-dim font-mono">#{line.lineIndex}</span>
-                                  <span className="font-mono text-text-main truncate font-semibold">
-                                    &ldquo;{line.sanitizedLine}&rdquo;
-                                  </span>
-                                  <span className="text-[0.62rem] text-text-dim font-mono">
-                                    ({line.charCount}/{MAX_CHARS_PER_LINE})
-                                  </span>
-                                </div>
-                                <span
-                                  className={`font-mono font-bold shrink-0 ${
-                                    line.extraCost > 0 ? 'text-primary' : 'text-text-dim'
-                                  }`}
-                                >
-                                  {line.extraCost > 0
-                                    ? `+₱${line.extraCost} (${line.extraLettersCount} extra)`
-                                    : 'Included'}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <span className={`font-mono font-bold text-xs ${totalExtraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
+                          {totalExtraCost > 0 ? `+₱${totalExtraCost.toFixed(2)}` : 'Included in price (₱0)'}
+                        </span>
                       </div>
                     )}
 
-                    {/* Thread Color Swatches */}
-                    <div className="flex flex-col gap-1.5 pt-1">
-                      <span className="text-[0.7rem] text-text-dim font-semibold">
-                        Thread Color: <strong className="text-text-main">{editThreadColor.name}</strong>
-                      </span>
+                    {/* Thread Color Selector */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[0.7rem] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
+                        <span>Thread Color</span>
+                        <span className="text-text-main normal-case font-medium">{editThreadColor.name}</span>
+                      </label>
                       <div className="flex flex-wrap gap-2">
-                        {availableColors
-                          .filter((c) => c.isAvailable !== false)
-                          .map((c) => {
-                            const active = editThreadColor.name === c.name;
-                            return (
-                              <button
-                                key={c.name}
-                                type="button"
-                                onClick={() => setEditThreadColor({ name: c.name, hex: c.hex })}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[0.7rem] font-semibold cursor-pointer transition-all ${
-                                  active
-                                    ? 'bg-primary/20 border-primary text-text-main ring-1 ring-primary'
-                                    : 'bg-bg-surface border-border-glass text-text-dim hover:text-text-main'
-                                }`}
-                              >
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/40 shrink-0"
-                                  style={{ backgroundColor: c.hex }}
-                                />
-                                <span>{c.name}</span>
-                              </button>
-                            );
-                          })}
+                        {availableColors.map((tc) => {
+                          const isSelected = editThreadColor.name === tc.name;
+                          const isAvailable = tc.isAvailable !== false;
+                          return (
+                            <button
+                              key={tc.name}
+                              type="button"
+                              disabled={!isAvailable}
+                              onClick={() => {
+                                if (isAvailable) {
+                                  setEditThreadColor({ name: tc.name, hex: tc.hex });
+                                }
+                              }}
+                              title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
+                              className={`relative w-7 h-7 rounded-full border flex items-center justify-center transition-all overflow-hidden ${
+                                !isAvailable
+                                  ? 'cursor-not-allowed border-dashed border-border-glass scale-90'
+                                  : isSelected
+                                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-bg-surface scale-110 border-primary cursor-pointer'
+                                  : 'border-border-glass hover:scale-105 cursor-pointer'
+                              }`}
+                              style={{
+                                backgroundColor: tc.hex,
+                                ...(isAvailable ? {} : { opacity: 0.35, filter: 'grayscale(90%)' })
+                              }}
+                            >
+                              {!isAvailable && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                  <div className="w-[150%] h-[2px] bg-white/90 shadow-[0_0_3px_rgba(0,0,0,0.8)] rotate-45 transform" />
+                                </div>
+                              )}
+
+                              {isSelected && isAvailable && (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={tc.hex === '#ffffff' || tc.hex === '#e2e8f0' ? 'text-black' : 'text-white'}>
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -1210,7 +1243,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                     </span>
                   </div>
 
-                  {editIsPersonalized && editLetteringMode === 'bulk' ? (
+                  {editIsPersonalized && isMultiLine ? (
                     <span className="px-3 py-1.5 rounded-lg bg-primary/15 border border-primary/30 text-primary font-mono font-bold text-xs">
                       {effectiveQuantity} pcs (Auto-synced from {bulkSummary.lineCount} lines)
                     </span>
@@ -1225,6 +1258,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
                     />
                   )}
                 </div>
+
 
                 {/* Pre-Order Warning & Acceptance when exceeding on-hand stock */}
                 {exceedsStock && (

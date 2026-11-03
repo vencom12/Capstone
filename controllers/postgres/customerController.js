@@ -266,11 +266,13 @@ exports.submitOrder = async (req, res) => {
             if (!clamped) return 0;
             const rate = isBig ? bigRate : smallRate;
             if (byog) {
-                return clamped.replace(/\s+/g, '').length * rate;
+                return clamped.replace(/[^\p{L}\p{N}]/gu, '').length * rate;
             }
-            const firstSpace = clamped.indexOf(' ');
-            if (firstSpace === -1) return 0;
-            const extraChars = clamped.substring(firstSpace + 1).replace(/\s+/g, '').length;
+            // Closes all delimiters loopholes (space, dot, comma, dash, underscore, slash, semicolon, etc.)
+            const delimiterMatch = clamped.match(/[\s.,_\-\/\\;:|&+*~#!=<>[\]{}"`^?]/);
+            if (!delimiterMatch) return 0;
+            const extraPart = clamped.substring(delimiterMatch.index + 1);
+            const extraChars = extraPart.replace(/[^\p{L}\p{N}]/gu, '').length;
             return extraChars * rate;
         };
 

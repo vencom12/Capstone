@@ -1167,7 +1167,7 @@ export default function ProductModal({
                     <span className="font-semibold flex items-center gap-1.5">
                       {isMultiLine ? (
                         <span className="text-primary font-bold">
-                          ✨ {bulkSummary.lineCount} Names Detected (1 line = 1 piece)
+                          {bulkSummary.lineCount} Names Detected (1 line = 1 piece)
                         </span>
                       ) : (
                         <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars/line)</span>
@@ -1365,7 +1365,7 @@ export default function ProductModal({
                       Ordering <strong>{quantity} pcs</strong> exceeds ready stock by <strong>{preOrderShortage} pcs</strong>. This order will be queued as a <strong>Pre-Order (full payment upfront)</strong>.
                     </span>
                     <span className="text-[11px] font-mono font-bold text-primary mt-0.5">
-                      ⏱ {estimatedPreOrderScheduleLabel}
+                      {estimatedPreOrderScheduleLabel}
                     </span>
                   </div>
                 </div>

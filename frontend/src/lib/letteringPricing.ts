@@ -183,8 +183,9 @@ export function calculateLetteringCost(
 
   // STANDARD STORE PRODUCT:
   // First word/name is included in the base product price.
-  // Any lettering requested after a space or dot (e.g. "ryven revina" or "ryven.revina") is charged per letter.
-  const firstDelimiterMatch = trimmed.match(/[\s.]/);
+  // Any lettering requested after any word delimiter (space, dot, comma, dash, underscore, slash, semicolon, etc.) is charged per letter.
+  // Closes all punctuation loopholes (e.g. "ryven,revina", "ryven-revina", "ryven_revina", "ryven/revina").
+  const firstDelimiterMatch = trimmed.match(/[\s.,_\-\/\\;:|&+*~#!=<>[\]{}"`^?]/);
   const firstDelimiterIndex = firstDelimiterMatch ? (firstDelimiterMatch.index ?? -1) : -1;
   if (firstDelimiterIndex === -1) {
     return {
@@ -202,8 +203,8 @@ export function calculateLetteringCost(
 
   const baseText = trimmed.substring(0, firstDelimiterIndex);
   const extraText = trimmed.substring(firstDelimiterIndex + 1);
-  // Count only non-space, non-dot characters after the first word/delimiter
-  const lettersOnly = extraText.replace(/[\s.]+/g, '');
+  // Count only alphanumeric letters/digits in extra text (ignores punctuation & delimiters)
+  const lettersOnly = extraText.replace(/[^\p{L}\p{N}]/gu, '');
   const extraLettersCount = lettersOnly.length;
   const extraCost = extraLettersCount * ratePerLetter;
 
