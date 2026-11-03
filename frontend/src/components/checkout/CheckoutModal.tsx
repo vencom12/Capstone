@@ -841,7 +841,7 @@ export default function CheckoutModal({
                   const lowerName = rawName.toLowerCase();
                   const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
                     .filter(Boolean)
-                    .map((p: string) => String(p).trim())
+                    .map((p) => String(p || '').trim())
                     .filter((p: string, pIdx: number, arr: string[]) => {
                       if (!p) return false;
                       if (lowerName.includes(p.toLowerCase())) return false;

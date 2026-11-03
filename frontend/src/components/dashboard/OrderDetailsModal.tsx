@@ -278,7 +278,7 @@ export default function OrderDetailsModal({
                   item.selectedSize ? `Size: ${item.selectedSize}` : null
                 ]
                   .filter(Boolean)
-                  .map((part: string) => String(part).trim())
+                  .map((part) => String(part || '').trim())
                   .filter((part: string, pIdx: number, arr: string[]) => {
                     if (!part) return false;
                     if (lowerItemName.includes(part.toLowerCase())) return false;

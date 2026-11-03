@@ -976,10 +976,7 @@ export default function PanelOverview({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setViewingReceiptOrder(o);
-                        setIsReceiptModalOpen(true);
-                      }}
+                      onClick={() => viewReceipt(o)}
                       className="flex-1 bg-primary/15 border border-primary/30 text-primary min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

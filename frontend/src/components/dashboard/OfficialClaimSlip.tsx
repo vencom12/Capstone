@@ -406,7 +406,7 @@ export default function OfficialClaimSlip({
                   const lowerItemName = itemName.toLowerCase();
                   const variantParts = [toSafeString(item.selectedVariant), toSafeString(item.selectedColor), item.selectedSize ? `Size: ${item.selectedSize}` : null]
                     .filter(Boolean)
-                    .map((part: string) => part.trim())
+                    .map((part) => String(part || '').trim())
                     .filter((part: string, pIdx: number, arr: string[]) => {
                       if (!part) return false;
                       if (lowerItemName.includes(part.toLowerCase())) return false;
@@ -540,7 +540,7 @@ export default function OfficialClaimSlip({
                   const lowerName = itemName.toLowerCase();
                   const variantParts = [toSafeString(item.selectedVariant), item.selectedSize ? `Size: ${item.selectedSize}` : null]
                     .filter(Boolean)
-                    .map((p: string) => p.trim())
+                    .map((p) => String(p || '').trim())
                     .filter((p: string, pIdx: number, arr: string[]) => {
                       if (!p) return false;
                       if (lowerName.includes(p.toLowerCase())) return false;
