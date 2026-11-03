@@ -214,6 +214,14 @@ export default function StorefrontPage() {
           setIsCheckoutOpen(false);
           setExpressCheckoutItems(undefined);
         }}
+        onBack={() => {
+          setIsCheckoutOpen(false);
+          if (expressCheckoutItems && expressCheckoutItems.length > 0) {
+            setIsModalOpen(true);
+          } else {
+            setBasketOpen(true);
+          }
+        }}
         checkoutItems={expressCheckoutItems}
         onSwitchToFullBasket={() => setExpressCheckoutItems(undefined)}
         onSuccess={(createdOrder) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Product, ProductVariant, ProductReviewsResponse, BasketItem } from '@/lib/types';
 import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -330,36 +330,42 @@ export default function ProductModal({
     };
   }, [isOpen, isPersonalized, product]);
 
-  // Sync state when product opens
+  const currentProductId = product?.id || (product as any)?._id || null;
+  const lastProductIdRef = useRef<string | null>(null);
+
+  // Sync state when product opens (resets ONLY when opening a different product, preserving user inputs when navigating back from checkout)
   useEffect(() => {
     if (product) {
-      setQuantity(1);
-      setIsPersonalized(false);
-      setCustomText('');
-      setPreOrderAccepted(false);
-      setActionError(null);
-      setMonogramError(null);
-      setCustomActiveImage(null);
-      setIsZoomed(false);
-      setImageFit('cover');
-      const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
-      setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
-      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-        // Auto-select first in-stock option if available, otherwise first variant
-        const firstInStock = product.variants.find((v: any) => {
-          const s = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
-          return s > 0;
-        });
-        const initialVariant = firstInStock || product.variants[0];
-        setSelectedVariant(initialVariant);
-        setSelectedColor(initialVariant.color || '');
-        setSelectedSize(initialVariant.size || '');
-      } else {
-        setSelectedVariant(null);
-        setSelectedColor('');
-        setSelectedSize('');
+      const isNewProduct = lastProductIdRef.current !== currentProductId;
+      if (isNewProduct) {
+        lastProductIdRef.current = currentProductId;
+        setQuantity(1);
+        setIsPersonalized(false);
+        setCustomText('');
+        setPreOrderAccepted(false);
+        setActionError(null);
+        setMonogramError(null);
+        setCustomActiveImage(null);
+        setIsZoomed(false);
+        setImageFit('cover');
+        const defaultColor = availableColors.find(c => c.isAvailable !== false) || availableColors[0] || { name: 'Metallic Gold', hex: '#d4af37' };
+        setThreadColor({ name: defaultColor.name, hex: defaultColor.hex });
+        if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+          const firstInStock = product.variants.find((v: any) => {
+            const s = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+            return s > 0;
+          });
+          const initialVariant = firstInStock || product.variants[0];
+          setSelectedVariant(initialVariant);
+          setSelectedColor(initialVariant.color || '');
+          setSelectedSize(initialVariant.size || '');
+        } else {
+          setSelectedVariant(null);
+          setSelectedColor('');
+          setSelectedSize('');
+        }
+        setVariantError(null);
       }
-      setVariantError(null);
       
       // Fetch real live shop queue load from backend capacity API
       import('@/lib/api').then(({ api }) => {
@@ -379,7 +385,7 @@ export default function ProductModal({
           .catch(() => {});
       });
     }
-  }, [product, isOpen]);
+  }, [product, isOpen, currentProductId]);
 
   // Lettering extra pricing rule:
   // Uses Admin-configured Garment Size ('small' | 'big') and Admin-configured Small/Big rates.

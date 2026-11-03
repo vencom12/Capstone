@@ -1095,6 +1095,14 @@ export default function DashboardPage() {
           setIsCheckoutOpen(false);
           setSelectedCheckoutItems(undefined);
         }}
+        onBack={() => {
+          setIsCheckoutOpen(false);
+          if (selectedCheckoutItems && selectedCheckoutItems.length > 0 && selectedProduct) {
+            setIsModalOpen(true);
+          } else {
+            setActiveTab('basket');
+          }
+        }}
         checkoutItems={selectedCheckoutItems}
         onSwitchToFullBasket={() => setSelectedCheckoutItems(undefined)}
         initialFulfillmentType={selectedFulfillmentType}

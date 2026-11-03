@@ -18,6 +18,7 @@ interface CheckoutModalProps {
   onSwitchToFullBasket?: () => void;
   initialFulfillmentType?: 'delivery' | 'pickup';
   onSuccess?: (createdOrder?: any) => void;
+  onBack?: () => void;
 }
 
 type PaymentMethod = 'gcash';
@@ -28,10 +29,20 @@ export default function CheckoutModal({
   checkoutItems,
   onSwitchToFullBasket,
   initialFulfillmentType,
-  onSuccess
+  onSuccess,
+  onBack
 }: CheckoutModalProps) {
   const { items: allBasketItems, removeItem, clearBasket } = useBasketStore();
   const items = checkoutItems && checkoutItems.length > 0 ? checkoutItems : allBasketItems;
+  const isExpressCheckout = Boolean(checkoutItems && checkoutItems.length > 0);
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      onClose();
+    }
+  };
   const { user, setUser, refreshUser } = useAuthStore();
   const { fetchDashboardState } = useProductStore();
 
@@ -568,17 +579,31 @@ export default function CheckoutModal({
   return (
     <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[880px]" noPadding>
       <div className="p-4 sm:p-5 flex flex-col">
-        {/* Sticky/Fixed Modal Header */}
+        {/* Sticky/Fixed Modal Header with Back / Return Button */}
         <div className="flex justify-between items-center pb-3 mb-3 border-b border-border-glass/40 pr-10">
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-main">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-              <path d="M3 6h18" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-            <h2 className="text-base sm:text-lg font-bold m-0 text-text-main">
-              Secure Checkout
-            </h2>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border-glass bg-bg-surface hover:bg-white/[0.08] text-xs font-bold text-text-main hover:text-primary transition-all cursor-pointer active:scale-95 shadow-sm"
+              title={isExpressCheckout ? 'Return to product customization' : 'Return to basket'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              <span>{isExpressCheckout ? 'Back to Customization' : 'Back to Basket'}</span>
+            </button>
+            <div className="h-4 w-px bg-border-glass hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-main hidden sm:block">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                <path d="M3 6h18" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+              <h2 className="text-base sm:text-lg font-bold m-0 text-text-main">
+                Secure Checkout
+              </h2>
+            </div>
           </div>
         </div>
 
@@ -873,6 +898,18 @@ export default function CheckoutModal({
                   );
                 })}
               </div>
+
+              {/* Secondary Back Link below Order Items */}
+              <button
+                type="button"
+                onClick={handleBack}
+                className="mt-1 w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-border-glass/70 bg-bg-surface hover:bg-white/[0.06] text-xs font-bold text-text-dim hover:text-text-main transition-all cursor-pointer"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                <span>{isExpressCheckout ? 'Edit Product Customization & Options' : 'Back to Basket Items'}</span>
+              </button>
             </div>
           </div>
 
