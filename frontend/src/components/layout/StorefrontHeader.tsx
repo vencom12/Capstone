@@ -29,6 +29,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [businessName, setBusinessName] = useState('Edz Towels & Caps');
   const [emergencyNotice, setEmergencyNotice] = useState<any>(null);
   const categories = getCategories();
 
@@ -238,6 +239,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.businessName) setBusinessName(res.businessName);
         if (res && res.emergencyNotice?.active) setEmergencyNotice(res.emergencyNotice);
       }).catch(() => { });
     });
@@ -292,7 +294,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               </div>
             )}
             <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
-              Stitch-Opt
+              {businessName}
             </h1>
           </Link>
 

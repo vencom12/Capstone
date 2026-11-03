@@ -657,9 +657,9 @@ export default function ProductModal({
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
-      <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1">
+      <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1 md:h-[640px] md:max-h-[calc(100vh-3.5rem)]">
         {/* Full-Bleed Image & Preview Section */}
-        <div className="relative w-full h-full min-h-[440px] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
+        <div className="relative w-full h-full md:h-[640px] md:max-h-[calc(100vh-3.5rem)] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
           {activeImage ? (
             <div
               onClick={() => setIsZoomed(!isZoomed)}
@@ -671,7 +671,7 @@ export default function ProductModal({
                 alt={product.name}
                 width={800}
                 quality={90}
-                className={`w-full h-full transition-all duration-500 ease-out ${
+                className={`w-full h-full transition-transform duration-300 ease-out ${
                   imageFit === 'contain' ? 'object-contain p-4' : 'object-cover'
                 } ${isZoomed ? 'scale-135' : 'scale-100 group-hover:scale-105'}`}
               />
@@ -685,7 +685,7 @@ export default function ProductModal({
           {/* Top-Left Floating Overlay Badge */}
           <div className="absolute top-3 left-3 pointer-events-none z-10">
             {isOutOfStock ? (
-              <span className="bg-red-500/90 text-white text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
+              <span className="bg-danger/90 text-white text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
                 Out of Stock
               </span>
             ) : effectiveStock <= 5 ? (
@@ -693,7 +693,7 @@ export default function ProductModal({
                 Only {effectiveStock} Left
               </span>
             ) : (
-              <span className="bg-black/60 text-text-main border border-white/10 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
+              <span className="bg-bg-surface/95 text-text-main border border-border-glass text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wider backdrop-blur-md shadow-sm">
                 {product.tag || 'Handcrafted'}
               </span>
             )}
@@ -707,7 +707,7 @@ export default function ProductModal({
                 e.stopPropagation();
                 setImageFit(imageFit === 'cover' ? 'contain' : 'cover');
               }}
-              className="w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 border border-white/20 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-lg"
+              className="w-8 h-8 rounded-lg bg-bg-surface/90 hover:bg-bg-surface border border-border-glass text-text-main hover:text-primary flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-md"
               title={imageFit === 'cover' ? 'Fit entire image' : 'Fill frame'}
               aria-label="Toggle image fit"
             >
@@ -731,7 +731,7 @@ export default function ProductModal({
                 e.stopPropagation();
                 setIsZoomed(!isZoomed);
               }}
-              className={`w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 border border-white/20 text-white/90 hover:text-white flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-lg ${
+              className={`w-8 h-8 rounded-lg bg-bg-surface/90 hover:bg-bg-surface border border-border-glass text-text-main hover:text-primary flex items-center justify-center backdrop-blur-md cursor-pointer transition-all active:scale-95 shadow-md ${
                 isZoomed ? 'text-primary border-primary/50 bg-primary/20' : ''
               }`}
               title={isZoomed ? 'Reset zoom' : 'Zoom inspection'}
@@ -749,7 +749,7 @@ export default function ProductModal({
           {/* Bottom-Left Floating Variant Thumbnails Gallery */}
           {galleryItems.length > 1 && (
             <div className="absolute bottom-3 left-3 flex items-center gap-1.5 z-20 pointer-events-auto max-w-[calc(100%-85px)] overflow-x-auto no-scrollbar">
-              <div className="bg-black/70 backdrop-blur-md border border-white/15 p-1 rounded-xl shadow-2xl flex items-center gap-1.5">
+              <div className="bg-bg-surface/90 backdrop-blur-md border border-border-glass p-1 rounded-xl shadow-lg flex items-center gap-1.5">
                 {galleryItems.map((item, idx) => {
                   const isSelected = activeImage === item.imageUrl;
                   return (
@@ -768,7 +768,7 @@ export default function ProductModal({
                       className={`relative w-9 h-9 rounded-lg overflow-hidden border transition-all cursor-pointer shrink-0 ${
                         isSelected
                           ? 'border-primary ring-2 ring-primary/40 scale-105 opacity-100'
-                          : 'border-white/15 hover:border-white/40 opacity-60 hover:opacity-100'
+                          : 'border-border-glass hover:border-primary/40 opacity-70 hover:opacity-100'
                       }`}
                       title={item.label}
                     >
@@ -782,7 +782,7 @@ export default function ProductModal({
         </div>
 
         {/* Product Customization & Info Section */}
-        <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3">
+        <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3 md:h-[640px] md:max-h-[calc(100vh-3.5rem)] md:overflow-y-auto touch-scroll">
           <div>
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[700px]:text-lg">
               {product.name}
@@ -846,8 +846,8 @@ export default function ProductModal({
 
           {activeModalTab === 'configure' ? (
             <>
-              {/* 4-Step Sticky Ordering Progress Bar with Checkpoints (Fixed on scroll) */}
-              <div className="sticky top-0 z-20 -mx-6 max-[700px]:-mx-4 px-6 max-[700px]:px-4 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-2 mb-2">
+              {/* 4-Step Ordering Progress Bar with Checkpoints */}
+              <div className="pt-1 pb-3 border-b border-border-glass mb-2">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -1079,7 +1079,7 @@ export default function ProductModal({
           )}
 
           {/* Custom Embroidery Personalization (Lettering / Monogram / Multi-Line Bulk Paste) */}
-          <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-white/[0.02] -mx-2 px-3 py-3 rounded-xl border border-white/5">
+          <div className="flex flex-col gap-2.5 border-t border-border-glass pt-3 bg-bg-surface/50 -mx-2 px-3 py-3 rounded-xl border border-border-glass">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-text-main flex items-center gap-2 cursor-pointer">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
@@ -1090,67 +1090,57 @@ export default function ProductModal({
                 </svg>
                 <span>Custom Embroidery Lettering</span>
               </label>
-              <div className="flex items-center gap-2">
-                {isPersonalized && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg animate-fadeIn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
+              <button
+                type="button"
+                disabled={!hasVariants}
+                onClick={() => {
+                  if (!hasVariants) return;
+                  if (isPersonalized) {
+                    setIsPersonalized(false);
+                    setCustomText('');
+                    setMonogramError(null);
+                    setActionError(null);
+                    setQuantity(1);
+                  } else {
+                    setIsPersonalized(true);
+                    setMonogramError(null);
+                  }
+                }}
+                className={`text-xs font-bold px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                  !hasVariants
+                    ? 'opacity-40 cursor-not-allowed bg-bg-surface border border-border-glass text-text-dim'
+                    : isPersonalized
+                      ? 'bg-primary text-white hover:bg-accent shadow-sm hover:shadow-md border-none'
+                      : 'bg-bg-surface hover:bg-bg-surface/80 border border-border-glass text-text-main hover:text-primary hover:border-primary/40'
+                }`}
+                title={isPersonalized ? 'Click to remove lettering customization' : 'Click to add custom embroidery text'}
+              >
+                {!hasVariants ? (
+                  'Unavailable'
+                ) : isPersonalized ? (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
-                    <span>Lettering Added</span>
-                  </span>
+                    <span>Remove Lettering</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    <span>Add Custom Lettering</span>
+                  </>
                 )}
-                <button
-                  type="button"
-                  disabled={!hasVariants}
-                  onClick={() => {
-                    if (!hasVariants) return;
-                    if (isPersonalized) {
-                      setIsPersonalized(false);
-                      setCustomText('');
-                      setMonogramError(null);
-                      setActionError(null);
-                      setQuantity(1);
-                    } else {
-                      setIsPersonalized(true);
-                      setMonogramError(null);
-                    }
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    !hasVariants
-                      ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
-                      : isPersonalized
-                        ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/40 text-rose-300 hover:text-rose-200 shadow-sm active:scale-95'
-                        : 'bg-primary/15 hover:bg-primary/25 border-primary/40 text-primary shadow-sm active:scale-95'
-                  }`}
-                  title={isPersonalized ? 'Click to remove lettering customization' : 'Click to add custom embroidery text'}
-                >
-                  {!hasVariants ? (
-                    'Unavailable'
-                  ) : isPersonalized ? (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                      </svg>
-                      <span>Remove Lettering</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      <span>+ Add Custom Lettering</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              </button>
             </div>
 
             {isPersonalized && (
               <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
                 {/* Estimated Stitching Time (Applies only when personalizing) */}
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.04] border border-border-glass text-xs">
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-text-dim shrink-0 inline-block"></span>
                     <span className="text-[0.72rem] text-text-dim font-medium">
@@ -1218,7 +1208,7 @@ export default function ProductModal({
                     className={`w-full bg-bg-surface border ${
                       monogramError
                         ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                        : 'border-border-glass focus:border-white/40'
+                        : 'border-border-glass focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
                     } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
                   />
                   <div className="flex items-center justify-between text-[10px] text-text-dim/80">
@@ -1257,7 +1247,7 @@ export default function ProductModal({
 
                 {/* Real-time Lettering Cost Breakdown Notice */}
                 {isPersonalized && customText.trim() && (
-                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass text-xs">
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
                     <div className="flex flex-col">
                       <span className="text-text-dim text-[11px]">
                         {totalExtraLetteringCost > 0
@@ -1301,10 +1291,10 @@ export default function ProductModal({
                           title={isAvailable ? tc.name : `${tc.name} (Temporarily Out of Stock)`}
                           className={`relative w-7 h-7 rounded-full border flex items-center justify-center transition-all overflow-hidden ${
                             !isAvailable
-                              ? 'cursor-not-allowed border-dashed border-white/20 scale-90'
+                              ? 'cursor-not-allowed border-dashed border-border-glass scale-90'
                               : isSelected
-                              ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110 border-white cursor-pointer'
-                              : 'border-white/20 hover:scale-105 cursor-pointer'
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-bg-surface scale-110 border-primary cursor-pointer'
+                              : 'border-border-glass hover:scale-105 cursor-pointer'
                           }`}
                           style={{
                             backgroundColor: tc.hex,
@@ -1398,7 +1388,7 @@ export default function ProductModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col gap-2 mt-auto pt-4">
+          <div className="flex flex-col gap-2 mt-auto pt-4 pb-2">
             {!hasVariants ? (
               <GlassButton
                 variant="secondary"

@@ -271,7 +271,7 @@ export default function WelcomeTransition() {
                 border border-primary/40 shadow-md
                 ${isDark ? 'bg-slate-900 text-primary' : 'bg-white text-primary'}
               `}
-              title="Stitch-Opt"
+              title="Edz Towels & Caps"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -284,7 +284,7 @@ export default function WelcomeTransition() {
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           <span className="text-[0.68rem] sm:text-xs font-bold tracking-[0.24em] uppercase text-primary">
-            Stitch-Opt Studio
+            Edz Towels & Caps Studio
           </span>
           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
         </div>

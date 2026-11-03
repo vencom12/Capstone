@@ -26,26 +26,26 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://capstone-btr7.onrender.com'),
   title: {
-    default: 'Stitch-Opt | Premium Embroidery Designs',
-    template: '%s | Stitch-Opt',
+    default: 'Edz Towels & Caps | Premium Embroidery Designs',
+    template: '%s | Edz Towels & Caps',
   },
   description: 'Explore our curated collection of professional embroidery products optimized for high-speed production. Custom monogramming, towels, fans, caps, and more.',
-  keywords: ['embroidery', 'monogramming', 'custom towels', 'personalized gifts', 'Stitch-Opt', 'custom caps', 'embroidered fans'],
+  keywords: ['embroidery', 'monogramming', 'custom towels', 'personalized gifts', 'Edz Towels & Caps', 'custom caps', 'embroidered fans'],
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: 'Stitch-Opt | Premium Embroidery Products',
+    title: 'Edz Towels & Caps | Premium Embroidery Products',
     description: 'Explore our curated collection of professional embroidery products optimized for high-speed production.',
     url: 'https://capstone-btr7.onrender.com',
-    siteName: 'Stitch-Opt',
+    siteName: 'Edz Towels & Caps',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary',
-    title: 'Stitch-Opt | Premium Embroidery Products',
+    title: 'Edz Towels & Caps | Premium Embroidery Products',
     description: 'Custom embroidery products & personalized monogramming for towels, fans, caps, and more.',
   },
   icons: {

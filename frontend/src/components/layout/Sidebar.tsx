@@ -16,6 +16,7 @@ export default function Sidebar() {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [businessName, setBusinessName] = useState('Edz Towels & Caps');
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -37,6 +38,7 @@ export default function Sidebar() {
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.businessName) setBusinessName(res.businessName);
       }).catch(() => {});
     });
   }, []);
@@ -104,7 +106,7 @@ export default function Sidebar() {
               </div>
             )}
             <span className="font-black text-[1.1rem] text-text-main tracking-tight">
-              Stitch-Opt
+              {businessName}
             </span>
           </Link>
           <button

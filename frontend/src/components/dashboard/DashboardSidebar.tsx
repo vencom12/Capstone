@@ -29,6 +29,7 @@ export default function DashboardSidebar({
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [businessName, setBusinessName] = useState('Edz Towels & Caps');
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [pushStatus, setPushStatus] = useState<NotificationPermission>('default');
 
@@ -42,6 +43,7 @@ export default function DashboardSidebar({
     import('@/lib/api').then(({ api }) => {
       api.get<any>('/api/customer/settings').then(res => {
         if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res && res.businessName) setBusinessName(res.businessName);
       }).catch(() => {});
     });
   }, []);
@@ -122,7 +124,7 @@ export default function DashboardSidebar({
               </div>
             )}
             <span className="font-black text-[1.1rem] text-text-main tracking-tight max-[1100px]:hidden truncate">
-              Stitch-Opt
+              {businessName}
             </span>
           </Link>
         </div>

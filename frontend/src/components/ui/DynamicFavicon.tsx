@@ -35,8 +35,8 @@ export default function DynamicFavicon() {
           msTile.content = res.businessLogoUrl;
           // Dynamic Manifest Update
           const manifestObj = {
-            name: res.businessName || "Stitch-Opt | Premium Embroidery Designs",
-            short_name: "Stitch-Opt",
+            name: res.businessName || "Edz Towels & Caps | Premium Embroidery Designs",
+            short_name: res.businessName || "Edz Towels & Caps",
             start_url: "/",
             display: "standalone",
             background_color: "#0f172a",

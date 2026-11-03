@@ -318,7 +318,7 @@ export default function AiAttendant() {
       setMessages([{
         id: createMsgId(),
         role: 'assistant',
-        text: "Hi there! Welcome to **Stitch Art**! How can I help you today? Ask me anything about our products, custom embroidery, rush orders, or workshop policies.",
+        text: "Hi there! Welcome to **Edz Towels & Caps**! How can I help you today? Ask me anything about our products, custom embroidery, rush orders, or workshop policies.",
       }]);
     }
   }, [isOpen, hasGreeted, initialAiQuery]);
@@ -876,7 +876,7 @@ export default function AiAttendant() {
                 </svg>
               </button>
             </div>
-            <p className="text-[0.6rem] text-text-dim/40 text-center mt-2 m-0">Powered by Stitch Art AI</p>
+            <p className="text-[0.6rem] text-text-dim/40 text-center mt-2 m-0">Powered by Edz Towels & Caps AI</p>
           </div>
         </div>
       </div>
