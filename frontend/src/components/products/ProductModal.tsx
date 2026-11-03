@@ -58,8 +58,7 @@ export default function ProductModal({
     bigRate: 10,
     preOrderPrepDays: 3,
   });
-  const [letteringMode, setLetteringMode] = useState<'single' | 'bulk'>('single');
-  const [bulkNamesText, setBulkNamesText] = useState<string>('');
+  // Unified lettering state: actively detects single vs. multiline bulk input
   const [preOrderAccepted, setPreOrderAccepted] = useState<boolean>(false);
 
   // Dynamic verified customer reviews state (Amazon/Shopee Standard)
@@ -336,9 +335,7 @@ export default function ProductModal({
     if (product) {
       setQuantity(1);
       setIsPersonalized(false);
-      setLetteringMode('single');
       setCustomText('');
-      setBulkNamesText('');
       setPreOrderAccepted(false);
       setActionError(null);
       setMonogramError(null);
@@ -390,8 +387,10 @@ export default function ProductModal({
   const isBig = garmentSize === 'big';
 
   const bulkSummary = useMemo(() => {
-    return parseBulkLetteringLines(bulkNamesText, isBig, letteringRates);
-  }, [bulkNamesText, isBig, letteringRates]);
+    return parseBulkLetteringLines(customText, isBig, letteringRates);
+  }, [customText, isBig, letteringRates]);
+
+  const isMultiLine = isPersonalized && bulkSummary.lineCount > 1;
 
   const lettering = useMemo(() => {
     if (!product || !isPersonalized) {
@@ -402,7 +401,7 @@ export default function ProductModal({
         explanation: '',
       };
     }
-    if (letteringMode === 'bulk') {
+    if (bulkSummary.lineCount > 1) {
       return {
         extraCost: bulkSummary.averageExtraCostPerUnit,
         extraLettersCount: bulkSummary.totalExtraLetters,
@@ -414,7 +413,7 @@ export default function ProductModal({
       };
     }
     return calculateLetteringCost(customText, isBig, letteringRates);
-  }, [product, isPersonalized, letteringMode, customText, isBig, letteringRates, bulkSummary]);
+  }, [product, isPersonalized, customText, isBig, letteringRates, bulkSummary]);
 
   // Estimated completion timeframe for Bulk / Pre-Order (must be above early return to satisfy Rules of Hooks)
   const estimatedPreOrderScheduleLabel = useMemo(() => {
@@ -439,13 +438,13 @@ export default function ProductModal({
   const productId = product.id || product._id || '';
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
   const totalExtraLetteringCost =
-    isPersonalized && letteringMode === 'bulk'
+    isMultiLine
       ? bulkSummary.totalExtraCost
       : isPersonalized
       ? lettering.extraCost * quantity
       : 0;
   const finalUnitPrice =
-    isPersonalized && letteringMode === 'bulk' && quantity > 0
+    isMultiLine && quantity > 0
       ? effectivePrice + bulkSummary.totalExtraCost / quantity
       : effectivePrice + (isPersonalized ? lettering.extraCost : 0);
   const totalOrderPrice = effectivePrice * quantity + totalExtraLetteringCost;
@@ -497,17 +496,10 @@ export default function ProductModal({
 
     const trimmedCustomText = sanitizeSingleLineText(customText).trim();
     if (isPersonalized) {
-      if (letteringMode === 'bulk') {
-        if (bulkSummary.lineCount === 0) {
-          setMonogramError('Please paste or type at least 1 name on a line.');
-          setActionError('Please enter your embroidery names.');
-          showToast('Please paste or type at least 1 name.', 'error');
-          return null;
-        }
-      } else if (!trimmedCustomText) {
-        setMonogramError('Please enter the name or text you would like embroidered.');
+      if (!trimmedCustomText) {
+        setMonogramError('Please enter text to embroider or click "Remove Lettering".');
         setActionError('Please enter your embroidery text.');
-        showToast('Please enter the name or text you would like embroidered.', 'error');
+        showToast('Please enter text to embroider or click "Remove Lettering".', 'error');
         return null;
       }
       const chosenColor = availableColors.find((c) => c.name === threadColor.name);
@@ -526,7 +518,7 @@ export default function ProductModal({
       return null;
     }
 
-    const isBulkPersonalization = isPersonalized && letteringMode === 'bulk' && bulkSummary.lineCount > 0;
+    const isBulkPersonalization = isPersonalized && bulkSummary.lineCount > 1;
     const resolvedQuantity = isBulkPersonalization ? bulkSummary.lineCount : quantity;
     const resolvedUnitPrice =
       isBulkPersonalization && resolvedQuantity > 0
@@ -638,8 +630,7 @@ export default function ProductModal({
   // 4-Step Customer Product Ordering Progress (Style/Variant -> Lettering -> Quantity -> Order/Basket)
   const isOrderStep1Done = !hasVariants || Boolean(selectedVariant);
   const isOrderStep2Done =
-    !isPersonalized ||
-    (letteringMode === 'bulk' ? bulkSummary.lineCount > 0 : Boolean(customText.trim())) && !monogramError;
+    !isPersonalized || (Boolean(customText.trim()) && !monogramError);
   const isOrderStep3Done = quantity >= 1 && (!requiresPreOrder || preOrderAccepted);
   // Step 4 is ONLY marked done when the customer clicks Add to Basket or Buy Now!
   const isOrderStep4Done = isOrderSubmitted;
@@ -1099,65 +1090,65 @@ export default function ProductModal({
                 </svg>
                 <span>Custom Embroidery Lettering</span>
               </label>
-              <button
-                type="button"
-                disabled={!hasVariants}
-                onClick={() => {
-                  if (!hasVariants) return;
-                  setIsPersonalized(!isPersonalized);
-                }}
-                className={`text-[0.72rem] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
-                  !hasVariants
-                    ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
-                    : isPersonalized
-                      ? 'bg-white/10 border-white/30 text-text-main cursor-pointer'
-                      : 'bg-white/5 border-border-glass text-text-dim hover:text-text-main hover:bg-white/10 cursor-pointer'
-                }`}
-              >
-                {!hasVariants ? 'Unavailable' : isPersonalized ? 'Active' : '+ Add Name / Bulk List'}
-              </button>
+              <div className="flex items-center gap-2">
+                {isPersonalized && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg animate-fadeIn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span>Lettering Added</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={!hasVariants}
+                  onClick={() => {
+                    if (!hasVariants) return;
+                    if (isPersonalized) {
+                      setIsPersonalized(false);
+                      setCustomText('');
+                      setMonogramError(null);
+                      setActionError(null);
+                      setQuantity(1);
+                    } else {
+                      setIsPersonalized(true);
+                      setMonogramError(null);
+                    }
+                  }}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    !hasVariants
+                      ? 'opacity-40 cursor-not-allowed bg-white/5 border-border-glass text-text-dim'
+                      : isPersonalized
+                        ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/40 text-rose-300 hover:text-rose-200 shadow-sm active:scale-95'
+                        : 'bg-primary/15 hover:bg-primary/25 border-primary/40 text-primary shadow-sm active:scale-95'
+                  }`}
+                  title={isPersonalized ? 'Click to remove lettering customization' : 'Click to add custom embroidery text'}
+                >
+                  {!hasVariants ? (
+                    'Unavailable'
+                  ) : isPersonalized ? (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                      <span>Remove Lettering</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      <span>+ Add Custom Lettering</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {isPersonalized && (
               <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
-                {/* Mode Toggle: Single Name vs Bulk List (Copy & Paste) */}
-                <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-bg-surface border border-border-glass">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLetteringMode('single');
-                      if (bulkSummary.namesList.length > 0 && !customText.trim()) {
-                        setCustomText(bulkSummary.namesList[0]);
-                      }
-                    }}
-                    className={`py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      letteringMode === 'single'
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'text-text-dim hover:text-text-main bg-transparent'
-                    }`}
-                  >
-                    Single Name
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLetteringMode('bulk');
-                      if (customText.trim() && !bulkNamesText.trim()) {
-                        const clamped = sanitizeSingleLineText(customText);
-                        setBulkNamesText(clamped);
-                        setQuantity(1);
-                      }
-                    }}
-                    className={`py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                      letteringMode === 'bulk'
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'text-text-dim hover:text-text-main bg-transparent'
-                    }`}
-                  >
-                    <span>Bulk List (Copy &amp; Paste)</span>
-                  </button>
-                </div>
-
                 {/* Estimated Stitching Time (Applies only when personalizing) */}
                 <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.04] border border-border-glass text-xs">
                   <div className="flex items-center gap-2">
@@ -1168,7 +1159,7 @@ export default function ProductModal({
                   </div>
                   <strong className="text-text-main font-mono text-xs font-bold">
                     {(() => {
-                      if (letteringMode === 'bulk' && bulkSummary.lineCount > 0) {
+                      if (bulkSummary.lineCount > 1) {
                         const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
                         const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
                         return `~${mins} mins (${bulkSummary.lineCount} pcs)`;
@@ -1180,121 +1171,97 @@ export default function ProductModal({
                   </strong>
                 </div>
 
-                {letteringMode === 'single' ? (
-                  /* Single-Line Text Input (Hard-capped at 20 characters including spaces) */
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
-                      <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars incl. spaces)</span>
-                      <span className={`font-mono ${customText.length >= MAX_CHARS_PER_LINE ? 'text-primary font-bold' : ''}`}>
-                        {customText.length}/{MAX_CHARS_PER_LINE}
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      maxLength={MAX_CHARS_PER_LINE}
-                      value={customText}
-                      onPaste={(e) => {
-                        const pasted = e.clipboardData.getData('text');
-                        if (pasted && /\r?\n/.test(pasted.trim())) {
-                          e.preventDefault();
-                          const sanitizedBulk = sanitizeBulkMultilineText(pasted);
-                          const parsed = parseBulkLetteringLines(sanitizedBulk, isBig, letteringRates);
-                          setLetteringMode('bulk');
-                          setBulkNamesText(sanitizedBulk);
-                          if (parsed.lineCount > 0) {
-                            setQuantity(parsed.lineCount);
-                          }
-                          showToast(`Switched to Bulk List (${parsed.lineCount} names pasted, max 20 chars/line)`, 'info');
-                        }
-                      }}
-                      onChange={(e) => {
-                        const clamped = sanitizeSingleLineText(e.target.value);
-                        setCustomText(clamped);
-                        if (monogramError) setMonogramError(null);
-                        if (actionError) setActionError(null);
-                      }}
-                      onBlur={() => {
-                        if (isPersonalized && letteringMode === 'single' && !customText.trim()) {
-                          setMonogramError('Please enter text to embroider or disable lettering');
-                        }
-                      }}
-                      placeholder="e.g. Juan (free) or Juan D (+fee after space or dot)"
-                      className={`w-full bg-bg-surface border ${
-                        monogramError
-                          ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                          : 'border-border-glass focus:border-white/40'
-                      } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-medium`}
-                    />
-                    <InlineError message={monogramError} className="mt-1" variant="field" />
-                  </div>
-                ) : (
-                  /* Multi-Line Bulk Copy & Paste Input (1 line = 1 name/piece, max 20 chars per line) */
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
-                      <span>Paste 1 Name per Line (Max {MAX_CHARS_PER_LINE} chars/line incl. spaces)</span>
-                      <span className="font-mono font-bold text-primary">
-                        {bulkSummary.lineCount} {bulkSummary.lineCount === 1 ? 'line' : 'lines'} = {bulkSummary.lineCount} qty
-                      </span>
-                    </div>
-                    <textarea
-                      rows={5}
-                      maxLength={2000}
-                      value={bulkNamesText}
-                      onChange={(e) => {
-                        const clamped = sanitizeBulkMultilineText(e.target.value);
-                        setBulkNamesText(clamped);
-                        const parsed = parseBulkLetteringLines(clamped, isBig, letteringRates);
-                        if (parsed.lineCount > 0) {
-                          setQuantity(parsed.lineCount);
-                        }
-                        if (monogramError) setMonogramError(null);
-                        if (actionError) setActionError(null);
-                      }}
-                      placeholder={`Copy & paste multiple names (1 per line):\nJuan\nMaria C\nPedro Penduko\nAna`}
-                      className={`w-full bg-bg-surface border ${
-                        monogramError
-                          ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                          : 'border-border-glass focus:border-white/40'
-                      } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
-                    />
-                    <span className="text-[10px] text-text-dim/80">
-                      Each line is strictly capped at {MAX_CHARS_PER_LINE} characters (including spaces) and automatically adjusts quantity.
+                {/* Unified Textarea with Active Line Detection */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
+                    <span className="font-semibold flex items-center gap-1.5">
+                      {isMultiLine ? (
+                        <span className="text-primary font-bold">
+                          ✨ {bulkSummary.lineCount} Names Detected (1 line = 1 piece)
+                        </span>
+                      ) : (
+                        <span>Name or Text (Max {MAX_CHARS_PER_LINE} chars/line)</span>
+                      )}
                     </span>
-                    <InlineError message={monogramError} className="mt-0.5" variant="field" />
-
-                    {/* Per-Line Breakdown List */}
-                    {bulkSummary.lines.length > 0 && (
-                      <div className="mt-1 p-2.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
-                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
-                          <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
-                          <span>Extra Fee</span>
-                        </div>
-                        {bulkSummary.lines.map((line) => (
-                          <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-b-0">
-                            <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                              <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
-                              <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
-                              <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
-                            </div>
-                            <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
-                              {line.extraCost > 0
-                                ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
-                                : 'Free (₱0)'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                    {isMultiLine ? (
+                      <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
+                        {bulkSummary.lineCount} lines = {bulkSummary.lineCount} qty
+                      </span>
+                    ) : (
+                      <span className={`font-mono ${(customText.split('\n')[0] || '').length >= MAX_CHARS_PER_LINE ? 'text-primary font-bold' : ''}`}>
+                        {(customText.split('\n')[0] || '').length}/{MAX_CHARS_PER_LINE}
+                      </span>
                     )}
                   </div>
-                )}
+                  <textarea
+                    rows={Math.max(2, Math.min(6, (customText.match(/\n/g) || []).length + 2))}
+                    maxLength={2000}
+                    value={customText}
+                    onChange={(e) => {
+                      const sanitized = sanitizeBulkMultilineText(e.target.value);
+                      setCustomText(sanitized);
+                      const parsed = parseBulkLetteringLines(sanitized, isBig, letteringRates);
+                      if (parsed.lineCount > 1) {
+                        setQuantity(parsed.lineCount);
+                      } else if (parsed.lineCount === 1 && quantity < 1) {
+                        setQuantity(1);
+                      }
+                      if (monogramError) setMonogramError(null);
+                      if (actionError) setActionError(null);
+                    }}
+                    onBlur={() => {
+                      if (isPersonalized && !customText.trim()) {
+                        setMonogramError('Please enter text to embroider or click "Remove Lettering"');
+                      }
+                    }}
+                    placeholder={`Type a name (e.g. Juan), or press Enter / paste multiple names for bulk:\nJuan\nMaria C\nPedro Penduko`}
+                    className={`w-full bg-bg-surface border ${
+                      monogramError
+                        ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
+                        : 'border-border-glass focus:border-white/40'
+                    } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
+                  />
+                  <div className="flex items-center justify-between text-[10px] text-text-dim/80">
+                    <span>
+                      {isMultiLine
+                        ? 'Each line is capped at 20 characters and auto-syncs order quantity.'
+                        : 'First word is included free. Press Enter to add more names for bulk orders.'}
+                    </span>
+                  </div>
+                  <InlineError message={monogramError} className="mt-0.5" variant="field" />
+
+                  {/* Per-Line Breakdown List when multiple lines exist */}
+                  {isMultiLine && bulkSummary.lines.length > 0 && (
+                    <div className="mt-1 p-2.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
+                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
+                        <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
+                        <span>Extra Fee</span>
+                      </div>
+                      {bulkSummary.lines.map((line) => (
+                        <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-b-0">
+                          <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                            <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
+                            <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
+                            <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
+                          </div>
+                          <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
+                            {line.extraCost > 0
+                              ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
+                              : 'Free (₱0)'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Real-time Lettering Cost Breakdown Notice */}
-                {isPersonalized && ((letteringMode === 'single' && customText.trim()) || (letteringMode === 'bulk' && bulkSummary.lineCount > 0)) && (
+                {isPersonalized && customText.trim() && (
                   <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-border-glass text-xs">
                     <div className="flex flex-col">
                       <span className="text-text-dim text-[11px]">
                         {totalExtraLetteringCost > 0
-                          ? letteringMode === 'bulk'
+                          ? isMultiLine
                             ? `Extra lettering (${bulkSummary.totalExtraLetters} letters × ₱${bulkSummary.ratePerLetter}):`
                             : `Extra lettering (${lettering.extraLettersCount} letters × ₱${lettering.ratePerLetter}):`
                           : 'First word on each line:'}
@@ -1370,7 +1337,7 @@ export default function ProductModal({
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
                 <span className="text-[10px] text-text-dim/70 leading-snug">
-                  {isPersonalized && letteringMode === 'bulk'
+                  {isMultiLine
                     ? `Auto-synced to ${bulkSummary.lineCount} pasted ${bulkSummary.lineCount === 1 ? 'line' : 'lines'}`
                     : 'Type directly or step for bulk & pre-orders'}
                 </span>
@@ -1383,9 +1350,9 @@ export default function ProductModal({
                 }}
                 min={1}
                 max={1000}
-                disabled={!hasVariants || (isPersonalized && letteringMode === 'bulk' && bulkSummary.lineCount > 0)}
+                disabled={!hasVariants || isMultiLine}
                 size="md"
-                showPresets={hasVariants && !(isPersonalized && letteringMode === 'bulk')}
+                showPresets={hasVariants && !isMultiLine}
                 presets={[10, 25, 50, 100]}
                 ariaLabel={`Quantity for ${product.name}`}
               />
