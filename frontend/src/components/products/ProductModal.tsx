@@ -1161,7 +1161,7 @@ export default function ProductModal({
                   </strong>
                 </div>
 
-                {/* Unified Textarea with Active Line Detection */}
+                {/* Combined Lettering Editor & Line Breakdown Container */}
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center text-[0.7rem] text-text-dim">
                     <span className="font-semibold flex items-center gap-1.5">
@@ -1183,90 +1183,91 @@ export default function ProductModal({
                       </span>
                     )}
                   </div>
-                  <textarea
-                    rows={Math.max(2, Math.min(6, (customText.match(/\n/g) || []).length + 2))}
-                    maxLength={2000}
-                    value={customText}
-                    onChange={(e) => {
-                      const sanitized = sanitizeBulkMultilineText(e.target.value);
-                      setCustomText(sanitized);
-                      const parsed = parseBulkLetteringLines(sanitized, isBig, letteringRates);
-                      if (parsed.lineCount > 1) {
-                        setQuantity(parsed.lineCount);
-                      } else if (parsed.lineCount === 1 && quantity < 1) {
-                        setQuantity(1);
-                      }
-                      if (monogramError) setMonogramError(null);
-                      if (actionError) setActionError(null);
-                    }}
-                    onBlur={() => {
-                      if (isPersonalized && !customText.trim()) {
-                        setMonogramError('Please enter text to embroider or click "Remove Lettering"');
-                      }
-                    }}
-                    placeholder={`Type a name (e.g. Juan), or press Enter / paste multiple names for bulk:\nJuan\nMaria C\nPedro Penduko`}
-                    className={`w-full bg-bg-surface border ${
+
+                  {/* Single Unified Combined Box */}
+                  <div
+                    className={`rounded-xl border ${
                       monogramError
-                        ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                        : 'border-border-glass focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
-                    } p-2.5 rounded-lg text-xs text-text-main placeholder:text-text-dim/40 outline-none transition-all font-mono leading-relaxed resize-y`}
-                  />
-                  <div className="flex items-center justify-between text-[10px] text-text-dim/80">
-                    <span>
-                      {isMultiLine
-                        ? 'Each line is capped at 20 characters and auto-syncs order quantity.'
-                        : 'First word is included free. Press Enter to add more names for bulk orders.'}
-                    </span>
-                  </div>
-                  <InlineError message={monogramError} className="mt-0.5" variant="field" />
+                        ? 'border-danger/70 bg-danger/[0.03] ring-1 ring-danger/30'
+                        : 'border-border-glass bg-bg-surface focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20'
+                    } overflow-hidden transition-all flex flex-col`}
+                  >
+                    {/* Multiline Text Input */}
+                    <textarea
+                      rows={Math.max(2, Math.min(5, (customText.match(/\n/g) || []).length + 2))}
+                      maxLength={2000}
+                      aria-label="Custom embroidery text"
+                      id="customText"
+                      name="customText"
+                      value={customText}
+                      onChange={(e) => {
+                        const sanitized = sanitizeBulkMultilineText(e.target.value);
+                        setCustomText(sanitized);
+                        const parsed = parseBulkLetteringLines(sanitized, isBig, letteringRates);
+                        if (parsed.lineCount > 1) {
+                          setQuantity(parsed.lineCount);
+                        } else if (parsed.lineCount === 1 && quantity < 1) {
+                          setQuantity(1);
+                        }
+                        if (monogramError) setMonogramError(null);
+                        if (actionError) setActionError(null);
+                      }}
+                      onBlur={() => {
+                        if (isPersonalized && !customText.trim()) {
+                          setMonogramError('Please enter text to embroider or click "Remove Lettering"');
+                        }
+                      }}
+                      placeholder={`Type a name (e.g. Juan), or press Enter / paste multiple names for bulk:\nJuan\nMaria C\nPedro Penduko`}
+                      className="w-full bg-transparent border-0 p-3 text-xs text-text-main placeholder:text-text-dim/40 outline-none font-mono leading-relaxed resize-y focus:ring-0"
+                    />
 
-                  {/* Per-Line Breakdown List when multiple lines exist */}
-                  {isMultiLine && bulkSummary.lines.length > 0 && (
-                    <div className="mt-1 p-2.5 rounded-xl bg-bg-surface border border-border-glass flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass">
-                        <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
-                        <span>Extra Fee</span>
-                      </div>
-                      {bulkSummary.lines.map((line) => (
-                        <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/40 last:border-b-0">
-                          <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                            <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
-                            <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
-                            <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
-                          </div>
-                          <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
-                            {line.extraCost > 0
-                              ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
-                              : 'Free (₱0)'}
-                          </span>
+                    {/* Integrated Per-Line Breakdown inside the same box */}
+                    {isMultiLine && bulkSummary.lines.length > 0 && (
+                      <div className="border-t border-border-glass/60 bg-black/[0.04] p-2.5 flex flex-col gap-1 max-h-[140px] overflow-y-auto">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-text-dim pb-1 border-b border-border-glass/40">
+                          <span>Line Breakdown ({isBig ? `Big Garment • ₱${letteringRates.bigRate}/extra letter` : `Small Garment • ₱${letteringRates.smallRate}/extra letter`})</span>
+                          <span>Extra Fee</span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        {bulkSummary.lines.map((line) => (
+                          <div key={line.lineIndex} className="flex items-center justify-between text-[11px] py-0.5 border-b border-border-glass/20 last:border-b-0">
+                            <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                              <span className="text-[10px] font-mono text-text-dim w-4 shrink-0">{line.lineIndex}.</span>
+                              <span className="font-semibold text-text-main truncate">{line.sanitizedLine}</span>
+                              <span className="text-[9px] font-mono text-text-dim/60 shrink-0">({line.charCount}/20)</span>
+                            </div>
+                            <span className={`font-mono text-[11px] font-bold shrink-0 ${line.extraCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
+                              {line.extraCost > 0
+                                ? `+₱${line.extraCost.toFixed(2)} (${line.extraLettersCount} ltr)`
+                                : 'Free (₱0)'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                {/* Real-time Lettering Cost Breakdown Notice */}
-                {isPersonalized && customText.trim() && (
-                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
-                    <div className="flex flex-col">
-                      <span className="text-text-dim text-[11px]">
-                        {totalExtraLetteringCost > 0
-                          ? isMultiLine
-                            ? `Extra lettering (${bulkSummary.totalExtraLetters} letters × ₱${bulkSummary.ratePerLetter}):`
-                            : `Extra lettering (${lettering.extraLettersCount} letters × ₱${lettering.ratePerLetter}):`
-                          : 'First word on each line:'}
+                    {/* Integrated Bottom Bar inside the same box */}
+                    <div className="border-t border-border-glass/50 bg-white/[0.02] px-3 py-1.5 flex items-center justify-between text-[10px] text-text-dim">
+                      <span>
+                        {isMultiLine
+                          ? 'Each line is capped at 20 characters • Auto-syncs order quantity'
+                          : 'First word is included free. Press Enter to add more names for bulk orders.'}
                       </span>
-                      <span className="text-[10px] text-text-dim/70">
-                        {isBig
-                          ? `Big Garment (+₱${letteringRates.bigRate}/letter)`
-                          : `Small Garment (+₱${letteringRates.smallRate}/letter)`}
-                      </span>
+                      {totalExtraLetteringCost > 0 ? (
+                        <span className="font-mono font-bold text-primary shrink-0 pl-2">
+                          {isMultiLine
+                            ? `Total Extra: +₱${totalExtraLetteringCost.toFixed(2)}`
+                            : `Extra (${lettering.extraLettersCount} ltr): +₱${totalExtraLetteringCost.toFixed(2)}`}
+                        </span>
+                      ) : isMultiLine ? (
+                        <span className="font-mono font-bold text-text-dim shrink-0 pl-2">
+                          Included in price
+                        </span>
+                      ) : null}
                     </div>
-                    <span className={`font-mono font-bold text-xs ${totalExtraLetteringCost > 0 ? 'text-primary' : 'text-text-dim'}`}>
-                      {totalExtraLetteringCost > 0 ? `+₱${totalExtraLetteringCost.toFixed(2)}` : 'Included in price (₱0)'}
-                    </span>
                   </div>
-                )}
+
+                  <InlineError message={monogramError} className="mt-0.5" variant="field" />
+                </div>
 
                 {/* Thread Color Selector */}
                 <div className="flex flex-col gap-1.5">
