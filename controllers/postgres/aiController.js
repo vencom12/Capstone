@@ -2120,6 +2120,56 @@ exports.storefrontChat = async (req, res) => {
         const cleanMsg = message.trim().toLowerCase();
         const alphaOnly = cleanMsg.replace(/[^a-z0-9]/g, '');
 
+        // Fetch live system settings to inform AI of active store hours, closures, and leave
+        const systemSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } }).catch(() => null);
+        let emergencyNoticeInfo = 'Workshop Status: Open and operating normally (10:00 AM – 8:00 PM daily at Pacific Mall Lucena).';
+        let isClosedOrPaused = false;
+        let resumeStr = '';
+        let startStr = '';
+
+        let metaStartDate = null;
+        let isScheduled = false;
+        let rawColors = systemSettings?.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch(e) {}
+        }
+        if (Array.isArray(rawColors)) {
+            const emMeta = rawColors.find(c => c && c.id === '__emergency_meta__');
+            if (emMeta) {
+                metaStartDate = emMeta.startDate;
+                isScheduled = Boolean(emMeta.isScheduled);
+            }
+        }
+        if (systemSettings?.emergencyNoticeActive) {
+            const now = new Date();
+            const start = metaStartDate ? new Date(metaStartDate) : (systemSettings.emergencyNoticeCreatedAt ? new Date(systemSettings.emergencyNoticeCreatedAt) : now);
+            const resume = systemSettings.emergencyNoticeResumeDate ? new Date(systemSettings.emergencyNoticeResumeDate) : null;
+            if (isScheduled) {
+                isClosedOrPaused = Boolean(start && resume && now >= start && now < resume);
+            } else {
+                isClosedOrPaused = true;
+            }
+
+            resumeStr = resume ? resume.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'soon';
+            startStr = start ? start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'now';
+
+            if (isClosedOrPaused) {
+                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: CLOSED / ORDERS TEMPORARILY PAUSED.
+Reason: ${systemSettings.emergencyNoticeReason || 'Scheduled Workshop Leave'}.
+Message from Owner: "${systemSettings.emergencyNoticeMessage || 'Workshop is temporarily on leave.'}".
+Expected Reopening: ${resumeStr}.
+Policy: Online ordering is temporarily paused. Customers can browse products and preview customizations, but new orders will resume when the shop reopens on ${resumeStr}.`;
+            } else if (isScheduled) {
+                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: OPEN NOW, but an upcoming break is scheduled.
+Upcoming Break: ${startStr} to ${resumeStr} for "${systemSettings.emergencyNoticeReason}".
+Orders placed today that finish before ${startStr} proceed normally; any order intersecting the break will be completed in queue order when reopening on ${resumeStr}.`;
+            } else if (systemSettings.emergencyOrderingPolicy === 'ALLOW_WITH_DELAY') {
+                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: OPERATIONAL WITH EXTENDED DELAY (+${systemSettings.emergencyNoticeDelayHours || 24} hours).
+Reason: ${systemSettings.emergencyNoticeReason}.
+Customers can still place orders, but delivery/pickup dates have an extra +${systemSettings.emergencyNoticeDelayHours || 24}h turnaround buffer. Reopening normal pace: ${resumeStr}.`;
+            }
+        }
+
         // 1. Guard against single characters, symbols, or pure punctuation (?, !, ..., etc.)
         if (alphaOnly.length < 2) {
             return res.json({
@@ -2160,18 +2210,42 @@ exports.storefrontChat = async (req, res) => {
         if (/\b(where|location|address|branch|find you|stall|place)\b/i.test(cleanMsg) && /\b(store|shop|located|you|booth|stall|mall)\b/i.test(cleanMsg)) {
             return res.json({
                 success: true,
-                reply: "We are located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St.). Open daily **10:00 AM – 8:00 PM**.",
+                reply: "We are located at the **Ground Floor, Pacific Mall Lucena City** (M.L. Tagarao St., Lucena City, Quezon). Open daily **10:00 AM – 8:00 PM** (Contact: 0928 810 3928).",
                 suggestedProducts: []
             });
         }
 
-        // 6. Store Hours
-        if (/\b(hours|open|time|schedule|close|closing|opening)\b/i.test(cleanMsg) && /\b(store|shop|mall|today|now|what time|operate)\b/i.test(cleanMsg)) {
+        // 6. Store Hours & Current Open/Closed Status
+        if (/\b(hours|open|time|schedule|close|closing|opening|sarado|bukas)\b/i.test(cleanMsg) && /\b(store|shop|mall|today|now|what time|operate|kailan|oras)\b/i.test(cleanMsg)) {
+            if (isClosedOrPaused) {
+                return res.json({
+                    success: true,
+                    reply: `Our workshop is currently closed for **${systemSettings?.emergencyNoticeReason || 'Workshop Leave'}** until **${resumeStr}**. Online ordering is paused, but you can freely browse products and preview lettering in the meantime. Regular operating hours are daily from 10:00 AM to 8:00 PM at Pacific Mall Lucena.`,
+                    suggestedProducts: []
+                });
+            }
             return res.json({
                 success: true,
-                reply: "Open daily from **10:00 AM to 8:00 PM** at Pacific Mall Lucena. Same-day personalized stitching available daily!",
+                reply: "Our store is open daily from **10:00 AM to 8:00 PM** (Monday to Sunday) at Pacific Mall Lucena. Same-day personalized stitching available daily!",
                 suggestedProducts: []
             });
+        }
+
+        // 6b. Why is store closed / ordering paused inquiry
+        if (/\b(why|bakit|reason)\b/i.test(cleanMsg) && /\b(closed|close|paused|pause|cannot order|cant order|di makapag order|sarado)\b/i.test(cleanMsg)) {
+            if (isClosedOrPaused) {
+                return res.json({
+                    success: true,
+                    reply: `Online ordering is currently paused because our workshop is closed for **${systemSettings?.emergencyNoticeReason || 'Artisan Leave'}** until **${resumeStr}**${systemSettings?.emergencyNoticeMessage ? ` ("${systemSettings.emergencyNoticeMessage}")` : ''}. You can browse catalog items and preview customizations freely while we prepare to reopen.`,
+                    suggestedProducts: []
+                });
+            } else {
+                return res.json({
+                    success: true,
+                    reply: "Our workshop is currently open and accepting orders! Operating hours are **10:00 AM to 8:00 PM daily** at Pacific Mall Lucena.",
+                    suggestedProducts: []
+                });
+            }
         }
 
         // 7. Payment Methods (GCash / Maya)
@@ -2716,7 +2790,19 @@ exports.storefrontChat = async (req, res) => {
             }
         }
 
-        const systemPrompt = `You are Stitch-Opt's friendly AI shopping assistant for a custom embroidery shop in Pacific Mall Lucena.
+        const systemPrompt = `You are the official AI Store Attendant for Edz Towels & Caps (Stitch-Opt), a specialized custom machine embroidery atelier located at Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Lucena City, Quezon (Contact: 0928 810 3928).
+
+BUSINESS PROFILE & EXACT OPERATING SPECIFICATIONS:
+• Operating Hours: Strictly 10:00 AM to 8:00 PM EVERY DAY (Monday to Sunday) following Pacific Mall Lucena mall hours. NEVER say 9 AM to 6 PM.
+• Location: Ground Floor, Pacific Mall Lucena, M.L. Tagarao St., Lucena City, Quezon 4301.
+• Services: Custom machine embroidery, personalized name lettering, monograms on caps, towels, fans, canvas pouches, and apparel.
+• Lettering Pricing: 1st word included in base item price. Extra letters: ₱7.00/extra letter for small garments (caps, small towels, fans, pouches), ₱10.00/extra letter for big garments (bath towels, hoodies, shirts).
+• Machine Physics: 4.0s stitch time per letter, 20s garment handling per item.
+• Payments Accepted: GCash (scan QR & upload screenshot), Maya QR, and Cash at the workshop counter.
+
+LIVE STORE STATUS:
+${emergencyNoticeInfo}
+
 ${customerContext ? `Logged-in info: ${customerContext}.` : 'User is a guest.'}
 ${browsingContext ? `Context: ${browsingContext}` : ''}
 
@@ -2724,22 +2810,17 @@ EXACT REAL-TIME STORE INVENTORY (BY PRODUCT & VARIANT):
 ${catalogText}
 
 CRITICAL RULES:
-1. ACCURATE VARIANT-LEVEL STOCK ONLY: Strictly check the variant inventory above. Always specify which variant or color is in stock and which is out of stock. For example, Regular Fan (Small) has ONLY "Blue" IN_STOCK (86 available); all other colors (Red, Pink, Yellow, Orange, Green, Fuchsia) are OUT_OF_STOCK. For Bath Towels (Bath Essentials & Royal Cannon), ALL variants are OUT_OF_STOCK.
-2. NO FALSE STOCK PROMISES: NEVER claim an out-of-stock variant is available. If a customer asks about a color, verify whether that specific variant has stock > 0.
-3. CATEGORY CONTEXT: If the customer is browsing a category (e.g., Bath Towel), address that category directly and list which variants are out of stock and what alternatives exist.
-4. NO RESERVATIONS: NEVER promise or offer to 'reserve' items or notify customers when back in stock. Stitch-Opt does NOT offer chat reservations.
-5. RELEVANT RECOMMENDATIONS ONLY: When recommending an in-stock item, append [PRODUCTS:id1,id2] at the very END. Only include product IDs that have in-stock variants.
-6. For naive or first-time shoppers: Be warm, simple, helpful, and direct (2-3 short sentences).
-7. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.
-8. TURNAROUND TIMES & QUEUE SCHEDULE:
-- For single items (1 cap, 1 towel, simple text/monogram): actual machine stitching takes under a minute up to 1-2 minutes. When retail orders are ahead in the live counter queue, small orders typically take 15 to 45 minutes for same-day pickup.
-- For bulk batch orders (schools, corporate events, teams): production takes anywhere from several days up to a few weeks depending on piece count, active bulk queue, and incoming small order volume. NEVER quote a flat 24-48 hours for bulk orders. Encourage customers to check live dashboard queue tracking or consult our workshop staff for custom bulk scheduling.
-9. NO DISCOUNTS POLICY: The business strictly does NOT offer discounts, promotional codes, or custom price cuts. All product prices and lettering fees are fixed.
-10. CONCISE & DIRECT RESPONSE DIRECTIVE:
-- Aim for 2 to 3 concise, clear sentences maximum.
-- Eliminate pleasantry filler (e.g. avoid "Thank you for asking!", "I'd be glad to help with that!", "Here at Stitch-Opt...").
-- Answer the customer's question directly in the very first sentence.
-- Always retain all critical facts: exact product name, variant/color, stock status (In Stock vs Out of Stock), price (₱), and turnaround time (15–45 mins).`;
+1. STORE HOURS STRICT TRUTH: Operating hours are ALWAYS 10:00 AM to 8:00 PM (Monday to Sunday) at Pacific Mall Lucena. NEVER say 9 AM to 6 PM or mention closed on Sundays.
+2. LIVE WORKSHOP STATUS TRUTH: If the store is currently on leave / closed, state the EXACT reason from the Live Store Status above (${systemSettings?.emergencyNoticeReason || 'Workshop Leave'}) and the exact reopening time. NEVER claim it is "outside regular operating hours" when it is closed for a filed leave.
+3. ACCURATE VARIANT-LEVEL STOCK ONLY: Strictly check the variant inventory above. Always specify which variant or color is in stock and which is out of stock.
+4. NO FALSE STOCK PROMISES: NEVER claim an out-of-stock variant is available.
+5. NO RESERVATIONS: NEVER promise or offer to 'reserve' items or notify customers when back in stock. Stitch-Opt does NOT offer chat reservations.
+6. NO DISCOUNTS POLICY: The business strictly does NOT offer discounts, promotional codes, or custom price cuts. All product prices and lettering fees are fixed.
+7. TURNAROUND TIMES:
+   - Single items (1-3 pcs): machine stitching takes 1-2 mins, typically ready in 15 to 45 minutes for same-day pickup during normal queue.
+   - Bulk orders: Staged over several days to weeks depending on quantity.
+8. NO EMOJIS: Do not use emojis, icons, or cartoon symbols in your responses. Keep responses clean, professional, and plain text.
+9. CONCISE & DIRECT: 2 to 3 concise, clear sentences maximum. Answer the customer's question directly in the very first sentence.`;
 
         // Efficient history window: last 4 messages, trimmed text length
         const messages = [

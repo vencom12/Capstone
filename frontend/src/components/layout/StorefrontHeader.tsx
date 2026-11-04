@@ -35,6 +35,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [emergencyNotice, setEmergencyNotice] = useState<any>(null);
   const categories = getCategories();
 
+  const isClosedOrPaused = Boolean(
+    emergencyNotice?.active && (
+      emergencyNotice.isCurrentlyClosed ||
+      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
+      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
+    )
+  );
+
   // Spotlight Inline AI State
   const [isSearchAiOpen, setIsSearchAiOpen] = useState(false);
   const [isSearchAiLoading, setIsSearchAiLoading] = useState(false);
@@ -55,8 +63,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
       }
       return "Ask AI any question or type a product name...";
     }
+    if (isClosedOrPaused) {
+      return `Store closed (${emergencyNotice?.reason || 'Leave'}) • Search designs...`;
+    }
     return "Search products or ask a question...";
-  }, [isSearchAiOpen, isSearchAiLoading, searchAiResult?.query]);
+  }, [isSearchAiOpen, isSearchAiLoading, searchAiResult?.query, isClosedOrPaused, emergencyNotice?.reason]);
 
   const handleBasketClick = () => {
     if (pathname === '/') {
@@ -295,66 +306,6 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300 pwa-draggable-header">
-      {emergencyNotice?.active && (() => {
-        const isClosedOrPaused = Boolean(
-          emergencyNotice.isCurrentlyClosed ||
-          (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
-          (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
-        );
-        const resumeFormatted = emergencyNotice.resumeDate
-          ? new Date(emergencyNotice.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : null;
-        const startFormatted = emergencyNotice.startDate
-          ? new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })
-          : null;
-
-        return (
-          <div className={`w-full px-4 py-2 text-center text-xs flex items-center justify-center gap-2 border-b backdrop-blur-md ${
-            isClosedOrPaused
-              ? 'bg-danger/20 border-danger/40 text-white font-medium shadow-sm'
-              : emergencyNotice.isScheduled
-              ? 'bg-white/10 border-white/15 text-text-main'
-              : 'bg-amber-500/15 border-amber-500/30 text-amber-200'
-          }`}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-              {isClosedOrPaused ? (
-                <>
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                </>
-              ) : emergencyNotice.isScheduled ? (
-                <>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </>
-              ) : (
-                <>
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </>
-              )}
-            </svg>
-            <span className="truncate">
-              {isClosedOrPaused ? (
-                <>
-                  <strong>Online Ordering Temporarily Paused:</strong> Workshop is closed for {emergencyNotice.reason || 'leave'}{resumeFormatted ? ` until ${resumeFormatted}` : ''}. You can freely browse catalog designs.
-                </>
-              ) : emergencyNotice.isScheduled ? (
-                <>
-                  <strong>Upcoming Workshop Break:</strong> Closed for {emergencyNotice.reason} ({startFormatted || 'soon'} &ndash; {resumeFormatted || 'TBD'}). Normal turnaround applies until break starts.
-                </>
-              ) : (
-                <>
-                  <strong>Workshop Notice:</strong> Production turnaround extended (+{emergencyNotice.delayHours || 24}h) due to {emergencyNotice.reason}. Orders resume standard pace {resumeFormatted ? `on ${resumeFormatted}` : 'soon'}.
-                </>
-              )}
-            </span>
-          </div>
-        );
-      })()}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
@@ -511,8 +462,12 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         </div>
 
         {/* Middle: Unified Search Capsule with Integrated Category Selector & AI Search */}
-        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative search-container">
-          <div className="w-full relative flex items-center bg-bg-surface border border-border-glass rounded-xl shadow-sm focus-within:border-border-glass/80 focus-within:ring-2 focus-within:ring-white/5 transition-all">
+        <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative search-container flex flex-col justify-center">
+          <div className={`w-full relative flex items-center bg-bg-surface border rounded-xl shadow-sm focus-within:ring-2 transition-all ${
+            isClosedOrPaused 
+              ? 'border-danger/50 focus-within:border-danger/80 focus-within:ring-danger/10'
+              : 'border-border-glass focus-within:border-border-glass/80 focus-within:ring-white/5'
+          }`}>
             {/* Integrated Category Dropdown Trigger */}
             <div className="shrink-0 relative category-dropdown-container">
               <button
@@ -644,6 +599,20 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               </button>
             </div>
           </div>
+
+          {/* Warning ONLY on the search bar when the store is closed */}
+          {isClosedOrPaused && (
+            <div className="mt-1 px-2.5 py-1 rounded-lg bg-danger/10 border border-danger/25 text-[11px] text-danger flex items-center justify-between gap-1.5 animate-in fade-in">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0 animate-pulse" />
+                <span className="font-semibold truncate">
+                  Store Closed: {emergencyNotice.reason || 'Workshop Leave'}
+                  {emergencyNotice.resumeDate ? ` · Resumes ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+                </span>
+              </div>
+              <span className="text-[10px] text-text-dim shrink-0 font-medium">Browsing Only</span>
+            </div>
+          )}
 
           {/* Spotlight Inline AI Answer Dropdown (Perplexity/Spotlight style) */}
           {isSearchAiOpen && (
