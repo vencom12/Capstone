@@ -103,15 +103,15 @@ export default function ProductModal({
             setSelectedVariant(freshVariant);
             if (newStock < oldStock) {
               const boughtCount = oldStock - newStock;
-              const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} items bought`;
+              const countText = boughtCount === 1 ? '1 was just bought' : `${boughtCount} were just bought`;
               if (newStock <= 0) {
                 setLiveStockAlert({
-                  message: `${boughtText} • "${freshVariant.name}" sold out (Pre-Order available)`,
+                  message: `${countText} ("${freshVariant.name}" is now sold out)`,
                   type: 'sold_out',
                 });
               } else {
                 setLiveStockAlert({
-                  message: `${boughtText} • ${newStock} left for "${freshVariant.name}"`,
+                  message: `${countText} (${newStock} left for "${freshVariant.name}")`,
                   type: 'decreased',
                 });
               }
@@ -124,15 +124,15 @@ export default function ProductModal({
       const prevStock = prevStockMapRef.current[product.id];
       if (prevStock !== undefined && currentStock < prevStock) {
         const boughtCount = prevStock - currentStock;
-        const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} items bought`;
+        const countText = boughtCount === 1 ? '1 was just bought' : `${boughtCount} were just bought`;
         if (currentStock <= 0) {
           setLiveStockAlert({
-            message: `${boughtText} • "${product.name}" sold out (Pre-Order available)`,
+            message: `${countText} (now sold out)`,
             type: 'sold_out',
           });
         } else {
           setLiveStockAlert({
-            message: `${boughtText} • ${currentStock} left`,
+            message: `${countText} (${currentStock} left)`,
             type: 'decreased',
           });
         }
@@ -1059,17 +1059,13 @@ export default function ProductModal({
                     ? 'bg-danger/15 border-danger/40 text-danger'
                     : 'bg-primary/15 border-primary/40 text-text-main'
                 }`}>
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="font-bold shrink-0">
-                      {liveStockAlert.type === 'sold_out' ? 'Notice:' : 'Inventory update:'}
-                    </span>
-                    <span className="truncate">{liveStockAlert.message}</span>
-                  </div>
+                  <span className="truncate font-medium">{liveStockAlert.message}</span>
                   <button
                     type="button"
                     onClick={() => setLiveStockAlert(null)}
                     className="text-text-dim hover:text-text-main text-xs p-0.5 leading-none cursor-pointer shrink-0"
                     title="Dismiss"
+                    aria-label="Dismiss alert"
                   >
                     ✕
                   </button>
