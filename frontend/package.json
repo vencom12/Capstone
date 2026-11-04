@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "prebuild": "node scripts/stamp-version.js",
     "build": "cross-env NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint"

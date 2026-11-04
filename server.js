@@ -298,7 +298,14 @@ app.use((req, res, next) => {
 
 // --- Serve Next.js Framework Frontend (Static Export) ---
 const frontendOutPath = path.join(__dirname, 'frontend', 'out');
-app.use(express.static(frontendOutPath, { extensions: ['html'] }));
+app.use(express.static(frontendOutPath, {
+    extensions: ['html'],
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('sw.js') || filePath.endsWith('manifest.json')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+    }
+}));
 
 // Fallback for assets in public root
 app.use(express.static(path.join(__dirname, 'public')));
