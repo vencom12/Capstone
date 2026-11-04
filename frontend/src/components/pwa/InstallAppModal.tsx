@@ -48,6 +48,7 @@ export default function InstallAppModal() {
         {deferredPrompt && !isInstalled && (
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => {
               promptInstall();
             }}
@@ -66,6 +67,7 @@ export default function InstallAppModal() {
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-border-glass text-xs font-semibold">
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => setActiveTab('android')}
             className={`flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
               activeTab === 'android'
@@ -77,6 +79,7 @@ export default function InstallAppModal() {
           </button>
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => setActiveTab('ios')}
             className={`flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
               activeTab === 'ios'
@@ -88,6 +91,7 @@ export default function InstallAppModal() {
           </button>
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => setActiveTab('desktop')}
             className={`flex-1 py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
               activeTab === 'desktop'
@@ -207,3 +211,4 @@ export default function InstallAppModal() {
     </GlassModal>
   );
 }
+
