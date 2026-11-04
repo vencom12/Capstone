@@ -450,7 +450,7 @@ app.get('/api/products', async (req, res) => {
         const { enrichProductsWithStock } = require('./utils/inventoryManager');
         const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
         const enriched = await enrichProductsWithStock(products);
-        cacheManager.set('catalog:enriched_products', enriched, 180);
+        cacheManager.set('catalog:enriched_products', enriched, 10);
         res.set('X-Cache', 'MISS');
         res.json(enriched);
     } catch (err) {

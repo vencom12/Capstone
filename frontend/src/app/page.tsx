@@ -132,6 +132,25 @@ export default function StorefrontPage() {
     };
   }, [isAuthenticated, fetchProducts, fetchDashboardState]);
 
+  // Window Focus & Tab Switch Listener: instant live refresh when switching back to this tab
+  useEffect(() => {
+    const handleTabActive = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        if (isAuthenticated) {
+          fetchDashboardState(true);
+        } else {
+          fetchProducts();
+        }
+      }
+    };
+    window.addEventListener('focus', handleTabActive);
+    document.addEventListener('visibilitychange', handleTabActive);
+    return () => {
+      window.removeEventListener('focus', handleTabActive);
+      document.removeEventListener('visibilitychange', handleTabActive);
+    };
+  }, [isAuthenticated, fetchProducts, fetchDashboardState]);
+
   const handleQuickView = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);

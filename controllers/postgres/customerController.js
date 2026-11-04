@@ -57,7 +57,7 @@ exports.getDashboardState = async (req, res) => {
             const products = await prisma.product.findMany({ orderBy: { createdAt: 'desc' } });
             const { enrichProductsWithStock } = require('../../utils/inventoryManager');
             enrichedProducts = await enrichProductsWithStock(products);
-            cacheManager.set('catalog:enriched_products', enrichedProducts, 180);
+            cacheManager.set('catalog:enriched_products', enrichedProducts, 10);
         }
 
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
@@ -78,7 +78,7 @@ exports.getDashboardState = async (req, res) => {
         };
 
         if (!userId) {
-            cacheManager.set('guest:dashboard_state', dashboardPayload, 180);
+            cacheManager.set('guest:dashboard_state', dashboardPayload, 10);
         }
 
         res.set('X-Cache', userId ? 'PARTIAL-MISS' : 'MISS');

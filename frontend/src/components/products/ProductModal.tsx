@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useProductStore } from '@/stores/useProductStore';
 import { showToast } from '@/components/ui/Toast';
 import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
@@ -350,6 +351,7 @@ export default function ProductModal({
 
     const handleFocus = () => {
       fetchLatestColors(false);
+      useProductStore.getState().fetchProducts();
     };
 
     let bc: BroadcastChannel | null = null;
@@ -380,10 +382,13 @@ export default function ProductModal({
     window.addEventListener('focus', handleFocus);
     window.addEventListener('storage', handleStorage);
 
-    // Silent background poll while modal is open
+    // Silent background poll while modal is open (checks settings and latest product stock)
     let interval: NodeJS.Timeout | null = null;
     if (isOpen) {
-      interval = setInterval(() => fetchLatestColors(false), 2000);
+      interval = setInterval(() => {
+        fetchLatestColors(false);
+        useProductStore.getState().fetchProducts();
+      }, 3000);
     }
 
     return () => {
