@@ -65,7 +65,15 @@ export default function PanelOverview({
     if (!window.confirm('Are you sure you want to lift the active delay notice and resume regular workshop pace?')) return;
     try {
       await api.post('/api/admin/delay-notice/lift', {});
-      showToast('Delay notice lifted. Normal workshop operations resumed.', 'success');
+      showToast('Delay notice lifted. Normal workshop operations resumed.', 'success');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: { active: false } } }));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('stitch_app_events');
+          bc.postMessage({ type: 'SETTINGS_UPDATED', emergencyNotice: { active: false } });
+          setTimeout(() => bc.close(), 100);
+        }
+      }
       fetchDelayNoticeStatus();
       refreshData().catch(() => {});
     } catch (err: any) {

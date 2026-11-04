@@ -172,6 +172,14 @@ export default function EmergencyDelayNoticeModal({
       const res = await api.post<{ success: boolean; message: string; affectedCount: number }>('/api/admin/delay-notice', payload);
 
       showToast(res.message || 'Workshop schedule notice saved successfully.', 'success');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: {} }));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('stitch_app_events');
+          bc.postMessage({ type: 'SETTINGS_UPDATED' });
+          setTimeout(() => bc.close(), 100);
+        }
+      }
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
@@ -191,6 +199,14 @@ export default function EmergencyDelayNoticeModal({
     try {
       const res = await api.post<{ success: boolean; message: string }>('/api/admin/delay-notice/lift', {});
       showToast(res.message || 'Notice lifted. Regular workshop pace resumed.', 'success');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: { active: false } } }));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('stitch_app_events');
+          bc.postMessage({ type: 'SETTINGS_UPDATED', emergencyNotice: { active: false } });
+          setTimeout(() => bc.close(), 100);
+        }
+      }
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {

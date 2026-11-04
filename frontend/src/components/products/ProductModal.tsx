@@ -344,10 +344,24 @@ export default function ProductModal({
           if (res?.availableThreadColors) {
             applyThreadColorConfig(res.availableThreadColors, shouldNotify);
           }
-          if (res?.emergencyNotice && res.emergencyNotice.active) {
-            setEmergencyNotice(res.emergencyNotice);
-          } else {
-            setEmergencyNotice(null);
+          const activeNotice = (res?.emergencyNotice && res.emergencyNotice.active) ? res.emergencyNotice : null;
+          setEmergencyNotice(activeNotice);
+
+          // Propagate fresh settings & emergency notice to storefront header, page, and cross-tab listeners
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('settingsUpdated', {
+              detail: {
+                emergencyNotice: activeNotice || { active: false },
+                availableThreadColors: res?.availableThreadColors
+              }
+            }));
+          }
+          if (bc) {
+            bc.postMessage({
+              type: 'SETTINGS_UPDATED',
+              emergencyNotice: activeNotice || { active: false },
+              availableThreadColors: res?.availableThreadColors
+            });
           }
           if (res) {
             setLetteringRates((prev) => ({

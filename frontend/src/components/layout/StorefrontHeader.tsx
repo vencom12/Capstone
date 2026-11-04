@@ -276,9 +276,29 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     window.addEventListener('settingsUpdated', handleSettingsUpdate);
     window.addEventListener('focus', fetchSettings);
 
+    // Cross-tab and modal BroadcastChannel synchronization
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('stitch_app_events');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED') {
+          if (event.data.emergencyNotice !== undefined) {
+            setEmergencyNotice(event.data.emergencyNotice?.active ? event.data.emergencyNotice : null);
+          } else {
+            fetchSettings();
+          }
+        }
+      };
+    }
+
+    // Active polling interval every 3 seconds so search bar notice never stays stuck or desynced
+    const pollInterval = setInterval(fetchSettings, 3000);
+
     return () => {
       window.removeEventListener('settingsUpdated', handleSettingsUpdate);
       window.removeEventListener('focus', fetchSettings);
+      if (bc) bc.close();
+      clearInterval(pollInterval);
     };
   }, []);
 

@@ -57,9 +57,12 @@ export default function StorefrontPage() {
     window.addEventListener('settingsUpdated', handleSettingsEvent);
     window.addEventListener('focus', fetchSettings);
 
+    const pollInterval = setInterval(fetchSettings, 3000);
+
     return () => {
       window.removeEventListener('settingsUpdated', handleSettingsEvent);
       window.removeEventListener('focus', fetchSettings);
+      clearInterval(pollInterval);
     };
   }, []);
 
@@ -118,10 +121,7 @@ export default function StorefrontPage() {
     let activeSocket: any = null;
     let isCancelled = false;
 
-    const script = document.createElement('script');
-    script.src = `${API_BASE}/socket.io/socket.io.js`;
-    script.async = true;
-    script.onload = () => {
+    const initSocket = () => {
       if (isCancelled) return;
       const io = (window as any).io;
       if (!io) return;
@@ -134,6 +134,9 @@ export default function StorefrontPage() {
       activeSocket = socket;
 
       socket.on('dataChanged', (data: any) => {
+        if (data.entity === 'SETTINGS') {
+          window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: {} }));
+        }
         if (['PRODUCT', 'INVENTORY', 'ORDER'].includes(data.entity)) {
           if (isAuthenticated) {
             fetchDashboardState();
@@ -160,7 +163,15 @@ export default function StorefrontPage() {
       });
     };
 
-    document.head.appendChild(script);
+    if ((window as any).io) {
+      initSocket();
+    } else {
+      const script = document.createElement('script');
+      script.src = `${API_BASE}/socket.io/socket.io.js`;
+      script.async = true;
+      script.onload = initSocket;
+      document.head.appendChild(script);
+    }
 
     return () => {
       isCancelled = true;

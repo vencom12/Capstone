@@ -154,6 +154,17 @@ export default function CheckoutModal({
         })
         .catch(console.error);
     }
+
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail?.emergencyNotice !== undefined) {
+        setEmergencyNotice(e.detail.emergencyNotice?.active ? e.detail.emergencyNotice : null);
+      }
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+    };
   }, [isOpen]);
 
   // Calculate total pieces, pre-order status, and extended lead time days
