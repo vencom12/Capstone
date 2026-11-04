@@ -105,12 +105,12 @@ export default function ProductModal({
               const boughtCount = oldStock - newStock;
               if (newStock <= 0) {
                 setLiveStockAlert({
-                  message: `Someone just bought ${boughtCount} "${freshVariant.name}" (now sold out)`,
+                  message: `Someone just bought ${boughtCount} ${freshVariant.name} (now sold out)`,
                   type: 'sold_out',
                 });
               } else {
                 setLiveStockAlert({
-                  message: `Someone just bought ${boughtCount} "${freshVariant.name}"`,
+                  message: `Someone just bought ${boughtCount} ${freshVariant.name}`,
                   type: 'decreased',
                 });
               }
@@ -125,12 +125,12 @@ export default function ProductModal({
         const boughtCount = prevStock - currentStock;
         if (currentStock <= 0) {
           setLiveStockAlert({
-            message: `Someone just bought ${boughtCount} "${product.name}" (now sold out)`,
+            message: `Someone just bought ${boughtCount} ${product.name} (now sold out)`,
             type: 'sold_out',
           });
         } else {
           setLiveStockAlert({
-            message: `Someone just bought ${boughtCount} "${product.name}"`,
+            message: `Someone just bought ${boughtCount} ${product.name}`,
             type: 'decreased',
           });
         }
