@@ -31,6 +31,6 @@
       "type": "image/png"
     }
   ],
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "categories": ["productivity", "business"]
 }

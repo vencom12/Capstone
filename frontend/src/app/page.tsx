@@ -202,8 +202,8 @@ export default function StorefrontPage() {
 
       {/* Right Panel / Drawer */}
       <div className={`
-        fixed top-0 right-0 h-full z-[2000] transition-transform duration-300
-        ${isBasketOpen ? 'translate-x-0' : 'translate-x-full'}
+        fixed top-0 right-0 h-full z-[2000] transition-all duration-300
+        ${isBasketOpen ? 'translate-x-0 opacity-100 pointer-events-auto visible' : 'translate-x-full opacity-0 pointer-events-none invisible'}
       `}>
         <RightPanel
           onCheckout={() => {

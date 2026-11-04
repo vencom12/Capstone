@@ -82,7 +82,7 @@ export default function RootLayout({
         <script
           id="theme-initializer"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('stitch_theme')||'light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#090d16':'#f8fafc');}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('stitch_theme')||'light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content','#090d16');}catch(e){}})();`,
           }}
         />
       </head>

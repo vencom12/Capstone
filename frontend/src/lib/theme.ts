@@ -35,7 +35,7 @@ export function applyTheme(theme: Theme): void {
       metaTheme.setAttribute('name', 'theme-color');
       document.head.appendChild(metaTheme);
     }
-    metaTheme.setAttribute('content', theme === 'dark' ? '#090d16' : '#f8fafc');
+    metaTheme.setAttribute('content', '#090d16');
   } catch {
     // Ignore DOM head sync errors in restricted environments
   }
