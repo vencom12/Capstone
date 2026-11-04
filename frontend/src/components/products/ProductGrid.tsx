@@ -93,21 +93,12 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
     return () => observer.disconnect();
   }, []);
 
-  // Re-trigger staggered box cascade ONLY when page, category, or search changes
+  // Re-trigger staggered box cascade ONLY when page or category changes (never on search keystrokes)
   useEffect(() => {
     setIsInView(false);
     const timer = setTimeout(() => setIsInView(true), 40);
     return () => clearTimeout(timer);
-  }, [page, searchQuery, selectedCategory]);
-
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (!searchQuery) return;
-    setIsSearching(true);
-    const timer = setTimeout(() => setIsSearching(false), 240);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [page, selectedCategory]);
 
   // Reset to first page whenever search or category changes
   useEffect(() => {
@@ -215,7 +206,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
       )}
 
       {/* Products Grid or Loading Skeleton */}
-      {(isSearching || isPageTransitioning || (isSyncing && filteredProducts.length === 0)) ? (
+      {(isPageTransitioning || (isSyncing && filteredProducts.length === 0)) ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
           {Array.from({ length: Math.min(8, paginatedProducts.length || 8) }).map((_, i) => (
             <ProductCardSkeleton key={i} />

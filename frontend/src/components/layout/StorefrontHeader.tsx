@@ -23,6 +23,23 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const router = useRouter();
   const pathname = usePathname();
   const { searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, getCategories } = useProductStore();
+  const [inputValue, setInputValue] = useState(searchQuery);
+
+  // Keep local input in sync if store's searchQuery is cleared or changed externally
+  useEffect(() => {
+    setInputValue(searchQuery);
+  }, [searchQuery]);
+
+  // Debounce the store update so local keystrokes don't trigger chaotic re-renders
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (inputValue !== useProductStore.getState().searchQuery) {
+        setSearchQuery(inputValue);
+      }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [inputValue, setSearchQuery]);
+
   const basketCount = useBasketStore((s) => s.getCount());
   const { isAuthenticated, user, logout } = useAuthStore();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -132,6 +149,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
     setIsSearchFocused(false);
     setIsSearchAiOpen(false);
     setSearchAiResult(null);
+    setSearchQuery(inputValue.trim());
 
     // Smooth scroll to product catalog on storefront
     const catalogEl = document.getElementById('products-section') || document.getElementById('product-catalog');
@@ -141,9 +159,10 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   };
 
   const handleAiButtonClick = () => {
-    const query = searchQuery.trim();
+    const query = inputValue.trim();
     if (query) {
       fetchSearchAi(query);
+      setInputValue('');
       setSearchQuery('');
       setTimeout(() => searchInputRef.current?.focus(), 80);
     } else {
@@ -166,10 +185,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const handleSearchInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const q = searchQuery.trim();
+      const q = inputValue.trim();
       if (isSearchAiOpen) {
         if (q) {
           fetchSearchAi(q);
+          setInputValue('');
           setSearchQuery('');
           setTimeout(() => searchInputRef.current?.focus(), 80);
         }
@@ -178,6 +198,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
       if (q && isConversationalQuestion(q)) {
         fetchSearchAi(q);
+        setInputValue('');
         setSearchQuery('');
         setTimeout(() => searchInputRef.current?.focus(), 80);
       } else {
@@ -557,21 +578,22 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 type="text"
                 maxLength={80}
                 placeholder={searchPlaceholder}
-                value={searchQuery}
+                value={inputValue}
                 onFocus={() => setIsSearchFocused(true)}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setInputValue(e.target.value);
                   setIsSearchFocused(true);
                 }}
                 onKeyDown={handleSearchInputKeyDown}
                 className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] text-text-main placeholder:text-text-dim/70 outline-none flex-1 min-w-0"
               />
               {/* Clear search query button */}
-              {searchQuery && (
+              {inputValue && (
                 <button
                   type="button"
                   suppressHydrationWarning
                   onClick={() => {
+                    setInputValue('');
                     setSearchQuery('');
                     setIsSearchAiOpen(false);
                     setSearchAiResult(null);
@@ -594,7 +616,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                     ? 'text-text-main bg-white/15 border-border-glass shadow-xs'
                     : 'text-text-dim hover:text-text-main hover:bg-white/10 border-border-glass/60 hover:border-border-glass'
                 }`}
-                title={isSearchAiOpen ? "Close AI Store Attendant" : (searchQuery.trim() ? `Ask AI about "${searchQuery.trim()}"` : "Ask AI Store Attendant")}
+                title={isSearchAiOpen ? "Close AI Store Attendant" : (inputValue.trim() ? `Ask AI about "${inputValue.trim()}"` : "Ask AI Store Attendant")}
                 aria-label="Ask AI Store Attendant"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
