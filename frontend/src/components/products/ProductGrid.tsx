@@ -243,18 +243,21 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
             ))}
           </div>
 
-          <Pagination
-            currentPage={page}
-            totalItems={filteredProducts.length}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            pageSizeOptions={[6, 12, 24, 48]}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setPage(1);
-            }}
-            itemLabel="products"
-          />
+          <div className="w-full bg-bg-card/90 backdrop-blur-md border border-border-glass rounded-2xl p-3 sm:p-4 shadow-md mt-6">
+            <Pagination
+              currentPage={page}
+              totalItems={filteredProducts.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              pageSizeOptions={[6, 12, 24, 48]}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="products"
+              className="mt-0 pt-0 border-t-0"
+            />
+          </div>
         </>
       )}
     </div>
