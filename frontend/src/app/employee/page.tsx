@@ -22,6 +22,7 @@ import PanelEmployeeSupport from '@/components/employee/PanelEmployeeSupport';
 import PanelCounterMode from '@/components/admin/PanelCounterMode';
 import Pagination from '@/components/ui/Pagination';
 import { toggleTheme } from '@/lib/theme';
+import InstallAppButton from '@/components/pwa/InstallAppButton';
 import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAlert';
@@ -1671,6 +1672,23 @@ export default function EmployeePage() {
                 </button>
               </div>
 
+              {/* Workshop PWA App */}
+              <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+                      <path d="M12 18h.01" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="m-0 text-sm font-bold text-text-main">Workshop PWA App</h4>
+                    <p className="m-0 mt-0.5 text-xs text-text-dim">Install this operator queue as a standalone app on your tablet or mobile</p>
+                  </div>
+                </div>
+                <InstallAppButton variant="pill" />
+              </div>
+
               {/* Security: Change Password */}
               <div className="flex items-center justify-between bg-bg-surface p-4 md:p-5 rounded-xl border border-border-glass">
                 <div className="flex items-center gap-3.5">
@@ -1790,6 +1808,8 @@ export default function EmployeePage() {
               </svg>
               <span className="hidden lg:inline">{isChimeActive ? 'Chime Alert On' : 'Chime Muted'}</span>
             </button>
+
+            <InstallAppButton variant="header" className="hidden md:flex" />
 
             <div className="flex items-center gap-1.5 sm:gap-2.5 pl-1.5 sm:pl-3 border-l border-border-glass/40 shrink-0">
               <button

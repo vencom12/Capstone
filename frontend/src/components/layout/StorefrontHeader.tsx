@@ -12,6 +12,7 @@ import { isConversationalQuestion } from '@/lib/searchUtils';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toggleTheme } from '@/lib/theme';
+import InstallAppButton from '@/components/pwa/InstallAppButton';
 
 interface StorefrontHeaderProps {
   onMenuToggle?: () => void;
@@ -300,6 +301,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
           {/* Right Actions on Mobile: Theme, Auth, Basket (Embedded directly into Row 1) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 lg:hidden">
+            <InstallAppButton variant="icon" />
             <button
               suppressHydrationWarning
               onClick={() => toggleTheme()}
@@ -394,6 +396,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                       </Link>
                     </div>
                   )}
+
+                  <InstallAppButton
+                    variant="menu-item"
+                    onAfterClick={() => setIsMobileUserMenuOpen(false)}
+                  />
 
                   <div className="h-[1px] bg-border-glass my-1.5" />
 
@@ -802,6 +809,8 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             Atelier Story
           </button>
 
+          <InstallAppButton variant="header" />
+
           <div className="h-4 w-[1px] bg-border-glass/60 shrink-0 mx-0.5" />
 
           <button
@@ -906,6 +915,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                     </Link>
                   </div>
                 )}
+
+                <InstallAppButton
+                  variant="menu-item"
+                  onAfterClick={() => setIsUserMenuOpen(false)}
+                />
 
                 <div className="h-[1px] bg-border-glass my-1.5" />
 

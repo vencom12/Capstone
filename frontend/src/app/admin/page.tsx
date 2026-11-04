@@ -24,6 +24,7 @@ const PersistentAssistant = dynamic(() => import('@/components/employee/Persiste
 });
 import DashboardOmniSearch from '@/components/layout/DashboardOmniSearch';
 import { getStoredTheme, applyTheme } from '@/lib/theme';
+import InstallAppButton from '@/components/pwa/InstallAppButton';
 import { api, API_BASE } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import GlassModal from '@/components/ui/GlassModal';
@@ -802,6 +803,8 @@ export default function AdminPage() {
                 {dbType === 'postgres' || dbType === 'supabase' ? 'Supabase' : dbType}
               </span>
             </div>
+
+            <InstallAppButton variant="header" className="hidden md:flex" />
 
             <div className="flex items-center gap-1.5 sm:gap-2.5 pl-1.5 sm:pl-3 border-l border-border-glass/40 shrink-0">
               <button

@@ -8,6 +8,7 @@ import DynamicFavicon from '@/components/ui/DynamicFavicon';
 import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 import AuthModal from '@/components/auth/AuthModal';
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
+import InstallAppModal from '@/components/pwa/InstallAppModal';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -49,10 +50,21 @@ export const metadata: Metadata = {
     description: 'Custom embroidery products & personalized monogramming for towels, fans, caps, and more.',
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Edz Embroidery',
+  },
 };
 
 export default function RootLayout({
@@ -82,6 +94,7 @@ export default function RootLayout({
         <WelcomeTransition />
         <DynamicFavicon />
         <ToastContainer />
+        <InstallAppModal />
       </body>
     </html>
   );
