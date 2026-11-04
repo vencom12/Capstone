@@ -99,6 +99,22 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
     setPage(1);
   }, [searchQuery, selectedCategory]);
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage === page) return;
+    setPage(newPage);
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('products-section') || gridRef.current;
+      if (el) {
+        const headerOffset = 90;
+        const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({
+          top: Math.max(0, elementPosition - headerOffset),
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
+
   const paginatedProducts = useMemo(() => {
     return filteredProducts.slice((page - 1) * pageSize, page * pageSize);
   }, [filteredProducts, page, pageSize]);
@@ -231,7 +247,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
       ) : (
         /* Products Grid */
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 min-h-[420px]">
             {paginatedProducts.map((product, idx) => (
               <ProductCard
                 key={product.id || product._id}
@@ -243,16 +259,16 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
             ))}
           </div>
 
-          <div className="w-full bg-bg-card/90 backdrop-blur-md border border-border-glass rounded-2xl p-3 sm:p-4 shadow-md mt-6">
+          <div className="w-full bg-bg-surface/75 backdrop-blur-md border border-border-glass rounded-xl py-2 px-3 sm:px-4 shadow-xs mt-3.5">
             <Pagination
               currentPage={page}
               totalItems={filteredProducts.length}
               pageSize={pageSize}
-              onPageChange={setPage}
+              onPageChange={handlePageChange}
               pageSizeOptions={[6, 12, 24, 48]}
               onPageSizeChange={(newSize) => {
                 setPageSize(newSize);
-                setPage(1);
+                handlePageChange(1);
               }}
               itemLabel="products"
               className="mt-0 pt-0 border-t-0"
