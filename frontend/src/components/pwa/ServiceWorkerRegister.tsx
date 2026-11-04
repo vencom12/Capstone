@@ -5,11 +5,17 @@ import { usePWAStore, type PWAPlatform } from '@/stores/usePWAStore';
 
 /**
  * ServiceWorkerRegister:
- * Registers /sw.js, listens for PWA installability events (beforeinstallprompt, appinstalled),
- * and tracks standalone display mode and device platform.
+ * Registers /sw.js, listens for PWA installability events,
+ * tracks standalone display mode, and detects when a new release update is ready.
  */
 export default function ServiceWorkerRegister() {
-  const { setDeferredPrompt, setIsInstalled, setPlatform } = usePWAStore();
+  const {
+    setDeferredPrompt,
+    setIsInstalled,
+    setPlatform,
+    setIsUpdateAvailable,
+    setWaitingWorker,
+  } = usePWAStore();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -44,15 +50,44 @@ export default function ServiceWorkerRegister() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Register Service Worker
+    // Register Service Worker with release update detection
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')
           .then((reg) => {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[PWA] Service Worker registered with scope:', reg.scope);
+            // Check if there is already a worker waiting to activate
+            if (reg.waiting) {
+              setWaitingWorker(reg.waiting);
+              setIsUpdateAvailable(true);
             }
+
+            // Listen for newly installed updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    setWaitingWorker(newWorker);
+                    setIsUpdateAvailable(true);
+                  }
+                });
+              }
+            });
+
+            // Check for updates on window focus or visibility change
+            const checkForUpdate = () => {
+              try {
+                reg.update().catch(() => {});
+              } catch {}
+            };
+
+            window.addEventListener('focus', checkForUpdate);
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                checkForUpdate();
+              }
+            });
           })
           .catch((err) => {
             console.warn('[PWA] Service Worker registration failed:', err);
@@ -64,7 +99,7 @@ export default function ServiceWorkerRegister() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [setDeferredPrompt, setIsInstalled, setPlatform]);
+  }, [setDeferredPrompt, setIsInstalled, setPlatform, setIsUpdateAvailable, setWaitingWorker]);
 
   return null;
 }

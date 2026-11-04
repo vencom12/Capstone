@@ -1,9 +1,11 @@
 // Stitch-Opt Lightweight Service Worker
-const CACHE_NAME = 'stitch-opt-v2';
+const CACHE_NAME = 'stitch-opt-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // Install: Pre-cache core shell
@@ -32,6 +34,13 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+// Message: Support programmatic skipWaiting on user update click
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Fetch: Network-First for API and HTML, Cache-First for static files
@@ -96,10 +105,10 @@ self.addEventListener('fetch', (event) => {
 // Push: Background OS Web Push Notifications
 self.addEventListener('push', (event) => {
   let payload = {
-    title: 'Stitch-Opt Workshop Update',
+    title: 'Edz Towels & Caps Workshop Update',
     body: 'Your order status has been updated.',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     url: '/dashboard'
   };
 
@@ -116,8 +125,8 @@ self.addEventListener('push', (event) => {
 
   const notificationOptions = {
     body: payload.body,
-    icon: payload.icon || '/favicon.ico',
-    badge: payload.badge || '/favicon.ico',
+    icon: payload.icon || '/icon-192.png',
+    badge: payload.badge || '/icon-192.png',
     data: { url: payload.url || '/dashboard' }
   };
 

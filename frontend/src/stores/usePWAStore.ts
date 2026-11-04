@@ -8,13 +8,18 @@ interface PWAStore {
   isInstallable: boolean;
   isInstalled: boolean;
   isInstallModalOpen: boolean;
+  isUpdateAvailable: boolean;
+  waitingWorker: any | null;
   platform: PWAPlatform;
   setDeferredPrompt: (prompt: any | null) => void;
   setIsInstallable: (val: boolean) => void;
   setIsInstalled: (val: boolean) => void;
   setIsInstallModalOpen: (val: boolean) => void;
+  setIsUpdateAvailable: (val: boolean) => void;
+  setWaitingWorker: (worker: any | null) => void;
   setPlatform: (platform: PWAPlatform) => void;
   promptInstall: () => Promise<void>;
+  updateApp: () => void;
 }
 
 export const usePWAStore = create<PWAStore>((set, get) => ({
@@ -22,11 +27,15 @@ export const usePWAStore = create<PWAStore>((set, get) => ({
   isInstallable: false,
   isInstalled: false,
   isInstallModalOpen: false,
+  isUpdateAvailable: false,
+  waitingWorker: null,
   platform: 'unknown',
   setDeferredPrompt: (prompt) => set({ deferredPrompt: prompt, isInstallable: !!prompt }),
   setIsInstallable: (val) => set({ isInstallable: val }),
   setIsInstalled: (val) => set({ isInstalled: val }),
   setIsInstallModalOpen: (val) => set({ isInstallModalOpen: val }),
+  setIsUpdateAvailable: (val) => set({ isUpdateAvailable: val }),
+  setWaitingWorker: (worker) => set({ waitingWorker: worker }),
   setPlatform: (platform) => set({ platform }),
   promptInstall: async () => {
     const { deferredPrompt, isInstalled } = get();
@@ -61,5 +70,15 @@ export const usePWAStore = create<PWAStore>((set, get) => ({
 
     // Fallback: If no browser prompt event is available (iOS Safari, Firefox, or already prompted), show the guided visual modal
     set({ isInstallModalOpen: true });
+  },
+  updateApp: () => {
+    const { waitingWorker } = get();
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    // Reload to mount new service worker bundle
+    setTimeout(() => {
+      window.location.reload();
+    }, 250);
   },
 }));

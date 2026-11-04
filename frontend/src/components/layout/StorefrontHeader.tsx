@@ -289,9 +289,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             {businessLogoUrl ? (
               <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
             ) : (
-              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-              </div>
+              <img src="/icon-192.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm group-hover:scale-105 transition-transform" />
             )}
             <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
               {businessName}

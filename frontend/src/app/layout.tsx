@@ -9,6 +9,7 @@ import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 import AuthModal from '@/components/auth/AuthModal';
 import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister';
 import InstallAppModal from '@/components/pwa/InstallAppModal';
+import AppUpdateBanner from '@/components/pwa/AppUpdateBanner';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -98,6 +99,7 @@ export default function RootLayout({
         <DynamicFavicon />
         <ToastContainer />
         <InstallAppModal />
+        <AppUpdateBanner />
       </body>
     </html>
   );
