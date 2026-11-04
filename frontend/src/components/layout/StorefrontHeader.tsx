@@ -269,7 +269,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen, isSearchFocused, isSearchAiOpen]);
 
   return (
-    <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300">
+    <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300 pwa-draggable-header">
       {emergencyNotice?.active && (
         <div className="w-full bg-white/5 border-b border-white/10 px-4 py-1.5 text-center text-xs text-text-main flex items-center justify-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">

@@ -4,7 +4,7 @@ export const THEME_STORAGE_KEY = 'stitch_theme';
 
 /**
  * Reads the user's stored theme preference from localStorage.
- * Defaults to 'dark' if none is stored or if running on server.
+ * Defaults to 'light' if none is stored or if running on server.
  */
 export function getStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
@@ -20,11 +20,26 @@ export function getStoredTheme(): Theme {
 }
 
 /**
- * Applies the given theme to <html data-theme="..."> and saves it in localStorage.
+ * Applies the given theme to <html data-theme="...">, syncs the PWA/OS theme-color meta tag,
+ * and saves it in localStorage.
  */
 export function applyTheme(theme: Theme): void {
   if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', theme);
+
+  // Sync PWA / OS window frame theme-color
+  try {
+    let metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (!metaTheme) {
+      metaTheme = document.createElement('meta');
+      metaTheme.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaTheme);
+    }
+    metaTheme.setAttribute('content', theme === 'dark' ? '#090d16' : '#f8fafc');
+  } catch {
+    // Ignore DOM head sync errors in restricted environments
+  }
+
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {

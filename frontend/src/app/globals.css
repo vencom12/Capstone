@@ -792,3 +792,19 @@ select option {
     display: block !important;
   }
 }
+
+
+/* PWA Window Controls Overlay Draggable Header Support */
+.pwa-draggable-header {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.pwa-draggable-header button,
+.pwa-draggable-header a,
+.pwa-draggable-header input,
+.pwa-draggable-header select,
+.pwa-draggable-header [role="button"] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}

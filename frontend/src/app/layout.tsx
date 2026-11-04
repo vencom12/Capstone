@@ -21,13 +21,16 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover',
-  themeColor: '#f8fafc',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#090d16' },
+    { media: '(prefers-color-scheme: light)', color: '#090d16' },
+  ],
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://capstone-btr7.onrender.com'),
   title: {
-    default: 'Edz Towels & Caps | Premium Embroidery Designs',
+    default: 'Edz Towels & Caps',
     template: '%s | Edz Towels & Caps',
   },
   description: 'Explore our curated collection of professional embroidery products optimized for high-speed production. Custom monogramming, towels, fans, caps, and more.',
@@ -78,7 +81,7 @@ export default function RootLayout({
         <script
           id="theme-initializer"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('stitch_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('stitch_theme')||'light';document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#090d16':'#f8fafc');}catch(e){}})();`,
           }}
         />
       </head>
