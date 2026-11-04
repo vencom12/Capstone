@@ -1,5 +1,5 @@
 // Build Version: 2026-11-04T11:53:09.261Z
-const BUILD_VERSION = '2026-11-04T14:59:03.375Z';
+const BUILD_VERSION = '2026-11-04T15:07:01.148Z';
 // Stitch-Opt Lightweight Service Worker
 const CACHE_NAME = 'stitch-opt-v3';
 const STATIC_ASSETS = [
