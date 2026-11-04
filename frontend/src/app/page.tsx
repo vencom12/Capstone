@@ -146,6 +146,18 @@ export default function StorefrontPage() {
       socket.on('settingsUpdated', (data: any) => {
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
       });
+
+      socket.on('emergency_delay_notice', (data: any) => {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: data } }));
+      });
+
+      socket.on('emergencyDelayNotice', (data: any) => {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: data } }));
+      });
+
+      socket.on('emergency_delay_notice_lifted', () => {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: { active: false } } }));
+      });
     };
 
     document.head.appendChild(script);

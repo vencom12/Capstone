@@ -2188,7 +2188,35 @@ exports.broadcastDelayNotice = async (req, res) => {
             }
         });
 
-        // 2. Fetch affected active queued orders
+        // 2. Invalidate cache immediately
+        const { cacheManager } = require('../../utils/cacheManager');
+        if (cacheManager && typeof cacheManager.del === 'function') {
+            cacheManager.del('settings:public');
+        }
+
+        // 3. ZERO-LATENCY INSTANT BROADCAST: Send socket alert immediately to all connected users
+        // Users see the notice in <15ms without waiting for background database batch shifts!
+        const emergencyPayload = {
+            active: true,
+            reason: reason.trim(),
+            message: (message || '').trim(),
+            delayHours: hours,
+            startDate: startDateTime.toISOString(),
+            resumeDate: resumeDateTime.toISOString(),
+            isScheduled: isFutureScheduled,
+            isCurrentlyClosed: !isFutureScheduled,
+            policy: sanitizedPolicy
+        };
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('emergency_delay_notice', emergencyPayload);
+            io.emit('emergencyDelayNotice', emergencyPayload);
+            io.emit('settingsUpdated', { emergencyNotice: emergencyPayload });
+            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
+        }
+
+        // 4. Fetch affected active queued orders
         const activeOrders = await prisma.order.findMany({
             where: {
                 status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
@@ -2197,10 +2225,9 @@ exports.broadcastDelayNotice = async (req, res) => {
         });
 
         const { sendDelayNotificationEmail } = require('../../utils/emailService');
-        const affectedUpdatedOrders = [];
 
-        // 3. Atomically shift orders that intersect the closure window
-        for (const ord of activeOrders) {
+        // 5. Concurrently shift orders that intersect the closure window via Promise.all
+        const updatePromises = activeOrders.map(async (ord) => {
             const currentPers = (ord.personalization && typeof ord.personalization === 'object') ? { ...ord.personalization } : {};
             const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
 
@@ -2210,71 +2237,73 @@ exports.broadcastDelayNotice = async (req, res) => {
 
             // An order is affected if notice is immediate OR if order's target due date falls after vacation starts
             const orderAffected = !isFutureScheduled || (targetDue.getTime() >= startDateTime.getTime());
+            if (!orderAffected) return null;
 
-            if (orderAffected) {
-                let newReadyDate = null;
-                if (targetDue.getTime() <= resumeDateTime.getTime()) {
-                    // Order was supposed to finish during vacation -> shifts to after workshop reopens
-                    const remainingMinsAfterStart = Math.max(30, Math.round((targetDue.getTime() - startDateTime.getTime()) / 60000));
-                    newReadyDate = new Date(resumeDateTime.getTime() + Math.max(0, remainingMinsAfterStart * 60000));
-                } else {
-                    newReadyDate = new Date(targetDue.getTime() + (hours * 3600 * 1000));
+            let newReadyDate = null;
+            if (targetDue.getTime() <= resumeDateTime.getTime()) {
+                const remainingMinsAfterStart = Math.max(30, Math.round((targetDue.getTime() - startDateTime.getTime()) / 60000));
+                newReadyDate = new Date(resumeDateTime.getTime() + Math.max(0, remainingMinsAfterStart * 60000));
+            } else {
+                newReadyDate = new Date(targetDue.getTime() + (hours * 3600 * 1000));
+            }
+
+            currentPers.estimatedReadyDate = newReadyDate.toISOString();
+            currentPers.delayNotice = {
+                active: true,
+                reason: reason.trim(),
+                message: (message || '').trim(),
+                startDate: startDateTime.toISOString(),
+                newReadyDate: newReadyDate.toISOString(),
+                delayHours: hours,
+                appliedAt: now.toISOString(),
+                isScheduled: isFutureScheduled
+            };
+
+            history.push({
+                status: ord.status,
+                timestamp: now.toISOString(),
+                actor: updatedBy,
+                hub: 'Eds Towels Pacific Mall Lucena Hub',
+                note: isFutureScheduled
+                    ? `Scheduled Workshop Vacation: ${reason.trim()} (${startDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${resumeDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : `Workshop Delay Notice: ${reason.trim()} (+${hours}h). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+            });
+            currentPers.statusHistory = history;
+
+            let updatedDueDate = ord.dueDate ? newReadyDate : ord.dueDate;
+
+            const updatedOrder = await prisma.order.update({
+                where: { id: ord.id },
+                data: {
+                    personalization: currentPers,
+                    dueDate: updatedDueDate
                 }
+            });
 
-                currentPers.estimatedReadyDate = newReadyDate.toISOString();
-                currentPers.delayNotice = {
-                    active: true,
-                    reason: reason.trim(),
-                    message: (message || '').trim(),
-                    startDate: startDateTime.toISOString(),
-                    newReadyDate: newReadyDate.toISOString(),
-                    delayHours: hours,
-                    appliedAt: now.toISOString(),
-                    isScheduled: isFutureScheduled
-                };
-
-                history.push({
-                    status: ord.status,
-                    timestamp: now.toISOString(),
-                    actor: updatedBy,
-                    hub: 'Eds Towels Pacific Mall Lucena Hub',
-                    note: isFutureScheduled
-                        ? `Scheduled Workshop Vacation: ${reason.trim()} (${startDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${resumeDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                        : `Workshop Delay Notice: ${reason.trim()} (+${hours}h). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                });
-                currentPers.statusHistory = history;
-
-                let updatedDueDate = ord.dueDate ? newReadyDate : ord.dueDate;
-
-                const updatedOrder = await prisma.order.update({
-                    where: { id: ord.id },
-                    data: {
-                        personalization: currentPers,
-                        dueDate: updatedDueDate
-                    }
-                });
-                affectedUpdatedOrders.push(updatedOrder);
-
-                // Send notification email if requested and customer email exists
-                if (notifyCustomers && typeof sendDelayNotificationEmail === 'function') {
-                    const targetEmail = currentPers.customerEmail || ord.user?.email;
-                    const targetName = ord.client || ord.user?.username || 'Customer';
-                    if (targetEmail && targetEmail.includes('@')) {
-                        sendDelayNotificationEmail(targetEmail, targetName, updatedOrder, {
-                            reason: reason.trim(),
-                            message: (message || '').trim(),
-                            delayHours: hours,
-                            startDate: startDateTime,
-                            newReadyDate
-                        }).catch(emailErr => {
-                            console.warn(`[Delay Notice Email Fail for ${ord.orderId}]:`, emailErr.message);
-                        });
-                    }
+            // Fire-and-forget non-blocking email notifications
+            if (notifyCustomers && typeof sendDelayNotificationEmail === 'function') {
+                const targetEmail = currentPers.customerEmail || ord.user?.email;
+                const targetName = ord.client || ord.user?.username || 'Customer';
+                if (targetEmail && targetEmail.includes('@')) {
+                    sendDelayNotificationEmail(targetEmail, targetName, updatedOrder, {
+                        reason: reason.trim(),
+                        message: (message || '').trim(),
+                        delayHours: hours,
+                        startDate: startDateTime,
+                        newReadyDate
+                    }).catch(emailErr => {
+                        console.warn(`[Delay Notice Email Fail for ${ord.orderId}]:`, emailErr.message);
+                    });
                 }
             }
-        }
 
-        // 4. Invalidate Queue Watermark Cache
+            return updatedOrder;
+        });
+
+        const results = await Promise.all(updatePromises);
+        const affectedUpdatedOrders = results.filter(Boolean);
+
+        // 6. Invalidate Queue Watermark Cache & broadcast order updates
         try {
             const { invalidateQueue } = require('../../utils/workshopQueueManager');
             if (typeof invalidateQueue === 'function') invalidateQueue();
@@ -2282,29 +2311,7 @@ exports.broadcastDelayNotice = async (req, res) => {
             console.warn('[Queue Invalidation Warning]:', invQErr.message);
         }
 
-        const { cacheManager } = require('../../utils/cacheManager');
-        if (cacheManager && typeof cacheManager.del === 'function') {
-            cacheManager.del('settings:public');
-        }
-
-        // 5. Broadcast real-time socket events
-        const io = req.app.get('io');
         if (io) {
-            const emergencyPayload = {
-                active: true,
-                reason: reason.trim(),
-                message: (message || '').trim(),
-                delayHours: hours,
-                startDate: startDateTime.toISOString(),
-                resumeDate: resumeDateTime.toISOString(),
-                isScheduled: isFutureScheduled,
-                isCurrentlyClosed: !isFutureScheduled,
-                policy: sanitizedPolicy
-            };
-            io.emit('emergency_delay_notice', emergencyPayload);
-            io.emit('emergencyDelayNotice', emergencyPayload);
-            io.emit('settingsUpdated', { emergencyNotice: emergencyPayload });
-            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
             io.emit('ordersUpdated', { reason: 'emergency_delay_notice' });
         }
 
@@ -2356,14 +2363,28 @@ exports.liftDelayNotice = async (req, res) => {
             }
         });
 
-        // 2. Fetch active orders with delay notice active
+        // 2. Invalidate cache immediately
+        const { cacheManager } = require('../../utils/cacheManager');
+        if (cacheManager && typeof cacheManager.del === 'function') {
+            cacheManager.del('settings:public');
+        }
+
+        // 3. ZERO-LATENCY INSTANT BROADCAST: Inform all users notice is lifted immediately
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('emergency_delay_notice_lifted', { active: false });
+            io.emit('settingsUpdated', { emergencyNotice: { active: false } });
+            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
+        }
+
+        // 4. Fetch active orders with delay notice active & update concurrently
         const activeOrders = await prisma.order.findMany({
             where: {
                 status: { in: ['In Queue', 'Preparing Order', 'In Production', 'Processing'] }
             }
         });
 
-        for (const ord of activeOrders) {
+        const liftPromises = activeOrders.map(async (ord) => {
             const currentPers = (ord.personalization && typeof ord.personalization === 'object') ? { ...ord.personalization } : {};
             if (currentPers.delayNotice && currentPers.delayNotice.active) {
                 currentPers.delayNotice.active = false;
@@ -2379,14 +2400,17 @@ exports.liftDelayNotice = async (req, res) => {
                 });
                 currentPers.statusHistory = history;
 
-                await prisma.order.update({
+                return prisma.order.update({
                     where: { id: ord.id },
                     data: { personalization: currentPers }
                 });
             }
-        }
+            return null;
+        });
 
-        // 3. Invalidate Queue Watermark
+        await Promise.all(liftPromises);
+
+        // 5. Invalidate Queue Watermark
         try {
             const { invalidateQueue } = require('../../utils/workshopQueueManager');
             if (typeof invalidateQueue === 'function') invalidateQueue();
@@ -2394,17 +2418,7 @@ exports.liftDelayNotice = async (req, res) => {
             console.warn('[Queue Invalidation Warning]:', invQErr.message);
         }
 
-        // 4. Socket broadcast
-        const { cacheManager } = require('../../utils/cacheManager');
-        if (cacheManager && typeof cacheManager.del === 'function') {
-            cacheManager.del('settings:public');
-        }
-
-        const io = req.app.get('io');
         if (io) {
-            io.emit('emergency_delay_notice_lifted', { active: false });
-            io.emit('settingsUpdated', { emergencyNotice: { active: false } });
-            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
             io.emit('ordersUpdated', { reason: 'emergency_delay_notice_lifted' });
         }
 
