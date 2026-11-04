@@ -229,9 +229,15 @@ export default function InvoiceModal({
     >
       <div className="flex flex-col gap-4 text-center items-center">
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-text-dim text-xs font-medium m-0">Loading receipt details...</p>
+          <div className="w-full max-w-[340px] p-6 bg-white/5 border border-border-glass rounded-xl flex flex-col gap-3 animate-pulse">
+            <div className="h-4 w-28 bg-white/10 rounded mx-auto" />
+            <div className="h-3 w-40 bg-white/5 rounded mx-auto" />
+            <div className="h-px w-full bg-border-glass my-2" />
+            <div className="h-3 w-full bg-white/5 rounded" />
+            <div className="h-3 w-3/4 bg-white/5 rounded" />
+            <div className="h-3 w-5/6 bg-white/5 rounded" />
+            <div className="h-px w-full bg-border-glass my-2" />
+            <div className="h-5 w-32 bg-primary/20 rounded mx-auto" />
           </div>
         ) : (
           <>

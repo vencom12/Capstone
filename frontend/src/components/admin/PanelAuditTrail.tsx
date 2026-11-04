@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
+import { TableSkeleton } from '@/components/ui/Skeletons';
 
 interface AuditLogEntry {
   id: string;
@@ -251,29 +252,23 @@ export default function PanelAuditTrail() {
       </div>
 
       {/* Audit Log Table */}
-      <div className="glass-table-container overflow-x-auto w-full">
-        <table className="glass-table w-full min-w-[980px]">
-          <thead>
-            <tr>
-              <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Timestamp</th>
-              <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Actor</th>
-              <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Action & Entity</th>
-              <th className="glass-th text-left min-w-[250px] whitespace-nowrap">Target Subject</th>
-              <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Network / IP</th>
-              <th className="glass-th text-right min-w-[140px] whitespace-nowrap">Payload</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
+      {isLoading ? (
+        <TableSkeleton rows={8} cols={6} />
+      ) : (
+        <div className="glass-table-container overflow-x-auto w-full">
+          <table className="glass-table w-full min-w-[980px]">
+            <thead>
               <tr>
-                <td colSpan={6} className="glass-td text-center py-12 text-text-dim">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs">Loading audit ledger...</span>
-                  </div>
-                </td>
+                <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Timestamp</th>
+                <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Actor</th>
+                <th className="glass-th text-left min-w-[180px] whitespace-nowrap">Action & Entity</th>
+                <th className="glass-th text-left min-w-[250px] whitespace-nowrap">Target Subject</th>
+                <th className="glass-th text-left min-w-[130px] whitespace-nowrap">Network / IP</th>
+                <th className="glass-th text-right min-w-[140px] whitespace-nowrap">Payload</th>
               </tr>
-            ) : logs.length === 0 ? (
+            </thead>
+            <tbody>
+              {logs.length === 0 ? (
               <tr>
                 <td colSpan={6} className="glass-td text-center py-12 text-text-dim text-sm">
                   No audit log entries match your active filters.
@@ -381,7 +376,8 @@ export default function PanelAuditTrail() {
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      )}
 
       {/* Pagination Controls */}
       <Pagination

@@ -1680,9 +1680,10 @@ export default function ProductModal({
         /* ============================================================ */
         <div className="flex flex-col gap-4">
           {isLoadingReviews ? (
-            <div className="p-8 flex flex-col items-center justify-center gap-2 text-center text-text-dim text-xs">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span>Loading verified customer ratings...</span>
+            <div className="p-4 flex flex-col gap-3 animate-pulse">
+              <div className="h-20 w-full bg-white/5 rounded-xl border border-border-glass" />
+              <div className="h-24 w-full bg-white/5 rounded-xl border border-border-glass" />
+              <div className="h-24 w-full bg-white/5 rounded-xl border border-border-glass" />
             </div>
           ) : (
             <>

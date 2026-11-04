@@ -148,8 +148,10 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div className="w-full flex flex-col gap-4 p-4 animate-pulse">
+        <div className="h-16 w-full bg-white/5 rounded-xl border border-border-glass" />
+        <div className="h-24 w-full bg-white/5 rounded-xl border border-border-glass" />
+        <div className="h-24 w-full bg-white/5 rounded-xl border border-border-glass" />
       </div>
     );
   }

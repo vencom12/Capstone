@@ -38,7 +38,6 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
-  const [isPageLoading, setIsPageLoading] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [isInView, setIsInView] = useState(false);
@@ -102,7 +101,6 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const handlePageChange = (newPage: number) => {
     if (newPage === page) return;
-    setIsPageLoading(true);
     setPage(newPage);
     if (typeof window !== 'undefined') {
       const el = document.getElementById('products-section') || gridRef.current;
@@ -115,9 +113,6 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
         });
       }
     }
-    setTimeout(() => {
-      setIsPageLoading(false);
-    }, 280);
   };
 
   const paginatedProducts = useMemo(() => {
@@ -221,7 +216,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
       )}
 
       {/* Products Grid or Loading Skeleton */}
-      {(isSyncing && filteredProducts.length === 0) || isPageLoading ? (
+      {(isSyncing && filteredProducts.length === 0) ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 animate-pulse">
           {Array.from({ length: Math.min(8, paginatedProducts.length || 8) }).map((_, i) => (
             <ProductCardSkeleton key={i} />

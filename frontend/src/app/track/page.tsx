@@ -271,10 +271,10 @@ function OrderTrackerContent() {
   // IF LOADING
   if (isLoading && !order) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-text-dim">Loading order status...</p>
-      </div>
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 flex flex-col gap-4">
+        <div className="w-full h-24 bg-white/5 rounded-2xl border border-border-glass animate-pulse" />
+        <div className="w-full h-48 bg-white/5 rounded-2xl border border-border-glass animate-pulse" />
+      </main>
     );
   }
 

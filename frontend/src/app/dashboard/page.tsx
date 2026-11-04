@@ -435,7 +435,9 @@ export default function DashboardPage() {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-bg-main text-text-main">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 animate-pulse flex items-center justify-center">
+            <div className="w-6 h-6 rounded-lg bg-primary/40 animate-ping" />
+          </div>
           <p className="text-text-dim font-medium animate-pulse">Resuming your session...</p>
         </div>
       </div>
@@ -994,7 +996,7 @@ export default function DashboardPage() {
         setActiveTab={setActiveTab}
       />
 
-      <main className="w-full max-w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0 overflow-x-hidden">
+      <main id="customer-main-viewport" data-scroll-container="true" className="w-full max-w-full flex-1 p-3.5 sm:p-6 lg:p-8 pt-[70px] md:pt-6 lg:pt-8 pb-32 md:pb-8 md:h-full md:overflow-y-auto md:min-h-0 overflow-x-hidden">
         {renderTabContent()}
       </main>
 

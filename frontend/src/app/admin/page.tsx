@@ -751,7 +751,7 @@ export default function AdminPage() {
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
+      <div id="admin-main-viewport" data-scroll-container="true" className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full">
         {/* Persistent Top Header Bar with Breadcrumbs & Top-Right User Button */}
         <header className="bg-bg-sidebar/85 backdrop-blur-[16px] border-b border-border-glass px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-[1900] shrink-0 gap-2 sm:gap-4 max-w-full overflow-hidden">
           <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">

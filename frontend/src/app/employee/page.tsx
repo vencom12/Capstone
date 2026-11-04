@@ -1707,6 +1707,8 @@ export default function EmployeePage() {
 
       {/* Main Viewport */}
       <div
+        id="employee-main-viewport"
+        data-scroll-container="true"
         className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden relative h-full overscroll-x-none touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

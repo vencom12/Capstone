@@ -30,31 +30,71 @@ export default function Pagination({
     onPageChange(p);
 
     if (typeof window !== 'undefined') {
-      // 1. Scroll window to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const resetScrollToTop = () => {
+        // 1. Target known viewport containers
+        const scrollContainers: HTMLElement[] = [];
+        const adminVp = document.getElementById('admin-main-viewport');
+        const employeeVp = document.getElementById('employee-main-viewport');
+        const customerVp = document.getElementById('customer-main-viewport');
+        if (adminVp) scrollContainers.push(adminVp);
+        if (employeeVp) scrollContainers.push(employeeVp);
+        if (customerVp) scrollContainers.push(customerVp);
 
-      // 2. Scroll any ancestor scroll container (e.g. overflow-y-auto in admin and employee dashboards)
-      if (dockRef.current) {
-        let el = dockRef.current.parentElement;
-        while (el && el !== document.body) {
-          const style = window.getComputedStyle(el);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-            el.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-          el = el.parentElement;
-        }
-      }
-
-      // 3. Scroll to section anchor if present (e.g. storefront products section)
-      const catalogEl = document.getElementById('products-section');
-      if (catalogEl) {
-        const headerOffset = 90;
-        const elementPosition = catalogEl.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({
-          top: Math.max(0, elementPosition - headerOffset),
-          behavior: 'smooth'
+        document.querySelectorAll('[data-scroll-container="true"]').forEach((node) => {
+          scrollContainers.push(node as HTMLElement);
         });
+
+        // 2. Ancestor hierarchy of the pagination dock
+        if (dockRef.current) {
+          let el = dockRef.current.parentElement;
+          while (el && el !== document.body && el !== document.documentElement) {
+            const style = window.getComputedStyle(el);
+            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+              scrollContainers.push(el);
+            }
+            el = el.parentElement;
+          }
+        }
+
+        // 3. Fallback to any active overflow-y-auto elements
+        document.querySelectorAll('.overflow-y-auto').forEach((node) => {
+          scrollContainers.push(node as HTMLElement);
+        });
+
+        // Execute scroll to top with both scrollTo and direct scrollTop reset
+        const unique = Array.from(new Set(scrollContainers));
+        unique.forEach((container) => {
+          try {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+            container.scrollTop = 0;
+          } catch {
+            container.scrollTop = 0;
+          }
+        });
+
+        // Reset window scroll
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Storefront specific section anchor
+        const catalogEl = document.getElementById('products-section');
+        if (catalogEl) {
+          const headerOffset = 90;
+          const elementPosition = catalogEl.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({
+            top: Math.max(0, elementPosition - headerOffset),
+            behavior: 'smooth'
+          });
+        }
+      };
+
+      // Run immediately
+      resetScrollToTop();
+      // Run on animation frame to withstand synchronous re-renders
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(resetScrollToTop);
       }
+      // Run after microtask queue
+      setTimeout(resetScrollToTop, 50);
     }
   };
 
