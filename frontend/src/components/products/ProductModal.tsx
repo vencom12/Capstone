@@ -49,6 +49,7 @@ export default function ProductModal({
   const [capacityData, setCapacityData] = useState<{
     activeOrders: number;
     estimatedMinutes: number;
+    queueWaitMinutes?: number;
     readyLabel?: string;
     estimatedReadyDate?: string;
     queuedBulkPieces?: number;
@@ -448,6 +449,7 @@ export default function ProductModal({
               setCapacityData({
                 activeOrders: res.activeOrders ?? 0,
                 estimatedMinutes: res.estimatedMinutes ?? 15,
+                queueWaitMinutes: res.queueWaitMinutes ?? 0,
                 readyLabel: res.readyLabel || 'Today during mall hours',
                 estimatedReadyDate: res.estimatedReadyDate || null,
                 queuedBulkPieces: res.queuedBulkPieces ?? 0,
@@ -462,7 +464,7 @@ export default function ProductModal({
     }
   }, [product, isOpen, currentProductId]);
 
-  // Lettering extra pricing rule:
+    // Lettering extra pricing rule:
   // Uses Admin-configured Garment Size ('small' | 'big') and Admin-configured Small/Big rates.
   const garmentSize = resolveProductGarmentSize(product);
   const isBig = garmentSize === 'big';
@@ -556,6 +558,121 @@ export default function ProductModal({
     ? Boolean(selectedVariant && quantity > remainingOnHandForVariant)
     : quantity > remainingOnHandForVariant;
   const preOrderShortage = requiresPreOrder ? Math.max(1, quantity - remainingOnHandForVariant) : 0;
+
+  // Dynamic highly-accurate pickup readiness calculation (respects Pacific Mall Lucena store hours 10 AM - 8 PM)
+  const calculatedReadyTime = useMemo(() => {
+    if (requiresPreOrder) {
+      const prepDays = capacityData?.preOrderPrepDays ?? letteringRates.preOrderPrepDays ?? 3;
+      return {
+        label: `In ~${prepDays}–5 days (Pre-Order)`,
+        detail: 'Workshop preparation & materials schedule',
+      };
+    }
+
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const openMins = 10 * 60; // 10:00 AM
+    const closeMins = 20 * 60; // 8:00 PM
+
+    // Plain retail item without embroidery: 2-5 mins packaging
+    if (!isPersonalized) {
+      if (currentMins >= openMins && currentMins < closeMins - 10) {
+        return {
+          label: 'Today in 2–5 mins (Packaging)',
+          detail: 'Direct counter packaging at Pacific Mall Lucena',
+        };
+      }
+      if (currentMins >= closeMins - 10) {
+        return {
+          label: 'Tomorrow at 10:05 AM (Store Opening)',
+          detail: 'Store closes at 8:00 PM • Ready at store opening',
+        };
+      }
+      return {
+        label: 'Today at 10:05 AM (Store Opening)',
+        detail: 'Store opens at 10:00 AM • Ready shortly after opening',
+      };
+    }
+
+    // Personalized item: exact letters + queue backlog + machine stitching
+    const letters = isMultiLine
+      ? bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0)
+      : (customText.replace(/\s+/g, '').length || 5);
+    const stitchMins = isMultiLine
+      ? Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + letters * 0.2))
+      : Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
+
+    const queueWait = capacityData?.queueWaitMinutes ?? (capacityData?.activeOrders ? capacityData.activeOrders * 4 : 0);
+    const totalMinutesNeeded = queueWait + stitchMins;
+
+    let cur = new Date(now);
+    let curH = cur.getHours();
+    let curM = cur.getMinutes();
+    let curDayMins = curH * 60 + curM;
+
+    if (curDayMins < openMins) {
+      cur.setHours(10, 0, 0, 0);
+    } else if (curDayMins >= closeMins) {
+      cur.setDate(cur.getDate() + 1);
+      cur.setHours(10, 0, 0, 0);
+    } else if (curDayMins >= 12 * 60 && curDayMins < 12 * 60 + 15) {
+      cur.setHours(12, 15, 0, 0);
+    }
+
+    let remaining = Math.max(2, totalMinutesNeeded);
+    while (remaining > 0) {
+      const h = cur.getHours();
+      const m = cur.getMinutes();
+      const minOfDay = h * 60 + m;
+
+      if (minOfDay < openMins) {
+        cur.setHours(10, 0, 0, 0);
+        continue;
+      }
+      if (minOfDay >= closeMins) {
+        cur.setDate(cur.getDate() + 1);
+        cur.setHours(10, 0, 0, 0);
+        continue;
+      }
+      if (minOfDay >= 12 * 60 && minOfDay < 12 * 60 + 15) {
+        cur.setHours(12, 15, 0, 0);
+        continue;
+      }
+
+      let availableBlock = minOfDay < 12 * 60 ? (12 * 60 - minOfDay) : (closeMins - minOfDay);
+      const consumed = Math.min(remaining, availableBlock);
+      cur.setMinutes(cur.getMinutes() + consumed);
+      remaining -= consumed;
+    }
+
+    const isSameDay = cur.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = cur.toDateString() === tomorrow.toDateString();
+
+    const timeStr = cur.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    const readyText = isSameDay
+      ? `Today at ${timeStr}`
+      : isTomorrow
+      ? `Tomorrow at ${timeStr}`
+      : `${cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${timeStr}`;
+
+    const queueDesc = capacityData?.activeOrders && capacityData.activeOrders > 0
+      ? `${capacityData.activeOrders} active orders ahead in workshop queue (~${queueWait} mins queue + ~${stitchMins} mins stitching)`
+      : `Workshop queue clear (~${stitchMins} mins stitching)`;
+
+    return {
+      label: readyText,
+      detail: queueDesc,
+      stitchMins,
+      totalMinutesNeeded,
+    };
+  }, [requiresPreOrder, isPersonalized, isMultiLine, bulkSummary, customText, quantity, capacityData, letteringRates]);
 
   const validateAndBuildBasketItem = (): BasketItem | null => {
     setActionError(null);
@@ -934,12 +1051,9 @@ export default function ProductModal({
                     ? 'bg-danger/15 border-danger/40 text-danger'
                     : 'bg-primary/15 border-primary/40 text-text-main'
                 }`}>
-                  <span className="text-base leading-none shrink-0 mt-0.5">
-                    {liveStockAlert.type === 'sold_out' ? '⚡' : '🔄'}
-                  </span>
                   <div className="flex-1 text-xs leading-snug">
                     <strong className="block font-bold mb-0.5">
-                      {liveStockAlert.type === 'sold_out' ? 'Sold Out Live Notice' : 'Real-Time Inventory Update'}
+                      {liveStockAlert.type === 'sold_out' ? 'Sold out notice' : 'Inventory update'}
                     </strong>
                     <span>{liveStockAlert.message}</span>
                   </div>
@@ -1042,14 +1156,9 @@ export default function ProductModal({
                 </span>
               )}
             </div>
-            {isOutOfStock ? (
+            {isOutOfStock && (
               <span className="px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30 text-primary font-semibold text-xs tracking-wider uppercase">
                 Pre-Order Available
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-xs font-medium text-text-main">
-                <span className={`w-1.5 h-1.5 rounded-full ${effectiveStock <= 5 ? 'bg-primary' : 'bg-text-main'}`} />
-                {effectiveStock <= 5 ? `Only ${effectiveStock} on hand` : `In Stock (${effectiveStock} on hand)`}
               </span>
             )}
           </div>
@@ -1246,16 +1355,11 @@ export default function ProductModal({
 
             {!isPersonalized && (
               <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs mt-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 inline-block" />
-                  <span className="text-[0.72rem] text-text-dim font-medium">
-                    Estimated Ready for Pick-up:
-                  </span>
-                </div>
-                <strong className="text-text-main font-mono text-xs font-bold text-emerald-400">
-                  {requiresPreOrder
-                    ? `~${capacityData?.preOrderPrepDays ?? 3}–5 days (Pre-Order)`
-                    : 'Today in 2–5 mins (Packaging)'}
+                <span className="text-[0.72rem] text-text-dim font-medium">
+                  Estimated Ready for Pick-up:
+                </span>
+                <strong className="text-text-main font-mono text-xs font-bold">
+                  {calculatedReadyTime.label}
                 </strong>
               </div>
             )}
@@ -1265,35 +1369,19 @@ export default function ProductModal({
                 {/* Unified Studio Readiness & Estimated Completion Card */}
                 <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 inline-block" />
-                      <span className="text-[0.72rem] text-text-dim font-medium">
-                        Estimated Ready for Pick-up:
-                      </span>
-                    </div>
-                    <strong className="text-text-main font-mono text-xs font-bold text-emerald-400">
-                      {requiresPreOrder
-                        ? `~${capacityData?.preOrderPrepDays ?? 3}–5 days (Pre-Order)`
-                        : capacityData?.readyLabel || 'Today during mall hours'}
+                    <span className="text-[0.72rem] text-text-dim font-medium">
+                      Estimated Ready for Pick-up:
+                    </span>
+                    <strong className="text-text-main font-mono text-xs font-bold">
+                      {calculatedReadyTime.label}
                     </strong>
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t border-border-glass/40 text-[0.68rem] text-text-dim">
                     <span>
-                      {capacityData?.activeOrders && capacityData.activeOrders > 0
-                        ? `${capacityData.activeOrders} active orders ahead in workshop queue`
-                        : 'Workshop ready for immediate crafting'}
+                      {calculatedReadyTime.detail}
                     </span>
                     <span className="font-mono text-text-main font-semibold">
-                      Stitching time: ~{(() => {
-                        if (bulkSummary.lineCount > 1) {
-                          const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
-                          const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
-                          return `${mins} mins (${bulkSummary.lineCount} pcs)`;
-                        }
-                        const letters = customText.replace(/\s+/g, '').length || 5;
-                        const mins = Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
-                        return `${mins} ${mins === 1 ? 'min' : 'mins'}`;
-                      })()}
+                      Stitching time: ~{calculatedReadyTime.stitchMins} {calculatedReadyTime.stitchMins === 1 ? 'min' : 'mins'}
                     </span>
                   </div>
                 </div>
