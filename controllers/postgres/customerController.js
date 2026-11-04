@@ -394,7 +394,7 @@ exports.submitOrder = async (req, res) => {
                     throw new Error(`Product not found: ${item.name}`);
                 }
 
-                // ATP calculation
+                // ATP calculation (incorporating variant stock & raw material capacity)
                 const atp = Math.max(0, (product.count || 0) - (product.reservedCount || 0));
                 const needed = item.quantity || 1;
                 const allowsPreOrder = Boolean(
@@ -404,19 +404,64 @@ exports.submitOrder = async (req, res) => {
                     req.body?.isPreOrder
                 );
 
-                if (atp < needed && !allowsPreOrder) {
-                    throw new Error(`OutOfStock:${product.name}`);
+                // Check specific variant stock
+                let variantName = item.selectedVariant || (item.personalization && item.personalization.variant) || item.variant || item.sku;
+                let variantAtp = atp;
+                let variantObj = null;
+
+                if (product.variants) {
+                    let vList = product.variants;
+                    if (typeof vList === 'string') {
+                        try { vList = JSON.parse(vList); } catch (_) { vList = []; }
+                    }
+                    if (Array.isArray(vList) && variantName) {
+                        variantObj = vList.find(v => v && v.name && v.name.trim().toLowerCase() === String(variantName).trim().toLowerCase());
+                        if (variantObj) {
+                            if (variantObj.materialId) {
+                                const invItem = await tx.inventory.findUnique({ where: { id: variantObj.materialId } });
+                                if (invItem) {
+                                    const activeOrdersForMaterial = await tx.order.findMany({
+                                        where: {
+                                            status: { in: ['In Queue', 'On Hold - Awaiting Materials', 'Processing', 'Stitching', 'Assembly', 'Queued', 'Paid', 'Order Placed', 'Preparing Order', 'In Transit', 'Ready For Pick Up', 'Ready For Pick-Up', 'Ready for Pickup', 'Awaiting Payment', 'Pending Payment', 'Payment Uploaded - Verifying'] }
+                                        }
+                                    });
+                                    let matReserved = 0;
+                                    for (const o of activeOrdersForMaterial) {
+                                        const oItems = Array.isArray(o.items) ? o.items : [];
+                                        for (const oi of oItems) {
+                                            if (oi.productId === productId || oi.id === productId) {
+                                                const oiVar = oi.selectedVariant || (oi.personalization && oi.personalization.variant) || oi.variant || oi.sku;
+                                                if (oiVar && String(oiVar).trim().toLowerCase() === String(variantName).trim().toLowerCase()) {
+                                                    matReserved += (oi.quantity || 1);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    variantAtp = Math.max(0, (invItem.count || 0) - matReserved);
+                                }
+                            } else if (variantObj.stock !== undefined) {
+                                variantAtp = Math.max(0, Number(variantObj.stock) || 0);
+                            }
+                        }
+                    }
                 }
 
-                if (atp < needed) {
+                const effectiveAtp = Math.min(atp, variantAtp);
+
+                if (effectiveAtp < needed && !allowsPreOrder) {
+                    const variantLabel = variantObj ? ` (${variantObj.name})` : '';
+                    throw new Error(`OutOfStock:${product.name}${variantLabel}`);
+                }
+
+                if (effectiveAtp < needed) {
                     hasPreOrderItems = true;
-                    const shortage = needed - atp;
+                    const shortage = needed - effectiveAtp;
                     totalPreOrderShortage += shortage;
                     item.isPreOrder = true;
                     item.preOrderShortage = shortage;
                 }
 
-                const toLock = Math.max(0, Math.min(atp, needed));
+                const toLock = Math.max(0, Math.min(effectiveAtp, needed));
                 reservationLocks.push({ productId, toLock });
             }
 
@@ -584,10 +629,10 @@ exports.submitOrder = async (req, res) => {
             orderPersonalization.packagingPriority = !requiresEmbroidery ? 2 : undefined;
 
             const initialOnlineStatus = isInstantApproved 
-                ? (requiresEmbroidery ? 'In Queue' : 'Ready For Pick Up') 
+                ? 'In Queue' 
                 : 'Awaiting Payment';
             const initialOnlineProgress = isInstantApproved 
-                ? (requiresEmbroidery ? 5 : 90) 
+                ? (requiresEmbroidery ? 5 : 10) 
                 : 0;
 
             const order = await tx.order.create({

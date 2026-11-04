@@ -71,6 +71,72 @@ export default function ProductModal({
   const [customActiveImage, setCustomActiveImage] = useState<string | null>(null);
   const [isOrderSubmitted, setIsOrderSubmitted] = useState<boolean>(false);
 
+  // Real-time live stock tracking and concurrent purchase alerts
+  const [liveStockAlert, setLiveStockAlert] = useState<{ message: string; type: 'sold_out' | 'decreased' } | null>(null);
+  const prevStockMapRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isOpen) {
+      setLiveStockAlert(null);
+      prevStockMapRef.current = {};
+    }
+  }, [isOpen]);
+
+  // Keep selectedVariant and effective stock actively synchronized when product updates via WebSocket
+  useEffect(() => {
+    if (!product || !isOpen) return;
+
+    if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+      if (selectedVariant) {
+        const freshVariant = product.variants.find(
+          (v: any) => v && v.name && v.name.trim().toLowerCase() === selectedVariant.name.trim().toLowerCase()
+        );
+        if (freshVariant) {
+          const oldStock = selectedVariant.availableStock !== undefined ? selectedVariant.availableStock : (selectedVariant.stock ?? 0);
+          const newStock = freshVariant.availableStock !== undefined ? freshVariant.availableStock : (freshVariant.stock ?? 0);
+
+          if (oldStock !== newStock || freshVariant.priceOverride !== selectedVariant.priceOverride) {
+            setSelectedVariant(freshVariant);
+            if (newStock < oldStock) {
+              if (newStock <= 0) {
+                setLiveStockAlert({
+                  message: `Notice: "${freshVariant.name}" was just purchased by another customer and is now sold out on hand! Your order will be placed as a Studio Pre-Order.`,
+                  type: 'sold_out',
+                });
+                showToast(`"${freshVariant.name}" just sold out! Switched to Studio Pre-Order.`, 'warning');
+              } else {
+                setLiveStockAlert({
+                  message: `Live Stock Update: Another customer just purchased an item. Remaining ready stock for "${freshVariant.name}" is now ${newStock} pcs.`,
+                  type: 'decreased',
+                });
+                showToast(`Live Stock Update: ${newStock} left for "${freshVariant.name}".`, 'info');
+              }
+            }
+          }
+        }
+      }
+    } else {
+      const currentStock = product.availableStock !== undefined ? product.availableStock : (product.count ?? 0);
+      const prevStock = prevStockMapRef.current[product.id];
+      if (prevStock !== undefined && currentStock < prevStock) {
+        if (currentStock <= 0) {
+          setLiveStockAlert({
+            message: `Notice: "${product.name}" was just claimed and is now sold out on hand! Your order will be placed as a Studio Pre-Order.`,
+            type: 'sold_out',
+          });
+          showToast(`"${product.name}" just sold out! Switched to Studio Pre-Order.`, 'warning');
+        } else {
+          setLiveStockAlert({
+            message: `Live Stock Update: Another customer just purchased an item. Ready stock for "${product.name}" is now ${currentStock} pcs.`,
+            type: 'decreased',
+          });
+          showToast(`Live Stock Update: ${currentStock} left for "${product.name}".`, 'info');
+        }
+      }
+      prevStockMapRef.current[product.id] = currentStock;
+    }
+  }, [product, isOpen, selectedVariant]);
+
   useEffect(() => {
     if (!isOpen) {
       setIsOrderSubmitted(false);
@@ -852,6 +918,32 @@ export default function ProductModal({
 
           {activeModalTab === 'configure' ? (
             <>
+              {/* Real-time Concurrent Stock Alert Banner */}
+              {liveStockAlert && (
+                <div className={`p-3 rounded-xl border flex items-start gap-2.5 transition-all animate-in fade-in slide-in-from-top-2 duration-300 mb-2.5 ${
+                  liveStockAlert.type === 'sold_out'
+                    ? 'bg-danger/15 border-danger/40 text-danger'
+                    : 'bg-primary/15 border-primary/40 text-text-main'
+                }`}>
+                  <span className="text-base leading-none shrink-0 mt-0.5">
+                    {liveStockAlert.type === 'sold_out' ? '⚡' : '🔄'}
+                  </span>
+                  <div className="flex-1 text-xs leading-snug">
+                    <strong className="block font-bold mb-0.5">
+                      {liveStockAlert.type === 'sold_out' ? 'Sold Out Live Notice' : 'Real-Time Inventory Update'}
+                    </strong>
+                    <span>{liveStockAlert.message}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLiveStockAlert(null)}
+                    className="text-text-dim hover:text-text-main text-xs p-1 leading-none cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* 4-Step Ordering Progress Bar with Checkpoints */}
               <div className="pt-1 pb-3 border-b border-border-glass mb-2">
                 <div className="flex items-center justify-between mb-2">

@@ -453,7 +453,21 @@ async function enrichProductsWithStock(products, tx = prisma) {
         where: {
             OR: [
                 {
-                    status: { in: ['In Queue', 'On Hold - Awaiting Materials', 'Processing', 'Stitching', 'Assembly', 'Queued', 'Paid', 'Order Placed'] }
+                    status: { in: [
+                        'In Queue',
+                        'On Hold - Awaiting Materials',
+                        'Processing',
+                        'Stitching',
+                        'Assembly',
+                        'Queued',
+                        'Paid',
+                        'Order Placed',
+                        'Preparing Order',
+                        'In Transit',
+                        'Ready For Pick Up',
+                        'Ready For Pick-Up',
+                        'Ready for Pickup'
+                    ] }
                 },
                 {
                     status: { in: ['Awaiting Payment', 'Pending Payment', 'Payment Uploaded - Verifying'] },
@@ -620,12 +634,13 @@ async function enrichProductsWithStock(products, tx = prisma) {
             } else {
                 // Independent unlinked variant: fallback to saved v.stock
                 const s = typeof v.stock === 'number' ? v.stock : (parseInt(v.stock, 10) || 0);
+                const vKey = `${product.id}_${String(v.name || '').trim().toLowerCase()}`;
+                const varReserved = reservedByVariant[vKey] || 0;
                 rawPhysical = Math.max(0, s);
-                available = Math.max(0, s);
+                available = Math.max(0, s - varReserved);
                 totalVariantPhysical += rawPhysical;
                 totalVariantAvailable += available;
             }
-
             return {
                 ...v,
                 materialId: invItem ? invItem.id : v.materialId,

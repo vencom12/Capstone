@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import TermsAndPoliciesModal from '@/components/ui/TermsAndPoliciesModal';
 import GlassModal from '@/components/ui/GlassModal';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -44,7 +44,7 @@ export default function CheckoutModal({
     }
   };
   const { user, setUser, refreshUser } = useAuthStore();
-  const { fetchDashboardState } = useProductStore();
+  const { products, fetchDashboardState } = useProductStore();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState('');
@@ -149,9 +149,71 @@ export default function CheckoutModal({
     return items.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }, [items]);
 
+  // Real-time live stock audit for items in checkout
+  const stockAudit = useMemo(() => {
+    let hasShortage = false;
+    const shortages: Array<{ name: string; variantName?: string; remaining: number; requested: number }> = [];
+
+    items.forEach((item) => {
+      const p = products.find((prod) => (prod.id || (prod as any)._id) === item.productId);
+      if (!p) return;
+
+      let availStock = 999999;
+      const vName = item.selectedVariant;
+      if (vName && p.variants && Array.isArray(p.variants)) {
+        const v = p.variants.find((vObj: any) => vObj && vObj.name && vObj.name.trim().toLowerCase() === String(vName).trim().toLowerCase());
+        if (v) {
+          availStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+        }
+      } else {
+        availStock = p.availableStock !== undefined ? p.availableStock : (p.count ?? 0);
+      }
+
+      if (availStock < item.quantity) {
+        hasShortage = true;
+        shortages.push({
+          name: item.name,
+          variantName: vName,
+          remaining: Math.max(0, availStock),
+          requested: item.quantity,
+        });
+      }
+    });
+
+    return { hasShortage, shortages };
+  }, [items, products]);
+
+  const prevShortageRef = useRef(false);
+  useEffect(() => {
+    if (stockAudit.hasShortage && !prevShortageRef.current) {
+      showToast('Notice: Another customer just purchased an item in your order. Converted to Pre-Order.', 'warning');
+    }
+    prevShortageRef.current = stockAudit.hasShortage;
+  }, [stockAudit.hasShortage]);
+
   const hasPreOrderItems = useMemo(() => {
-    return items.some((item) => Boolean(item.isPreOrder || (item.preOrderShortage && item.preOrderShortage > 0)));
-  }, [items]);
+    return stockAudit.hasShortage || items.some((item) => Boolean(item.isPreOrder || (item.preOrderShortage && item.preOrderShortage > 0)));
+  }, [items, stockAudit.hasShortage]);
+
+  const itemsWithPreOrder = useMemo(() => {
+    return items.map((item) => {
+      const p = products.find((prod) => (prod.id || (prod as any)._id) === item.productId);
+      let availStock = 999999;
+      const vName = item.selectedVariant;
+      if (vName && p?.variants && Array.isArray(p.variants)) {
+        const v = p.variants.find((vObj: any) => vObj && vObj.name && vObj.name.trim().toLowerCase() === String(vName).trim().toLowerCase());
+        if (v) availStock = v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0);
+      } else if (p) {
+        availStock = p.availableStock !== undefined ? p.availableStock : (p.count ?? 0);
+      }
+      const isShort = availStock < item.quantity;
+      return {
+        ...item,
+        isPreOrder: Boolean(item.isPreOrder || isShort),
+        preOrderShortage: isShort ? Math.max(1, item.quantity - Math.max(0, availStock)) : (item.preOrderShortage || 0),
+      };
+    });
+  }, [items, products]);
 
   const isBulkOrPreOrder = hasPreOrderItems || totalCheckoutPieces >= 10;
 
@@ -302,32 +364,41 @@ export default function CheckoutModal({
 
       setReceiptUrl(uploadData.url);
 
-      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
-      const orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
-        items,
-        totalAmount: finalTotal,
-        address: currentAddress,
-        deliveryTime: chosenDeliveryTimeLabel,
-        dueDate: chosenDueDate,
-        isPreOrder: hasPreOrderItems,
-        notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
-        paymentMethod: 'gcash',
-        receiptUrl: uploadData.url,
-        personalization: {
-          fulfillmentType: 'pickup',
-          courier: 'Store Pick-up',
-          claimSchedule: chosenDeliveryTimeLabel,
+      const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
+      let orderRes: any;
+      try {
+        orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
+          items: itemsWithPreOrder,
+          totalAmount: finalTotal,
+          address: currentAddress,
+          deliveryTime: chosenDeliveryTimeLabel,
+          dueDate: chosenDueDate,
           isPreOrder: hasPreOrderItems,
-          claimantName: user?.username || 'Customer',
-          claimantPhone: user?.phoneNumber || undefined,
-          pickupNote: pickupNote.trim() || undefined,
-          text: firstPersonalizedItem?.personalization?.text,
-          namesList: firstPersonalizedItem?.personalization?.namesList,
-          isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
-          color: firstPersonalizedItem?.personalization?.threadColor,
-          font: firstPersonalizedItem?.personalization?.font,
-        }
-      });
+          notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
+          paymentMethod: 'gcash',
+          receiptUrl: uploadData.url,
+          personalization: {
+            fulfillmentType: 'pickup',
+            courier: 'Store Pick-up',
+            claimSchedule: chosenDeliveryTimeLabel,
+            isPreOrder: hasPreOrderItems,
+            claimantName: user?.username || 'Customer',
+            claimantPhone: user?.phoneNumber || undefined,
+            pickupNote: pickupNote.trim() || undefined,
+            text: firstPersonalizedItem?.personalization?.text,
+            namesList: firstPersonalizedItem?.personalization?.namesList,
+            isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
+            color: firstPersonalizedItem?.personalization?.threadColor,
+            font: firstPersonalizedItem?.personalization?.font,
+          }
+        });
+      } catch (submitErr: any) {
+        setAiAnalyzing(false);
+        const errMsg = submitErr?.message || 'We could not submit your order. Please check item availability.';
+        showToast(errMsg, 'error');
+        setAiVerificationResult(errMsg);
+        return;
+      }
 
       if (orderRes?.order?.orderId) {
         setPendingOrderId(orderRes.order.orderId);
@@ -415,9 +486,9 @@ export default function CheckoutModal({
 
     setIsProcessing(true);
     try {
-      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
+      const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
       const res = await api.post<{ order: any; receiptID: string }>('/api/customer/order/submit', {
-        items,
+        items: itemsWithPreOrder,
         totalAmount: finalTotal,
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
@@ -502,9 +573,9 @@ export default function CheckoutModal({
     const testRef = `TEST-GCASH-${Date.now().toString().slice(-8)}`;
 
     try {
-      const firstPersonalizedItem = items.find((i) => i.personalization?.text);
+      const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
       const bypassRes = await api.post<{ order: any; receiptID: string }>('/api/customer/order/submit', {
-        items,
+        items: itemsWithPreOrder,
         totalAmount: finalTotal,
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
@@ -681,6 +752,22 @@ export default function CheckoutModal({
             })}
           </div>
         </div>
+
+        {/* Real-time Concurrent Stock Notice Banner */}
+        {stockAudit.hasShortage && (
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/30 text-xs text-left mb-3 flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+            <span className="text-base leading-none shrink-0 mt-0.5">⚡</span>
+            <div className="flex-1 leading-snug">
+              <strong className="block font-bold text-primary mb-0.5">
+                Real-Time Stock Notice: Item Claimed by Another Customer
+              </strong>
+              <span className="text-text-dim">
+                {stockAudit.shortages.map(s => `"${s.name}${s.variantName ? ` (${s.variantName})` : ''}" now has ${s.remaining} ready pcs left (you requested ${s.requested} pcs).`).join(' ')}
+                {' '}Your order will be completed via <strong>Studio Pre-Order (+{preOrderPrepDays} prep days)</strong> so you keep your spot!
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Emergency Workshop Leave Banner (Option A or Option B) */}
         {emergencyNotice?.active && (
@@ -886,6 +973,11 @@ export default function CheckoutModal({
                             />
                           )}
                           <span>{variantText ? `${variantText} • Qty: ${item.quantity}` : `Qty: ${item.quantity}`}</span>
+                          {Boolean(item.isPreOrder || (stockAudit.shortages.some(s => s.name === item.name && (!s.variantName || s.variantName === item.selectedVariant)))) && (
+                            <span className="px-1.5 py-0.2 rounded bg-primary/20 text-primary font-bold text-[8px] uppercase tracking-wider">
+                              Pre-Order
+                            </span>
+                          )}
                           {item.personalization?.text && (
                             <span className="text-text-main font-mono truncate">
                               • &ldquo;{item.personalization.text}&rdquo;
