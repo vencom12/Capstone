@@ -49,6 +49,8 @@ export default function ProductModal({
   const [capacityData, setCapacityData] = useState<{
     activeOrders: number;
     estimatedMinutes: number;
+    readyLabel?: string;
+    estimatedReadyDate?: string;
     queuedBulkPieces?: number;
     maxBulkPiecesPerPeriod?: number;
     batchThrottlePeriod?: string;
@@ -446,6 +448,8 @@ export default function ProductModal({
               setCapacityData({
                 activeOrders: res.activeOrders ?? 0,
                 estimatedMinutes: res.estimatedMinutes ?? 15,
+                readyLabel: res.readyLabel || 'Today during mall hours',
+                estimatedReadyDate: res.estimatedReadyDate || null,
                 queuedBulkPieces: res.queuedBulkPieces ?? 0,
                 maxBulkPiecesPerPeriod: res.maxBulkPiecesPerPeriod ?? 50,
                 batchThrottlePeriod: res.batchThrottlePeriod || 'week',
@@ -1240,28 +1244,58 @@ export default function ProductModal({
               </button>
             </div>
 
+            {!isPersonalized && (
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs mt-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 inline-block" />
+                  <span className="text-[0.72rem] text-text-dim font-medium">
+                    Estimated Ready for Pick-up:
+                  </span>
+                </div>
+                <strong className="text-text-main font-mono text-xs font-bold text-emerald-400">
+                  {requiresPreOrder
+                    ? `~${capacityData?.preOrderPrepDays ?? 3}–5 days (Pre-Order)`
+                    : 'Today in 2–5 mins (Packaging)'}
+                </strong>
+              </div>
+            )}
+
             {isPersonalized && (
               <div className="flex flex-col gap-3 pt-1 animate-[fadeIn_0.2s_ease-out]">
-                {/* Estimated Stitching Time (Applies only when personalizing) */}
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-surface border border-border-glass text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-text-dim shrink-0 inline-block"></span>
-                    <span className="text-[0.72rem] text-text-dim font-medium">
-                      Estimated artisan stitching:
+                {/* Unified Studio Readiness & Estimated Completion Card */}
+                <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 inline-block" />
+                      <span className="text-[0.72rem] text-text-dim font-medium">
+                        Estimated Ready for Pick-up:
+                      </span>
+                    </div>
+                    <strong className="text-text-main font-mono text-xs font-bold text-emerald-400">
+                      {requiresPreOrder
+                        ? `~${capacityData?.preOrderPrepDays ?? 3}–5 days (Pre-Order)`
+                        : capacityData?.readyLabel || 'Today during mall hours'}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-border-glass/40 text-[0.68rem] text-text-dim">
+                    <span>
+                      {capacityData?.activeOrders && capacityData.activeOrders > 0
+                        ? `${capacityData.activeOrders} active orders ahead in workshop queue`
+                        : 'Workshop ready for immediate crafting'}
+                    </span>
+                    <span className="font-mono text-text-main font-semibold">
+                      Stitching time: ~{(() => {
+                        if (bulkSummary.lineCount > 1) {
+                          const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
+                          const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
+                          return `${mins} mins (${bulkSummary.lineCount} pcs)`;
+                        }
+                        const letters = customText.replace(/\s+/g, '').length || 5;
+                        const mins = Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
+                        return `${mins} ${mins === 1 ? 'min' : 'mins'}`;
+                      })()}
                     </span>
                   </div>
-                  <strong className="text-text-main font-mono text-xs font-bold">
-                    {(() => {
-                      if (bulkSummary.lineCount > 1) {
-                        const totalLetters = bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0);
-                        const mins = Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + totalLetters * 0.2));
-                        return `~${mins} mins (${bulkSummary.lineCount} pcs)`;
-                      }
-                      const letters = customText.replace(/\s+/g, '').length || 5;
-                      const mins = Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
-                      return `~${mins} ${mins === 1 ? 'min' : 'mins'}`;
-                    })()}
-                  </strong>
                 </div>
 
                 {/* Combined Lettering Editor & Line Breakdown Container */}

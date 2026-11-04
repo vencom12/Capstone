@@ -858,6 +858,37 @@ export default function CheckoutModal({
                 </button>
               </div>
 
+              {/* Live Studio Readiness & Estimated Completion */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-border-glass/70 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 inline-block" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[0.72rem] font-bold text-text-main">
+                      Earliest Estimated Ready Time:
+                    </span>
+                    <span className="text-[0.62rem] text-text-dim">
+                      {hasPreOrderItems
+                        ? 'Studio Pre-Order (+3 prep days)'
+                        : activeQueueOrdersCount > 0
+                        ? `${activeQueueOrdersCount} active orders ahead in workshop queue`
+                        : 'Workshop ready for immediate crafting'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end text-right">
+                  <strong className="text-text-main font-mono text-xs font-bold text-emerald-400">
+                    {hasPreOrderItems
+                      ? `In ~${preOrderPrepDays}–5 days`
+                      : readyLabel || 'Today during mall hours'}
+                  </strong>
+                  {!hasPreOrderItems && estimatedMinutes && (
+                    <span className="text-[0.62rem] text-text-dim font-mono">
+                      (~{estimatedMinutes} mins total)
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Single Pick-up Date Dropdown Picker */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
@@ -911,10 +942,20 @@ export default function CheckoutModal({
                   </div>
                 </div>
 
-                {/* Prompt user if not selected yet */}
-                {!selectedDateStr && (
+                {/* Prompt user or confirm chosen date */}
+                {!selectedDateStr ? (
                   <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.68rem] text-text-dim font-medium flex items-center gap-1.5">
                     <span>Please choose your pick-up date from the dropdown above.</span>
+                  </div>
+                ) : (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[0.68rem] text-text-main font-medium flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span>Ready for claim on selected date (Mall hours: 10:00 AM – 8:00 PM)</span>
+                    </span>
+                    <span className="font-mono text-emerald-400 font-bold text-[11px]">
+                      {availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}
+                    </span>
                   </div>
                 )}
               </div>
