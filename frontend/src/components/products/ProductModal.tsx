@@ -103,15 +103,15 @@ export default function ProductModal({
             setSelectedVariant(freshVariant);
             if (newStock < oldStock) {
               const boughtCount = oldStock - newStock;
-              const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} have been bought`;
+              const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} items bought`;
               if (newStock <= 0) {
                 setLiveStockAlert({
-                  message: `${boughtText}. "${freshVariant.name}" is now sold out on hand. Your order will be placed as a Studio Pre-Order.`,
+                  message: `${boughtText} • "${freshVariant.name}" sold out (Pre-Order available)`,
                   type: 'sold_out',
                 });
               } else {
                 setLiveStockAlert({
-                  message: `${boughtText}. Remaining ready stock for "${freshVariant.name}" is now ${newStock} pcs.`,
+                  message: `${boughtText} • ${newStock} left for "${freshVariant.name}"`,
                   type: 'decreased',
                 });
               }
@@ -124,15 +124,15 @@ export default function ProductModal({
       const prevStock = prevStockMapRef.current[product.id];
       if (prevStock !== undefined && currentStock < prevStock) {
         const boughtCount = prevStock - currentStock;
-        const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} have been bought`;
+        const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} items bought`;
         if (currentStock <= 0) {
           setLiveStockAlert({
-            message: `${boughtText}. "${product.name}" is now sold out on hand. Your order will be placed as a Studio Pre-Order.`,
+            message: `${boughtText} • "${product.name}" sold out (Pre-Order available)`,
             type: 'sold_out',
           });
         } else {
           setLiveStockAlert({
-            message: `${boughtText}. Ready stock for "${product.name}" is now ${currentStock} pcs.`,
+            message: `${boughtText} • ${currentStock} left`,
             type: 'decreased',
           });
         }
@@ -1052,23 +1052,24 @@ export default function ProductModal({
 
           {activeModalTab === 'configure' ? (
             <>
-              {/* Real-time Concurrent Stock Alert Banner */}
+              {/* Real-time Concurrent Stock Alert Banner (Single Line) */}
               {liveStockAlert && (
-                <div className={`p-3 rounded-xl border flex items-start gap-2.5 transition-all animate-in fade-in slide-in-from-top-2 duration-300 mb-2.5 ${
+                <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all animate-in fade-in slide-in-from-top-1 duration-200 mb-2.5 text-xs ${
                   liveStockAlert.type === 'sold_out'
                     ? 'bg-danger/15 border-danger/40 text-danger'
                     : 'bg-primary/15 border-primary/40 text-text-main'
                 }`}>
-                  <div className="flex-1 text-xs leading-snug">
-                    <strong className="block font-bold mb-0.5">
-                      {liveStockAlert.type === 'sold_out' ? 'Sold out notice' : 'Inventory update'}
-                    </strong>
-                    <span>{liveStockAlert.message}</span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-bold shrink-0">
+                      {liveStockAlert.type === 'sold_out' ? 'Notice:' : 'Inventory update:'}
+                    </span>
+                    <span className="truncate">{liveStockAlert.message}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setLiveStockAlert(null)}
-                    className="text-text-dim hover:text-text-main text-xs p-1 leading-none cursor-pointer"
+                    className="text-text-dim hover:text-text-main text-xs p-0.5 leading-none cursor-pointer shrink-0"
+                    title="Dismiss"
                   >
                     ✕
                   </button>
