@@ -76,6 +76,25 @@ export default function ProductModal({
   const [imageFit, setImageFit] = useState<'cover' | 'contain'>('cover');
   const [customActiveImage, setCustomActiveImage] = useState<string | null>(null);
   const [isOrderSubmitted, setIsOrderSubmitted] = useState<boolean>(false);
+  const [emergencyNotice, setEmergencyNotice] = useState<{
+    active: boolean;
+    isScheduled?: boolean;
+    isCurrentlyClosed?: boolean;
+    startDate?: string | null;
+    policy?: 'ALLOW_WITH_DELAY' | 'PAUSE_ORDERS';
+    reason?: string | null;
+    message?: string | null;
+    resumeDate?: string | null;
+    delayHours?: number;
+  } | null>(null);
+
+  const isOrderingPaused = Boolean(
+    emergencyNotice?.active && (
+      emergencyNotice.isCurrentlyClosed ||
+      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
+      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
+    )
+  );
 
   // Real-time live stock tracking and concurrent purchase alerts
   const [liveStockAlert, setLiveStockAlert] = useState<{ message: string; type: 'sold_out' | 'decreased' } | null>(null);
@@ -325,6 +344,11 @@ export default function ProductModal({
           if (res?.availableThreadColors) {
             applyThreadColorConfig(res.availableThreadColors, shouldNotify);
           }
+          if (res?.emergencyNotice && res.emergencyNotice.active) {
+            setEmergencyNotice(res.emergencyNotice);
+          } else {
+            setEmergencyNotice(null);
+          }
           if (res) {
             setLetteringRates((prev) => ({
               smallRate: Number(res.smallGarmentLetterRate) || prev.smallRate || 7,
@@ -340,8 +364,10 @@ export default function ProductModal({
     fetchLatestColors(false);
 
     const handleSettingsEvent = (e: any) => {
+      if (e.detail?.emergencyNotice !== undefined) {
+        setEmergencyNotice(e.detail.emergencyNotice?.active ? e.detail.emergencyNotice : null);
+      }
       if (e.detail?.availableThreadColors) {
-        // Admin updated thread colors: notify if active customization affected
         applyThreadColorConfig(e.detail.availableThreadColors, true);
       } else {
         fetchLatestColors(false);
@@ -684,6 +710,13 @@ export default function ProductModal({
     if (!product) return null;
     setActionError(null);
     setMonogramError(null);
+
+    if (isOrderingPaused) {
+      const msg = `Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`;
+      setActionError(msg);
+      showToast(msg, 'error');
+      return null;
+    }
 
     if (!hasVariants) {
       const err = `${product.name} currently has no variants configured.`;
@@ -1059,6 +1092,83 @@ export default function ProductModal({
 
           {activeModalTab === 'configure' ? (
             <>
+              {/* Emergency / Scheduled Vacation / Delay Notice Banner */}
+              {emergencyNotice?.active && (() => {
+                const isClosedOrPaused = isOrderingPaused;
+                const resumeFormatted = emergencyNotice.resumeDate
+                  ? new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : null;
+                const startFormatted = emergencyNotice.startDate
+                  ? new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })
+                  : null;
+
+                return (
+                  <div className={`p-3 rounded-xl border text-xs text-left mb-3 flex flex-col gap-1.5 transition-all animate-in fade-in slide-in-from-top-1 duration-200 ${
+                    isClosedOrPaused
+                      ? 'bg-danger/10 border-danger/30 text-text-main'
+                      : emergencyNotice.isScheduled
+                      ? 'bg-white/[0.04] border-border-glass text-text-main'
+                      : 'bg-amber-500/10 border-amber-500/30 text-text-main'
+                  }`}>
+                    <div className="flex items-center gap-2 font-bold text-[0.8rem]">
+                      {isClosedOrPaused ? (
+                        <>
+                          <svg className="w-4 h-4 shrink-0 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                            <rect x="6" y="4" width="4" height="16" />
+                            <rect x="14" y="4" width="4" height="16" />
+                          </svg>
+                          <span className="text-danger">Online Ordering Temporarily Paused</span>
+                        </>
+                      ) : emergencyNotice.isScheduled ? (
+                        <>
+                          <svg className="w-4 h-4 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </svg>
+                          <span>Upcoming Workshop Break Notice</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                          <span className="text-amber-400">Workshop Operational Delay Notice</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-text-dim leading-relaxed m-0">
+                      {isClosedOrPaused ? (
+                        <>
+                          Workshop is closed for <strong>{emergencyNotice.reason || 'scheduled leave'}</strong>.
+                          {resumeFormatted ? <> Orders resume on <strong className="text-text-main">{resumeFormatted}</strong>.</> : ''}
+                          {' '}You can customize and preview your design, but checkout is paused until the workshop reopens.
+                        </>
+                      ) : emergencyNotice.isScheduled ? (
+                        <>
+                          Workshop on scheduled break (<strong>{emergencyNotice.reason}</strong>)
+                          {startFormatted ? <> from <strong className="text-text-main">{startFormatted}</strong></> : ''}
+                          {resumeFormatted ? <> to <strong className="text-text-main">{resumeFormatted}</strong></> : ''}.
+                          {' '}Orders scheduled during break will finish after reopening.
+                        </>
+                      ) : (
+                        <>
+                          Production schedule extended (+{emergencyNotice.delayHours || 24}h) due to <strong>{emergencyNotice.reason}</strong>. Regular pace resumes {resumeFormatted ? `on ${resumeFormatted}` : 'soon'}.
+                        </>
+                      )}
+                    </p>
+                    {emergencyNotice.message && (
+                      <p className="text-[11px] italic text-text-dim/80 m-0 border-l border-border-glass pl-2">
+                        &ldquo;{emergencyNotice.message}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Real-time Concurrent Stock Alert Banner (Single Line) */}
               {liveStockAlert && (
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all animate-in fade-in slide-in-from-top-1 duration-200 mb-2.5 text-xs ${
@@ -1626,7 +1736,23 @@ export default function ProductModal({
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4 pb-2">
-            {!hasVariants ? (
+            {isOrderingPaused ? (
+              <div className="flex flex-col gap-1.5">
+                <GlassButton
+                  variant="secondary"
+                  fullWidth
+                  disabled
+                  className="py-3 font-bold opacity-80 cursor-not-allowed text-xs uppercase tracking-wider text-danger border border-danger/40 bg-danger/10"
+                >
+                  Ordering Paused — Workshop on Leave
+                </GlassButton>
+                <p className="text-[10px] text-center text-text-dim m-0">
+                  {emergencyNotice?.resumeDate
+                    ? `Ordering reopens on ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Workshop closed for scheduled leave'}
+                </p>
+              </div>
+            ) : !hasVariants ? (
               <GlassButton
                 variant="secondary"
                 fullWidth

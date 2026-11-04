@@ -1337,14 +1337,34 @@ exports.getPublicSettings = async (req, res) => {
         let smallGarmentLetterRate = 7;
         let bigGarmentLetterRate = 10;
         let preOrderPrepDays = 3;
+        let metaStartDate = null;
+        let isScheduled = false;
+        let isCurrentlyClosed = false;
+
         if (Array.isArray(threadColors)) {
-            const metaEntry = threadColors.find(c => c && c.id === '__pricing_meta__');
-            if (metaEntry) {
-                if (metaEntry.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(metaEntry.smallGarmentLetterRate) || 7;
-                if (metaEntry.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(metaEntry.bigGarmentLetterRate) || 10;
-                if (metaEntry.preOrderPrepDays !== undefined) preOrderPrepDays = Number(metaEntry.preOrderPrepDays) || 3;
+            const pricingMeta = threadColors.find(c => c && c.id === '__pricing_meta__');
+            if (pricingMeta) {
+                if (pricingMeta.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(pricingMeta.smallGarmentLetterRate) || 7;
+                if (pricingMeta.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(pricingMeta.bigGarmentLetterRate) || 10;
+                if (pricingMeta.preOrderPrepDays !== undefined) preOrderPrepDays = Number(pricingMeta.preOrderPrepDays) || 3;
             }
-            threadColors = threadColors.filter(c => !c || c.id !== '__pricing_meta__');
+            const emergencyMeta = threadColors.find(c => c && c.id === '__emergency_meta__');
+            if (emergencyMeta) {
+                metaStartDate = emergencyMeta.startDate || null;
+                isScheduled = Boolean(emergencyMeta.isScheduled);
+            }
+            threadColors = threadColors.filter(c => !c || (c.id !== '__pricing_meta__' && c.id !== '__emergency_meta__'));
+        }
+
+        if (settings?.emergencyNoticeActive) {
+            const now = new Date();
+            const start = metaStartDate ? new Date(metaStartDate) : (settings.emergencyNoticeCreatedAt ? new Date(settings.emergencyNoticeCreatedAt) : now);
+            const resume = settings.emergencyNoticeResumeDate ? new Date(settings.emergencyNoticeResumeDate) : null;
+            if (isScheduled) {
+                isCurrentlyClosed = Boolean(start && resume && now >= start && now < resume);
+            } else {
+                isCurrentlyClosed = true;
+            }
         }
 
         const publicSettingsPayload = {
@@ -1368,11 +1388,14 @@ exports.getPublicSettings = async (req, res) => {
                 reason: settings.emergencyNoticeReason,
                 message: settings.emergencyNoticeMessage,
                 delayHours: settings.emergencyNoticeDelayHours || 0,
+                startDate: metaStartDate || (settings.emergencyNoticeCreatedAt ? settings.emergencyNoticeCreatedAt.toISOString() : null),
                 resumeDate: settings.emergencyNoticeResumeDate,
-                createdAt: settings.emergencyNoticeCreatedAt
+                createdAt: settings.emergencyNoticeCreatedAt,
+                isScheduled,
+                isCurrentlyClosed
             } : { active: false }
         };
-        cacheManager.set('settings:public', publicSettingsPayload, 600);
+        cacheManager.set('settings:public', publicSettingsPayload, 30);
         res.set('X-Cache', 'MISS');
         res.json(publicSettingsPayload);
     } catch (err) {

@@ -89,8 +89,17 @@ export default function CheckoutModal({
     reason?: string | null;
     message?: string | null;
     resumeDate?: string | null;
+    delayHours?: number;
   } | null>(null);
   const [hasAcknowledgedDelay, setHasAcknowledgedDelay] = useState(false);
+
+  const isOrderingPaused = Boolean(
+    emergencyNotice?.active && (
+      emergencyNotice.isCurrentlyClosed ||
+      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
+      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
+    )
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -341,15 +350,13 @@ export default function CheckoutModal({
       return;
     }
 
-    if (emergencyNotice?.active) {
-      if (emergencyNotice.policy === 'PAUSE_ORDERS') {
-        showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice.reason || 'Leave'}).`, 'error');
-        return;
-      }
-      if (emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
-        showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
-        return;
-      }
+    if (isOrderingPaused) {
+      showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
+      return;
+    }
+    if (emergencyNotice?.active && emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
+      showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
+      return;
     }
 
     const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
@@ -499,15 +506,13 @@ export default function CheckoutModal({
       return;
     }
 
-    if (emergencyNotice?.active) {
-      if (emergencyNotice.policy === 'PAUSE_ORDERS') {
-        showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice.reason || 'Leave'}).`, 'error');
-        return;
-      }
-      if (emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
-        showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
-        return;
-      }
+    if (isOrderingPaused) {
+      showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
+      return;
+    }
+    if (emergencyNotice?.active && emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
+      showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
+      return;
     }
 
     const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
@@ -584,15 +589,13 @@ export default function CheckoutModal({
       return;
     }
 
-    if (emergencyNotice?.active) {
-      if (emergencyNotice.policy === 'PAUSE_ORDERS') {
-        showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice.reason || 'Leave'}).`, 'error');
-        return;
-      }
-      if (emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
-        showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
-        return;
-      }
+    if (isOrderingPaused) {
+      showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
+      return;
+    }
+    if (emergencyNotice?.active && emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
+      showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
+      return;
     }
 
     const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
@@ -799,8 +802,29 @@ export default function CheckoutModal({
 
         {/* Emergency Workshop Leave Banner (Option A or Option B, or Scheduled) */}
         {emergencyNotice?.active && (
-          emergencyNotice.isScheduled ? (
-            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
+          isOrderingPaused ? (
+            <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-xs text-left mb-3 flex flex-col gap-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2 font-bold text-danger text-[0.8rem]">
+                <svg className="w-4 h-4 shrink-0 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+                <span>Online Ordering Temporarily Paused</span>
+              </div>
+              <p className="text-[11px] text-text-dim leading-relaxed m-0">
+                Our workshop is currently closed for <strong>{emergencyNotice.reason || 'scheduled leave'}</strong>.
+                {emergencyNotice.resumeDate
+                  ? ` Online order acceptance will resume on ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
+                  : ' Please check back soon.'}
+              </p>
+              {emergencyNotice.message && (
+                <p className="text-[11px] italic text-text-dim/80 m-0 border-l border-danger/40 pl-2">
+                  &ldquo;{emergencyNotice.message}&rdquo;
+                </p>
+              )}
+            </div>
+          ) : emergencyNotice.isScheduled ? (
+            <div className="p-3 rounded-xl bg-white/[0.04] border border-border-glass text-xs text-left mb-3 flex flex-col gap-1.5 animate-in fade-in">
               <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
                 <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -821,36 +845,15 @@ export default function CheckoutModal({
                 You can reserve your priority queue spot now; production continues in queue order upon reopening.
               </p>
             </div>
-          ) : emergencyNotice.policy === 'PAUSE_ORDERS' ? (
-            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
-                <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
-                <span>Online Ordering Temporarily Paused</span>
-              </div>
-              <p className="text-[11px] text-text-dim leading-relaxed m-0">
-                Our workshop is closed for <strong>{emergencyNotice.reason || 'scheduled leave'}</strong>.
-                {emergencyNotice.resumeDate
-                  ? ` New orders resume on ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
-                  : ' Please check back soon.'}
-              </p>
-              {emergencyNotice.message && (
-                <p className="text-[11px] italic text-text-dim/80 m-0">
-                  &ldquo;{emergencyNotice.message}&rdquo;
-                </p>
-              )}
-            </div>
           ) : (
-            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
-                <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-left mb-3 flex flex-col gap-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2 font-bold text-amber-400 text-[0.8rem]">
+                <svg className="w-3.5 h-3.5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <span>Workshop Leave Schedule</span>
+                <span>Workshop Leave Schedule (+{emergencyNotice.delayHours || 24}h Turnaround)</span>
               </div>
               <p className="text-[11px] text-text-dim leading-relaxed m-0">
                 Workshop is temporarily on leave (<strong>{emergencyNotice.reason}</strong>). You can reserve your spot in the queue now. Stitching starts when the shop reopens on{' '}
@@ -860,7 +863,7 @@ export default function CheckoutModal({
                     : 'soon'}
                 </strong>.
               </p>
-              <label className="flex items-start gap-2 pt-1 border-t border-border-glass/40 text-[11px] text-text-main cursor-pointer">
+              <label className="flex items-start gap-2 pt-1.5 border-t border-border-glass/40 text-[11px] text-text-main cursor-pointer">
                 <input
                   type="checkbox"
                   checked={hasAcknowledgedDelay}

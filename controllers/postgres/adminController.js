@@ -1277,6 +1277,11 @@ exports.updateSettings = async (req, res) => {
             create: { id: 'global', ...updateData, inventoryAuditLog: true }
         });
 
+        const { cacheManager } = require('../../utils/cacheManager');
+        if (cacheManager && typeof cacheManager.del === 'function') {
+            cacheManager.del('settings:public');
+        }
+
         const io = req.app.get('io');
         if (io) {
             io.emit('settingsUpdated', {
@@ -2277,18 +2282,29 @@ exports.broadcastDelayNotice = async (req, res) => {
             console.warn('[Queue Invalidation Warning]:', invQErr.message);
         }
 
+        const { cacheManager } = require('../../utils/cacheManager');
+        if (cacheManager && typeof cacheManager.del === 'function') {
+            cacheManager.del('settings:public');
+        }
+
         // 5. Broadcast real-time socket events
         const io = req.app.get('io');
         if (io) {
-            io.emit('emergency_delay_notice', {
+            const emergencyPayload = {
                 active: true,
                 reason: reason.trim(),
                 message: (message || '').trim(),
                 delayHours: hours,
                 startDate: startDateTime.toISOString(),
                 resumeDate: resumeDateTime.toISOString(),
-                isScheduled: isFutureScheduled
-            });
+                isScheduled: isFutureScheduled,
+                isCurrentlyClosed: !isFutureScheduled,
+                policy: sanitizedPolicy
+            };
+            io.emit('emergency_delay_notice', emergencyPayload);
+            io.emit('emergencyDelayNotice', emergencyPayload);
+            io.emit('settingsUpdated', { emergencyNotice: emergencyPayload });
+            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
             io.emit('ordersUpdated', { reason: 'emergency_delay_notice' });
         }
 
@@ -2379,9 +2395,16 @@ exports.liftDelayNotice = async (req, res) => {
         }
 
         // 4. Socket broadcast
+        const { cacheManager } = require('../../utils/cacheManager');
+        if (cacheManager && typeof cacheManager.del === 'function') {
+            cacheManager.del('settings:public');
+        }
+
         const io = req.app.get('io');
         if (io) {
             io.emit('emergency_delay_notice_lifted', { active: false });
+            io.emit('settingsUpdated', { emergencyNotice: { active: false } });
+            io.emit('dataChanged', { entity: 'SETTINGS', action: 'UPDATE' });
             io.emit('ordersUpdated', { reason: 'emergency_delay_notice_lifted' });
         }
 

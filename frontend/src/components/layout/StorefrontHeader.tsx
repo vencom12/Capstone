@@ -238,13 +238,37 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
   useEffect(() => {
     setMounted(true);
-    import('@/lib/api').then(({ api }) => {
-      api.get<any>('/api/customer/settings').then(res => {
-        if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
-        if (res && res.businessName) setBusinessName(res.businessName);
-        if (res && res.emergencyNotice?.active) setEmergencyNotice(res.emergencyNotice);
-      }).catch(() => { });
-    });
+    const fetchSettings = () => {
+      import('@/lib/api').then(({ api }) => {
+        api.get<any>('/api/customer/settings').then(res => {
+          if (res && res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+          if (res && res.businessName) setBusinessName(res.businessName);
+          if (res && res.emergencyNotice && res.emergencyNotice.active) {
+            setEmergencyNotice(res.emergencyNotice);
+          } else {
+            setEmergencyNotice(null);
+          }
+        }).catch(() => { });
+      });
+    };
+
+    fetchSettings();
+
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail?.emergencyNotice !== undefined) {
+        setEmergencyNotice(e.detail.emergencyNotice?.active ? e.detail.emergencyNotice : null);
+      } else {
+        fetchSettings();
+      }
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+    window.addEventListener('focus', fetchSettings);
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+      window.removeEventListener('focus', fetchSettings);
+    };
   }, []);
 
   // Close dropdowns when clicking outside
@@ -271,26 +295,66 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
   return (
     <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300 pwa-draggable-header">
-      {emergencyNotice?.active && (
-        <div className="w-full bg-white/5 border-b border-white/10 px-4 py-1.5 text-center text-xs text-text-main flex items-center justify-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span className="truncate">
-            {emergencyNotice.isScheduled ? (
-              <>
-                <strong>Upcoming Workshop Break:</strong> Closed for {emergencyNotice.reason} ({emergencyNotice.startDate ? new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'soon'} &ndash; {emergencyNotice.resumeDate ? new Date(emergencyNotice.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'TBD'}). Normal turnaround applies until then.
-              </>
-            ) : (
-              <>
-                <strong>Workshop Notice:</strong> Production schedule adjusted ({emergencyNotice.reason}). In-queue orders updated.
-              </>
-            )}
-          </span>
-        </div>
-      )}
+      {emergencyNotice?.active && (() => {
+        const isClosedOrPaused = Boolean(
+          emergencyNotice.isCurrentlyClosed ||
+          (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
+          (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
+        );
+        const resumeFormatted = emergencyNotice.resumeDate
+          ? new Date(emergencyNotice.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : null;
+        const startFormatted = emergencyNotice.startDate
+          ? new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })
+          : null;
+
+        return (
+          <div className={`w-full px-4 py-2 text-center text-xs flex items-center justify-center gap-2 border-b backdrop-blur-md ${
+            isClosedOrPaused
+              ? 'bg-danger/20 border-danger/40 text-white font-medium shadow-sm'
+              : emergencyNotice.isScheduled
+              ? 'bg-white/10 border-white/15 text-text-main'
+              : 'bg-amber-500/15 border-amber-500/30 text-amber-200'
+          }`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              {isClosedOrPaused ? (
+                <>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </>
+              ) : emergencyNotice.isScheduled ? (
+                <>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </>
+              ) : (
+                <>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </>
+              )}
+            </svg>
+            <span className="truncate">
+              {isClosedOrPaused ? (
+                <>
+                  <strong>Online Ordering Temporarily Paused:</strong> Workshop is closed for {emergencyNotice.reason || 'leave'}{resumeFormatted ? ` until ${resumeFormatted}` : ''}. You can freely browse catalog designs.
+                </>
+              ) : emergencyNotice.isScheduled ? (
+                <>
+                  <strong>Upcoming Workshop Break:</strong> Closed for {emergencyNotice.reason} ({startFormatted || 'soon'} &ndash; {resumeFormatted || 'TBD'}). Normal turnaround applies until break starts.
+                </>
+              ) : (
+                <>
+                  <strong>Workshop Notice:</strong> Production turnaround extended (+{emergencyNotice.delayHours || 24}h) due to {emergencyNotice.reason}. Orders resume standard pace {resumeFormatted ? `on ${resumeFormatted}` : 'soon'}.
+                </>
+              )}
+            </span>
+          </div>
+        );
+      })()}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 lg:py-0 lg:h-[var(--header-height)] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6">
         {/* Row 1 on Mobile, or Left Brand area on Desktop */}
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
