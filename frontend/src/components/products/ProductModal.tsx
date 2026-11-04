@@ -863,9 +863,9 @@ export default function ProductModal({
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
-      <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1 md:h-[640px] md:max-h-[calc(100vh-3.5rem)]">
+      <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1 h-full min-h-0 max-h-[85vh] md:max-h-[640px]">
         {/* Full-Bleed Image & Preview Section */}
-        <div className="relative w-full h-full md:h-[640px] md:max-h-[calc(100vh-3.5rem)] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
+        <div className="relative w-full h-[260px] md:h-full max-[700px]:max-h-[35vh] min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
           {isValidProductImage(activeImage) ? (
             <div
               onClick={() => setIsZoomed(!isZoomed)}
@@ -995,7 +995,7 @@ export default function ProductModal({
         </div>
 
         {/* Product Customization & Info Section */}
-        <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3 md:h-[640px] md:max-h-[calc(100vh-3.5rem)] md:overflow-y-auto touch-scroll">
+        <div className="p-6 flex flex-col gap-4 text-left max-[700px]:p-4 max-[700px]:gap-3 overflow-y-auto min-h-0 h-full max-h-[85vh] md:max-h-[640px] touch-scroll">
           <div>
             <h2 className="text-2xl font-extrabold leading-tight m-0 text-text-main max-[700px]:text-lg">
               {product.name}
