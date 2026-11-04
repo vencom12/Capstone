@@ -11,6 +11,7 @@ interface PaginationProps {
   itemLabel?: string;
   pageSizeOptions?: number[];
   onPageSizeChange?: (newPageSize: number) => void;
+  showInfo?: boolean;
 }
 
 export default function Pagination({
@@ -21,7 +22,8 @@ export default function Pagination({
   className = '',
   itemLabel = 'products',
   pageSizeOptions,
-  onPageSizeChange
+  onPageSizeChange,
+  showInfo = true
 }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   if (totalItems <= 0) return null;
@@ -48,66 +50,68 @@ export default function Pagination({
 
   return (
     <div
-      className={`flex items-center justify-between flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass text-xs text-text-dim w-full ${className}`}
+      className={`flex items-center ${showInfo ? 'justify-between' : 'justify-center'} flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass text-xs text-text-dim w-full ${className}`}
     >
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs font-medium text-text-dim">
-          <span>Showing</span>
-          <span className="font-bold text-text-main font-mono">{from}</span>
-          <span>–</span>
-          <span className="font-bold text-text-main font-mono">{to}</span>
-          <span>of</span>
-          <span className="font-bold text-text-main font-mono">{totalItems}</span>
-          <span>{itemLabel}</span>
-        </div>
-
-        {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange && (
-          <div className="inline-flex items-center gap-1.5 p-1 px-2.5 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs text-[11px] text-text-dim">
-            <span>Per page:</span>
-            <div className="flex items-center gap-1">
-              {pageSizeOptions.map((opt) => {
-                const isCurrentSize = pageSize === opt;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => {
-                      onPageSizeChange(opt);
-                      onPageChange(1);
-                    }}
-                    className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                      isCurrentSize
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'text-text-main hover:bg-bg-surface hover:text-primary active:scale-95'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
+      {showInfo && (
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs font-medium text-text-dim">
+            <span>Showing</span>
+            <span className="font-bold text-text-main font-mono">{from}</span>
+            <span>–</span>
+            <span className="font-bold text-text-main font-mono">{to}</span>
+            <span>of</span>
+            <span className="font-bold text-text-main font-mono">{totalItems}</span>
+            <span>{itemLabel}</span>
           </div>
-        )}
-      </div>
 
-      {totalPages > 1 && (
+          {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange && (
+            <div className="inline-flex items-center gap-1.5 p-1 px-2.5 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs text-[11px] text-text-dim">
+              <span>Per page:</span>
+              <div className="flex items-center gap-1">
+                {pageSizeOptions.map((opt) => {
+                  const isCurrentSize = pageSize === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        onPageSizeChange(opt);
+                        onPageChange(1);
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                        isCurrentSize
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'text-text-main hover:bg-bg-surface hover:text-primary active:scale-95'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(totalPages > 1 || !showInfo) && (
         <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs">
           <button
             type="button"
             disabled={currentPage <= 1}
             onClick={() => onPageChange(currentPage - 1)}
-            className="px-2.5 py-1 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer font-medium flex items-center gap-1 text-xs active:scale-95"
+            className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
             aria-label="Previous page"
+            title="Previous page"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
-            <span className="hidden sm:inline">Prev</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
 
           <div className="flex items-center gap-1">
             {getPageNumbers().map((p, idx) => {
               if (p === '...') {
                 return (
-                  <span key={`dots-${idx}`} className="px-1.5 py-0.5 text-text-dim/60 select-none text-xs">
+                  <span key={`dots-${idx}`} className="w-5 text-center text-text-dim/60 select-none text-xs">
                     …
                   </span>
                 );
@@ -136,11 +140,11 @@ export default function Pagination({
             type="button"
             disabled={currentPage >= totalPages}
             onClick={() => onPageChange(currentPage + 1)}
-            className="px-2.5 py-1 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer font-medium flex items-center gap-1 text-xs active:scale-95"
+            className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
             aria-label="Next page"
+            title="Next page"
           >
-            <span className="hidden sm:inline">Next</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
       )}

@@ -310,7 +310,7 @@ export default function PanelManageDesigns({
 
   // Pagination for Products Grid
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize] = useState(30);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1000,12 +1000,8 @@ export default function PanelManageDesigns({
           totalItems={filteredProducts.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          pageSizeOptions={[6, 12, 24, 48]}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setCurrentPage(1);
-          }}
-          itemLabel="products"
+          showInfo={false}
+          className="mt-6 pt-0 border-t-0 justify-center"
         />
       </div>
 
