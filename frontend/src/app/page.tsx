@@ -177,7 +177,7 @@ export default function StorefrontPage() {
       <FullScreenStitchExperience />
 
       {/* Storefront Products Section */}
-      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-transparent scroll-mt-20">
+      <section id="products-section" className="relative z-20 w-full min-h-screen flex flex-col bg-bg-dark text-text-main scroll-mt-20 transition-colors duration-300">
 
         {/* Full-Width Products Grid */}
 

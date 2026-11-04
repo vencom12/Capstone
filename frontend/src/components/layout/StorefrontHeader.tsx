@@ -270,7 +270,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   }, [isCategoryOpen, isUserMenuOpen, isMobileUserMenuOpen, isSearchFocused, isSearchAiOpen]);
 
   return (
-    <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-transparent border-b border-white/10 transition-all duration-300 pwa-draggable-header">
+    <header className="fixed top-0 inset-x-0 w-full shrink-0 z-[2000] bg-bg-header/95 backdrop-blur-[16px] border-b border-border-glass transition-all duration-300 pwa-draggable-header">
       {emergencyNotice?.active && (
         <div className="w-full bg-white/5 border-b border-white/10 px-4 py-1.5 text-center text-xs text-text-main flex items-center justify-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-dim">
@@ -293,7 +293,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             ) : (
               <img src="/icon-192.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm group-hover:scale-105 transition-transform" />
             )}
-            <h1 className="font-black text-lg sm:text-xl tracking-tight m-0 truncate text-white">
+            <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
               {businessName}
             </h1>
           </Link>
@@ -303,7 +303,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <button
               suppressHydrationWarning
               onClick={() => toggleTheme()}
-              className="w-9 h-9 rounded-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 border-none bg-transparent text-white/80 hover:text-white hover:bg-white/10"
+              className="w-9 h-9 rounded-lg text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 border-none bg-transparent"
               title="Toggle theme"
               aria-label="Toggle theme"
             >
@@ -424,7 +424,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <button
               suppressHydrationWarning
               onClick={handleBasketClick}
-              className="w-9 h-9 rounded-lg bg-transparent border-none active:scale-95 transition-all cursor-pointer flex items-center justify-center relative shrink-0 text-white hover:bg-white/10"
+              className="w-9 h-9 rounded-lg bg-transparent border-none text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center relative shrink-0"
               title="View My Basket"
               aria-label="View My Basket"
             >
@@ -440,14 +440,14 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
 
         {/* Middle: Unified Search Capsule with Integrated Category Selector & AI Search */}
         <div className="w-full lg:flex-1 lg:max-w-[560px] lg:mx-auto relative search-container">
-          <div className="w-full relative flex items-center rounded-xl shadow-lg transition-all bg-black/40 backdrop-blur-md border border-white/20 text-white focus-within:border-white/40 focus-within:ring-2 focus-within:ring-white/10">
+          <div className="w-full relative flex items-center bg-bg-surface border border-border-glass rounded-xl shadow-sm focus-within:border-border-glass/80 focus-within:ring-2 focus-within:ring-white/5 transition-all">
             {/* Integrated Category Dropdown Trigger */}
             <div className="shrink-0 relative category-dropdown-container">
               <button
                 type="button"
                 suppressHydrationWarning
                 onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                className="flex items-center gap-1.5 sm:gap-2 bg-transparent hover:bg-white/10 text-white px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-l-xl text-xs sm:text-[0.82rem] font-bold outline-none cursor-pointer active:scale-95 transition-all whitespace-nowrap border-none border-r border-white/20"
+                className="flex items-center gap-1.5 sm:gap-2 bg-transparent hover:bg-white/5 text-text-main px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-l-xl text-xs sm:text-[0.82rem] font-bold outline-none cursor-pointer active:scale-95 transition-all whitespace-nowrap border-none border-r border-border-glass/60"
                 aria-label="Filter by category"
               >
                 <span className="max-w-[90px] sm:max-w-none truncate">
@@ -460,7 +460,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.5"
-                  className={`transition-transform duration-200 text-white/60 ${isCategoryOpen ? 'rotate-180 text-white' : ''}`}
+                  className={`transition-transform duration-200 text-text-dim ${isCategoryOpen ? 'rotate-180 text-text-main' : ''}`}
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -517,7 +517,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                   setIsSearchFocused(true);
                 }}
                 onKeyDown={handleSearchInputKeyDown}
-                className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] outline-none flex-1 min-w-0 text-white placeholder:text-white/60"
+                className="w-full bg-transparent border-none px-3.5 py-2 sm:py-2.5 text-xs sm:text-[0.90rem] text-text-main placeholder:text-text-dim/70 outline-none flex-1 min-w-0"
               />
               {/* Clear search query button */}
               {searchQuery && (
@@ -529,7 +529,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                     setIsSearchAiOpen(false);
                     setSearchAiResult(null);
                   }}
-                  className="p-1 mr-1 text-white/70 hover:text-white rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
+                  className="p-1 mr-1 text-text-dim hover:text-text-main rounded-md hover:bg-white/10 cursor-pointer border-none bg-transparent transition-colors"
                   title="Clear search"
                   aria-label="Clear search"
                 >
@@ -544,8 +544,8 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 onClick={handleAiButtonClick}
                 className={`p-1.5 mr-1 rounded-lg border cursor-pointer flex items-center justify-center shrink-0 transition-all active:scale-95 ${
                   isSearchAiOpen
-                    ? 'text-white bg-white/20 border-white/40 shadow-xs'
-                    : 'text-white/80 hover:text-white hover:bg-white/10 border-white/20 hover:border-white/40'
+                    ? 'text-text-main bg-white/15 border-border-glass shadow-xs'
+                    : 'text-text-dim hover:text-text-main hover:bg-white/10 border-border-glass/60 hover:border-border-glass'
                 }`}
                 title={isSearchAiOpen ? "Close AI Store Attendant" : (searchQuery.trim() ? `Ask AI about "${searchQuery.trim()}"` : "Ask AI Store Attendant")}
                 aria-label="Ask AI Store Attendant"
@@ -561,7 +561,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 type="button"
                 suppressHydrationWarning
                 onClick={handleSearchSubmit}
-                className="p-1.5 mr-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center shrink-0 active:scale-95"
+                className="p-1.5 mr-2 text-text-dim hover:text-text-main hover:bg-white/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer flex items-center justify-center shrink-0 active:scale-95"
                 title="Search products (0 tokens)"
                 aria-label="Search products"
               >
@@ -797,18 +797,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             type="button"
             suppressHydrationWarning
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer border-none bg-transparent text-white/80 hover:text-white hover:bg-white/10"
+            className="text-xs font-bold text-text-dim hover:text-text-main px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border-none bg-transparent"
           >
             Atelier Story
           </button>
 
-          <div className="h-4 w-[1px] shrink-0 mx-0.5 bg-white/20" />
+          <div className="h-4 w-[1px] bg-border-glass/60 shrink-0 mx-0.5" />
 
           <button
             type="button"
             suppressHydrationWarning
             onClick={() => toggleTheme()}
-            className="w-9 h-9 rounded-xl active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent shrink-0 text-white/80 hover:text-white hover:bg-white/10"
+            className="w-9 h-9 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-center border-none bg-transparent shrink-0"
             title="Toggle theme"
             aria-label="Toggle theme"
           >
@@ -928,7 +928,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
               <button
                 suppressHydrationWarning
                 onClick={() => useUIStore.getState().setAuthOpen(true, 'login', 'customer')}
-                className="px-4 py-2 rounded-lg font-bold text-xs no-underline whitespace-nowrap cursor-pointer transition-all active:scale-95 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-xs"
+                className="px-4 py-2 rounded-lg text-text-dim hover:text-text-main font-bold text-xs hover:bg-bg-surface no-underline whitespace-nowrap bg-transparent border border-border-glass cursor-pointer transition-all active:scale-95"
               >
                 Login
               </button>
@@ -945,7 +945,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
           <button
             suppressHydrationWarning
             onClick={handleBasketClick}
-            className="w-10 h-10 rounded-lg active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center text-white hover:bg-white/10"
+            className="w-10 h-10 rounded-lg text-text-main hover:bg-white/5 active:scale-95 transition-all cursor-pointer relative shrink-0 bg-transparent border-none flex items-center justify-center"
             title="View My Basket"
             aria-label="View My Basket"
           >
