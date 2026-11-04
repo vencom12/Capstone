@@ -12,6 +12,8 @@ import InlineError from '@/components/ui/InlineError';
 import GlassModal from '@/components/ui/GlassModal';
 import GlassButton from '@/components/ui/GlassButton';
 import OptimizedImage from '@/components/ui/OptimizedImage';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+import { isValidProductImage } from '@/lib/imageOptimizer';
 import QuantityInput from '@/components/ui/QuantityInput';
 import {
   MAX_CHARS_PER_LINE,
@@ -149,13 +151,13 @@ export default function ProductModal({
   const galleryItems = useMemo(() => {
     if (!product) return [];
     const items: Array<{ imageUrl: string; label: string; variant?: ProductVariant }> = [];
-    if (product.imageUrl) {
-      items.push({ imageUrl: product.imageUrl, label: product.name });
+    if (isValidProductImage(product.imageUrl)) {
+      items.push({ imageUrl: product.imageUrl!, label: product.name });
     }
     if (product.variants && Array.isArray(product.variants)) {
       product.variants.forEach((v) => {
-        if (v.imageUrl && !items.some((i) => i.imageUrl === v.imageUrl)) {
-          items.push({ imageUrl: v.imageUrl, label: v.name, variant: v });
+        if (isValidProductImage(v.imageUrl) && !items.some((i) => i.imageUrl === v.imageUrl)) {
+          items.push({ imageUrl: v.imageUrl!, label: v.name, variant: v });
         }
       });
     }
@@ -864,7 +866,7 @@ export default function ProductModal({
       <div className="grid grid-cols-[1fr_1.15fr] max-[700px]:grid-cols-1 md:h-[640px] md:max-h-[calc(100vh-3.5rem)]">
         {/* Full-Bleed Image & Preview Section */}
         <div className="relative w-full h-full md:h-[640px] md:max-h-[calc(100vh-3.5rem)] max-[700px]:h-[260px] max-[700px]:max-h-[35vh] max-[700px]:min-h-0 bg-bg-surface flex items-center justify-center overflow-hidden border-r border-border-glass max-[700px]:border-r-0 max-[700px]:border-b group select-none">
-          {activeImage ? (
+          {isValidProductImage(activeImage) ? (
             <div
               onClick={() => setIsZoomed(!isZoomed)}
               className="w-full h-full flex items-center justify-center cursor-zoom-in relative overflow-hidden"
@@ -875,15 +877,20 @@ export default function ProductModal({
                 alt={product.name}
                 width={800}
                 quality={90}
+                categoryTag={product.tag}
+                size="modal"
                 className={`w-full h-full transition-transform duration-300 ease-out ${
                   imageFit === 'contain' ? 'object-contain p-4' : 'object-cover'
                 } ${isZoomed ? 'scale-135' : 'scale-100 group-hover:scale-105'}`}
               />
             </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-text-dim text-xs tracking-wider font-semibold">
-              IMAGE NOT AVAILABLE
-            </div>
+            <ProductImagePlaceholder
+              name={product.name}
+              tag={product.tag}
+              size="modal"
+              className="w-full h-full"
+            />
           )}
 
           {/* Top-Left Floating Overlay Badge */}
@@ -904,7 +911,8 @@ export default function ProductModal({
           </div>
 
           {/* Bottom-Right View Mode & Zoom Control Toggle (Separated from top close button) */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 pointer-events-auto z-20">
+          {isValidProductImage(activeImage) && (
+            <div className="absolute bottom-3 right-3 flex items-center gap-1.5 pointer-events-auto z-20">
             <button
               type="button"
               onClick={(e) => {
@@ -949,6 +957,7 @@ export default function ProductModal({
               </svg>
             </button>
           </div>
+          )}
 
           {/* Bottom-Left Floating Variant Thumbnails Gallery */}
           {galleryItems.length > 1 && (

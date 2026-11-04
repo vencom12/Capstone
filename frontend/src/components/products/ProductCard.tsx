@@ -77,17 +77,15 @@ export default function ProductCard({ product, onQuickView, index = 0 }: Product
       <div
         className="h-[160px] sm:h-[190px] md:h-[220px] bg-bg-surface flex items-center justify-center relative overflow-hidden"
       >
-        {product.imageUrl ? (
-          <OptimizedImage
-            src={product.imageUrl}
-            alt={product.name}
-            width={480}
-            quality={80}
-            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-          />
-        ) : (
-          <span className="text-text-dim text-xs tracking-wider font-semibold z-10 relative">STITCH PREVIEW</span>
-        )}
+        <OptimizedImage
+          src={product.imageUrl}
+          alt={product.name}
+          width={480}
+          quality={80}
+          categoryTag={product.tag}
+          size="card"
+          className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+        />
         
         {/* Out of Stock badge */}
         {isOutOfStock && (

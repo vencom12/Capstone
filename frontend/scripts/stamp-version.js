@@ -16,3 +16,4 @@ if (fs.existsSync(swPath)) {
   fs.writeFileSync(swPath, content, 'utf-8');
   console.log(`[PWA] Stamped sw.js with build timestamp: ${timestamp}`);
 }
+

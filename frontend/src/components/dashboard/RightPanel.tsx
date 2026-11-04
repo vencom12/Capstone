@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -172,19 +175,19 @@ export default function RightPanel({ onCheckout, onCloseMobile, onClose }: Right
                 key={item.id}
                 className="flex gap-3 bg-bg-surface/80 hover:bg-bg-surface p-3 rounded-2xl border border-border-glass transition-all duration-200 animate-[fadeIn_0.2s_ease-out]"
               >
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-16 h-16 rounded-xl object-cover bg-bg-surface shrink-0 border border-border-glass/40"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-xl bg-white/5 border border-border-glass/40 flex items-center justify-center text-[0.6rem] font-bold text-text-dim shrink-0">
-                    PREVIEW
-                  </div>
-                )}
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-bg-surface shrink-0 border border-border-glass/40 flex items-center justify-center">
+                  {isValidProductImage(item.imageUrl) ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <ProductImagePlaceholder name={item.name} size="thumb" />
+                  )}
+                </div>
 
                 <div className="flex flex-col flex-1 min-w-0 justify-between">
                   <div>

@@ -12,6 +12,8 @@ import { isConversationalQuestion } from '@/lib/searchUtils';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toggleTheme } from '@/lib/theme';
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
 
 interface StorefrontHeaderProps {
   onMenuToggle?: () => void;
@@ -715,11 +717,11 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                               key={p.id ? `search-prod-${p.id}-${pIdx}` : `search-prod-idx-${pIdx}`}
                               className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-border-glass hover:border-border-glass/80 transition-all"
                             >
-                              <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                                {p.imageUrl ? (
+                              <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 shrink-0 flex items-center justify-center">
+                                {isValidProductImage(p.imageUrl) ? (
                                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-text-dim text-[0.6rem]">IMG</div>
+                                  <ProductImagePlaceholder name={p.name} tag={p.tag} size="thumb" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">

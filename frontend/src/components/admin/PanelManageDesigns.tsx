@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import React, { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import { api, API_BASE } from '@/lib/api';
@@ -865,10 +868,16 @@ export default function PanelManageDesigns({
                   key={id}
                   className="glass-card overflow-hidden flex flex-col gap-3 p-4 relative group text-left"
                 >
-                  <div
-                    className="w-full h-[160px] rounded-xl bg-cover bg-center border border-border-glass"
-                    style={{ backgroundImage: `url(${p.imageUrl || '/icons/icon.ico'})` }}
-                  />
+                  <div className="w-full h-[160px] rounded-xl overflow-hidden border border-border-glass">
+                    {isValidProductImage(p.imageUrl) ? (
+                      <div
+                        className="w-full h-full bg-cover bg-center"
+                        style={{ backgroundImage: `url(${p.imageUrl})` }}
+                      />
+                    ) : (
+                      <ProductImagePlaceholder name={p.name} tag={p.tag} size="card" />
+                    )}
+                  </div>
                   <div className="flex flex-col gap-1 text-left flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[0.7rem] uppercase tracking-wider text-primary font-extrabold">

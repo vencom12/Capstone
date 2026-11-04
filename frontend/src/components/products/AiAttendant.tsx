@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useBasketStore } from '@/stores/useBasketStore';
@@ -691,11 +694,11 @@ export default function AiAttendant() {
                       return (
                         <div key={`${msg.id}-prod-${pId}-${pIdx}`} className="flex items-center gap-3 p-3 bg-white/[0.04] border border-border-glass rounded-xl hover:border-border-glass/80 transition-all group">
                           {/* Product Thumbnail */}
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                            {product.imageUrl ? (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5 shrink-0 flex items-center justify-center">
+                            {isValidProductImage(product.imageUrl) ? (
                               <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-text-dim text-[0.6rem]">IMG</div>
+                              <ProductImagePlaceholder name={product.name} tag={product.tag} size="thumb" />
                             )}
                           </div>
 

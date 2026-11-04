@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import GlassModal from '@/components/ui/GlassModal';
@@ -253,11 +256,13 @@ export default function OrderSuccessModal({
                     className="p-2.5 rounded-xl bg-white/[0.02] border border-border-glass/40 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      {item.imageUrl && (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-glass/50 bg-bg-surface shrink-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-border-glass/50 bg-bg-surface shrink-0 flex items-center justify-center">
+                        {isValidProductImage(item.imageUrl) ? (
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                      )}
+                        ) : (
+                          <ProductImagePlaceholder name={item.name} size="thumb" />
+                        )}
+                      </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-bold text-text-main truncate">
                           {item.quantity || 1}x {item.name}

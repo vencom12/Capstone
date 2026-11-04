@@ -37,3 +37,17 @@ export function getFallbackImageUrl(
   if (!url) return '';
   return url.trim();
 }
+
+/**
+ * Validates whether a given product image URL is a real photograph/asset
+ * rather than a placeholder, favicon, app icon, or empty/null reference.
+ */
+export function isValidProductImage(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const clean = url.trim().toLowerCase();
+  if (!clean || clean === 'null' || clean === 'undefined') return false;
+  if (clean.includes('via.placeholder.com') || clean.includes('placeholder')) return false;
+  if (clean.includes('icon.ico') || clean === '/favicon.ico' || clean === '/icons/icon.ico') return false;
+  if (clean === '/icon-192.png' || clean === '/icon-512.png' || clean.includes('icon-maskable')) return false;
+  return true;
+}

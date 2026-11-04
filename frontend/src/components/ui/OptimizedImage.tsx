@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { getOptimizedImageUrl } from '@/lib/imageOptimizer';
+import { getOptimizedImageUrl, isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
 
 interface OptimizedImageProps {
   src?: string | null;
@@ -10,6 +11,8 @@ interface OptimizedImageProps {
   quality?: number;
   className?: string;
   fallbackText?: string;
+  categoryTag?: string;
+  size?: 'card' | 'modal' | 'thumb';
 }
 
 export default function OptimizedImage({
@@ -18,21 +21,25 @@ export default function OptimizedImage({
   width = 600,
   quality = 80,
   className = '',
-  fallbackText = 'STITCH PREVIEW'
+  categoryTag = '',
+  size = 'card',
 }: OptimizedImageProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  if (!src || hasError) {
+  if (!isValidProductImage(src) || hasError) {
     return (
-      <div className={`flex items-center justify-center bg-bg-surface text-text-dim text-xs font-semibold tracking-wider ${className}`}>
-        <span>{fallbackText}</span>
-      </div>
+      <ProductImagePlaceholder
+        name={alt}
+        tag={categoryTag}
+        size={size}
+        className={className}
+      />
     );
   }
 
   const optimizedSrc = getOptimizedImageUrl(src, width, quality);
-  const fallbackSrc = src;
+  const fallbackSrc = src!;
 
   return (
     <picture className="w-full h-full block relative overflow-hidden">

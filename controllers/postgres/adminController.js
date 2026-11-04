@@ -513,7 +513,7 @@ exports.createProduct = async (req, res) => {
         const formattedTag = formatCategoryTag(tag);
         const resolvedSize = garmentSize === 'big' ? 'big' : 'small';
         const productTags = [`garment:${resolvedSize}`];
-        let imageUrl = req.body.imageUrl || '/icons/icon.ico';
+        let imageUrl = req.body.imageUrl || '';
 
         if (req.file) {
             imageUrl = req.file.path;

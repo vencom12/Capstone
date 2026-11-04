@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBasketStore } from '@/stores/useBasketStore';
 import { useProductStore } from '@/stores/useProductStore';
@@ -369,18 +372,14 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
 
                     {/* Thumbnail */}
                     <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-bg-surface border border-border-glass overflow-hidden shrink-0 flex items-center justify-center relative">
-                      {item.imageUrl ? (
+                      {isValidProductImage(item.imageUrl) ? (
                         <img
                           src={item.imageUrl}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-dim">
-                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                          <line x1="12" y1="22.08" x2="12" y2="12" />
-                        </svg>
+                        <ProductImagePlaceholder name={item.name} size="thumb" />
                       )}
                       {item.selectedColor && (
                         <div

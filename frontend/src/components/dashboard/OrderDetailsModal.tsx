@@ -1,5 +1,8 @@
 'use client';
 
+import { isValidProductImage } from '@/lib/imageOptimizer';
+import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
+
 import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import WaybillModal from '@/components/dashboard/WaybillModal';
@@ -307,13 +310,17 @@ export default function OrderDetailsModal({
                   <div key={idx} className="flex flex-col gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2 min-w-0">
-                        {item.imageUrl && (
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.name} 
-                            className="w-8 h-8 rounded-lg object-cover bg-bg-surface border border-border-glass shrink-0" 
-                          />
-                        )}
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-bg-surface border border-border-glass shrink-0 flex items-center justify-center">
+                          {isValidProductImage(item.imageUrl) ? (
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <ProductImagePlaceholder name={item.name} size="thumb" />
+                          )}
+                        </div>
                         <div className="flex flex-col min-w-0">
                           <span className="font-bold text-text-main truncate text-xs leading-tight">{item.name}</span>
                           <div className="flex items-center gap-1 text-[0.68rem] text-text-dim flex-wrap">
