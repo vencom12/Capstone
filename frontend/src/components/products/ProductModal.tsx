@@ -103,15 +103,14 @@ export default function ProductModal({
             setSelectedVariant(freshVariant);
             if (newStock < oldStock) {
               const boughtCount = oldStock - newStock;
-              const countText = boughtCount === 1 ? '1 was just bought' : `${boughtCount} were just bought`;
               if (newStock <= 0) {
                 setLiveStockAlert({
-                  message: `${countText} ("${freshVariant.name}" is now sold out)`,
+                  message: `Someone just bought ${boughtCount} "${freshVariant.name}" (now sold out)`,
                   type: 'sold_out',
                 });
               } else {
                 setLiveStockAlert({
-                  message: `${countText} (${newStock} left for "${freshVariant.name}")`,
+                  message: `Someone just bought ${boughtCount} "${freshVariant.name}"`,
                   type: 'decreased',
                 });
               }
@@ -124,15 +123,14 @@ export default function ProductModal({
       const prevStock = prevStockMapRef.current[product.id];
       if (prevStock !== undefined && currentStock < prevStock) {
         const boughtCount = prevStock - currentStock;
-        const countText = boughtCount === 1 ? '1 was just bought' : `${boughtCount} were just bought`;
         if (currentStock <= 0) {
           setLiveStockAlert({
-            message: `${countText} (now sold out)`,
+            message: `Someone just bought ${boughtCount} "${product.name}" (now sold out)`,
             type: 'sold_out',
           });
         } else {
           setLiveStockAlert({
-            message: `${countText} (${currentStock} left)`,
+            message: `Someone just bought ${boughtCount} "${product.name}"`,
             type: 'decreased',
           });
         }
