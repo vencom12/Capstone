@@ -348,7 +348,7 @@ export default function FullScreenStitchExperience() {
       className="relative w-full h-[400vh] bg-[#060910] text-white selection:bg-red-500/30"
     >
       {/* Fixed full-screen viewport, pinned while scrolling the shelf runway */}
-      <div className="fixed top-[var(--header-height)] inset-x-0 bottom-0 overflow-hidden flex flex-col justify-between pointer-events-none z-10">
+      <div className="fixed top-0 inset-x-0 bottom-0 overflow-hidden flex flex-col justify-between pointer-events-none z-10 pt-[var(--header-height)]">
         <canvas
           ref={canvasRef}
           className={`absolute inset-0 w-full h-full z-0 pointer-events-none transition-opacity duration-700 ease-out ${
