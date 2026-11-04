@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Order } from '@/lib/types';
 import Pagination from '@/components/ui/Pagination';
+import { CardSkeleton } from '@/components/ui/Skeletons';
 import {
   getOrderStage,
   getOrderTitle,
@@ -163,6 +164,16 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
   const [tab, setTab] = useState<'active' | 'completed' | 'cancelled'>('active');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === page) return;
+    setIsPageLoading(true);
+    setPage(newPage);
+    setTimeout(() => {
+      setIsPageLoading(false);
+    }, 280);
+  };
 
   const sorted = [...orders].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -214,6 +225,22 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
               ? 'No completed orders yet.'
               : 'No cancelled orders.'}
         </div>
+      ) : isPageLoading ? (
+        <>
+          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1 animate-pulse">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+          <Pagination
+            currentPage={page}
+            totalItems={visible.length}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            showInfo={false}
+            className="mt-3.5"
+          />
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1">
@@ -228,12 +255,11 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
               />
             ))}
           </div>
-
           <Pagination
             currentPage={page}
             totalItems={visible.length}
             pageSize={pageSize}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
             showInfo={false}
             className="mt-3.5"
           />

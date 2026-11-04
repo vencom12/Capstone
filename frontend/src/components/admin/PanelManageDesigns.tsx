@@ -311,6 +311,16 @@ export default function PanelManageDesigns({
   // Pagination for Products Grid
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(30);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === currentPage) return;
+    setIsPageLoading(true);
+    setCurrentPage(newPage);
+    setTimeout(() => {
+      setIsPageLoading(false);
+    }, 280);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -830,7 +840,7 @@ export default function PanelManageDesigns({
 
       {/* Product card grid layout */}
       <div className="w-full pr-2 flex-1">
-        {isSyncing && products.length === 0 ? (
+        {(isSyncing && products.length === 0) || isPageLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {Array.from({ length: 4 }).map((_, i) => (
               <ProductCardSkeleton key={i} />
@@ -999,7 +1009,7 @@ export default function PanelManageDesigns({
           currentPage={currentPage}
           totalItems={filteredProducts.length}
           pageSize={pageSize}
-          onPageChange={setCurrentPage}
+          onPageChange={handlePageChange}
           showInfo={false}
           className="mt-3.5"
         />

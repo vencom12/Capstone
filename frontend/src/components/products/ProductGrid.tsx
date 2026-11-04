@@ -38,6 +38,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [isInView, setIsInView] = useState(false);
@@ -101,6 +102,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const handlePageChange = (newPage: number) => {
     if (newPage === page) return;
+    setIsPageLoading(true);
     setPage(newPage);
     if (typeof window !== 'undefined') {
       const el = document.getElementById('products-section') || gridRef.current;
@@ -113,6 +115,9 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
         });
       }
     }
+    setTimeout(() => {
+      setIsPageLoading(false);
+    }, 280);
   };
 
   const paginatedProducts = useMemo(() => {
@@ -120,7 +125,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
   }, [filteredProducts, page, pageSize]);
 
   return (
-    <div ref={gridRef} className="flex flex-col gap-6 pb-6">
+    <div ref={gridRef} className="flex flex-col gap-6 pb-2 sm:pb-3">
       {/* Category Filter & Section Header */}
       {!customProducts ? (
         /* Storefront: Active Filter Badges (Category / Search) */
@@ -215,10 +220,10 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
         ) : null
       )}
 
-      {/* Loading skeletons */}
-      {isSyncing && filteredProducts.length === 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
+      {/* Products Grid or Loading Skeleton */}
+      {(isSyncing && filteredProducts.length === 0) || isPageLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 animate-pulse">
+          {Array.from({ length: Math.min(8, paginatedProducts.length || 8) }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
         </div>
@@ -246,28 +251,28 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
         </div>
       ) : (
         /* Products Grid */
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
-            {paginatedProducts.map((product, idx) => (
-              <ProductCard
-                key={product.id || product._id}
-                product={product}
-                index={idx}
-                isVisible={isInView}
-                onQuickView={onQuickView}
-              />
-            ))}
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
+          {paginatedProducts.map((product, idx) => (
+            <ProductCard
+              key={product.id || product._id}
+              product={product}
+              index={idx}
+              isVisible={isInView}
+              onQuickView={onQuickView}
+            />
+          ))}
+        </div>
+      )}
 
-          <Pagination
-            currentPage={page}
-            totalItems={filteredProducts.length}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            showInfo={false}
-            className="mt-2"
-          />
-        </>
+      {/* Pagination Controls pulled up snug right below the grid */}
+      {filteredProducts.length > 0 && (
+        <Pagination
+          currentPage={page}
+          totalItems={filteredProducts.length}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+          className="-mt-3.5 sm:-mt-2.5"
+        />
       )}
     </div>
   );
