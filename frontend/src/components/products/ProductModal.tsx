@@ -102,18 +102,18 @@ export default function ProductModal({
           if (oldStock !== newStock || freshVariant.priceOverride !== selectedVariant.priceOverride) {
             setSelectedVariant(freshVariant);
             if (newStock < oldStock) {
+              const boughtCount = oldStock - newStock;
+              const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} have been bought`;
               if (newStock <= 0) {
                 setLiveStockAlert({
-                  message: `Notice: "${freshVariant.name}" was just purchased by another customer and is now sold out on hand! Your order will be placed as a Studio Pre-Order.`,
+                  message: `${boughtText}. "${freshVariant.name}" is now sold out on hand. Your order will be placed as a Studio Pre-Order.`,
                   type: 'sold_out',
                 });
-                showToast(`"${freshVariant.name}" just sold out! Switched to Studio Pre-Order.`, 'warning');
               } else {
                 setLiveStockAlert({
-                  message: `Live Stock Update: Another customer just purchased an item. Remaining ready stock for "${freshVariant.name}" is now ${newStock} pcs.`,
+                  message: `${boughtText}. Remaining ready stock for "${freshVariant.name}" is now ${newStock} pcs.`,
                   type: 'decreased',
                 });
-                showToast(`Live Stock Update: ${newStock} left for "${freshVariant.name}".`, 'info');
               }
             }
           }
@@ -123,18 +123,18 @@ export default function ProductModal({
       const currentStock = product.availableStock !== undefined ? product.availableStock : (product.count ?? 0);
       const prevStock = prevStockMapRef.current[product.id];
       if (prevStock !== undefined && currentStock < prevStock) {
+        const boughtCount = prevStock - currentStock;
+        const boughtText = boughtCount === 1 ? '1 has been bought' : `${boughtCount} have been bought`;
         if (currentStock <= 0) {
           setLiveStockAlert({
-            message: `Notice: "${product.name}" was just claimed and is now sold out on hand! Your order will be placed as a Studio Pre-Order.`,
+            message: `${boughtText}. "${product.name}" is now sold out on hand. Your order will be placed as a Studio Pre-Order.`,
             type: 'sold_out',
           });
-          showToast(`"${product.name}" just sold out! Switched to Studio Pre-Order.`, 'warning');
         } else {
           setLiveStockAlert({
-            message: `Live Stock Update: Another customer just purchased an item. Ready stock for "${product.name}" is now ${currentStock} pcs.`,
+            message: `${boughtText}. Ready stock for "${product.name}" is now ${currentStock} pcs.`,
             type: 'decreased',
           });
-          showToast(`Live Stock Update: ${currentStock} left for "${product.name}".`, 'info');
         }
       }
       prevStockMapRef.current[product.id] = currentStock;
