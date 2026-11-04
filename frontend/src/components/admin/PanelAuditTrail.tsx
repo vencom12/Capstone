@@ -49,7 +49,7 @@ export default function PanelAuditTrail() {
   // Server-side Pagination State
   const [currentPage, setCurrentPage] = useState(() => cachedAuditLogs?.currentPage || 1);
   const [totalCount, setTotalCount] = useState(() => cachedAuditLogs?.totalCount || 0);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(30);
 
   const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery, size = pageSize, silent = false) => {
     if (!silent && !cachedAuditLogs) {

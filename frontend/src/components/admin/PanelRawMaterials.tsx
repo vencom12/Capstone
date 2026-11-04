@@ -1233,7 +1233,7 @@ export default function PanelRawMaterials({
 
   // Pagination for Inventory Table
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(30);
 
   useEffect(() => {
     setCurrentPage(1);

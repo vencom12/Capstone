@@ -85,7 +85,7 @@ export default function EmployeePage() {
   const [batchStatus, setBatchStatus] = useState('');
   const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
   const [queuePage, setQueuePage] = useState(1);
-  const [queuePageSize, setQueuePageSize] = useState(10);
+  const [queuePageSize, setQueuePageSize] = useState(30);
 
   // Bulk Names Roster Modal for machine operator / artisan
   const [activeRosterData, setActiveRosterData] = useState<WorkshopRosterData | null>(null);
@@ -97,7 +97,7 @@ export default function EmployeePage() {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedTotal, setArchivedTotal] = useState(0);
   const [archivedPage, setArchivedPage] = useState(1);
-  const [archivedPageSize, setArchivedPageSize] = useState(15);
+  const [archivedPageSize, setArchivedPageSize] = useState(30);
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
   const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1, limit = archivedPageSize) => {

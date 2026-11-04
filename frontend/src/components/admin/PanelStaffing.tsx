@@ -30,7 +30,7 @@ export default function PanelStaffing({
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(30);
 
   // Modals state
   const [isOpen, setIsOpen] = useState(false);

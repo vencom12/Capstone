@@ -85,7 +85,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(() => cached?.totalItems || 0);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(30);
 
   // Expanded review state: Only display details when clicked
   const [expandedId, setExpandedId] = useState<string | null>(null);

@@ -284,7 +284,7 @@ export default function PanelOverview({
 
   // Pagination for Active Orders Queue Table
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(30);
 
   useEffect(() => {
     setCurrentPage(1);

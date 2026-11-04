@@ -206,7 +206,7 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   // Claim & Handover Desk state
   const [turnOverSearch, setTurnOverSearch] = useState('');
   const [turnOverPage, setTurnOverPage] = useState(1);
-  const [turnOverPageSize, setTurnOverPageSize] = useState(8);
+  const [turnOverPageSize, setTurnOverPageSize] = useState(30);
   const [verifyingOrderForRelease, setVerifyingOrderForRelease] = useState<any | null>(null);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 

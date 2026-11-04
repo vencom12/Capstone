@@ -197,7 +197,7 @@ export default function PanelAnalytics({
 
   // Pagination for category performance
   const [categoryPage, setCategoryPage] = useState(1);
-  const [categoryPageSize, setCategoryPageSize] = useState(5);
+  const [categoryPageSize, setCategoryPageSize] = useState(30);
 
   // 1. Inventory cost map
   const inventoryCostMap = useMemo(() => {

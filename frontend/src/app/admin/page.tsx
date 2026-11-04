@@ -94,7 +94,7 @@ export default function AdminPage() {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [archivedTotal, setArchivedTotal] = useState(0);
   const [archivedPage, setArchivedPage] = useState(1);
-  const [archivedPageSize, setArchivedPageSize] = useState(15);
+  const [archivedPageSize, setArchivedPageSize] = useState(30);
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
   const hasLoadedHistoryOnceRef = useRef(false);
