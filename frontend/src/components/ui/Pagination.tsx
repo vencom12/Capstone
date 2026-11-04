@@ -50,8 +50,8 @@ export default function Pagination({
     <div
       className={`flex items-center justify-between flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass text-xs text-text-dim w-full ${className}`}
     >
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 font-medium text-text-dim">
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface/80 backdrop-blur-md border border-border-glass shadow-xs font-medium text-text-dim">
           <span>Showing</span>
           <span className="font-bold text-text-main font-mono">{from}</span>
           <span>–</span>
@@ -62,7 +62,7 @@ export default function Pagination({
         </div>
 
         {pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange && (
-          <div className="flex items-center gap-1.5 text-[11px] text-text-dim pl-2.5 border-l border-border-glass">
+          <div className="inline-flex items-center gap-1.5 p-1 px-2.5 rounded-xl bg-bg-surface/80 backdrop-blur-md border border-border-glass shadow-xs text-[11px] text-text-dim">
             <span>Per page:</span>
             <div className="flex items-center gap-1">
               {pageSizeOptions.map((opt) => {
@@ -75,10 +75,10 @@ export default function Pagination({
                       onPageSizeChange(opt);
                       onPageChange(1);
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+                    className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                       isCurrentSize
-                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25'
-                        : 'bg-bg-surface hover:bg-bg-card border-border-glass text-text-main hover:text-primary hover:border-primary/40 active:scale-95'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-text-main hover:bg-bg-card hover:text-primary active:scale-95'
                     }`}
                   >
                     {opt}
@@ -91,12 +91,12 @@ export default function Pagination({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center gap-1.5">
+        <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-bg-surface/80 backdrop-blur-md border border-border-glass shadow-xs">
           <button
             type="button"
             disabled={currentPage <= 1}
             onClick={() => onPageChange(currentPage - 1)}
-            className="px-3 py-1.5 rounded-lg border border-border-glass bg-bg-surface hover:bg-bg-card text-text-main disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-surface disabled:hover:text-text-main disabled:hover:border-border-glass transition-all cursor-pointer font-medium flex items-center gap-1 active:scale-95 hover:border-primary/40"
+            className="px-2.5 py-1 rounded-lg text-text-main hover:bg-bg-card hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer font-medium flex items-center gap-1 text-xs active:scale-95"
             aria-label="Previous page"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
@@ -107,7 +107,7 @@ export default function Pagination({
             {getPageNumbers().map((p, idx) => {
               if (p === '...') {
                 return (
-                  <span key={`dots-${idx}`} className="px-2 py-1 text-text-dim/60 select-none">
+                  <span key={`dots-${idx}`} className="px-1.5 py-0.5 text-text-dim/60 select-none text-xs">
                     …
                   </span>
                 );
@@ -119,10 +119,10 @@ export default function Pagination({
                   key={pageNum}
                   type="button"
                   onClick={() => onPageChange(pageNum)}
-                  className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border flex items-center justify-center ${
+                  className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center justify-center ${
                     isActive
-                      ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25'
-                      : 'bg-bg-surface text-text-main border-border-glass hover:bg-bg-card hover:text-primary hover:border-primary/40 active:scale-95'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-text-main hover:bg-bg-card hover:text-primary active:scale-95'
                   }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -136,7 +136,7 @@ export default function Pagination({
             type="button"
             disabled={currentPage >= totalPages}
             onClick={() => onPageChange(currentPage + 1)}
-            className="px-3 py-1.5 rounded-lg border border-border-glass bg-bg-surface hover:bg-bg-card text-text-main disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-surface disabled:hover:text-text-main disabled:hover:border-border-glass transition-all cursor-pointer font-medium flex items-center gap-1 active:scale-95 hover:border-primary/40"
+            className="px-2.5 py-1 rounded-lg text-text-main hover:bg-bg-card hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer font-medium flex items-center gap-1 text-xs active:scale-95"
             aria-label="Next page"
           >
             <span className="hidden sm:inline">Next</span>
