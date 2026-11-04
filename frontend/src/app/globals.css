@@ -808,3 +808,11 @@ select option {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
+
+/* PWA Window Controls Overlay Safe Area Support to prevent overlaying buttons */
+@media (display-mode: window-controls-overlay) {
+  .pwa-draggable-header {
+    padding-top: env(titlebar-area-height, 0px) !important;
+    padding-right: max(16px, calc(100vw - env(titlebar-area-width, 100vw) + 16px)) !important;
+  }
+}
